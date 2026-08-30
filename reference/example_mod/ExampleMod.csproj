@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AssemblyName>ExampleMod</AssemblyName>
+    <RootNamespace>ExampleMod</RootNamespace>
+
+    <!-- Game dir: `node tools/check_runtime.mjs` discovers it and caches to
+         .gamer-agent.local.json; export DUCKOV_DIR=<gameDir> before building.
+         Override manually here for local dev. -->
+    <DuckovDir Condition="'$(DUCKOV_DIR)' != ''">$(DUCKOV_DIR)</DuckovDir>
+
+    <IsMac Condition="$([MSBuild]::IsOSPlatform('OSX'))">true</IsMac>
+    <ManagedDir Condition="'$(IsMac)' == 'true'">$(DuckovDir)/Duckov.app/Contents/Resources/Data/Managed</ManagedDir>
+    <ManagedDir Condition="'$(IsMac)' != 'true'">$(DuckovDir)/Duckov_Data/Managed</ManagedDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="$(ManagedDir)/TeamSoda.*">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="$(ManagedDir)/ItemStatsSystem.dll">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="$(ManagedDir)/Unity*">
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="$(MSBuildThisFileDirectory)../../libs/0Harmony.dll">
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+</Project>

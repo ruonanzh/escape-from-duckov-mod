@@ -1,0 +1,13 @@
+# 运行时状态（玩家机器特定，不进 git）
+.gamer-agent.local.json
+
+# 编译产物
+**/bin/
+**/obj/
+
+# macOS
+.DS_Store
+
+# 编辑器
+.vscode/
+.idea/

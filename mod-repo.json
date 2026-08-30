@@ -1,0 +1,26 @@
+{
+  "version": "1.0.0",
+  "modType": "csharp-dll",
+  "game": {
+    "name": "Escape From Duckov",
+    "steamAppId": 3167020,
+    "installDirHint": {
+      "windows": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Escape from Duckov",
+      "mac": "~/Library/Application Support/Steam/steamapps/common/Escape from Duckov"
+    }
+  },
+  "modInstall": {
+    "relativeTo": "gameDir",
+    "path": {
+      "windows": "Duckov_Data/Mods",
+      "mac": "Duckov.app/Contents/Resources/Data/Mods"
+    }
+  },
+  "compile": {
+    "managedDir": {
+      "windows": "Duckov_Data/Managed",
+      "mac": "Duckov.app/Contents/Resources/Data/Managed"
+    },
+    "references": ["TeamSoda.*.dll", "ItemStatsSystem.dll", "Unity*.dll"]
+  }
+}
