@@ -100,9 +100,9 @@ function main() {
   const state = loadState();
   const dotnet = findDotnet(state);
   if (!dotnet) {
-    warnings.push("dotnet not found — skip compile check (run node tools/check_runtime.mjs)");
+    warnings.push("dotnet not found — skip compile check (call the check_runtime tool)");
   } else if (!state.gameDir) {
-    warnings.push("game dir not found — skip compile check (run node tools/check_runtime.mjs)");
+    warnings.push("game dir not found — skip compile check (call the check_runtime tool)");
   } else if (csproj) {
     try {
       execFileSync(dotnet, ["build", csproj, "-c", "Release"], {
