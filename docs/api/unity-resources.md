@@ -1,0 +1,1133 @@
+# Unity Resource APIs
+
+Unity engine + FMOD native APIs for asset mods — loading, replacing, and adding textures / audio / meshes / materials. These live in Unity engine DLLs (not game-owned DLLs).
+
+## UnityEngine.Resources [class]
+
+- method T[] FindObjectsOfTypeAll() (static)
+- method Object[] FindObjectsOfTypeAll(Type type) (static)
+- method T GetBuiltinResource(String path) (static)
+- method Object GetBuiltinResource(Type type, String path) (static)
+- method Boolean InstanceIDIsValid(Int32 instanceId) (static)
+- method Object InstanceIDToObject(Int32 instanceID) (static)
+- method Void InstanceIDToObjectList(NativeArray<Int32> instanceIDs, List<Object> objects) (static)
+- method Void InstanceIDsToValidArray(NativeArray<Int32> instanceIDs, NativeArray<Boolean> validArray) (static)
+- method Void InstanceIDsToValidArray(ReadOnlySpan<Int32> instanceIDs, Span<Boolean> validArray) (static)
+- method Object Load(String path) (static)
+- method T Load(String path) (static)
+- method Object Load(String path, Type systemTypeInstance) (static)
+- method Object[] LoadAll(String path) (static)
+- method T[] LoadAll(String path) (static)
+- method Object[] LoadAll(String path, Type systemTypeInstance) (static)
+- method ResourceRequest LoadAsync(String path) (static)
+- method ResourceRequest LoadAsync(String path) (static)
+- method ResourceRequest LoadAsync(String path, Type type) (static)
+- method Void UnloadAsset(Object assetToUnload) (static)
+- method AsyncOperation UnloadUnusedAssets() (static)
+
+## UnityEngine.Object [class]
+
+- prop [get/set] HideFlags hideFlags
+- prop [get/set] String name
+- method Void Destroy(Object obj) (static)
+- method Void Destroy(Object obj, Single t) (static)
+- method Void DestroyImmediate(Object obj) (static)
+- method Void DestroyImmediate(Object obj, Boolean allowDestroyingAssets) (static)
+- method Void DestroyObject(Object obj) (static)
+- method Void DestroyObject(Object obj, Single t) (static)
+- method Void DontDestroyOnLoad(Object target) (static)
+- method Boolean Equals(Object other)
+- method T FindAnyObjectByType() (static)
+- method T FindAnyObjectByType(FindObjectsInactive findObjectsInactive) (static)
+- method Object FindAnyObjectByType(Type type) (static)
+- method Object FindAnyObjectByType(Type type, FindObjectsInactive findObjectsInactive) (static)
+- method T FindFirstObjectByType() (static)
+- method T FindFirstObjectByType(FindObjectsInactive findObjectsInactive) (static)
+- method Object FindFirstObjectByType(Type type) (static)
+- method Object FindFirstObjectByType(Type type, FindObjectsInactive findObjectsInactive) (static)
+- method T FindObjectOfType() (static)
+- method T FindObjectOfType(Boolean includeInactive) (static)
+- method Object FindObjectOfType(Type type) (static)
+- method Object FindObjectOfType(Type type, Boolean includeInactive) (static)
+- method T[] FindObjectsByType(FindObjectsSortMode sortMode) (static)
+- method Object[] FindObjectsByType(Type type, FindObjectsSortMode sortMode) (static)
+- method T[] FindObjectsByType(FindObjectsInactive findObjectsInactive, FindObjectsSortMode sortMode) (static)
+- method Object[] FindObjectsByType(Type type, FindObjectsInactive findObjectsInactive, FindObjectsSortMode sortMode) (static)
+- method T[] FindObjectsOfType() (static)
+- method Object[] FindObjectsOfType(Type type) (static)
+- method T[] FindObjectsOfType(Boolean includeInactive) (static)
+- method Object[] FindObjectsOfType(Type type, Boolean includeInactive) (static)
+- method Object[] FindObjectsOfTypeAll(Type type) (static)
+- method Object[] FindObjectsOfTypeIncludingAssets(Type type) (static)
+- method Object[] FindSceneObjectsOfType(Type type) (static)
+- method Int32 GetHashCode()
+- method Int32 GetInstanceID()
+- method Object Instantiate(Object original) (static)
+- method T Instantiate(T original) (static)
+- method Object Instantiate(Object original, Scene scene) (static)
+- method T Instantiate(T original, InstantiateParameters parameters) (static)
+- method Object Instantiate(Object original, Transform parent) (static)
+- method T Instantiate(T original, Transform parent) (static)
+- method Object Instantiate(Object original, Vector3 position, Quaternion rotation) (static)
+- method Object Instantiate(Object original, Transform parent, Boolean instantiateInWorldSpace) (static)
+- method T Instantiate(T original, Vector3 position, Quaternion rotation) (static)
+- method T Instantiate(T original, Transform parent, Boolean worldPositionStays) (static)
+- method Object Instantiate(Object original, Vector3 position, Quaternion rotation, Transform parent) (static)
+- method T Instantiate(T original, Vector3 position, Quaternion rotation, InstantiateParameters parameters) (static)
+- method T Instantiate(T original, Vector3 position, Quaternion rotation, Transform parent) (static)
+- method AsyncInstantiateOperation<T> InstantiateAsync(T original) (static)
+- method AsyncInstantiateOperation<T> InstantiateAsync(T original, Transform parent) (static)
+- method AsyncInstantiateOperation<T> InstantiateAsync(T original, Int32 count) (static)
+- method AsyncInstantiateOperation<T> InstantiateAsync(T original, InstantiateParameters parameters) (static)
+- method AsyncInstantiateOperation<T> InstantiateAsync(T original, Vector3 position, Quaternion rotation) (static)
+- method AsyncInstantiateOperation<T> InstantiateAsync(T original, Int32 count, Transform parent) (static)
+- method AsyncInstantiateOperation<T> InstantiateAsync(T original, Int32 count, InstantiateParameters parameters) (static)
+- method AsyncInstantiateOperation<T> InstantiateAsync(T original, Transform parent, Vector3 position, Quaternion rotation) (static)
+- method AsyncInstantiateOperation<T> InstantiateAsync(T original, Int32 count, Vector3 position, Quaternion rotation) (static)
+- method AsyncInstantiateOperation<T> InstantiateAsync(T original, Int32 count, ReadOnlySpan<Vector3> positions, ReadOnlySpan<Quaternion> rotations) (static)
+- method AsyncInstantiateOperation<T> InstantiateAsync(T original, Vector3 position, Quaternion rotation, InstantiateParameters parameters) (static)
+- method AsyncInstantiateOperation<T> InstantiateAsync(T original, Int32 count, Transform parent, Vector3 position, Quaternion rotation) (static)
+- method AsyncInstantiateOperation<T> InstantiateAsync(T original, Int32 count, Transform parent, ReadOnlySpan<Vector3> positions, ReadOnlySpan<Quaternion> rotations) (static)
+- method AsyncInstantiateOperation<T> InstantiateAsync(T original, Int32 count, Vector3 position, Quaternion rotation, InstantiateParameters parameters) (static)
+- method AsyncInstantiateOperation<T> InstantiateAsync(T original, Int32 count, ReadOnlySpan<Vector3> positions, ReadOnlySpan<Quaternion> rotations, InstantiateParameters parameters) (static)
+- method String ToString()
+
+## UnityEngine.GameObject [class] : UnityEngine.Object
+
+- prop [get/set] Boolean active
+- prop [get] Boolean activeInHierarchy
+- prop [get] Boolean activeSelf
+- prop [get] GameObject gameObject
+- prop [get/set] Boolean isStatic
+- prop [get/set] Int32 layer
+- prop [get] Scene scene
+- prop [get] UInt64 sceneCullingMask
+- prop [get/set] String tag
+- prop [get] Transform transform
+- method T AddComponent()
+- method Component AddComponent(Type componentType)
+- method Void BroadcastMessage(String methodName)
+- method Void BroadcastMessage(String methodName, SendMessageOptions options)
+- method Void BroadcastMessage(String methodName, Object parameter)
+- method Void BroadcastMessage(String methodName, Object parameter, SendMessageOptions options)
+- method Boolean CompareTag(String tag)
+- method GameObject CreatePrimitive(PrimitiveType type) (static)
+- method GameObject Find(String name) (static)
+- method GameObject FindGameObjectWithTag(String tag) (static)
+- method GameObject[] FindGameObjectsWithTag(String tag) (static)
+- method GameObject FindWithTag(String tag) (static)
+- method T GetComponent()
+- method Component GetComponent(Type type)
+- method Component GetComponent(String type)
+- method Component GetComponentAtIndex(Int32 index)
+- method T GetComponentAtIndex(Int32 index)
+- method Int32 GetComponentCount()
+- method T GetComponentInChildren()
+- method Component GetComponentInChildren(Type type)
+- method T GetComponentInChildren(Boolean includeInactive)
+- method Component GetComponentInChildren(Type type, Boolean includeInactive)
+- method T GetComponentInParent()
+- method Component GetComponentInParent(Type type)
+- method T GetComponentInParent(Boolean includeInactive)
+- method Component GetComponentInParent(Type type, Boolean includeInactive)
+- method Int32 GetComponentIndex(Component component)
+- method T[] GetComponents()
+- method Component[] GetComponents(Type type)
+- method Void GetComponents(List<T> results)
+- method Void GetComponents(Type type, List<Component> results)
+- method T[] GetComponentsInChildren()
+- method Component[] GetComponentsInChildren(Type type)
+- method T[] GetComponentsInChildren(Boolean includeInactive)
+- method Void GetComponentsInChildren(List<T> results)
+- method Component[] GetComponentsInChildren(Type type, Boolean includeInactive)
+- method Void GetComponentsInChildren(Boolean includeInactive, List<T> results)
+- method T[] GetComponentsInParent()
+- method Component[] GetComponentsInParent(Type type)
+- method T[] GetComponentsInParent(Boolean includeInactive)
+- method Component[] GetComponentsInParent(Type type, Boolean includeInactive)
+- method Void GetComponentsInParent(Boolean includeInactive, List<T> results)
+- method Scene GetScene(Int32 instanceID) (static)
+- method Void InstantiateGameObjects(Int32 sourceInstanceID, Int32 count, NativeArray<Int32> newInstanceIDs, NativeArray<Int32> newTransformInstanceIDs, Scene destinationScene) (static)
+- method Void SendMessage(String methodName)
+- method Void SendMessage(String methodName, SendMessageOptions options)
+- method Void SendMessage(String methodName, Object value)
+- method Void SendMessage(String methodName, Object value, SendMessageOptions options)
+- method Void SendMessageUpwards(String methodName)
+- method Void SendMessageUpwards(String methodName, SendMessageOptions options)
+- method Void SendMessageUpwards(String methodName, Object value)
+- method Void SendMessageUpwards(String methodName, Object value, SendMessageOptions options)
+- method Void SetActive(Boolean value)
+- method Void SetActiveRecursively(Boolean state)
+- method Void SetGameObjectsActive(NativeArray<Int32> instanceIDs, Boolean active) (static)
+- method Void SetGameObjectsActive(ReadOnlySpan<Int32> instanceIDs, Boolean active) (static)
+- method Boolean TryGetComponent(T& component)
+- method Boolean TryGetComponent(Type type, Component& component)
+
+## UnityEngine.Component [class] : UnityEngine.Object
+
+- prop [get] GameObject gameObject
+- prop [get/set] String tag
+- prop [get] Transform transform
+- method Void BroadcastMessage(String methodName)
+- method Void BroadcastMessage(String methodName, Object parameter)
+- method Void BroadcastMessage(String methodName, SendMessageOptions options)
+- method Void BroadcastMessage(String methodName, Object parameter, SendMessageOptions options)
+- method Boolean CompareTag(String tag)
+- method T GetComponent()
+- method Component GetComponent(Type type)
+- method Component GetComponent(String type)
+- method T GetComponentInChildren()
+- method Component GetComponentInChildren(Type t)
+- method T GetComponentInChildren(Boolean includeInactive)
+- method Component GetComponentInChildren(Type t, Boolean includeInactive)
+- method T GetComponentInParent()
+- method Component GetComponentInParent(Type t)
+- method T GetComponentInParent(Boolean includeInactive)
+- method Component GetComponentInParent(Type t, Boolean includeInactive)
+- method Int32 GetComponentIndex()
+- method T[] GetComponents()
+- method Component[] GetComponents(Type type)
+- method Void GetComponents(List<T> results)
+- method Void GetComponents(Type type, List<Component> results)
+- method T[] GetComponentsInChildren()
+- method Component[] GetComponentsInChildren(Type t)
+- method T[] GetComponentsInChildren(Boolean includeInactive)
+- method Void GetComponentsInChildren(List<T> results)
+- method Component[] GetComponentsInChildren(Type t, Boolean includeInactive)
+- method Void GetComponentsInChildren(Boolean includeInactive, List<T> result)
+- method T[] GetComponentsInParent()
+- method Component[] GetComponentsInParent(Type t)
+- method T[] GetComponentsInParent(Boolean includeInactive)
+- method Component[] GetComponentsInParent(Type t, Boolean includeInactive)
+- method Void GetComponentsInParent(Boolean includeInactive, List<T> results)
+- method Void SendMessage(String methodName)
+- method Void SendMessage(String methodName, Object value)
+- method Void SendMessage(String methodName, SendMessageOptions options)
+- method Void SendMessage(String methodName, Object value, SendMessageOptions options)
+- method Void SendMessageUpwards(String methodName)
+- method Void SendMessageUpwards(String methodName, Object value)
+- method Void SendMessageUpwards(String methodName, SendMessageOptions options)
+- method Void SendMessageUpwards(String methodName, Object value, SendMessageOptions options)
+- method Boolean TryGetComponent(T& component)
+- method Boolean TryGetComponent(Type type, Component& component)
+
+## UnityEngine.Transform [class] : UnityEngine.Component
+
+- prop [get] Int32 childCount
+- prop [get/set] Vector3 eulerAngles
+- prop [get/set] Vector3 forward
+- prop [get/set] Boolean hasChanged
+- prop [get/set] Int32 hierarchyCapacity
+- prop [get] Int32 hierarchyCount
+- prop [get/set] Vector3 localEulerAngles
+- prop [get/set] Vector3 localPosition
+- prop [get/set] Quaternion localRotation
+- prop [get/set] Vector3 localScale
+- prop [get] Matrix4x4 localToWorldMatrix
+- prop [get] Vector3 lossyScale
+- prop [get/set] Transform parent
+- prop [get/set] Vector3 position
+- prop [get/set] Vector3 right
+- prop [get] Transform root
+- prop [get/set] Quaternion rotation
+- prop [get/set] Vector3 up
+- prop [get] Matrix4x4 worldToLocalMatrix
+- method Void DetachChildren()
+- method Transform Find(String n)
+- method Transform FindChild(String n)
+- method Transform GetChild(Int32 index)
+- method Int32 GetChildCount()
+- method IEnumerator GetEnumerator()
+- method Void GetLocalPositionAndRotation(Vector3& localPosition, Quaternion& localRotation)
+- method Void GetPositionAndRotation(Vector3& position, Quaternion& rotation)
+- method Int32 GetSiblingIndex()
+- method Vector3 InverseTransformDirection(Vector3 direction)
+- method Vector3 InverseTransformDirection(Single x, Single y, Single z)
+- method Void InverseTransformDirections(Span<Vector3> directions)
+- method Void InverseTransformDirections(ReadOnlySpan<Vector3> directions, Span<Vector3> transformedDirections)
+- method Vector3 InverseTransformPoint(Vector3 position)
+- method Vector3 InverseTransformPoint(Single x, Single y, Single z)
+- method Void InverseTransformPoints(Span<Vector3> positions)
+- method Void InverseTransformPoints(ReadOnlySpan<Vector3> positions, Span<Vector3> transformedPositions)
+- method Vector3 InverseTransformVector(Vector3 vector)
+- method Vector3 InverseTransformVector(Single x, Single y, Single z)
+- method Void InverseTransformVectors(Span<Vector3> vectors)
+- method Void InverseTransformVectors(ReadOnlySpan<Vector3> vectors, Span<Vector3> transformedVectors)
+- method Boolean IsChildOf(Transform parent)
+- method Void LookAt(Transform target)
+- method Void LookAt(Vector3 worldPosition)
+- method Void LookAt(Transform target, Vector3 worldUp)
+- method Void LookAt(Vector3 worldPosition, Vector3 worldUp)
+- method Void Rotate(Vector3 eulers)
+- method Void Rotate(Vector3 eulers, Space relativeTo)
+- method Void Rotate(Vector3 axis, Single angle)
+- method Void Rotate(Single xAngle, Single yAngle, Single zAngle)
+- method Void Rotate(Vector3 axis, Single angle, Space relativeTo)
+- method Void Rotate(Single xAngle, Single yAngle, Single zAngle, Space relativeTo)
+- method Void RotateAround(Vector3 axis, Single angle)
+- method Void RotateAround(Vector3 point, Vector3 axis, Single angle)
+- method Void RotateAroundLocal(Vector3 axis, Single angle)
+- method Void SetAsFirstSibling()
+- method Void SetAsLastSibling()
+- method Void SetLocalPositionAndRotation(Vector3 localPosition, Quaternion localRotation)
+- method Void SetParent(Transform p)
+- method Void SetParent(Transform parent, Boolean worldPositionStays)
+- method Void SetPositionAndRotation(Vector3 position, Quaternion rotation)
+- method Void SetSiblingIndex(Int32 index)
+- method Vector3 TransformDirection(Vector3 direction)
+- method Vector3 TransformDirection(Single x, Single y, Single z)
+- method Void TransformDirections(Span<Vector3> directions)
+- method Void TransformDirections(ReadOnlySpan<Vector3> directions, Span<Vector3> transformedDirections)
+- method Vector3 TransformPoint(Vector3 position)
+- method Vector3 TransformPoint(Single x, Single y, Single z)
+- method Void TransformPoints(Span<Vector3> positions)
+- method Void TransformPoints(ReadOnlySpan<Vector3> positions, Span<Vector3> transformedPositions)
+- method Vector3 TransformVector(Vector3 vector)
+- method Vector3 TransformVector(Single x, Single y, Single z)
+- method Void TransformVectors(Span<Vector3> vectors)
+- method Void TransformVectors(ReadOnlySpan<Vector3> vectors, Span<Vector3> transformedVectors)
+- method Void Translate(Vector3 translation)
+- method Void Translate(Vector3 translation, Space relativeTo)
+- method Void Translate(Vector3 translation, Transform relativeTo)
+- method Void Translate(Single x, Single y, Single z)
+- method Void Translate(Single x, Single y, Single z, Space relativeTo)
+- method Void Translate(Single x, Single y, Single z, Transform relativeTo)
+
+## UnityEngine.Texture2D [class] : UnityEngine.Texture
+
+- prop [get] Int32 activeMipmapLimit
+- prop [get] Texture2D blackTexture (static)
+- prop [get] Int32 calculatedMipmapLevel
+- prop [get] Int32 desiredMipmapLevel
+- prop [get] TextureFormat format
+- prop [get] Texture2D grayTexture (static)
+- prop [get/set] Boolean ignoreMipmapLimit
+- prop [get] Boolean isReadable
+- prop [get] Texture2D linearGrayTexture (static)
+- prop [get] Int32 loadedMipmapLevel
+- prop [get] Int32 loadingMipmapLevel
+- prop [get/set] Int32 minimumMipmapLevel
+- prop [get] String mipmapLimitGroup
+- prop [get] Texture2D normalTexture (static)
+- prop [get] Texture2D redTexture (static)
+- prop [get/set] Int32 requestedMipmapLevel
+- prop [get] Boolean streamingMipmaps
+- prop [get] Int32 streamingMipmapsPriority
+- prop [get] Boolean vtOnly
+- prop [get] Texture2D whiteTexture (static)
+- method Void Apply()
+- method Void Apply(Boolean updateMipmaps)
+- method Void Apply(Boolean updateMipmaps, Boolean makeNoLongerReadable)
+- method Void ClearMinimumMipmapLevel()
+- method Void ClearRequestedMipmapLevel()
+- method Void Compress(Boolean highQuality)
+- method Texture2D CreateExternalTexture(Int32 width, Int32 height, TextureFormat format, Boolean mipChain, Boolean linear, IntPtr nativeTex) (static)
+- method Boolean GenerateAtlas(Vector2[] sizes, Int32 padding, Int32 atlasSize, List<Rect> results) (static)
+- method Color GetPixel(Int32 x, Int32 y)
+- method Color GetPixel(Int32 x, Int32 y, Int32 mipLevel)
+- method Color GetPixelBilinear(Single u, Single v)
+- method Color GetPixelBilinear(Single u, Single v, Int32 mipLevel)
+- method NativeArray<T> GetPixelData(Int32 mipLevel)
+- method Color[] GetPixels()
+- method Color[] GetPixels(Int32 miplevel)
+- method Color[] GetPixels(Int32 x, Int32 y, Int32 blockWidth, Int32 blockHeight)
+- method Color[] GetPixels(Int32 x, Int32 y, Int32 blockWidth, Int32 blockHeight, Int32 miplevel)
+- method Color32[] GetPixels32()
+- method Color32[] GetPixels32(Int32 miplevel)
+- method Byte[] GetRawTextureData()
+- method NativeArray<T> GetRawTextureData()
+- method Boolean IsRequestedMipmapLevelLoaded()
+- method Void LoadRawTextureData(Byte[] data)
+- method Void LoadRawTextureData(NativeArray<T> data)
+- method Void LoadRawTextureData(IntPtr data, Int32 size)
+- method Rect[] PackTextures(Texture2D[] textures, Int32 padding)
+- method Rect[] PackTextures(Texture2D[] textures, Int32 padding, Int32 maximumAtlasSize)
+- method Rect[] PackTextures(Texture2D[] textures, Int32 padding, Int32 maximumAtlasSize, Boolean makeNoLongerReadable)
+- method Void ReadPixels(Rect source, Int32 destX, Int32 destY)
+- method Void ReadPixels(Rect source, Int32 destX, Int32 destY, Boolean recalculateMipMaps)
+- method Boolean Reinitialize(Int32 width, Int32 height)
+- method Boolean Reinitialize(Int32 width, Int32 height, TextureFormat format, Boolean hasMipMap)
+- method Boolean Reinitialize(Int32 width, Int32 height, GraphicsFormat format, Boolean hasMipMap)
+- method Boolean Resize(Int32 width, Int32 height)
+- method Boolean Resize(Int32 width, Int32 height, TextureFormat format, Boolean hasMipMap)
+- method Boolean Resize(Int32 width, Int32 height, GraphicsFormat format, Boolean hasMipMap)
+- method Void SetPixel(Int32 x, Int32 y, Color color)
+- method Void SetPixel(Int32 x, Int32 y, Color color, Int32 mipLevel)
+- method Void SetPixelData(T[] data, Int32 mipLevel, Int32 sourceDataStartIndex)
+- method Void SetPixelData(NativeArray<T> data, Int32 mipLevel, Int32 sourceDataStartIndex)
+- method Void SetPixels(Color[] colors)
+- method Void SetPixels(Color[] colors, Int32 miplevel)
+- method Void SetPixels(Int32 x, Int32 y, Int32 blockWidth, Int32 blockHeight, Color[] colors)
+- method Void SetPixels(Int32 x, Int32 y, Int32 blockWidth, Int32 blockHeight, Color[] colors, Int32 miplevel)
+- method Void SetPixels32(Color32[] colors)
+- method Void SetPixels32(Color32[] colors, Int32 miplevel)
+- method Void SetPixels32(Int32 x, Int32 y, Int32 blockWidth, Int32 blockHeight, Color32[] colors)
+- method Void SetPixels32(Int32 x, Int32 y, Int32 blockWidth, Int32 blockHeight, Color32[] colors, Int32 miplevel)
+- method Void UpdateExternalTexture(IntPtr nativeTex)
+
+## UnityEngine.Sprite [class] : UnityEngine.Object
+
+- prop [get] Texture2D associatedAlphaSplitTexture
+- prop [get] Vector4 border
+- prop [get] Bounds bounds
+- prop [get] Boolean packed
+- prop [get] SpritePackingMode packingMode
+- prop [get] SpritePackingRotation packingRotation
+- prop [get] Vector2 pivot
+- prop [get] Single pixelsPerUnit
+- prop [get] Rect rect
+- prop [get] Single spriteAtlasTextureScale
+- prop [get] Texture2D texture
+- prop [get] Rect textureRect
+- prop [get] Vector2 textureRectOffset
+- prop [get] UInt16[] triangles
+- prop [get] Vector2[] uv
+- prop [get] Vector2[] vertices
+- method Sprite Create(Texture2D texture, Rect rect, Vector2 pivot) (static)
+- method Sprite Create(Texture2D texture, Rect rect, Vector2 pivot, Single pixelsPerUnit) (static)
+- method Sprite Create(Texture2D texture, Rect rect, Vector2 pivot, Single pixelsPerUnit, UInt32 extrude) (static)
+- method Sprite Create(Texture2D texture, Rect rect, Vector2 pivot, Single pixelsPerUnit, UInt32 extrude, SpriteMeshType meshType) (static)
+- method Sprite Create(Texture2D texture, Rect rect, Vector2 pivot, Single pixelsPerUnit, UInt32 extrude, SpriteMeshType meshType, Vector4 border) (static)
+- method Sprite Create(Texture2D texture, Rect rect, Vector2 pivot, Single pixelsPerUnit, UInt32 extrude, SpriteMeshType meshType, Vector4 border, Boolean generateFallbackPhysicsShape) (static)
+- method Sprite Create(Texture2D texture, Rect rect, Vector2 pivot, Single pixelsPerUnit, UInt32 extrude, SpriteMeshType meshType, Vector4 border, Boolean generateFallbackPhysicsShape, SecondarySpriteTexture[] secondaryTextures) (static)
+- method Int32 GetPhysicsShape(Int32 shapeIdx, List<Vector2> physicsShape)
+- method Int32 GetPhysicsShapeCount()
+- method Int32 GetPhysicsShapePointCount(Int32 shapeIdx)
+- method Int32 GetSecondaryTextureCount()
+- method Int32 GetSecondaryTextures(SecondarySpriteTexture[] secondaryTexture)
+- method Void OverrideGeometry(Vector2[] vertices, UInt16[] triangles)
+- method Void OverridePhysicsShape(IList<Vector2[]> physicsShapes)
+
+## UnityEngine.SpriteRenderer [class] : UnityEngine.Renderer
+
+- prop [get/set] Single adaptiveModeThreshold
+- prop [get/set] Color color
+- prop [get/set] SpriteDrawMode drawMode
+- prop [get/set] Boolean flipX
+- prop [get/set] Boolean flipY
+- prop [get/set] SpriteMaskInteraction maskInteraction
+- prop [get/set] Vector2 size
+- prop [get/set] Sprite sprite
+- prop [get/set] SpriteSortPoint spriteSortPoint
+- prop [get/set] SpriteTileMode tileMode
+- method Void RegisterSpriteChangeCallback(UnityAction<SpriteRenderer> callback)
+- method Void UnregisterSpriteChangeCallback(UnityAction<SpriteRenderer> callback)
+
+## UnityEngine.Material [class] : UnityEngine.Object
+
+- prop [get/set] Color color
+- prop [get/set] Boolean doubleSidedGI
+- prop [get/set] Boolean enableInstancing
+- prop [get/set] LocalKeyword[] enabledKeywords
+- prop [get/set] MaterialGlobalIlluminationFlags globalIlluminationFlags
+- prop [get/set] Texture mainTexture
+- prop [get/set] Vector2 mainTextureOffset
+- prop [get/set] Vector2 mainTextureScale
+- prop [get] Int32 passCount
+- prop [get/set] Int32 renderQueue
+- prop [get/set] Shader shader
+- prop [get/set] String[] shaderKeywords
+- method Int32 ComputeCRC()
+- method Void CopyMatchingPropertiesFromMaterial(Material mat)
+- method Void CopyPropertiesFromMaterial(Material mat)
+- method Material Create(String scriptContents) (static)
+- method Void DisableKeyword(String keyword)
+- method Void DisableKeyword(LocalKeyword& keyword)
+- method Void EnableKeyword(String keyword)
+- method Void EnableKeyword(LocalKeyword& keyword)
+- method Int32 FindPass(String passName)
+- method GraphicsBufferHandle GetBuffer(String name)
+- method Color GetColor(String name)
+- method Color GetColor(Int32 nameID)
+- method Color[] GetColorArray(String name)
+- method Color[] GetColorArray(Int32 nameID)
+- method Void GetColorArray(String name, List<Color> values)
+- method Void GetColorArray(Int32 nameID, List<Color> values)
+- method GraphicsBufferHandle GetConstantBuffer(String name)
+- method Single GetFloat(String name)
+- method Single GetFloat(Int32 nameID)
+- method Single[] GetFloatArray(String name)
+- method Single[] GetFloatArray(Int32 nameID)
+- method Void GetFloatArray(String name, List<Single> values)
+- method Void GetFloatArray(Int32 nameID, List<Single> values)
+- method Int32 GetInt(String name)
+- method Int32 GetInt(Int32 nameID)
+- method Int32 GetInteger(String name)
+- method Int32 GetInteger(Int32 nameID)
+- method Matrix4x4 GetMatrix(String name)
+- method Matrix4x4 GetMatrix(Int32 nameID)
+- method Matrix4x4[] GetMatrixArray(String name)
+- method Matrix4x4[] GetMatrixArray(Int32 nameID)
+- method Void GetMatrixArray(String name, List<Matrix4x4> values)
+- method Void GetMatrixArray(Int32 nameID, List<Matrix4x4> values)
+- method String GetPassName(Int32 pass)
+- method String[] GetPropertyNames(MaterialPropertyType type)
+- method Boolean GetShaderPassEnabled(String passName)
+- method String GetTag(String tag, Boolean searchFallbacks)
+- method String GetTag(String tag, Boolean searchFallbacks, String defaultValue)
+- method Texture GetTexture(String name)
+- method Texture GetTexture(Int32 nameID)
+- method Vector2 GetTextureOffset(String name)
+- method Vector2 GetTextureOffset(Int32 nameID)
+- method Int32[] GetTexturePropertyNameIDs()
+- method Void GetTexturePropertyNameIDs(List<Int32> outNames)
+- method String[] GetTexturePropertyNames()
+- method Void GetTexturePropertyNames(List<String> outNames)
+- method Vector2 GetTextureScale(String name)
+- method Vector2 GetTextureScale(Int32 nameID)
+- method Vector4 GetVector(String name)
+- method Vector4 GetVector(Int32 nameID)
+- method Vector4[] GetVectorArray(String name)
+- method Vector4[] GetVectorArray(Int32 nameID)
+- method Void GetVectorArray(String name, List<Vector4> values)
+- method Void GetVectorArray(Int32 nameID, List<Vector4> values)
+- method Boolean HasBuffer(String name)
+- method Boolean HasBuffer(Int32 nameID)
+- method Boolean HasColor(String name)
+- method Boolean HasColor(Int32 nameID)
+- method Boolean HasConstantBuffer(String name)
+- method Boolean HasConstantBuffer(Int32 nameID)
+- method Boolean HasFloat(String name)
+- method Boolean HasFloat(Int32 nameID)
+- method Boolean HasInt(String name)
+- method Boolean HasInt(Int32 nameID)
+- method Boolean HasInteger(String name)
+- method Boolean HasInteger(Int32 nameID)
+- method Boolean HasMatrix(String name)
+- method Boolean HasMatrix(Int32 nameID)
+- method Boolean HasProperty(Int32 nameID)
+- method Boolean HasProperty(String name)
+- method Boolean HasTexture(String name)
+- method Boolean HasTexture(Int32 nameID)
+- method Boolean HasVector(String name)
+- method Boolean HasVector(Int32 nameID)
+- method Boolean IsKeywordEnabled(String keyword)
+- method Boolean IsKeywordEnabled(LocalKeyword& keyword)
+- method Void Lerp(Material start, Material end, Single t)
+- method Void SetBuffer(String name, ComputeBuffer value)
+- method Void SetBuffer(Int32 nameID, ComputeBuffer value)
+- method Void SetBuffer(String name, GraphicsBuffer value)
+- method Void SetBuffer(Int32 nameID, GraphicsBuffer value)
+- method Void SetColor(String name, Color value)
+- method Void SetColor(Int32 nameID, Color value)
+- method Void SetColorArray(String name, List<Color> values)
+- method Void SetColorArray(Int32 nameID, List<Color> values)
+- method Void SetColorArray(String name, Color[] values)
+- method Void SetColorArray(Int32 nameID, Color[] values)
+- method Void SetConstantBuffer(String name, ComputeBuffer value, Int32 offset, Int32 size)
+- method Void SetConstantBuffer(Int32 nameID, ComputeBuffer value, Int32 offset, Int32 size)
+- method Void SetConstantBuffer(String name, GraphicsBuffer value, Int32 offset, Int32 size)
+- method Void SetConstantBuffer(Int32 nameID, GraphicsBuffer value, Int32 offset, Int32 size)
+- method Void SetFloat(String name, Single value)
+- method Void SetFloat(Int32 nameID, Single value)
+- method Void SetFloatArray(String name, List<Single> values)
+- method Void SetFloatArray(Int32 nameID, List<Single> values)
+- method Void SetFloatArray(String name, Single[] values)
+- method Void SetFloatArray(Int32 nameID, Single[] values)
+- method Void SetInt(String name, Int32 value)
+- method Void SetInt(Int32 nameID, Int32 value)
+- method Void SetInteger(String name, Int32 value)
+- method Void SetInteger(Int32 nameID, Int32 value)
+- method Void SetKeyword(LocalKeyword& keyword, Boolean value)
+- method Void SetMatrix(String name, Matrix4x4 value)
+- method Void SetMatrix(Int32 nameID, Matrix4x4 value)
+- method Void SetMatrixArray(String name, List<Matrix4x4> values)
+- method Void SetMatrixArray(Int32 nameID, List<Matrix4x4> values)
+- method Void SetMatrixArray(String name, Matrix4x4[] values)
+- method Void SetMatrixArray(Int32 nameID, Matrix4x4[] values)
+- method Void SetOverrideTag(String tag, String val)
+- method Boolean SetPass(Int32 pass)
+- method Void SetShaderPassEnabled(String passName, Boolean enabled)
+- method Void SetTexture(String name, Texture value)
+- method Void SetTexture(Int32 nameID, Texture value)
+- method Void SetTexture(String name, RenderTexture value, RenderTextureSubElement element)
+- method Void SetTexture(Int32 nameID, RenderTexture value, RenderTextureSubElement element)
+- method Void SetTextureOffset(String name, Vector2 value)
+- method Void SetTextureOffset(Int32 nameID, Vector2 value)
+- method Void SetTextureScale(String name, Vector2 value)
+- method Void SetTextureScale(Int32 nameID, Vector2 value)
+- method Void SetVector(String name, Vector4 value)
+- method Void SetVector(Int32 nameID, Vector4 value)
+- method Void SetVectorArray(String name, List<Vector4> values)
+- method Void SetVectorArray(Int32 nameID, List<Vector4> values)
+- method Void SetVectorArray(String name, Vector4[] values)
+- method Void SetVectorArray(Int32 nameID, Vector4[] values)
+
+## UnityEngine.Mesh [class] : UnityEngine.Object
+
+- prop [get] Int32 bindposeCount
+- prop [get/set] Matrix4x4[] bindposes
+- prop [get] Int32 blendShapeCount
+- prop [get/set] BoneWeight[] boneWeights
+- prop [get/set] Bounds bounds
+- prop [get/set] Color[] colors
+- prop [get/set] Color32[] colors32
+- prop [get/set] Target indexBufferTarget
+- prop [get/set] IndexFormat indexFormat
+- prop [get] Boolean isReadable
+- prop [get/set] Vector3[] normals
+- prop [get] SkinWeights skinWeightBufferLayout
+- prop [get/set] Int32 subMeshCount
+- prop [get/set] Vector4[] tangents
+- prop [get/set] Int32[] triangles
+- prop [get/set] Vector2[] uv
+- prop [get/set] Vector2[] uv2
+- prop [get/set] Vector2[] uv3
+- prop [get/set] Vector2[] uv4
+- prop [get/set] Vector2[] uv5
+- prop [get/set] Vector2[] uv6
+- prop [get/set] Vector2[] uv7
+- prop [get/set] Vector2[] uv8
+- prop [get] Int32 vertexAttributeCount
+- prop [get] Int32 vertexBufferCount
+- prop [get/set] Target vertexBufferTarget
+- prop [get] Int32 vertexCount
+- prop [get/set] Vector3[] vertices
+- method MeshDataArray AcquireReadOnlyMeshData(Mesh mesh) (static)
+- method MeshDataArray AcquireReadOnlyMeshData(Mesh[] meshes) (static)
+- method MeshDataArray AcquireReadOnlyMeshData(List<Mesh> meshes) (static)
+- method Void AddBlendShapeFrame(String shapeName, Single frameWeight, Vector3[] deltaVertices, Vector3[] deltaNormals, Vector3[] deltaTangents)
+- method MeshDataArray AllocateWritableMeshData(Int32 meshCount) (static)
+- method Void ApplyAndDisposeWritableMeshData(MeshDataArray data, Mesh mesh, MeshUpdateFlags flags) (static)
+- method Void ApplyAndDisposeWritableMeshData(MeshDataArray data, Mesh[] meshes, MeshUpdateFlags flags) (static)
+- method Void ApplyAndDisposeWritableMeshData(MeshDataArray data, List<Mesh> meshes, MeshUpdateFlags flags) (static)
+- method Void Clear()
+- method Void Clear(Boolean keepVertexLayout)
+- method Void ClearBlendShapes()
+- method Void CombineMeshes(CombineInstance[] combine)
+- method Void CombineMeshes(CombineInstance[] combine, Boolean mergeSubMeshes)
+- method Void CombineMeshes(CombineInstance[] combine, Boolean mergeSubMeshes, Boolean useMatrices)
+- method Void CombineMeshes(CombineInstance[] combine, Boolean mergeSubMeshes, Boolean useMatrices, Boolean hasLightmapData)
+- method NativeArray<BoneWeight1> GetAllBoneWeights()
+- method UInt32 GetBaseVertex(Int32 submesh)
+- method NativeArray<Matrix4x4> GetBindposes()
+- method Void GetBindposes(List<Matrix4x4> bindposes)
+- method GraphicsBuffer GetBlendShapeBuffer()
+- method GraphicsBuffer GetBlendShapeBuffer(BlendShapeBufferLayout layout)
+- method BlendShapeBufferRange GetBlendShapeBufferRange(Int32 blendShapeIndex)
+- method Int32 GetBlendShapeFrameCount(Int32 shapeIndex)
+- method Void GetBlendShapeFrameVertices(Int32 shapeIndex, Int32 frameIndex, Vector3[] deltaVertices, Vector3[] deltaNormals, Vector3[] deltaTangents)
+- method Single GetBlendShapeFrameWeight(Int32 shapeIndex, Int32 frameIndex)
+- method Int32 GetBlendShapeIndex(String blendShapeName)
+- method String GetBlendShapeName(Int32 shapeIndex)
+- method GraphicsBuffer GetBoneWeightBuffer(SkinWeights layout)
+- method Void GetBoneWeights(List<BoneWeight> boneWeights)
+- method NativeArray<Byte> GetBonesPerVertex()
+- method Void GetColors(List<Color> colors)
+- method Void GetColors(List<Color32> colors)
+- method GraphicsBuffer GetIndexBuffer()
+- method UInt32 GetIndexCount(Int32 submesh)
+- method UInt32 GetIndexStart(Int32 submesh)
+- method Int32[] GetIndices(Int32 submesh)
+- method Int32[] GetIndices(Int32 submesh, Boolean applyBaseVertex)
+- method Void GetIndices(List<Int32> indices, Int32 submesh)
+- method Void GetIndices(List<Int32> indices, Int32 submesh, Boolean applyBaseVertex)
+- method Void GetIndices(List<UInt16> indices, Int32 submesh, Boolean applyBaseVertex)
+- method IntPtr GetNativeIndexBufferPtr()
+- method IntPtr GetNativeVertexBufferPtr(Int32 index)
+- method Void GetNormals(List<Vector3> normals)
+- method SubMeshDescriptor GetSubMesh(Int32 index)
+- method Void GetTangents(List<Vector4> tangents)
+- method MeshTopology GetTopology(Int32 submesh)
+- method Int32[] GetTriangles(Int32 submesh)
+- method Int32[] GetTriangles(Int32 submesh, Boolean applyBaseVertex)
+- method Void GetTriangles(List<Int32> triangles, Int32 submesh)
+- method Void GetTriangles(List<Int32> triangles, Int32 submesh, Boolean applyBaseVertex)
+- method Void GetTriangles(List<UInt16> triangles, Int32 submesh, Boolean applyBaseVertex)
+- method Single GetUVDistributionMetric(Int32 uvSetIndex)
+- method Void GetUVs(Int32 channel, List<Vector2> uvs)
+- method Void GetUVs(Int32 channel, List<Vector3> uvs)
+- method Void GetUVs(Int32 channel, List<Vector4> uvs)
+- method VertexAttributeDescriptor GetVertexAttribute(Int32 index)
+- method Int32 GetVertexAttributeDimension(VertexAttribute attr)
+- method VertexAttributeFormat GetVertexAttributeFormat(VertexAttribute attr)
+- method Int32 GetVertexAttributeOffset(VertexAttribute attr)
+- method Int32 GetVertexAttributeStream(VertexAttribute attr)
+- method VertexAttributeDescriptor[] GetVertexAttributes()
+- method Int32 GetVertexAttributes(VertexAttributeDescriptor[] attributes)
+- method Int32 GetVertexAttributes(List<VertexAttributeDescriptor> attributes)
+- method GraphicsBuffer GetVertexBuffer(Int32 index)
+- method Int32 GetVertexBufferStride(Int32 stream)
+- method Void GetVertices(List<Vector3> vertices)
+- method Boolean HasVertexAttribute(VertexAttribute attr)
+- method Void MarkDynamic()
+- method Void MarkModified()
+- method Void Optimize()
+- method Void OptimizeIndexBuffers()
+- method Void OptimizeReorderVertexBuffer()
+- method Void RecalculateBounds()
+- method Void RecalculateBounds(MeshUpdateFlags flags)
+- method Void RecalculateNormals()
+- method Void RecalculateNormals(MeshUpdateFlags flags)
+- method Void RecalculateTangents()
+- method Void RecalculateTangents(MeshUpdateFlags flags)
+- method Void RecalculateUVDistributionMetric(Int32 uvSetIndex, Single uvAreaThreshold)
+- method Void RecalculateUVDistributionMetrics(Single uvAreaThreshold)
+- method Void SetBoneWeights(NativeArray<Byte> bonesPerVertex, NativeArray<BoneWeight1> weights)
+- method Void SetColors(List<Color> inColors)
+- method Void SetColors(Color[] inColors)
+- method Void SetColors(List<Color32> inColors)
+- method Void SetColors(Color32[] inColors)
+- method Void SetColors(NativeArray<T> inColors)
+- method Void SetColors(List<Color> inColors, Int32 start, Int32 length)
+- method Void SetColors(Color[] inColors, Int32 start, Int32 length)
+- method Void SetColors(List<Color32> inColors, Int32 start, Int32 length)
+- method Void SetColors(Color32[] inColors, Int32 start, Int32 length)
+- method Void SetColors(NativeArray<T> inColors, Int32 start, Int32 length)
+- method Void SetColors(List<Color> inColors, Int32 start, Int32 length, MeshUpdateFlags flags)
+- method Void SetColors(Color[] inColors, Int32 start, Int32 length, MeshUpdateFlags flags)
+- method Void SetColors(List<Color32> inColors, Int32 start, Int32 length, MeshUpdateFlags flags)
+- method Void SetColors(Color32[] inColors, Int32 start, Int32 length, MeshUpdateFlags flags)
+- method Void SetColors(NativeArray<T> inColors, Int32 start, Int32 length, MeshUpdateFlags flags)
+- method Void SetIndexBufferData(NativeArray<T> data, Int32 dataStart, Int32 meshBufferStart, Int32 count, MeshUpdateFlags flags)
+- method Void SetIndexBufferData(T[] data, Int32 dataStart, Int32 meshBufferStart, Int32 count, MeshUpdateFlags flags)
+- method Void SetIndexBufferData(List<T> data, Int32 dataStart, Int32 meshBufferStart, Int32 count, MeshUpdateFlags flags)
+- method Void SetIndexBufferParams(Int32 indexCount, IndexFormat format)
+- method Void SetIndices(Int32[] indices, MeshTopology topology, Int32 submesh)
+- method Void SetIndices(Int32[] indices, MeshTopology topology, Int32 submesh, Boolean calculateBounds)
+- method Void SetIndices(Int32[] indices, MeshTopology topology, Int32 submesh, Boolean calculateBounds, Int32 baseVertex)
+- method Void SetIndices(UInt16[] indices, MeshTopology topology, Int32 submesh, Boolean calculateBounds, Int32 baseVertex)
+- method Void SetIndices(NativeArray<T> indices, MeshTopology topology, Int32 submesh, Boolean calculateBounds, Int32 baseVertex)
+- method Void SetIndices(List<Int32> indices, MeshTopology topology, Int32 submesh, Boolean calculateBounds, Int32 baseVertex)
+- method Void SetIndices(List<UInt16> indices, MeshTopology topology, Int32 submesh, Boolean calculateBounds, Int32 baseVertex)
+- method Void SetIndices(Int32[] indices, Int32 indicesStart, Int32 indicesLength, MeshTopology topology, Int32 submesh, Boolean calculateBounds, Int32 baseVertex)
+- method Void SetIndices(UInt16[] indices, Int32 indicesStart, Int32 indicesLength, MeshTopology topology, Int32 submesh, Boolean calculateBounds, Int32 baseVertex)
+- method Void SetIndices(NativeArray<T> indices, Int32 indicesStart, Int32 indicesLength, MeshTopology topology, Int32 submesh, Boolean calculateBounds, Int32 baseVertex)
+- method Void SetIndices(List<Int32> indices, Int32 indicesStart, Int32 indicesLength, MeshTopology topology, Int32 submesh, Boolean calculateBounds, Int32 baseVertex)
+- method Void SetIndices(List<UInt16> indices, Int32 indicesStart, Int32 indicesLength, MeshTopology topology, Int32 submesh, Boolean calculateBounds, Int32 baseVertex)
+- method Void SetNormals(List<Vector3> inNormals)
+- method Void SetNormals(Vector3[] inNormals)
+- method Void SetNormals(NativeArray<T> inNormals)
+- method Void SetNormals(List<Vector3> inNormals, Int32 start, Int32 length)
+- method Void SetNormals(Vector3[] inNormals, Int32 start, Int32 length)
+- method Void SetNormals(NativeArray<T> inNormals, Int32 start, Int32 length)
+- method Void SetNormals(List<Vector3> inNormals, Int32 start, Int32 length, MeshUpdateFlags flags)
+- method Void SetNormals(Vector3[] inNormals, Int32 start, Int32 length, MeshUpdateFlags flags)
+- method Void SetNormals(NativeArray<T> inNormals, Int32 start, Int32 length, MeshUpdateFlags flags)
+- method Void SetSubMesh(Int32 index, SubMeshDescriptor desc, MeshUpdateFlags flags)
+- method Void SetSubMeshes(SubMeshDescriptor[] desc, MeshUpdateFlags flags)
+- method Void SetSubMeshes(List<SubMeshDescriptor> desc, MeshUpdateFlags flags)
+- method Void SetSubMeshes(NativeArray<T> desc, MeshUpdateFlags flags)
+- method Void SetSubMeshes(SubMeshDescriptor[] desc, Int32 start, Int32 count, MeshUpdateFlags flags)
+- method Void SetSubMeshes(List<SubMeshDescriptor> desc, Int32 start, Int32 count, MeshUpdateFlags flags)
+- method Void SetSubMeshes(NativeArray<T> desc, Int32 start, Int32 count, MeshUpdateFlags flags)
+- method Void SetTangents(List<Vector4> inTangents)
+- method Void SetTangents(Vector4[] inTangents)
+- method Void SetTangents(NativeArray<T> inTangents)
+- method Void SetTangents(List<Vector4> inTangents, Int32 start, Int32 length)
+- method Void SetTangents(Vector4[] inTangents, Int32 start, Int32 length)
+- method Void SetTangents(NativeArray<T> inTangents, Int32 start, Int32 length)
+- method Void SetTangents(List<Vector4> inTangents, Int32 start, Int32 length, MeshUpdateFlags flags)
+- method Void SetTangents(Vector4[] inTangents, Int32 start, Int32 length, MeshUpdateFlags flags)
+- method Void SetTangents(NativeArray<T> inTangents, Int32 start, Int32 length, MeshUpdateFlags flags)
+- method Void SetTriangles(Int32[] triangles, Int32 submesh)
+- method Void SetTriangles(List<Int32> triangles, Int32 submesh)
+- method Void SetTriangles(Int32[] triangles, Int32 submesh, Boolean calculateBounds)
+- method Void SetTriangles(List<Int32> triangles, Int32 submesh, Boolean calculateBounds)
+- method Void SetTriangles(Int32[] triangles, Int32 submesh, Boolean calculateBounds, Int32 baseVertex)
+- method Void SetTriangles(UInt16[] triangles, Int32 submesh, Boolean calculateBounds, Int32 baseVertex)
+- method Void SetTriangles(List<Int32> triangles, Int32 submesh, Boolean calculateBounds, Int32 baseVertex)
+- method Void SetTriangles(List<UInt16> triangles, Int32 submesh, Boolean calculateBounds, Int32 baseVertex)
+- method Void SetTriangles(Int32[] triangles, Int32 trianglesStart, Int32 trianglesLength, Int32 submesh, Boolean calculateBounds, Int32 baseVertex)
+- method Void SetTriangles(UInt16[] triangles, Int32 trianglesStart, Int32 trianglesLength, Int32 submesh, Boolean calculateBounds, Int32 baseVertex)
+- method Void SetTriangles(List<Int32> triangles, Int32 trianglesStart, Int32 trianglesLength, Int32 submesh, Boolean calculateBounds, Int32 baseVertex)
+- method Void SetTriangles(List<UInt16> triangles, Int32 trianglesStart, Int32 trianglesLength, Int32 submesh, Boolean calculateBounds, Int32 baseVertex)
+- method Void SetUVs(Int32 channel, List<Vector2> uvs)
+- method Void SetUVs(Int32 channel, List<Vector3> uvs)
+- method Void SetUVs(Int32 channel, List<Vector4> uvs)
+- method Void SetUVs(Int32 channel, Vector2[] uvs)
+- method Void SetUVs(Int32 channel, Vector3[] uvs)
+- method Void SetUVs(Int32 channel, Vector4[] uvs)
+- method Void SetUVs(Int32 channel, NativeArray<T> uvs)
+- method Void SetUVs(Int32 channel, List<Vector2> uvs, Int32 start, Int32 length)
+- method Void SetUVs(Int32 channel, List<Vector3> uvs, Int32 start, Int32 length)
+- method Void SetUVs(Int32 channel, List<Vector4> uvs, Int32 start, Int32 length)
+- method Void SetUVs(Int32 channel, Vector2[] uvs, Int32 start, Int32 length)
+- method Void SetUVs(Int32 channel, Vector3[] uvs, Int32 start, Int32 length)
+- method Void SetUVs(Int32 channel, Vector4[] uvs, Int32 start, Int32 length)
+- method Void SetUVs(Int32 channel, NativeArray<T> uvs, Int32 start, Int32 length)
+- method Void SetUVs(Int32 channel, List<Vector2> uvs, Int32 start, Int32 length, MeshUpdateFlags flags)
+- method Void SetUVs(Int32 channel, List<Vector3> uvs, Int32 start, Int32 length, MeshUpdateFlags flags)
+- method Void SetUVs(Int32 channel, List<Vector4> uvs, Int32 start, Int32 length, MeshUpdateFlags flags)
+- method Void SetUVs(Int32 channel, Vector2[] uvs, Int32 start, Int32 length, MeshUpdateFlags flags)
+- method Void SetUVs(Int32 channel, Vector3[] uvs, Int32 start, Int32 length, MeshUpdateFlags flags)
+- method Void SetUVs(Int32 channel, Vector4[] uvs, Int32 start, Int32 length, MeshUpdateFlags flags)
+- method Void SetUVs(Int32 channel, NativeArray<T> uvs, Int32 start, Int32 length, MeshUpdateFlags flags)
+- method Void SetVertexBufferData(NativeArray<T> data, Int32 dataStart, Int32 meshBufferStart, Int32 count, Int32 stream, MeshUpdateFlags flags)
+- method Void SetVertexBufferData(T[] data, Int32 dataStart, Int32 meshBufferStart, Int32 count, Int32 stream, MeshUpdateFlags flags)
+- method Void SetVertexBufferData(List<T> data, Int32 dataStart, Int32 meshBufferStart, Int32 count, Int32 stream, MeshUpdateFlags flags)
+- method Void SetVertexBufferParams(Int32 vertexCount, VertexAttributeDescriptor[] attributes)
+- method Void SetVertexBufferParams(Int32 vertexCount, NativeArray<VertexAttributeDescriptor> attributes)
+- method Void SetVertices(List<Vector3> inVertices)
+- method Void SetVertices(Vector3[] inVertices)
+- method Void SetVertices(NativeArray<T> inVertices)
+- method Void SetVertices(List<Vector3> inVertices, Int32 start, Int32 length)
+- method Void SetVertices(Vector3[] inVertices, Int32 start, Int32 length)
+- method Void SetVertices(NativeArray<T> inVertices, Int32 start, Int32 length)
+- method Void SetVertices(List<Vector3> inVertices, Int32 start, Int32 length, MeshUpdateFlags flags)
+- method Void SetVertices(Vector3[] inVertices, Int32 start, Int32 length, MeshUpdateFlags flags)
+- method Void SetVertices(NativeArray<T> inVertices, Int32 start, Int32 length, MeshUpdateFlags flags)
+- method Void UploadMeshData(Boolean markNoLongerReadable)
+
+## UnityEngine.MeshFilter [class] : UnityEngine.Component
+
+- prop [get/set] Mesh mesh
+- prop [get/set] Mesh sharedMesh
+
+## UnityEngine.MeshRenderer [class] : UnityEngine.Renderer
+
+- prop [get/set] Mesh additionalVertexStreams
+- prop [get/set] Mesh enlightenVertexStream
+- prop [get] Int32 subMeshStartIndex
+
+## UnityEngine.Shader [class] : UnityEngine.Object
+
+- prop [get] GlobalKeyword[] enabledGlobalKeywords (static)
+- prop [get] GlobalKeyword[] globalKeywords (static)
+- prop [get/set] Int32 globalMaximumLOD (static)
+- prop [get/set] String globalRenderPipeline (static)
+- prop [get/set] ShaderHardwareTier globalShaderHardwareTier (static)
+- prop [get] Boolean isSupported
+- prop [get] LocalKeywordSpace keywordSpace
+- prop [get/set] Int32 maximumChunksOverride (static)
+- prop [get/set] Int32 maximumLOD
+- prop [get] Int32 passCount
+- prop [get] Int32 renderQueue
+- prop [get] Int32 subshaderCount
+- method Void DisableKeyword(String keyword) (static)
+- method Void DisableKeyword(GlobalKeyword& keyword) (static)
+- method Void EnableKeyword(String keyword) (static)
+- method Void EnableKeyword(GlobalKeyword& keyword) (static)
+- method Shader Find(String name) (static)
+- method ShaderTagId FindPassTagValue(Int32 passIndex, ShaderTagId tagName)
+- method ShaderTagId FindPassTagValue(Int32 subshaderIndex, Int32 passIndex, ShaderTagId tagName)
+- method Int32 FindPropertyIndex(String propertyName)
+- method ShaderTagId FindSubshaderTagValue(Int32 subshaderIndex, ShaderTagId tagName)
+- method Boolean FindTextureStack(Int32 propertyIndex, String& stackName, Int32& layerIndex)
+- method Shader GetDependency(String name)
+- method Color GetGlobalColor(String name) (static)
+- method Color GetGlobalColor(Int32 nameID) (static)
+- method Single GetGlobalFloat(String name) (static)
+- method Single GetGlobalFloat(Int32 nameID) (static)
+- method Single[] GetGlobalFloatArray(String name) (static)
+- method Single[] GetGlobalFloatArray(Int32 nameID) (static)
+- method Void GetGlobalFloatArray(String name, List<Single> values) (static)
+- method Void GetGlobalFloatArray(Int32 nameID, List<Single> values) (static)
+- method Int32 GetGlobalInt(String name) (static)
+- method Int32 GetGlobalInt(Int32 nameID) (static)
+- method Int32 GetGlobalInteger(String name) (static)
+- method Int32 GetGlobalInteger(Int32 nameID) (static)
+- method Matrix4x4 GetGlobalMatrix(String name) (static)
+- method Matrix4x4 GetGlobalMatrix(Int32 nameID) (static)
+- method Matrix4x4[] GetGlobalMatrixArray(String name) (static)
+- method Matrix4x4[] GetGlobalMatrixArray(Int32 nameID) (static)
+- method Void GetGlobalMatrixArray(String name, List<Matrix4x4> values) (static)
+- method Void GetGlobalMatrixArray(Int32 nameID, List<Matrix4x4> values) (static)
+- method Texture GetGlobalTexture(String name) (static)
+- method Texture GetGlobalTexture(Int32 nameID) (static)
+- method Vector4 GetGlobalVector(String name) (static)
+- method Vector4 GetGlobalVector(Int32 nameID) (static)
+- method Vector4[] GetGlobalVectorArray(String name) (static)
+- method Vector4[] GetGlobalVectorArray(Int32 nameID) (static)
+- method Void GetGlobalVectorArray(String name, List<Vector4> values) (static)
+- method Void GetGlobalVectorArray(Int32 nameID, List<Vector4> values) (static)
+- method Int32 GetPassCountInSubshader(Int32 subshaderIndex)
+- method String[] GetPropertyAttributes(Int32 propertyIndex)
+- method Int32 GetPropertyCount()
+- method Single GetPropertyDefaultFloatValue(Int32 propertyIndex)
+- method Int32 GetPropertyDefaultIntValue(Int32 propertyIndex)
+- method Vector4 GetPropertyDefaultVectorValue(Int32 propertyIndex)
+- method String GetPropertyDescription(Int32 propertyIndex)
+- method ShaderPropertyFlags GetPropertyFlags(Int32 propertyIndex)
+- method String GetPropertyName(Int32 propertyIndex)
+- method Int32 GetPropertyNameId(Int32 propertyIndex)
+- method Vector2 GetPropertyRangeLimits(Int32 propertyIndex)
+- method String GetPropertyTextureDefaultName(Int32 propertyIndex)
+- method TextureDimension GetPropertyTextureDimension(Int32 propertyIndex)
+- method ShaderPropertyType GetPropertyType(Int32 propertyIndex)
+- method Boolean IsKeywordEnabled(String keyword) (static)
+- method Boolean IsKeywordEnabled(GlobalKeyword& keyword) (static)
+- method Int32 PropertyToID(String name) (static)
+- method Void SetGlobalBuffer(String name, ComputeBuffer value) (static)
+- method Void SetGlobalBuffer(Int32 nameID, ComputeBuffer value) (static)
+- method Void SetGlobalBuffer(String name, GraphicsBuffer value) (static)
+- method Void SetGlobalBuffer(Int32 nameID, GraphicsBuffer value) (static)
+- method Void SetGlobalColor(String name, Color value) (static)
+- method Void SetGlobalColor(Int32 nameID, Color value) (static)
+- method Void SetGlobalConstantBuffer(String name, ComputeBuffer value, Int32 offset, Int32 size) (static)
+- method Void SetGlobalConstantBuffer(Int32 nameID, ComputeBuffer value, Int32 offset, Int32 size) (static)
+- method Void SetGlobalConstantBuffer(String name, GraphicsBuffer value, Int32 offset, Int32 size) (static)
+- method Void SetGlobalConstantBuffer(Int32 nameID, GraphicsBuffer value, Int32 offset, Int32 size) (static)
+- method Void SetGlobalFloat(String name, Single value) (static)
+- method Void SetGlobalFloat(Int32 nameID, Single value) (static)
+- method Void SetGlobalFloatArray(String name, List<Single> values) (static)
+- method Void SetGlobalFloatArray(Int32 nameID, List<Single> values) (static)
+- method Void SetGlobalFloatArray(String name, Single[] values) (static)
+- method Void SetGlobalFloatArray(Int32 nameID, Single[] values) (static)
+- method Void SetGlobalInt(String name, Int32 value) (static)
+- method Void SetGlobalInt(Int32 nameID, Int32 value) (static)
+- method Void SetGlobalInteger(String name, Int32 value) (static)
+- method Void SetGlobalInteger(Int32 nameID, Int32 value) (static)
+- method Void SetGlobalMatrix(String name, Matrix4x4 value) (static)
+- method Void SetGlobalMatrix(Int32 nameID, Matrix4x4 value) (static)
+- method Void SetGlobalMatrixArray(String name, List<Matrix4x4> values) (static)
+- method Void SetGlobalMatrixArray(Int32 nameID, List<Matrix4x4> values) (static)
+- method Void SetGlobalMatrixArray(String name, Matrix4x4[] values) (static)
+- method Void SetGlobalMatrixArray(Int32 nameID, Matrix4x4[] values) (static)
+- method Void SetGlobalTexture(String name, Texture value) (static)
+- method Void SetGlobalTexture(Int32 nameID, Texture value) (static)
+- method Void SetGlobalTexture(String name, RenderTexture value, RenderTextureSubElement element) (static)
+- method Void SetGlobalTexture(Int32 nameID, RenderTexture value, RenderTextureSubElement element) (static)
+- method Void SetGlobalVector(String name, Vector4 value) (static)
+- method Void SetGlobalVector(Int32 nameID, Vector4 value) (static)
+- method Void SetGlobalVectorArray(String name, List<Vector4> values) (static)
+- method Void SetGlobalVectorArray(Int32 nameID, List<Vector4> values) (static)
+- method Void SetGlobalVectorArray(String name, Vector4[] values) (static)
+- method Void SetGlobalVectorArray(Int32 nameID, Vector4[] values) (static)
+- method Void SetKeyword(GlobalKeyword& keyword, Boolean value) (static)
+- method Void WarmupAllShaders() (static)
+
+## UnityEngine.AudioSource [class] : UnityEngine.AudioBehaviour
+
+- prop [get/set] Boolean bypassEffects
+- prop [get/set] Boolean bypassListenerEffects
+- prop [get/set] Boolean bypassReverbZones
+- prop [get/set] AudioClip clip
+- prop [get/set] Single dopplerLevel
+- prop [get/set] Boolean ignoreListenerPause
+- prop [get/set] Boolean ignoreListenerVolume
+- prop [get] Boolean isPlaying
+- prop [get] Boolean isVirtual
+- prop [get/set] Boolean loop
+- prop [get/set] Single maxDistance
+- prop [get/set] Single maxVolume
+- prop [get/set] Single minDistance
+- prop [get/set] Single minVolume
+- prop [get/set] Boolean mute
+- prop [get/set] AudioMixerGroup outputAudioMixerGroup
+- prop [get/set] Single panStereo
+- prop [get/set] Single pitch
+- prop [get/set] Boolean playOnAwake
+- prop [get/set] Int32 priority
+- prop [get/set] Single reverbZoneMix
+- prop [get/set] Single rolloffFactor
+- prop [get/set] AudioRolloffMode rolloffMode
+- prop [get/set] Single spatialBlend
+- prop [get/set] Boolean spatialize
+- prop [get/set] Boolean spatializePostEffects
+- prop [get/set] Single spread
+- prop [get/set] Single time
+- prop [get/set] Int32 timeSamples
+- prop [get/set] AudioVelocityUpdateMode velocityUpdateMode
+- prop [get/set] Single volume
+- method Boolean GetAmbisonicDecoderFloat(Int32 index, Single& value)
+- method AnimationCurve GetCustomCurve(AudioSourceCurveType type)
+- method Single[] GetOutputData(Int32 numSamples, Int32 channel)
+- method Void GetOutputData(Single[] samples, Int32 channel)
+- method Boolean GetSpatializerFloat(Int32 index, Single& value)
+- method Single[] GetSpectrumData(Int32 numSamples, Int32 channel, FFTWindow window)
+- method Void GetSpectrumData(Single[] samples, Int32 channel, FFTWindow window)
+- method Void Pause()
+- method Void Play()
+- method Void Play(UInt64 delay)
+- method Void PlayClipAtPoint(AudioClip clip, Vector3 position) (static)
+- method Void PlayClipAtPoint(AudioClip clip, Vector3 position, Single volume) (static)
+- method Void PlayDelayed(Single delay)
+- method Void PlayOneShot(AudioClip clip)
+- method Void PlayOneShot(AudioClip clip, Single volumeScale)
+- method Void PlayScheduled(Double time)
+- method Boolean SetAmbisonicDecoderFloat(Int32 index, Single value)
+- method Void SetCustomCurve(AudioSourceCurveType type, AnimationCurve curve)
+- method Void SetScheduledEndTime(Double time)
+- method Void SetScheduledStartTime(Double time)
+- method Boolean SetSpatializerFloat(Int32 index, Single value)
+- method Void Stop()
+- method Void UnPause()
+
+## UnityEngine.AudioClip [class] : UnityEngine.Object
+
+- prop [get] Boolean ambisonic
+- prop [get] Int32 channels
+- prop [get] Int32 frequency
+- prop [get] Boolean isReadyToPlay
+- prop [get] Single length
+- prop [get] Boolean loadInBackground
+- prop [get] AudioDataLoadState loadState
+- prop [get] AudioClipLoadType loadType
+- prop [get] Boolean preloadAudioData
+- prop [get] Int32 samples
+- method AudioClip Create(String name, Int32 lengthSamples, Int32 channels, Int32 frequency, Boolean stream) (static)
+- method AudioClip Create(String name, Int32 lengthSamples, Int32 channels, Int32 frequency, Boolean _3D, Boolean stream) (static)
+- method AudioClip Create(String name, Int32 lengthSamples, Int32 channels, Int32 frequency, Boolean stream, PCMReaderCallback pcmreadercallback) (static)
+- method AudioClip Create(String name, Int32 lengthSamples, Int32 channels, Int32 frequency, Boolean _3D, Boolean stream, PCMReaderCallback pcmreadercallback) (static)
+- method AudioClip Create(String name, Int32 lengthSamples, Int32 channels, Int32 frequency, Boolean stream, PCMReaderCallback pcmreadercallback, PCMSetPositionCallback pcmsetpositioncallback) (static)
+- method AudioClip Create(String name, Int32 lengthSamples, Int32 channels, Int32 frequency, Boolean _3D, Boolean stream, PCMReaderCallback pcmreadercallback, PCMSetPositionCallback pcmsetpositioncallback) (static)
+- method Boolean GetData(Single[] data, Int32 offsetSamples)
+- method Boolean LoadAudioData()
+- method Boolean SetData(Single[] data, Int32 offsetSamples)
+- method Boolean UnloadAudioData()
+
+## UnityEngine.AudioListener [class] : UnityEngine.AudioBehaviour
+
+- prop [get/set] Boolean pause (static)
+- prop [get/set] AudioVelocityUpdateMode velocityUpdateMode
+- prop [get/set] Single volume (static)
+- method Single[] GetOutputData(Int32 numSamples, Int32 channel) (static)
+- method Void GetOutputData(Single[] samples, Int32 channel) (static)
+- method Single[] GetSpectrumData(Int32 numSamples, Int32 channel, FFTWindow window) (static)
+- method Void GetSpectrumData(Single[] samples, Int32 channel, FFTWindow window) (static)
+
+## UnityEngine.AssetBundle [class] : UnityEngine.Object
+
+- prop [get] Boolean isStreamedSceneAssetBundle
+- prop [get] Object mainAsset
+- prop [get/set] UInt32 memoryBudgetKB (static)
+- method String[] AllAssetNames()
+- method Boolean Contains(String name)
+- method String[] GetAllAssetNames()
+- method IEnumerable<AssetBundle> GetAllLoadedAssetBundles() (static)
+- method String[] GetAllScenePaths()
+- method Object Load(String name)
+- method Object Load(String name)
+- method Object[] LoadAll()
+- method T[] LoadAll()
+- method Object[] LoadAllAssets()
+- method T[] LoadAllAssets()
+- method Object[] LoadAllAssets(Type type)
+- method AssetBundleRequest LoadAllAssetsAsync()
+- method AssetBundleRequest LoadAllAssetsAsync()
+- method AssetBundleRequest LoadAllAssetsAsync(Type type)
+- method Object LoadAsset(String name)
+- method T LoadAsset(String name)
+- method Object LoadAsset(String name, Type type)
+- method AssetBundleRequest LoadAssetAsync(String name)
+- method AssetBundleRequest LoadAssetAsync(String name)
+- method AssetBundleRequest LoadAssetAsync(String name, Type type)
+- method Object[] LoadAssetWithSubAssets(String name)
+- method T[] LoadAssetWithSubAssets(String name)
+- method Object[] LoadAssetWithSubAssets(String name, Type type)
+- method AssetBundleRequest LoadAssetWithSubAssetsAsync(String name)
+- method AssetBundleRequest LoadAssetWithSubAssetsAsync(String name)
+- method AssetBundleRequest LoadAssetWithSubAssetsAsync(String name, Type type)
+- method AssetBundle LoadFromFile(String path) (static)
+- method AssetBundle LoadFromFile(String path, UInt32 crc) (static)
+- method AssetBundle LoadFromFile(String path, UInt32 crc, UInt64 offset) (static)
+- method AssetBundleCreateRequest LoadFromFileAsync(String path) (static)
+- method AssetBundleCreateRequest LoadFromFileAsync(String path, UInt32 crc) (static)
+- method AssetBundleCreateRequest LoadFromFileAsync(String path, UInt32 crc, UInt64 offset) (static)
+- method AssetBundle LoadFromMemory(Byte[] binary) (static)
+- method AssetBundle LoadFromMemory(Byte[] binary, UInt32 crc) (static)
+- method AssetBundleCreateRequest LoadFromMemoryAsync(Byte[] binary) (static)
+- method AssetBundleCreateRequest LoadFromMemoryAsync(Byte[] binary, UInt32 crc) (static)
+- method AssetBundle LoadFromStream(Stream stream) (static)
+- method AssetBundle LoadFromStream(Stream stream, UInt32 crc) (static)
+- method AssetBundle LoadFromStream(Stream stream, UInt32 crc, UInt32 managedReadBufferSize) (static)
+- method AssetBundleCreateRequest LoadFromStreamAsync(Stream stream) (static)
+- method AssetBundleCreateRequest LoadFromStreamAsync(Stream stream, UInt32 crc) (static)
+- method AssetBundleCreateRequest LoadFromStreamAsync(Stream stream, UInt32 crc, UInt32 managedReadBufferSize) (static)
+- method AssetBundleRecompressOperation RecompressAssetBundleAsync(String inputPath, String outputPath, BuildCompression method, UInt32 expectedCRC, ThreadPriority priority) (static)
+- method Void Unload(Boolean unloadAllLoadedObjects)
+- method Void UnloadAllAssetBundles(Boolean unloadAllObjects) (static)
+- method AssetBundleUnloadOperation UnloadAsync(Boolean unloadAllLoadedObjects)
+
+## UnityEngine.AssetBundleRequest [class] : UnityEngine.ResourceRequest
+
+- prop [get] Object[] allAssets
+- prop [get] Object asset
+
+## UnityEngine.AssetBundleCreateRequest [class] : UnityEngine.AsyncOperation
+
+- prop [get] AssetBundle assetBundle
+
+## UnityEngine.ImageConversion [class]
+
+- prop [get/set] Boolean EnableLegacyPngGammaRuntimeLoadBehavior (static)
+- method Byte[] EncodeArrayToEXR(Array array, GraphicsFormat format, UInt32 width, UInt32 height, UInt32 rowBytes, EXRFlags flags) (static)
+- method Byte[] EncodeArrayToJPG(Array array, GraphicsFormat format, UInt32 width, UInt32 height, UInt32 rowBytes, Int32 quality) (static)
+- method Byte[] EncodeArrayToPNG(Array array, GraphicsFormat format, UInt32 width, UInt32 height, UInt32 rowBytes) (static)
+- method Byte[] EncodeArrayToTGA(Array array, GraphicsFormat format, UInt32 width, UInt32 height, UInt32 rowBytes) (static)
+- method NativeArray<Byte> EncodeNativeArrayToEXR(NativeArray<T> input, GraphicsFormat format, UInt32 width, UInt32 height, UInt32 rowBytes, EXRFlags flags) (static)
+- method NativeArray<Byte> EncodeNativeArrayToJPG(NativeArray<T> input, GraphicsFormat format, UInt32 width, UInt32 height, UInt32 rowBytes, Int32 quality) (static)
+- method NativeArray<Byte> EncodeNativeArrayToPNG(NativeArray<T> input, GraphicsFormat format, UInt32 width, UInt32 height, UInt32 rowBytes) (static)
+- method NativeArray<Byte> EncodeNativeArrayToTGA(NativeArray<T> input, GraphicsFormat format, UInt32 width, UInt32 height, UInt32 rowBytes) (static)
+- method Byte[] EncodeToEXR(Texture2D tex) (static)
+- method Byte[] EncodeToEXR(Texture2D tex, EXRFlags flags) (static)
+- method Byte[] EncodeToJPG(Texture2D tex) (static)
+- method Byte[] EncodeToJPG(Texture2D tex, Int32 quality) (static)
+- method Byte[] EncodeToPNG(Texture2D tex) (static)
+- method Byte[] EncodeToTGA(Texture2D tex) (static)
+- method Boolean LoadImage(Texture2D tex, Byte[] data) (static)
+- method Boolean LoadImage(Texture2D tex, Byte[] data, Boolean markNonReadable) (static)
+
+## FMODUnity.RuntimeManager [class] : UnityEngine.MonoBehaviour
+
+- prop [get] System CoreSystem (static)
+- prop [get] Boolean HaveAllBanksLoaded (static)
+- prop [get] Boolean HaveMasterBanksLoaded (static)
+- prop [get] Boolean IsInitialized (static)
+- prop [get] Boolean IsMuted (static)
+- prop [get] System StudioSystem (static)
+- field String BankStubPrefix (static)
+- method Boolean AnyBankLoading() (static)
+- method Boolean AnySampleDataLoading() (static)
+- method Void AttachInstanceToGameObject(EventInstance instance, GameObject gameObject, Boolean nonRigidbodyVelocity) (static)
+- method Void AttachInstanceToGameObject(EventInstance instance, Transform transform, Boolean nonRigidbodyVelocity) (static)
+- method Void AttachInstanceToGameObject(EventInstance instance, GameObject gameObject, Rigidbody rigidBody) (static)
+- method Void AttachInstanceToGameObject(EventInstance instance, Transform transform, Rigidbody rigidBody) (static)
+- method Void AttachInstanceToGameObject(EventInstance instance, GameObject gameObject, Rigidbody2D rigidBody2D) (static)
+- method Void AttachInstanceToGameObject(EventInstance instance, Transform transform, Rigidbody2D rigidBody2D) (static)
+- method EventInstance CreateInstance(EventReference eventReference) (static)
+- method EventInstance CreateInstance(String path) (static)
+- method EventInstance CreateInstance(GUID guid) (static)
+- method Void DetachInstanceFromGameObject(EventInstance instance) (static)
+- method Bus GetBus(String path) (static)
+- method EventDescription GetEventDescription(EventReference eventReference) (static)
+- method EventDescription GetEventDescription(String path) (static)
+- method EventDescription GetEventDescription(GUID guid) (static)
+- method VCA GetVCA(String path) (static)
+- method Boolean HasBankLoaded(String loadedBank) (static)
+- method Void LoadBank(String bankName, Boolean loadSamples) (static)
+- method Void LoadBank(TextAsset asset, Boolean loadSamples) (static)
+- method Void LoadBank(AssetReference assetReference, Boolean loadSamples, Action completionCallback) (static)
+- method Void MuteAllEvents(Boolean muted) (static)
+- method EventReference PathToEventReference(String path) (static)
+- method GUID PathToGUID(String path) (static)
+- method Void PauseAllEvents(Boolean paused) (static)
+- method Void PlayOneShot(EventReference eventReference, Vector3 position) (static)
+- method Void PlayOneShot(String path, Vector3 position) (static)
+- method Void PlayOneShot(GUID guid, Vector3 position) (static)
+- method Void PlayOneShotAttached(EventReference eventReference, GameObject gameObject) (static)
+- method Void PlayOneShotAttached(String path, GameObject gameObject) (static)
+- method Void PlayOneShotAttached(GUID guid, GameObject gameObject) (static)
+- method Void SetListenerLocation(GameObject gameObject, GameObject attenuationObject) (static)
+- method Void SetListenerLocation(GameObject gameObject, Rigidbody rigidBody, GameObject attenuationObject) (static)
+- method Void SetListenerLocation(GameObject gameObject, Rigidbody2D rigidBody2D, GameObject attenuationObject) (static)
+- method Void SetListenerLocation(Int32 listenerIndex, GameObject gameObject, GameObject attenuationObject) (static)
+- method Void SetListenerLocation(Int32 listenerIndex, GameObject gameObject, Rigidbody rigidBody, GameObject attenuationObject) (static)
+- method Void SetListenerLocation(Int32 listenerIndex, GameObject gameObject, Rigidbody2D rigidBody2D, GameObject attenuationObject) (static)
+- method Void SetListenerLocation(Int32 listenerIndex, GameObject gameObject, GameObject attenuationObject, Vector3 velocity) (static)
+- method Void UnloadBank(String bankName) (static)
+- method Void UnloadBank(TextAsset asset) (static)
+- method Void UnloadBank(AssetReference assetReference) (static)
+- method Void WaitForAllLoads() (static)
+- method Void WaitForAllSampleLoading() (static)
+
+## FMODUnity.EventReference [struct]
+
+- prop [get] Boolean IsNull
+- method String ToString()
+
+## FMODUnity.StudioEventEmitter [class] : FMODUnity.EventHandler
+
+- prop [get] EventDescription EventDescription
+- prop [get] EventInstance EventInstance
+- prop [get/set] Boolean IsActive
+- prop [get/set] EmitterGameEvent PlayEvent
+- prop [get/set] EmitterGameEvent StopEvent
+- method Boolean IsPlaying()
+- method Void Play()
+- method Void SetParameter(String name, Single value, Boolean ignoreseekspeed)
+- method Void SetParameter(PARAMETER_ID id, Single value, Boolean ignoreseekspeed)
+- method Void Stop()
+- method Void UpdateActiveEmitters() (static)
+

@@ -30,6 +30,32 @@ var dlls = new[]
     "TeamSoda.MiniLocalizor",
 };
 
+// Unity engine + FMOD native APIs for asset mods (replace/add textures, audio,
+// meshes, materials). Curated — only types a mod author needs for asset work.
+var unityResourceTypes = new (string dll, string[] typeNames)[]
+{
+    ("UnityEngine.CoreModule", new[] {
+        "UnityEngine.Resources", "UnityEngine.Object", "UnityEngine.GameObject",
+        "UnityEngine.Component", "UnityEngine.Transform",
+        "UnityEngine.Texture2D", "UnityEngine.Sprite", "UnityEngine.SpriteRenderer",
+        "UnityEngine.Material", "UnityEngine.Mesh", "UnityEngine.MeshFilter",
+        "UnityEngine.MeshRenderer", "UnityEngine.Shader",
+    }),
+    ("UnityEngine.AudioModule", new[] {
+        "UnityEngine.AudioSource", "UnityEngine.AudioClip", "UnityEngine.AudioListener",
+    }),
+    ("UnityEngine.AssetBundleModule", new[] {
+        "UnityEngine.AssetBundle", "UnityEngine.AssetBundleRequest", "UnityEngine.AssetBundleCreateRequest",
+    }),
+    ("UnityEngine.ImageConversionModule", new[] {
+        "UnityEngine.ImageConversion",
+    }),
+    ("FMODUnity", new[] {
+        "FMODUnity.RuntimeManager", "FMODUnity.Bank", "FMODUnity.EventReference",
+        "FMODUnity.EventInstance", "FMODUnity.StudioEventEmitter",
+    }),
+};
+
 var allProblems = new StringBuilder();
 
 foreach (var dllName in dlls)
@@ -74,6 +100,43 @@ if (allProblems.Length > 0)
 {
     Console.WriteLine("\n=== load problems (non-fatal) ===");
     Console.WriteLine(allProblems.ToString());
+}
+
+DumpUnityResources(managedDir, outDir, unityResourceTypes, allProblems);
+
+static void DumpUnityResources(string managedDir, string outDir, (string dll, string[] typeNames)[] spec, StringBuilder problems)
+{
+    var sb = new StringBuilder();
+    sb.AppendLine("# Unity Resource APIs");
+    sb.AppendLine();
+    sb.AppendLine("Unity engine + FMOD native APIs for asset mods — loading, replacing, and adding textures / audio / meshes / materials. These live in Unity engine DLLs (not game-owned DLLs).");
+    sb.AppendLine();
+
+    var count = 0;
+    foreach (var (dll, typeNames) in spec)
+    {
+        var dllPath = Path.Combine(managedDir, dll + ".dll");
+        if (!File.Exists(dllPath))
+        {
+            Console.WriteLine($"SKIP {dll}.dll (not found)");
+            continue;
+        }
+        Assembly asm;
+        try { asm = Assembly.LoadFrom(dllPath); }
+        catch (Exception e) { problems.AppendLine($"{dll}: {e.Message}"); continue; }
+
+        foreach (var typeName in typeNames)
+        {
+            var t = asm.GetType(typeName);
+            if (t == null) { problems.AppendLine($"{dll}: {typeName} not found"); continue; }
+            DumpType(t, sb);
+            count++;
+        }
+    }
+
+    var outPath = Path.Combine(outDir, "unity-resources.md");
+    File.WriteAllText(outPath, sb.ToString());
+    Console.WriteLine($"unity-resources -> {outPath} ({count} types)");
 }
 
 static void DumpType(Type t, StringBuilder sb)

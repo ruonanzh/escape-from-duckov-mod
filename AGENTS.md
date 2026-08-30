@@ -4,9 +4,9 @@
 
 ## 目录
 
-- `docs/`     游戏机制（game.md）、物品数据（items.md）、mod API（mod-api.md）
-- `docs/api/` **游戏 API 参考**（反射 dump 的签名，只读，用 grep 检索）
-- `docs/data/` **游戏数据表**（物品/UI/任务等 CSV，含本地化，只读，grep 检索）
+- `docs/`     游戏机制（game.md）、物品数据（items.md）、mod API（mod-api.md）、**资源替换指南（asset-mods.md）**
+- `docs/api/` **游戏 API 参考**（反射 dump 的签名，只读，用 grep 检索；含 unity-resources.md = Unity 资源 API）
+- `docs/data/` **游戏数据表**（物品/UI/任务等 CSV 含本地化；resources.csv = 美术资源清单，只读，grep 检索）
 - `specs/`    mod 制作规范（info.ini schema、目录结构、命名）
 - `reference/` 官方示例 mod（可编译、可过 lint 的正确答案）
 - `lint/`     mod 校验工具（含编译校验）——**你做 mod 时跑**
