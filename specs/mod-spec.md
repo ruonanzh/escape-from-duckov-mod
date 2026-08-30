@@ -60,4 +60,4 @@ namespace MyMod
 
 Weapon / Equipment & Gear / Loot & Economy / Quality of Life / Cheats & Exploits / Visual Enhancements / Sound / Quest & Progression / Companion & NPC / Collectibles / Gameplay / Multiplayer & Co-op / Utility
 
-> 本规范的可执行版是 `lint/check_mod.mjs`——这里每条约束，lint 都要能校验。
+> 本规范的可执行版是 `validate_mod` 工具——这里每条约束，它都要能校验。

@@ -26,6 +26,6 @@ mod 只能写到 `your_mods/<mod名>/`，环境的其它目录（.pi/docs/specs/
 2. 用 **grep** 在 `docs/api/`（接口签名）和 `docs/data/`（物品/文本）里检索你要改的东西，定位到具体 API
 3. 读 `specs/` 了解产物结构，在 `your_mods/<mod名>/` 下创建 `<ModName>.csproj` + `ModBehaviour.cs` + `info.ini`
 4. 编译：`dotnet build`（lint 会自动做），产出 `<ModName>.dll`
-5. 跑 `node lint/check_mod.mjs your_mods/<mod名>/` 校验（exit 0 = 通过）
+5. 调 `validate_mod` 工具校验（返回 PASS 即通过）
 
 详细步骤、字段说明、常见错误见 skill：`.pi/skills/mod-authoring/`（做 mod 时先加载它）。

@@ -1,15 +1,5 @@
 # mod repo 维护者 hooks：只校验环境自身，绝不引用 your_mods/
-# 用法：仓库维护者本地跑一次 `lefthook install`，之后每次 commit/push 自动执行。
-# 注意：这里只跑 reference/example_mod（官方样例），不校验玩家的 mod。
-
-pre-commit:
-  commands:
-    lint-self-test:
-      run: node lint/check_mod.mjs reference/example_mod
-      fail_text: FAIL
-
-pre-push:
-  commands:
-    full-check:
-      run: node lint/check_mod.mjs reference/example_mod
-      fail_text: FAIL
+#
+# 注意：mod 校验逻辑已迁到 .pi/extensions/mod-lint.ts（validate_mod 工具，agent 用）。
+# 维护者校验 reference/example_mod 的方式：在 pi agent 里调 validate_mod 工具。
+# 如需恢复自动 pre-commit 校验，后续设计维护者脚本（复用校验核心，避免两套逻辑）。
