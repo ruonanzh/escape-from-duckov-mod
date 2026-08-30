@@ -1,0 +1,112 @@
+language_name,English,简体中文
+QuestGiver_Jeff,Jeff,杰夫
+Mirror,Dream,梦
+UI_CustomFace_Main_Title,Head,首
+UI_CustomFace_Eyes_Title,Eyes,眼
+UI_CustomFace_Hair_Title,Hair,冠
+UI_CustomFace_Mouth_Title,Beak,喙
+UI_CustomFace_Tail_Title,Tail,尾
+UI_CustomFace_EyesBrown_Title,Brow,眉
+UI_CustomFace_SkinColor,Skin Color,肤色
+UI_CustomFace_HeadSize,Head Size,头大小
+UI_CustomFace_HeadHeight,Head Height,头高低
+UI_CustomFace_HeadRoundness,Head Roundness,圆脑袋
+UI_CustomFace_HairType,Hair Style,发类型
+UI_CustomFace_HairColor,Hair Color,发类型
+UI_CustomFace_EyeType,Eyes Type,眼类型
+UI_CustomFace_EyeColor,Eyes Color,眼色
+UI_CustomFace_EyeSpace,Eyes Spacing,眼间距
+UI_CustomFace_EyeHeight,Eyes Height,眼高低
+UI_CustomFace_EyeSize,Eyes Size,眼大小
+UI_CustomFace_EyeRotate,Eyes Rotation,眼睛旋转
+UI_CustomFace_EyebrowType,Brow Type,眉类型
+UI_CustomFace_EyebrowColor,Brow Color,眉颜色
+UI_CustomFace_EyebrowSpace,Brow Spacing,眉间距
+UI_CustomFace_EyebrowHeight,Brow Height,眉高低
+UI_CustomFace_EyebrowSize,Brow Size,眉大小
+UI_CustomFace_EyebrowRotate,Brow Rotation,眉旋转
+UI_CustomFace_MouthType,Beak Type,喙类型
+UI_CustomFace_MouthColor,Beak Color,喙颜色
+UI_CustomFace_MouthSize,Beak Size,喙大小
+UI_CustomFace_MouthHeight,Beak Height,喙高低
+UI_CustomFace_MouthOffset,Beak Offset,喙歪了
+UI_CustomFace_MouthRotate,Beak Rotation,喙旋转
+UI_CustomFace_TailType,Tail Type,尾类型
+UI_CustomFace_TailColor,Tail Color,尾颜色
+UI_CustomFace_TailSize,Tail Size,尾大小
+Notify_Stucked,Stucked,从这一侧无法打开。
+Notify_Removed,Obstacle removed,障碍物被移除了
+Building_MedicStation_Desc,Where to craft some medical stuff.,可以制作一些医疗用品。
+Building_MedicStation,Medic Station,医疗站
+UI_LootBox_Totem,Claim Gift,获得馈赠
+Location_GroundZero_CaveEntry,Cave Entrance,山洞入口
+Level_Unfinished,Not Avaliable Yet,尚未开放
+Building_Gem,Gym,健身房
+Building_Gem_Desc,Where to train your body and brain... ?,锻炼肉体和头脑的地方...啊？
+UI_LootBox_Explor,File Box,资料箱
+UI_Sort,Sort,整理
+Building_TeleportMachine,Teleporter,传送装置
+Building_TeleportMachine_Desc,Enables you to depart from different places.,可以让你从更多地方出发。
+Location_NorthMountain,Northern Mountain,北山,2024/12/10 16:11:02
+Location_GroundZero_RoadCap,Road Camp,公路营地,2024/12/10 16:12:43
+Notification_ManHoleBlocked,The cover is blocked by something.,下水井盖似乎被压住了。,2024/12/11 11:58:51
+UI_Interact_Tomb,Lost Stuff,遗失物,2024/12/18 20:18:35
+MapElement_Exit,Exit,撤离点,2024/12/19 15:25:55
+Notify_SpiderSpawn,It's getting dark. The spider is coming to prey.,快天黑了，蜘蛛出来觅食了。,2024/12/19 17:49:02
+Building_MiningMachine,Bitcoin Miner,比特币矿机,2024/12/24 10:07:55
+Building_MiningMachine_Desc,"Mining stuff, you know.",挖矿，懂得都懂。,2024/12/24 10:08:10
+Buff_InjectorMaxWeight,Weight Bearer Booster,负重提升,2024/12/24 16:54:53
+BitcoinMiner_Inventory,Extracting Point (Don't store stuff here),提取位（不要在此处存放物品）,2024/12/24 17:13:12
+Usage_HealValue,Recover Health， 治疗生命值,治疗生命值,2024/12/27 16:01:18
+Usage_Durability,Cost Durability,消耗,2024/12/27 16:01:25
+Usage_Energy,Energy,能量,2024/12/27 16:02:29
+Usage_Water,Water,水分,2024/12/27 16:02:33
+Location_GroundZero_MiddleMountain,Mt.Short,矮山,2024/12/30 16:28:23
+Usage_SpawnEgg_Jinitaimei,？？？,？？？,2024/12/31 14:49:38
+Usage_DeadByChance,Chance to die immediately.,有一定概率直接嘎,2024/12/31 14:50:20
+Usage_DeadByChance_PopText,Uh?,嗯？,2025/1/2 12:17:47
+Rule_ExtraHard,Abnormally Hard,变态难,2025/1/8 15:51:36
+Rule_ExtraEasy,Not Hard,不难,2025/1/8 15:50:43
+DifficultySelection_Desc_PlaceHolder,Please select a difficulty,请选择难度,2025/1/8 16:35:49
+Tips_0,"If you're bleeding, use a bandage to stop it.",出血了的话，可以使用止血绷带止血。,2025/1/9 11:33:54
+Tips_1,It might be better to sell supplies that you often encounter.,经常能遇到的物资，不如把它卖了。,2025/1/9 11:14:24
+Tips_2,"If a gun's durability go under 80%, it's damage and scatter performance are going to be affected.",枪械耐久低于80%，伤害和散布都会受到影响。,2025/1/9 11:34:54
+Tips_3,"Pain will appear when being hit, it drains stamina and slower's your movement. Painkillers like Aspirin can counteract this effect.",被命中时会产生疼痛效果，消耗耐力并短暂减速。止痛药可以抵消这个影响。,2025/1/9 11:36:18
+Tips_4,Press T to change bullet type when holding a gun.,持枪时，按T键，可以更换子弹类型。,2025/1/9 11:37:05
+Tips_5,"In inventory interface, drag and drop parts to weapons to quickly install them. But make sure it matches.",在背包界面，将配件拖到武器上即可快速安装，不过要注意是否匹配。,2025/1/9 11:38:06
+Tips_6,"When a melee enemy flashes red, it's the time to dodge-roll.",近战敌人闪红光时，就是你翻滚的时机。,2025/1/9 11:38:47
+Tips_7,"When holding weapon, your movement speed will be affected.",手持武器时，你的移动速度会受到影响。,2025/1/9 11:39:19
+Rule_ExtraEasy_Desc,"The enemy's threat is greatly reduced, and your efficiency has improved. However, caution is still necessary.",不能说完全没有难度，敌人的威胁大幅降低，并提高你的输出。但你依然要保持谨慎。,2025/1/9 13:19:58
+Location_HiddenWarehouse_Warehouse,West Factory,西厂区,2025/1/13 17:39:52
+Location_HiddenWarehouse_RoadEntry,East Road Camp,东路口营地,2025/1/13 17:41:54
+Cellar,Cellar,地窖,2025/1/14 11:35:04
+Buff_InjectorMaxWeight_Desc,"Enhances stamina and stamina recovery, but consumes more water for 180 seconds.",增强耐力和耐力回复，但消耗更多水分，持续180秒。,2025/1/17 10:04:57
+Location_HiddenWarehouse_Center,Farmhouse,农舍,2025/1/15 10:08:29
+Building_BlackMarket,Blakc Market Contact,黑市联络点,2025/1/14 16:15:53
+Building_BlackMarket_Desc,Connect to the black market contact point and conduct some transactions with floating prices.,连接黑市网络，进行一些有价格浮动的交易。,2025/1/14 16:16:29
+Location_HiddenWarehouse_Valley,The Gully,沟壑,2025/1/14 19:38:44
+Building_DemoTrophy,DEMO Trophy,DEMO纪念奖杯,2025/1/15 12:08:10
+Building_DemoTrophy_Desc,Trophy for completing the demo.,DEMO通关纪念,2025/1/15 12:08:38
+Endowmment_None,Average Duck,打工鸭,2025/1/17 17:52:59
+Endowmment_None_Desc,"You look like... a good Joe."" Balanced experience.""",特点是没有特点，非常均衡。,2025/1/17 17:53:09
+Endowmment_Surviver,Survivalist,生存者,2025/1/17 17:53:23
+Endowmment_Surviver_Desc,The body is strong and can handle a lot of damage. But the legs are not good just like brain.,身体强健，抗揍，但腿跟脑子一样不太好使。,2025/1/17 17:54:13
+Endowmment_Porter,Porter,搬运者,2025/1/17 17:55:46
+Endowmment_Porter_Desc,"Although look skinny, porters are very capable in carrying things.",看似瘦弱，但扛起东西来毫不逊色。,2025/1/17 17:56:10
+Endowmment_Berserker,Berserker,狂战士,2025/1/17 17:57:15
+Endowmment_Berserker_Desc,I must use melee weapons. Guns? I don't know that stuff very well. (According to a Berserker),那肯定得用近战武器，枪是什么？不太会用。,2025/1/17 17:57:36
+Endowmment_Marksman,Marksman,枪手,2025/1/17 18:02:23
+Endowmment_Marksman_Desc,"Marksmen love shooting guns, from a distance.",爱打枪，打枪就远远的打。,2025/1/17 18:02:57
+HBAOSettings_Off,Off,关闭,2025/1/20 11:59:02
+HBAOSettings_Low,Low,低,2025/1/20 11:59:07
+HBAOSettings_Normal,Medium,中,2025/1/20 11:59:12
+HBAOSettings_High,High,高,2025/1/20 11:59:16
+GrassOptions_Off,Off,关闭,2025/1/20 12:40:56
+GrassOptions_Low,Low,低,2025/1/20 12:40:59
+GrassOptions_Normal,Medium,中,2025/1/20 12:41:04
+GrassOptions_High,High,高,2025/1/20 12:41:08
+GrassOptions_On,On,打开,2025/1/20 14:26:23
+Rule_ExtraHard_Desc,"Items lost upon death are irretrievable, leaving nothing to reclaim. Enemies are deadlier than ever, inflicting 1.5x their usual damage.",敌人造成1.5倍伤害！不会生成遗失物。,2025/1/21 10:12:51
+Notification_RedBag,Received:,得到了：,2025/1/22 16:57:26
+RunInputMode_Hold,Hold,按住,2025/1/23 20:15:37
+RunInputMode_Switch,Toggle,切换,2025/1/23 20:15:42

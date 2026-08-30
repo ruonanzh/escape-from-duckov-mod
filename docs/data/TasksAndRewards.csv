@@ -1,0 +1,19 @@
+Task_Evacuate,從{TargetDisplayName}撤離,从{TargetDisplayName}撤离
+Task_KillCount,在 {requireSceneName} 使用 {weaponName} 擊殺 {enemyName}  ({amount}/{requireAmount}),在 {requireSceneName} 使用 {weaponName} 击杀 {enemyName}  ({amount}/{requireAmount}),2024/12/10 17:03:04
+Task_ReachLocation,到達指定地點{TargetLocationDisplayName},到达指定地点{TargetLocationDisplayName}
+Task_UnlockPerk,解鎖：{PerkDisplayName},解锁：{PerkDisplayName}
+Task_UnlockPerk_AtPrototyper,在原型機解鎖：{PerkDisplayName},在原型机解锁：{PerkDisplayName}
+Task_UseItem,使用物品{ItemDisplayName}({amount}/{requireAmount})次,使用物品{ItemDisplayName}({amount}/{requireAmount})次
+Task_SubmitItems,提交物品：{ItemDisplayName} x {requiredAmount},提交物品：{ItemDisplayName} x {requiredAmount}
+Task_SubmitItems_HavingAmount,持有: {amount},持有: {amount}
+Task_SubmitItems_Interact,提交,提交
+Task_ConstructBuilding,建造{BuildingName},建造{BuildingName}
+Reward_Exp,經驗 +{amount},经验 +{amount}
+Reward_Money,金錢 +{amount},金钱 +{amount}
+Reward_UnlockStockItem,解鎖商品 {ItemDisplayName},解锁商品 {ItemDisplayName}
+Condition_CharacterLevel_LessThan,等級低於 {level},等级低于 {level}
+Condition_CharacterLevel_Equals,等級為 {level},等级为 {level}
+Condition_CharacterLevel_GreaterThan,等級高於 {level},等级高于 {level}
+Task_Desc_AnyEnemy,任意敵人,任意敌人,2024/12/10 17:06:20
+Task_Desc_AnyWeapon,任意武器,任意武器,2024/12/10 17:06:26
+Task_Desc_AnyScene,任意地點,任意地点,2025/1/14 18:28:31

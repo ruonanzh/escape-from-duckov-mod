@@ -1,0 +1,35 @@
+Buff_AddSpeed,Speed Up,加速
+Buff_BleedS,Bleeding,小出血
+Buff_Starve,Starving,饥饿
+Buff_Starve_Desc,"Lowers the ability of recovering stemina, Continuously damages the body.",回复能力降低，持续身体损伤
+Buff_Stun,Stunned,震慑
+Buff_Stun_Desc,Stunned. Affects movement ability.,受到震慑，行动力影响
+Buff_Thirsty,Dehydrated,脱水
+Buff_Weight_Overweight,Laboriously Heavy,无法承受
+Buff_Weight_Overweight_Desc,Carrying too much weight.,重量过大
+Buff_Weight_SuperHeavy,Exhausting Heavy,超重
+Buff_Weight_SuperHeavy_Desc,Carrying too much weight. Affects movement speed and stamina consumption.,物品过重，影响速度以及能量消耗
+Buff_PoisonS,Poisoned,轻中毒
+Buff_Electric,Electric Shocked,电击
+Buff_Electric_Desc,Paralysed by electric shock. Movement speed decreased.,因为麻痹而减少移动速度。
+Buff_Thirsty_Desc,"Seriously dehydrated, body function reduced.",严重脱水，机能降低
+Buff_Weight_Heavy,Heavy,负重
+Buff_Weight_Heavy_Desc,Carrying a lot of weight. Affects movement speed.,物品较重，移动受到影响
+Buff_Weight_Light,Light,轻盈
+Buff_Weight_Light_Desc,Not carrying too much. Feeling flexible.,负重较低，灵活
+Buff_AddSpeed_Desc,Move speed boosted.,提升移动速度。,2024/12/24 16:55:02
+Buff_Pain,Pain,疼痛,2025/1/8 14:07:26
+Buff_Pain_Desc,"Drains character's stamina, decreases movement ability.",疼痛会让角色失力，并降低移动能力。,2025/1/8 14:08:15
+Buff_PainResistShort,Calm,镇静,2025/1/8 16:08:14
+Buff_PainResistShort_Desc,"Ignores pain, lasts for 60s.",无视疼痛，持续60s。,2025/1/8 16:21:35
+Buff_PainResistMiddle,Calm,镇静,2025/1/8 16:19:32
+Buff_PainResistLong,Calm,镇静,2025/1/8 16:21:02
+Buff_PainResistLong_Desc,"Ignores pain, lasts for 300s.",无视疼痛，持续300秒。,2025/1/8 16:21:13
+Buff_PainResistMiddle_Desc,"Ignores pain, lasts for 180s.",无视疼痛，持续180秒。,2025/1/8 16:21:23
+Buff_ElecResistShort,Electric Resist,抗电,2025/1/13 16:27:10
+Buff_ElecResistShort_Desc,"Immune to electric shock, reduced electric element damage.",不会被电击麻痹，降低电属伤害。,2025/1/13 16:27:35
+Buff_HotBlood,Hot Blooded,热血,2025/1/17 10:01:06
+Buff_PoisonS_Desc,"Continuous damage, reduced recovery.",持续伤害，降低回复量。,2025/1/21 11:40:39
+Buff_Happy,Happy,高兴,2025/1/22 16:20:49
+Buff_Happy_Desc,What a great day!,今个真高兴。,2025/1/22 16:20:56
+Buff_Base,DUCK BASE,基地,2025/1/25 12:12:56

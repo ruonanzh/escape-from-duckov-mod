@@ -1,0 +1,59 @@
+Tag_Accessory,Accessory,配件
+Tag_Armor,Armor,身体
+Tag_Backpack,Backpack,背包
+Tag_Blueprint,Blueprint,蓝图
+Tag_Bullet,Bullet,武器
+Tag_Character,Character,角色
+Tag_Continer,Container,容器
+Tag_Daily,Necessary,日常用品
+Tag_DecorateEquipment,Decoration,装饰性装备
+Tag_DestroyOnLootBox,Invisible,玩家不可见
+Tag_DontDropOnDead,Kept,绑定物品
+Tag_Drink,Drink,饮品
+Tag_DuckStone,Duck Stone,鸭石
+Tag_Electric,Electronic,电子产品
+Tag_Equipment,Equipment,装备
+Tag_Explosive,Explosive,爆炸物
+Tag_Food,Food,食物
+Tag_Gem,Gem,宝石
+Tag_Grip,Grip,握把
+Tag_Gun,Gun,枪械
+Tag_GunType_Rifle,Rifle,步枪
+Tag_GunType_Shot,Shot Gun,霰弹枪
+Tag_GunType_SMG,SMG,冲锋枪
+Tag_GunType_Sniper,Sniper Rifle,狙击枪
+Tag_Helmat,Helmet,头部
+Tag_Information,Information,情报物品
+Tag_Key,Key,钥匙
+Tag_Luxury,Luxury,奢侈品
+Tag_Magazine,Magazine,弹夹
+Tag_Material,Material,材料
+Tag_Medic,Medic,医疗用品
+Tag_Misc,Misc,杂物
+Tag_Muzzle,Muzzle,枪口
+Tag_Quest,Quest,任务物品
+Tag_Scope,Scope,瞄具
+Tag_Special,Special,特殊
+Tag_Stock,Stock,枪托
+Tag_TecEquip,Tactic,战术
+Tag_Tool,Tool,工具
+Tag_Weapon,Weapon,武器
+Tag_Weapon_LV1,Low-End Weapon,低级武器
+Tag_Totem,Totem,图腾
+Tag_DestroyInBase,Cannot Be Brought Out,无法带出
+Tag_DestroyInBase_Desc,Disappears when getting back to the bunker.,回到地堡时，此物品会消失。
+Tag_MeleeWeapon,Melee Weapon,近战武器
+Tag_Formula,Formula,配方
+Tag_Formula_Desc,Formula or blueprint for crafting.,用于制造的配方或图纸
+Tag_Formula_Blueprint,Advanced Blueprint,高级工作台蓝图
+Tag_Formula_Blueprint_Desc,Blueprint that can be used at an advanced workbench.,在高级工作台制造物品的蓝图。
+Tag_Formula_Normal,Workbench Blueprint,工作台配方
+Tag_Formula_Normal_Desc,Blueprint that can be used at a workbench.,在工作台制作物品的配方。
+Tag_DontDropOnDead_Desc,This item will not lose when player dead.,绑定物品在角色死亡时不会掉落。
+Tag_Accessory_Desc,Installable accessory.,可安装配件。
+Tag_Formula_Medic_Desc,Formula for making medicine at the medic station.,在医疗站生产药剂的配方。,2024/12/23 18:02:00
+Tag_ComputerParts_GPU,Graphics Card,显卡,2024/12/24 15:06:23
+Tag_ComputerParts_GPU_Desc,GRAPHICS CARD!,显卡！,2024/12/24 15:06:37
+Tag_Formula_Medic,Medic Station Formula,医疗站配方,2024/12/25 17:55:56
+Tag_Repairable,Repairable,可维修,2025/1/9 10:19:05
+Tag_Repairable_Desc,Can be repaired on an Advanced Workbench.,可以在高级工作台进行维修。,2025/1/9 10:19:17

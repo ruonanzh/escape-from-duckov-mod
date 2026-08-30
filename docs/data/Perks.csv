@@ -1,0 +1,51 @@
+PerkTree_PhysicalTraining,Somatic Training,肉体强化
+PerkTree_Blueprint,Blueprint Research,蓝图研究
+PerkTree_StorageExpand,Storage Expansion,仓库扩容
+Perk_Storage_1,Storage Lv.1,仓库扩展Lv.1
+Perk_Storage_2,Storage Lv.2,仓库扩展Lv.2
+Perk_Storage_3,Storage Lv.3,仓库扩展Lv.3
+Perk_Storage_4,Storage Lv.4,仓库扩展Lv.4
+Perk_Storage_5,Storage Lv.5,仓库扩展Lv.5
+Perk_Storage_6,Storage Lv.6,仓库扩展Lv.6
+PerkBehaviour_AddPlayerStorage,Add capacity by {addCapacity},使仓库容量增加{addCapacity}
+PerkBehaviour_UnlockStockShopItem,{ItemDisplayName} will be avaliable in shop,解锁后可在商店中购买{ItemDisplayName}
+PerkBehaviour_ModifyCharacterStatsBase,{statDisplayName} {value},{statDisplayName} {value}
+Perk_Main_0,Start Up,启动
+Perk_Main_1,Strong 1,强壮1
+Perk_Main_2,Endurance,耐力
+Perk_Main_3,Gunner Instinct,枪手本能
+Perk_Main_4,Weight Training 1,负重训练1
+Perk_Main_5,Circulatory System,循环系统
+Perk_Main_6,Weight Training 2,负重训练2
+Perk_Main_7,Strength 2,强壮2
+Perk_Main_8,Agility 1,灵巧1
+Perk_Main_9,Lung Function,肺功能
+Perk_Main_10,Battle Hormone,战斗激素
+Perk_Main_11,Potential Activation,潜能激活
+Perk_Main_12,Space Management,空间管理
+Perk_Main_13,Mitochondria Efficiency,线粒体效率
+Perk_Main_14,Master of Space Management,空间管理大师
+Perk_Main_15,Metqabolic Function,代谢功能
+Perk_Main_16,Strength 3,强壮3
+Perk_Main_17,Hardened Skin,皮肤硬化
+Perk_Main_18,Gunner Instinct II,枪手本能 II
+Perk_Main_19,Weight Burdening,负重
+Perk_Main_20,Aiming,瞄准
+PerkTree_Skills,Skills,技能强化
+Perk_Main_1_Desc,Strengthen the body,强化肉体强度。
+Perk_Physical_Health1,Body-Strengthen 1,健体1
+Perk_Physical_Health1_Desc,Little tuition for stronger body!,交点学费就能强身健体。
+Perk_Physical_Weight1,Weight Training 1,负重训练1
+Perk_Physical_Health2,Body-Strengthen 2,健体2
+Perk_Physical_Health3,Body-Strengthen 3,健体3
+Perk_Physical_Weight2,Weight Training 2,负重训练2
+Perk_Main_21,Veteran,老兵,2025/1/15 16:11:19
+Perk_Main_22,Martial Arts Scholar,武术学者,2025/1/15 16:15:21
+Perk_Main_23,Martial Arts Scholar II,武术学者 II,2025/1/15 16:16:55
+Perk_Main_24,Master of Near and Far,远近兼修,2025/1/15 16:19:07
+Perk_Main_25,Endurance II,耐力 II,2025/1/15 16:22:40
+Perk_Physical_Health4,Body-Strengthen 4,健体4,2025/1/17 16:45:30
+Perk_Storage_t1,Extra Expansion 1,额外扩容-1,2025/1/21 10:35:34
+Perk_Storage_t2,Extra Expansion 2,额外扩容-2,2025/1/21 10:37:56
+Perk_Storage_t3,Extra Expansion 3,额外扩容-3,2025/1/21 10:38:55
+Perk_Storage_t_VIP,VIP Expansion,VIP扩容,2025/1/21 10:39:45

@@ -1,0 +1,246 @@
+_GAME_TITLE_,ESCAPE FROM DUCKOV,逃离鸭科夫
+Title_PressToContinue,Click To Continue,点击屏幕继续
+MainMenu_NewGame,New Game,新游戏
+MainMenu_Continue,Continue,继续游戏
+MainMenu_SaveSlot,Save Slots,存档槽位
+MainMenu_ClearSaveData,Clear Save Data,清除存档数据
+MainMenu_SaveDeleted,Save Data Deleted,存档数据已删除
+MainMenu_Settings,Settings,设置
+MainMenu_SaveSelection,Save Slot Selection,存档选择
+MainMenu_SaveSelection_Slot,Slot,存档
+UI_PlayerStatsView,Character Status,角色状态
+UI_PlayerStats_HP,Health,生命
+UI_PlayerStats_Energy,Stamina,体力
+UI_PlayerStats_Hunger,Hunger,饱腹
+UI_PlayerStats_Thurst,Thurst,水分
+UI_Loot_Equipment,Equipments,装备
+UI_Loot_Items,Items,物品
+UI_Loot_QuickMenu,Shortcuts,快捷栏
+UI_Loot_PickAll,Take All,全部拾取
+UI_WorkbenchRequired,Workbench Required,需要在工作台进行改装
+UI_Trade,Trade,交易
+UI_Purchase,Purchase,购买
+UI_Sell,Sell,出售
+UI_SoldOut,Sold Out,已售罄
+UI_Unlock,Unlock,解锁
+UI_Locked,Locked,已锁定
+UI_Stock,Stock,库存
+UI_NextRefresh,Refresh ETA,下次刷新
+UI_Item_Equip,Equip,装备
+UI_Item_Split,Split,拆分
+UI_Item_Use,Use,使用
+UI_Item_Modify,Modify,改装
+UI_Item_Dump,Dump,丢弃
+UI_Item_Inspect,Inspect,检视
+UI_Quest_Reward,Rewards,任务奖励
+UI_Skip,Skip,跳过
+UI_Quest_Avliable,Avaliable,可承接
+UI_Quest_Active,Active,进行中
+UI_Quest_Completed,Completed,已完成
+UI_PlaceHolder_Empty,Nothing here...,空空如也...
+UI_Quest,Quest,任务
+UI_Quest_TaskList,Tasks,目标
+UI_Quest_RewardList,Rewards,奖励
+UI_Quest_Btn_Accept,Accept Quest,接受任务
+UI_Quest_Btn_Complete,Complete Quest,完成任务
+UI_YourStuff,Your Stuff,你的东西
+UI_Workbench_Uncustomizable,Uncustomizable,不可改装
+UI_Workbench_Begin,Begin Customizing,开始改装
+UI_Workbench_NotifySelect,Select an item to customize,选择要改装的物体
+UI_Workbench_Unequip,Unequip,拆卸
+UI_Workbench_Equip,Equip,安装
+UI_ItemRepair_Repair,Repair,维修
+UI_ItemRepair_DurabilityMax,Durability Max,耐久已满
+UI_MaxDurability,Max Durability,耐久上限
+UI_Perk_RequireLevel,Require <color={color}>Lv.{level}</color>,需要等级<color={color}>Lv.{level}</color>
+UI_Perk_RequireMoney,Require money <color={color}>{money}</color>,需要金钱 <color={color}>{money}</color>
+UI_Perk_Activate,Activate,激活
+UI_Perk_Researching,Researching,研发中
+UI_Perk_BeginResearching,Begin Researching,开始研发
+UI_Perk_Avaliable,Avaliable,可研发
+UI_Perk_Pending,Researching,研发中
+UI_Perk_Complete,Pending,待确认
+UI_Closure_Escaped,Escaped,已撤离
+UI_Closure_Dead,YOU DIED,YOU DIED
+UI_Continue,Continue,继续
+UI_MasterKey,Master Key,万能钥匙
+UI_MasterKey_Register,Register Key,录入钥匙
+UI_MasterKey_RegisterBtn,Register,录入
+UI_MasterKey_RegisterSuccess,Succeed!,录入成功！
+UI_MasterKey_KeyExist,Record Exists,记录已存在
+UI_SplitItem,Split Item,分割物品
+UI_SplitItem_Btn,Split,分割
+UI_SplitItem_Succeed,Complete!,完成！
+UI_MapSelection,Select Destination,选择目的地
+UI_ItemUnlockNotification,{itemDisplayName} is unlocked,{itemDisplayName} 已解锁
+UI_ItemUnlockNotification_Sub,Check in corresponding shops,可在对应商店中查看
+UI_Item_NotUsable,The current item is not usable,当前物品不可用
+UI_Quest_TaskFinishedNotification,Task of quest {questDisplayName} is finished! ({finishedTasks}/{totalTasks}),任务 {questDisplayName} 目标完成 ({finishedTasks}/{totalTasks})
+UI_StockShop_PurchasedNotification,Purchased {itemDisplayName},已购买 {itemDisplayName}
+UI_LevelChangeNotification,Level up! Current Level: {level},升级了！当前等级: {level}
+UI_Evacuating,Evacuating,正在撤离
+UI_Bullet_NotAssigned,Not Assigned,未指定弹药
+UI_Inventory_TargetOccupiedCannotSplit,Target Position Occupied,目标位置已被占用
+UI_InventoryDefault,Items,物品
+UI_Inventory_Backpack,Backpack,背包
+UI_LootBox_Bullet,Bullet Box,弹药箱
+UI_LootBox_Daily,Misc Box,杂物箱
+UI_LootBox_Food,Food Box,食物箱
+UI_LootBox_Locker,Locker,柜子
+UI_LootBox_Lux,Safe,保险箱
+UI_LootBox_Medic,Medic Box,药品箱
+UI_LootBox_Normal,Box,箱子
+UI_LootBox_Starter,Share Box,爱心箱
+UI_LootBox_Starter_Notification,Picked up starting supplies,初始物资已领取
+UI_LootBox_Tools,Tools Box,工具箱
+UI_LootBox_WeaponEquip,Tactics Box,战术箱
+UI_LootBox_WeaponEquip_2,Weapon Box,武器箱
+UI_LootBox_Loot,Loot Box,战利品
+UI_LootBox_Console,Computer Case,机箱
+UI_LootBox_TrashBin,Trash Bin,垃圾箱
+UI_LootBox_TrashCan,Trash Can,垃圾桶
+UI_LootBox_Hidden,Hiding Place,藏匿点
+UI_Item_Unload,Unload,卸载子弹
+UI_Build,Build,建造
+UI_Inventory_Storage,Storage,仓库
+UI_LootBox_Safe,Pet Backpack,宠物背包
+UI_Confirm,Confirm,确认
+UI_InventoryWeight,Weight,负重
+UI_ItemRepair_Broken,Totally Broken,完全损坏
+UI_ItemRepair_CannotRepair,Cannot Repair,无法修复
+UI_Menu_Resume,Resume,回到游戏
+UI_Menu_Options,Options,设置
+UI_Menu_Quit,Quit,退出
+UI_Drink,Drink,喝水
+UI_Eat,Eat,吃
+UI_Cancel,Cancel,取消
+UI_Quit,Quit,退出
+Fishing_Succeed,Succeed!,钓上来了！
+Fishing_Failed,Didn't catch nothing.,啥也没钓上来...
+Fishing_PleaseSelectBait,Select Bait,请选择鱼饵
+UI_Recycle,Recycle,回收
+UI_Navigate,Navigate,移动
+UI_RotateBuilding,Rotate Building,旋转建筑
+UI_Enter,Enter,进入
+UI_Leave,Leave,离开
+UI_Crafting,Craft,制作
+UI_Operate,Operate,操作
+ReachedLimit,Reached Limit,数量已达上限
+ItemCraftedNotification,{itemDisplayName} was crafted,制造了{itemDisplayName}
+UI_LootBox_Cash,ATM,收银机
+UI_Salemachine,Vending Machine,售货机
+UI_Volume_Master,Master Volume,总音量
+UI_Volume_SFX,SFX Volume,音效音量
+UI_Volume_Music,Music Volume,音乐音量
+UI_SelectDestination,Destinations,传送目的地
+UI_Formula_Register,Register Formulas,录入配方
+UI_Formulas,Formulas,配方
+Free,Free,免费
+DeathLottery,Death Lottery,死亡抽奖
+DeathLottery_Remaining,Remaining {amount} times,剩余 {amount} 次
+DeathLottery_NoRemainingChances,Out of chances.,抽奖机会已用尽
+DeathLottery_SelectNotification,Congrats! You picked {itemName}.,恭喜你抽到了 {itemName}
+UI_Formulas_Index,Formulas Index,配方图鉴
+UI_Formulas_RegisterSucceedFormat,Formula {itemDisplayName} is unlocked,配方 {itemDisplayName} 已解锁
+UI_Menu_QuitGame,Quit The Game,退出游戏
+UI_QuitGame_ProgressNote,Unsaved progress will be lost.,未保存的进度将会丢失
+UI_Menu_LoadMainMenu,Return to Main Menu,回到主菜单
+UI_Quest_Tasks,Tasks,目标
+UI_Quest_Rewards,Rewards,奖励
+Loading,Loading...,载入中...
+UI_Item_Move,Move,移动,2024/12/10 12:04:22
+UI_Item_Menu,Menu,菜单,2024/12/10 14:16:54
+UI_DurabilityToolTips,Loss {lossPercentage},损耗: {lossPercentage},2024/12/11 15:37:27
+Loading_Dead,Fallen,噶了,2024/12/13 11:24:06
+Loading_Dead_SmallText,No big problem,小问题,2024/12/13 11:24:53
+Loading_GoOut,Set out!,出发！,2024/12/13 11:30:46
+Loading_Go_SmallText,Quak quak,嘎嘎搜刮,2024/12/13 11:31:30
+UI_Saves_FileComment,Save Path: %Appdata%/../LocalLow/TeamSoda/Duckov,存档路径: %Appdata%/../LocalLow/TeamSoda/Duckov,2024/12/23 14:04:06
+UI_BitcoinMiner_TimeEachCoin,Estimated Time For Each Unit,预计单位用时,2024/12/24 15:51:21
+UI_BitcoinMiner_Performance,Performance,算力,2024/12/24 16:02:56
+UI_BitcoinMiner_Active,Mining,挖掘中,2024/12/24 16:07:01
+UI_BitcoinMiner_Stopped,Stopped,已停止,2024/12/24 16:07:41
+UI_MapSelection_SettingOffTo,Setting Off To,即将前往,2024/12/31 16:00:29
+UI_CustomFace_YellowDuck,I am a yellow duck.,我是小黄鸭,2024/12/27 12:22:48
+UI_CustomFace_Abandon,Cancel,放弃,2024/12/27 12:23:58
+UI_CustomFace_Copy,Copy data to clipboard,复制捏脸数据到剪贴板,2024/12/27 12:25:45
+UI_CustomFace_PasteTo,Apply data in clipboard,应用剪贴板中的数据,2024/12/27 12:30:22
+UI_CustomFace_OnCopy,Data copied to clipboard,数据已复制到剪贴板。,2024/12/27 12:48:36
+UI_CustomFace_OnPasteSuccess,Data applied successfully.,成功应用剪贴板数据。,2024/12/27 12:48:54
+UI_CustomFace_OnPasteFailed,Unable to recognize data in clipboard.,剪贴板中的捏脸数据格式错误。,2024/12/27 12:49:17
+UI_DeathReason,I was killed by this thing →,我被这玩意整死了→,2024/12/27 14:52:00
+DeathReason_Self,Myself,我自己,2024/12/27 15:11:57
+DeathReason_Explosion,Explosion,爆炸,2024/12/27 15:12:58
+DeathReason_Critical,"Head, eye",头部、眼部,2024/12/27 15:33:36
+UI_Menu_Controls,Controls Instructions,操作说明,2024/12/27 17:16:16
+Notification_ItemDropped,{itemName} was thrown on the ground.,将 {itemName} 扔到了地上,2024/12/30 11:45:46
+UI_StorageDock_SendToInventory,Send to Storage,发送至仓库,2024/12/30 17:27:10
+UI_StorageDock_InventoryFull,Storage is full,仓库已满,2024/12/30 18:13:11
+StorageDock_Title,Package Pickup,马蜂自提点,2024/12/31 14:27:58
+BuilderView_TokenAmountFormat,Pending: {tokenAmount},待放置: {tokenAmount},2024/12/31 10:52:08
+StorageDock_PlaceHolder,Nothing is here for you.,没有您的货物,2024/12/31 14:39:56
+UsageUtilities_Title,Effects,效果,2024/12/31 14:58:40
+UI_TakeAll,Take All,全部领取,2024/12/31 15:24:43
+UI_MapSelection_Confirm,Set Off!,出发！,2024/12/31 16:02:30
+UI_MapSelection_Cancel,Cancel,取消,2024/12/31 16:04:26
+Notification_StockShoopItemUnlockFormat,Commodity Unlocked: {displayName},解锁了商品: {displayName},2024/12/31 17:07:36
+Indicator_Map,Map,地图,2024/12/31 17:19:39
+Indicator_Inventory,Inventory,背包,2024/12/31 17:20:03
+Indicator_Aim,Aim,瞄准,2024/12/31 17:41:31
+Indicator_Dodge,Dodge,翻滚,2024/12/31 17:40:36
+Indicator_Attack,Attack/Shoot,射击/攻击,2024/12/31 17:42:45
+Indicator_Reload,Reload,换弹,2024/12/31 17:52:41
+Indicator_ToggleIndicatorHUD,Controls Instructions,操作说明,2024/12/31 17:51:12
+Indicator_Run,Run,奔跑,2024/12/31 17:53:11
+UI_Input_CancleAction,Cancel Action,取消动作,2025/1/1 10:36:17
+AddToWishList,Add To Wish List,加入愿望单,2025/1/6 11:14:57
+PlayerStorage_Notification_ItemAddedToBuffer,{displayName} was sent to Package Pickup Spot,{displayName} 已存入自提柜,2025/1/6 15:12:39
+Map_Marker,Markers,地图标记,2025/1/7 14:30:46
+Difficulty_Selection,Select Difficulty,选择难度,2025/1/8 10:28:56
+Recommended,Recommended,推荐,2025/1/8 11:49:00
+Rule_Standard,Standard,标准难,2025/1/8 14:27:18
+Rule_Hard,Super hard,超难,2025/1/8 14:41:55
+Rule_Easy,Little Hard,微难,2025/1/8 15:51:15
+Rule_Custom,Custom,自定义,2025/1/8 15:22:25
+Rule_Custom_Desc,Design your own hardness... I mean difficulty.,自己设计难度,2025/1/8 15:22:43
+Rule_Standard_Desc,Standard gaming experience. You need to deal with various enemies carefully.,标准的游戏体验。需要你谨慎应对各种敌人。,2025/1/9 13:20:41
+Rule_Easy_Desc,"Not that hard, just a bit challenging. Enemy attacks are weaker, and your damage is slightly improved. With caution, you'll handle it just fine!",有一点难，但不太难，小幅降低敌人伤害，并提高你的伤害。你依然要时刻小心。,2025/1/9 13:20:15
+Loading_Evacuate,Evacuated,撤离,2025/1/9 12:05:24
+Loading_Evacuate_SmallText,Coming back...,回来了,2025/1/9 12:06:39
+BlackMarket_Remaining,Remaining,剩余,2025/1/9 19:07:08
+BlackMarket_Demand_Title_Normal,{itemName} Wanted,求购 {itemName},2025/1/13 15:49:56
+BlackMarket_Demand_Title_High,Giving Eyetheeth for {itemName},高价收购 {itemName},2025/1/13 15:50:10
+BlackMarket_Supply_Title_Normal,Selling {itemName},出售 {itemName},2025/1/13 15:50:24
+BlackMarket_Supply_Title_Low,Low Price Selling {itemName},低价出售 {itemName},2025/1/13 15:50:36
+BlackMarkest_Demand,Demands,需求,2025/1/13 11:09:28
+BlackMarkest_Supply,Supplies,供给,2025/1/13 11:09:41
+BlackMarket,Black Market,黑市,2025/1/13 15:12:21
+BlackMarket_RefreshETA,Refresh ETA,下次刷新,2025/1/13 16:11:50
+Rule_Current,Current Difficulty,当前难度,2025/1/13 17:37:12
+StorageDockCount,Pending Package(s) Avaliable,待取件,2025/1/14 12:09:07
+UI_DemoInfo,"You are currently playing the DEMO version of this game, which includes some unfinished functions and bugs. We sincerely apologize for any bad experience you might encounter and appreciate your understanding.",本游戏为DEMO版本，包含一些未完善功能、各种BUG，如果给您带来的不好的体验，敬请谅解。,2025/1/17 18:39:37
+BlackMarket_DemandBlackMarket_Supply_Title_High,{itemName} on sale,低价出售 {itemName},2025/1/10 18:12:14
+Endowment_Selection,Choose Your Starter Class,选择天赋,2025/1/16 12:02:30
+SleepView,Sleep,睡觉,2025/1/17 11:37:01
+SleepView_WillWakeUpAt,Sleep Until,睡到,2025/1/17 12:16:44
+SleepView_Sleep,Sleep,睡觉,2025/1/17 13:36:18
+DEMO,DEMO,试玩版,2025/1/17 18:34:02
+UI_Menu_Options_Common,Common Settings,常规设置,2025/1/20 11:51:52
+UI_Menu_Options_Audio,Audio Settings,音频设置,2025/1/20 11:52:29
+UI_Menu_Options_graphics,Graphics Settings,图像设置,2025/1/20 14:50:07
+DEMO_Endowment_Locked,Complete Quests To Unlock,完成任务以解锁,2025/1/20 16:12:34
+Indicator_CameraMode,Photo Mode,拍照模式,2025/1/20 16:19:40
+Indicator_ToggleIndicatorHUD_CameraMode,Photo Mode Instructions,拍照说明,2025/1/20 17:21:41
+Indicator_CameraMode_Up,Move Up,上升,2025/1/20 17:05:26
+Indicator_CameraMode_Down,Move Down,下降,2025/1/20 17:06:59
+Indicator_CameraMode_FOV,Zoom,缩放,2025/1/20 17:07:45
+Indicator_CameraMode_Focus,Focus,聚焦,2025/1/20 17:26:43
+Indicator_CameraMode_Faster,Move Faster,加速移动,2025/1/20 17:26:57
+Indicator_CameraMode_Move,Move,移动,2025/1/20 17:27:47
+Indicator_CameraMode_Capture,Shoot,拍照,2025/1/20 17:29:20
+Indicator_CameraMode_OpenFolder,Open Photos Folder,查看截图,2025/1/20 17:44:21
+Pause,Pause,暂停,2025/1/20 16:27:48
+UI_Building_Recycle,Press To Recycle,长按以回收,2025/1/20 17:09:43
+UI_Quest_NotifyClaimAtNPC,Please pick it up at the task posting place,请在任务发布处领取,2025/1/21 11:32:11
+LevelInitializing,The staff are setting up the scene...,工作人员正在布置场景...,2025/1/23 11:43:43
+Rule_Hard_Desc,"Items lost upon death are irretrievable, so be mindful of what you carry. ",没有遗落物，噶了就没。,2025/1/9 14:37:34

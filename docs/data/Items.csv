@@ -1,0 +1,892 @@
+Item_Character,The Outer Form,躯壳
+Item_Character_Desc,A body without it's owner.,一具无主的躯壳
+Item_0_MeleeWeapon_Template,Butcher Knife,切肉刀
+Item_0_MeleeWeapon_Template_Desc,A crude knife. Not the most sharp ones.,看起来很粗犷的刀，不是很锋利。
+Item_ArmorLV3,Armor Lv3,三级防弹衣
+Item_ArmorLV3_Desc,Sometimes could be a life saver for you.,三级防弹衣，在某些时候能够保住你的小命
+Item_Gem,Golden Star,金色五角星
+Item_1_Rifle-A_template,GunTemplate,GunTemplate
+Item_1_Rifle-A_template_Desc,Designed by a soviet weapon designer.,由前苏联枪械设计师米哈伊尔·季莫费耶维奇·卡拉什尼科夫设计的突击步枪。
+Item_S_MMG_Lv_1,DMG (Poor Quality),MMG 劣质
+Item_S_MMG_Lv_1_Desc,A common mini submachine gun.,一把普通的微型冲锋枪。
+Item_BatteryR6,R6 Battery,R6电池
+Item_BatteryR6_Desc,Widely used in all kinds of electronic devices.,在各种用电器中被广泛使用的电池。
+Item_Shot_Hand_Lv_1,Homemade Shotgun (Poor Quality),土制猎枪 劣质
+Item_Shot_Hand_Lv_1_Desc,A shotgun with poor stability.,稳定性较差的霰弹枪。
+Item_Bandage,Bandage,止血绷带
+Item_Bandage_Desc,"Stops bleeding, also recoveres a small amount of HP.","可以止血,并回复微少生命值。"
+Item_BatteryPP3,PP3 Battery,PP3电池
+Item_BatteryPP3_Desc,"Commonly used on smoke detector, remote controller and alarm clocks.",通常用于烟雾探测器、遥控玩具发射器以及作为闹钟的后备电池。
+Item_BeanCan,Baked Beans,焗豆罐头
+Item_BeanCan_Desc,Baked beans in a can. 焗豆罐头。,焗豆罐头。
+Item_Biscuit,Soda Crackers,苏打饼干
+Item_Biscuit_Desc,A pile of soda crackers.,一摞苏打饼干。
+Item_FirstAidKit_L,First Aid Kit L,大急救箱
+Item_FirstAidKit_L_Desc,Recovers large amount of HP.,可以恢复大量生命值
+Item_FirstAidKit_M,First Aid Kit,急救箱
+Item_FirstAidKit_M_Desc,Recovers HP.,可以恢复生命值
+Item_FirstAidKit_S,First Aid Kit S,小急救箱
+Item_FirstAidKit_S_Desc,Recovers small amount of HP.,可以恢复少量生命值
+Item_TunaCan_1,Canned Tuna In Water,水浸金枪鱼罐头
+Item_TunaCan_1_Desc,Canned tuna in water,水浸金枪鱼罐头。
+Item_TunaCan_2,Canned Tuna In Oil,油浸金枪鱼罐头
+Item_TunaCan_2_Desc,Canned tuna in oil,油浸金枪鱼罐头。
+Item_Aspirin,Aspirin,阿司匹林
+Item_Bleach,Bleach,漂白剂
+Item_Bleach_Desc,A bottle of bleach.,一壶漂白剂。
+Item_Cigarette,Red-Band Cigarette,红条香烟
+Item_Cigarette_Desc,An ordinary box of cigarette.,一盒普通的香烟。
+Item_Dynamite,Dynamite,管状炸弹
+Item_Dynamite_Desc,A piece of pipe-shaped bomb.,一颗管状炸弹。
+Item_DynamiteMultiple,Dynamite Cluster,集束管状炸弹
+Item_DynamiteMultiple_Desc,Dynamites bound together.,一束管状炸弹。
+Item_Flashlight,Flash Light,手电
+Item_Flashlight_Desc,Flash light.,一只手电筒。
+Item_GasMask_01,Gas Mask,防毒面具
+Item_GasMask_01_Desc,Ordinary gas mask.,普通的防毒面具。
+Item_Goggle,Goggle,滑雪镜
+Item_Goggle_Desc,Goggle.,滑雪眼镜。
+Item_Nail,Nail,钉子
+Item_Nail_Desc,Nail.,钉子。
+Item_Vodka,Vodka,伏特加
+Item_Vodka_Desc,Happiness and dehydration,"喝了会开心,然后脱水"
+Item_WD40,MD40,MD40
+Item_Wrench,Wrench,扳手
+Item_Wrench_Desc,A wrench.,一个扳手。
+Item_ArmorLV1,Armor Lv1,一级防弹衣
+Item_ArmorLV1_Desc,"Thinner than paper, may block a water gun shot.",比纸还薄，能挡一发水弹枪
+Item_ArmorLV2,Armor Lv2,二级防弹衣
+Item_ArmorLV2_Desc,"Looks professional, provides psychological comfort.",看起来很专业，能够提供心理层面的鼓励
+Item_ArmorLV4,Armor Lv4,四级防弹衣
+Item_ArmorLV4_Desc,Real bullet-proof performance. A reliable choice.,有真正的防弹性能，可靠之选
+Item_ArmorLV5,Armor Lv5,五级防弹衣
+Item_ArmorLV5_Desc,Provides ultimate protection. Bullet hits feel like water splashes on it.,提供终极的防护，子弹打在身上就像洒洒水
+Item_BackpackLV1,Decoration Bag,装饰包
+Item_BackpackLV1_Desc,Small bag for lipsticks and other daily necessaries.,也就能装点口红化妆品啥的
+Item_BackpackLV2,School Bag,小学背包
+Item_BackpackLV2_Desc,Can hold many workbooks.,能装很多的作业本
+Item_BackpackLV3,Travelling Bag,旅行包
+Item_BackpackLV3_Desc,Multi-function back pack. Best choice for travelling.,多功能用途背包，旅行首选
+Item_BackpackLV4,Survivalist Bag,生存者背包
+Item_BackpackLV4_Desc,One must have for survivalists.,杀哥联名，户外生存必备。
+Item_BackpackLV5,Military Backpack MAX,行军背包MAX
+Item_BackpackLV5_Desc,This material also used for making that multi-dimensional pocket on the blue chonky robot.,使用蓝胖子口袋内衬同款材料，非常能装
+Item_HelmatLV1,Motorbike Helmet,摩托头盔
+Item_HelmatLV1_Desc,"Shiny, destructable",晶莹剔透，吹弹可破
+Item_HelmatLV2,Steel Helmet,老钢盔
+Item_HelmatLV2_Desc,An old helmet that had barely any matainance. Probably belonged to some ancestor. There's a hole in side.,没怎么保养的头盔，爷爷传下来的。里面有个洞。
+Item_HelmatLV3,SWAT Helmet,特警头盔
+Item_HelmatLV3_Desc,Has some basic bullet proof ability.,具有初级的防弹性能
+Item_HelmatLV4,Sight PRO,SightPRO头盔
+Item_HelmatLV4_Desc,With AR+VR functionalities. Might give the incoming bullet motion sickness so that they deflect from you.,具有AR+VR功能，飞过来的子弹可能会眩晕从而打偏。
+Item_HelmatLV5,SCIFI MASK,SCIFI面罩
+Item_HelmatLV5_Desc,"Provides perfect protection for your head. Sci-fi themed design, stylish as can be.",给予头部全方位的防护，科幻造型，非常的拉风
+Item_HelmatLV6,The Glorious Welding Mask,神之电焊头
+Item_HelmatLV6_Desc,Forged by the Ancient Greek god of helmets. Scares the bullets to death.,古希腊掌管头盔的神打造，子弹看了会吓软
+Item_Wrench02,Auto Repair Wrench,汽车扳手
+Item_Wrench02_Desc,Better wrench.,更好用的扳手
+Item_ContinerL,Expansion Box L,大扩容箱
+Item_ContinerL_Desc,Large box. Can be used for storage expansion in the bunker. Too heavy to move.,大型扩容箱，可用作扩展藏身处。重到拿不动。
+Item_ContinerM,Expansion Box M,中扩容箱
+Item_ContinerM_Desc,Middle sized box. Can be used for storage expansion in the bunker. Very heavy.,中型扩容箱，可用作扩展藏身处。很重。
+Item_ContinerS,Expansion Box S,小扩容箱
+Item_ContinerS_Desc,Small box. Can be used for storage expansion in the bunker.,小型扩容箱，可用作扩展藏身处。
+Item_Clock,Clock,闹钟
+Item_Clock_Desc,It stops at three o'clock.， 定格在了三点钟。,定格在了三点钟。
+Item_Detergent,Detergent,洁厕灵
+Item_Detergent_Desc,A bottle of detergent.,一瓶洁厕灵。
+Item_Drum1,Red Barrel,红色大桶
+Item_Drum1_Desc,A big empty barrel.,一个大空桶
+Item_Drum2,Blue Barrel,蓝色大桶
+Item_Drum2_Desc,A big empty barrel.,一个大空桶
+Item_Drum3,Yellow Barrel,黄色大桶
+Item_Drum3_Desc,A big empty barrel.,一个大空桶
+Item_Drum4,Metallic Oil Barrel,金属油桶
+Item_Drum4_Desc,A big empty barrel. Used to store gasoline.,一个大空桶，装过汽油
+Item_GolfClub,Golf Club,高尔夫球棒
+Item_GolfClub_Desc,Hurts.,打人疼。
+Item_Ink,Ink,墨水
+Item_Ink_Desc,Ink for pens,钢笔墨水。
+Item_Pot,Pot,锅
+Item_Pot_Desc,For cooking food.,可以用来煮食物
+Item_Tissue,Tissue,卷纸
+Item_Tissue_Desc,Roll of tissue,一卷卫生纸。
+Item_Zippo,Cippo,Cippo
+Item_Zippo_Desc,Cippo ligter.,Cippo打火机
+Item_PressionSencer,Pressure Detector,压力传感器
+Item_PressionSencer_Desc,Reacts when you step on it.,踩上去就能感应到。
+Item_uPhone,uPhone,uPhone手机
+Item_uPhone_Desc,Broken. Cannot distinguish which generation it is.,已经坏掉了，从外观上看不出是第几代产品。
+Item_Walkie_Talkie,Walkie Talkie,对讲机
+Item_Walkie_Talkie_Desc,Ordinary handheld 2 way radio.,普通的对讲机
+Item_Walkie_Talkie02,Millitary Handheld Radio,军用对讲机
+Item_Walkie_Talkie02_Desc,Encrypted walkie talkie.,经过加密的军用对讲机。
+Item_FlashGrenade,Stun Grenade,闪光手雷
+Item_FlashGrenade_Desc,Stuns the enemies.,眩晕敌人
+Item_Grenade,Grenade,手雷
+Item_Grenade_Desc,Grenade.,手雷
+Item_Chocalate,Chocolate,巧克力
+Item_Chocalate_Desc,People say that you can have it while on diet.,有人说它能减肥。
+Item_EnergyStick,Energy Bar,能量棒
+Item_EnergyStick_Desc,Hungry? Eat it! But it will make you thirsty.,吃了就不饿了，但是会渴。
+Item_Honey,Honey,蜂蜜
+Item_Honey_Desc,Pretty sweet.,很甜很甜
+Item_Ketchup,Ketchup,番茄酱
+Item_Ketchup_Desc,"Sour and sweet, not to my taste.",酸酸甜甜的番茄酱。不好吃。
+Item_Book,Book,书
+Item_Book_Desc,Has some non-sense in it.,胡扯的书。
+Item_Letter,Letter,信件
+Item_Letter_Desc,A letter,一封信件
+Item_AirplaneToy,Toy Plane,飞机模型
+Item_AirplaneToy_Desc,Sold by Airline companies. Poor quality.,航空公司售卖的飞机模型，做工劣质
+Item_Ball,Football,足球
+Item_Ball_Desc,A football with insufficient air.,气不太够的足球。
+Item_BicyleToy,Toy Bicycle,自行车模型
+Item_BicyleToy_Desc,Exquisite bicycle model.,精致的自行车模型
+Item_Cannon,Cannon,大炮
+Item_Cannon_Desc,Toy cannon.,玩具大炮
+Item_Compass,Compass,指南针
+Item_Compass_Desc,Exquisite compass.,精致的指南针
+Item_Dice_2,Dice,骰子
+Item_Dice_2_Desc,"Looks ordinary, weights a bit off.",一个外表十分正常的骰子，但是感觉有点偏坠。
+Item_Dice,Dice,骰子
+Item_Dice_Desc,An ordinary dice.,一个正常的骰子。
+Item_Fish,Toy Fish,玩具鱼
+Item_Fish_Desc,Smells like plastic.,浓浓的塑料味。
+Item_Watch,Watch,怀表
+Item_Watch_Desc,Silvery watch.,银色的怀表
+Item_Egg,Egg,鸭蛋
+Item_Egg_Desc,An egg belongs to nobody.,没人要的蛋。
+Item_Heat,Thermite,铝热剂
+Item_Heat_Desc,Not flammable actually.,非常不易燃。
+Item_Propane,Propane,丙烷
+Item_Propane_Desc,A can filled with propane.,装满丙烷的罐子
+Item_Rope,Rope,绳子
+Item_Rope_Desc,Rope for climbing.,攀登用的绳子
+Item_Lv,Infusion Medicine,输液药品
+Item_Lv_Desc,Some medicine for infusion,一些静脉注射用的药品
+Item_Broom,Broom,扫帚
+Item_Broom_Desc,Ordinary broom,普通的扫帚。
+Item_Driver,Driver,平头螺丝刀
+Item_Driver_Desc,Driver,平头螺丝刀
+Item_ElectricSaw,Compact Chainsaw,电锯
+Item_ElectricSaw_Desc,A compact chainsaw.,小巧的电锯。
+Item_GasCanL,Metallic Barrel,金属桶
+Item_GasCanL_Desc,Used to store gasoline.,乘装汽油的金属桶
+Item_GasCanS,Plastic Barrel,塑料桶
+Item_GasCanS_Desc,Used to store gasoline.,乘装汽油的塑料桶
+Item_HammerL,Large Hammer,大锤子
+Item_HammerS,Hammer,锤子
+Item_HammerS_Desc,Good at smashing nails.,砸钉子好用
+Item_Lantern,Lantern,煤油灯
+Item_Lantern_Desc,It's out of gas.,没油了
+Item_Shovel,Shovel,铲子
+Item_Shovel_Desc,A knight used conqured the world with this. But it's not actually a nice choice as a weapon.,曾经有一位骑士用它打遍天下无敌手。但不算是一个好的武器。
+Item_Telescope,Telescope,望远镜
+Item_Telescope_Desc,"Broken telescope, but the glass is still intact.",坏掉的望远镜，但镜片还是好的
+Item_Trap,Animal Trap,捕兽陷阱
+Item_Trap_Desc,Nice piece of scrap iron,算是一块好废铁
+Item_Wrench03,Crowbar,撬棍
+Item_Wrench03_Desc,Heavy iron bar.,很沉的铁棍子
+Item_1_AccessoryTemplate,Accessory Template,配件模板
+Item_1_AccessoryTemplate_Desc,Imporves accuracy.,可增加精确度
+Item_CowMask,Cow Mask,奶牛面具
+Item_CowMask_Desc,A mask with a very ferocious appearance,外表十分凶狠的奶牛头面具。
+Item_Hat,Cowboy Hat， 牛仔帽,牛仔帽
+Item_Hat_Desc,Commonly worn by cowboys,牛仔帽
+Item_CocoMilk,Cocoa Milk,可可奶
+Item_CocoMilk_Desc,Milk with chocolate flavor.,带有巧克力味道的牛奶。
+Item_Soda,Soda,苏打水
+Item_Soda_Desc,Refreshing soda.,清爽的苏打水。
+Item_Waterbottle,Waterbottle,水壶
+Item_Waterbottle_Desc,Military water bottle.,行军水壶，吨吨吨
+Item_Whisky,Whisky,威士忌
+Item_Whisky_Desc,Upper class drink. But brings you dehydration.,上流，但是脱水
+Item_Pen,Pen,钢笔
+Item_Pen_Desc,Inkless pen.,没有墨水的钢笔。
+Item_Scissors,Scissors,剪刀
+Item_Scissors_Desc,Common sissors.,手工剪刀。
+Item_Trophy,Trophy,奖杯
+Item_Trophy_Desc,Golden trophy. The paint is peeling,金色的奖杯，有点掉漆。
+Item_Mike,Mic,麦克风
+Item_Mike_Desc,Karaoke microphone. Singing brings Happiness.,卡拉OK麦克风，唱歌让人快乐。
+Item_Radio,Radio,收音机
+Item_Radio_Desc,Look like a toy. But actually it is a working radio.,看起来像玩具，但确实也是个收音机。
+Item_TOMSUNGPhone,TOMSUNG Phone,TOMSUNG手机
+Item_TOMSUNGPhone_Desc,A used TOMSUNG cell phone.,TOMSUNG手机，看起来很久了，
+Item_Yogurt,Yogurt,酸奶
+Item_Yogurt_Desc,Taste is like crazy.,疯味酸奶。
+Item_Newspaper,News Paper,报纸
+Item_Newspaper_Desc,Old news paper.,一份报纸，有年头了。
+Item_Note,Notebook,笔记
+Item_Note_Desc,All kinds of incomprehensible formulas are written on it.,上面记着各种让人看不懂的公式。
+Item_Lipstick,Lipstick,口红
+Item_Lipstick_Desc,Looks expensive. Don't know what shade it is.,看起来很贵的口红，不知道是什么色号。
+Item_Ring,Golden Ring,金戒指
+Item_Ring_Desc,"A yellow gem is inlaid on it. A bit old, but feels valuable.",上面镶嵌着黄色的宝石。有点旧，但感觉价值不菲。
+Item_RingToy,Flower Ring,花花戒指
+Item_RingToy_Desc,Look like a toy. But it has some weight.,看起来像玩具，但是沉甸甸的。
+Item_Robot,Intelligent Robot,智能机器人
+Item_Robot_Desc,Out of battery.,没电了。
+Item_Rocket,Toy Roket,玩具火箭
+Item_Rocket_Desc,Not the most creative design.,造型非常没有创意。
+Item_Skull,Skull,头骨饰品
+Item_Skull_Desc,Skull of a unknown creature.,不知道是什么生物的头骨。
+Item_Tambourine,Tambourine,手鼓
+Item_Tambourine_Desc,Still makes nice sounds.,声音依然非常好听。
+Item_Trumpet,Trumpet,小号
+Item_Trumpet_Desc,Probably in good condition for playing.,吹起啦应该没问题。
+Item_Xylophone,Xylophone,木琴
+Item_Xylophone_Desc,The scale looks limited.,看起来音调不是很全。
+Item_Wheel,Wheel,轮胎
+Item_Wheel_Desc,Ready for use with just a few more pumps of gas.,打打气就能用。
+Item_Yarn,Yarn,线
+Item_Yarn_Desc,Compatible with sewing machine.,缝制衣服用的线。
+Item_Pumpkin,Pumpkin,南瓜
+Item_Pumpkin_Desc,Real pumpkin.,真的就是个南瓜
+Item_Basket,Basket,购物框
+Item_Basket_Desc,Really can hold some stuff.,装不了多少东西。
+Item_Cup,Cup,杯子
+Item_Cup_Desc,Drking cup,喝水用的杯子。
+Item_Cake,Cake,蛋糕
+Item_Cake_Desc,Not sure when was it made. Still looks delicious,不知道放了多久，但是看起来依然很好吃。
+Item_Carrot,Carrot,胡萝卜
+Item_Carrot_Desc,"Nutritious, and fresh.",富含营养，看起来很新鲜。
+Item_Bone,Bone,骨头玩具
+Item_Bone_Desc,Don't know who is it for.,不知道给谁玩的。
+Item_Heart,Heart,心
+Item_Heart_Desc,Heart shaped accessory,心形的饰物。
+Item_Injection,Syringe,注射器
+Item_Injection_Desc,Unused syringe.,没用过的注射器
+Item_Injection_A,Yellow Injection,黄针
+Item_HeadLantern,Head Lantern,头灯
+Item_HeadLantern_Desc,Give you clearer sight in the further distance.,让你看的更远
+Item_Bullet_Template,Bullet Template,子弹模板
+Item_Bullet_Template_Desc,Bullet,子弹
+Item_Bullet_AR_L_Normal_Desc,Large caliber bullet.,制式大口径子弹。
+Item_Bullet_AR_L_Burn_Desc,Burns the enemy. Has a chance to start fires on target.,装填可持续燃烧的弹药，造成灼烧。有概率点燃。
+Item_Bullet_AR_L_Piercing3_Desc,Able to penetrate certain defenses.,能够穿透一定的防护。
+Item_Bullet_AR_L_Piercing5_Desc,Penetrates most kind of defenses.,能够穿透大多数防护。
+Item_Bullet_AR_L_Poison_Desc,Bullets that dipped in poison.,子弹表面涂抹毒药。
+Item_Bullet_AR_L_Electric_Desc,Releases electricity in a short time.,集中的瞬间释放电力。
+Item_Bullet_AR_L_Space_Desc,Bends the space with the power of the Earth-Core. Breaks hard structures.,借助地核力量，能够扭曲空间，破坏坚硬的结构。
+Item_Bullet_AR_S_Normal_Desc,Standard small-caliber bullets.,制式小口径子弹。
+Item_Bullet_AR_S_Burn_Desc,Burns the enemy. Has a chance to start fires on target.,装填可持续燃烧的弹药，造成灼烧。有概率点燃。
+Item_Bullet_AR_S_Dumdums_Desc,"Deals more damage to flesh, but hard to penentrate armors.",对肉体造成更高的伤害，但更难以穿透护甲。
+Item_Bullet_AR_S_Piercing2_Desc,Able to penetrate lower leveled armors.,能够穿透较低等级的护甲。
+Item_Bullet_AR_S_Piercing4_Desc,Able to penetrate higher leveled armors.,能够穿透更高等级的护甲。
+Item_Bullet_AR_S_Poison_Desc,Bullets that dipped in poison.,子弹表面涂抹毒药。
+Item_Bullet_AR_S_Electric_Desc,Releases electricity in a short time. Sometimes paralyzes the enemy.,释放电流的子弹，有时候能麻痹敌人。
+Item_Bullet_AR_S_Space_Desc,Bends the space with the power of the Earth-Core. Breaks hard structures.,借助地核力量，能够扭曲空间，破坏坚硬的结构。
+Item_Bullet_SHOT_Normal_Desc,Mainly used for hunting deers. Range is limited.,打猎用的鹿弹，杀伤距离较近
+Item_Bullet_SHOT_Piranha_Desc,"Poor armor-peneration performance, but deals higher damage to flesh",穿甲能力弱，但对肉体造成更大伤害。
+Item_Bullet_SHOT_Burn_Desc,Deals large amount of burning damage.,造成大量灼烧伤害。
+Item_Bullet_SHOT_Piercing2_Desc,Able to penetrate lower leveled armors.,能够穿透低级护甲。
+Item_Bullet_SHOT_Piercing4_Desc,Higer armor piercing level.,有更高的穿甲等级。
+Item_Bullet_SHOT_Electric_Desc,"Filled with electric bullets, deals electric damage",电能装药，能够造成电击伤害。
+Item_Bullet_Sniper_Normal_Desc,For deer hunting. Limited damage range.,打猎用的鹿弹，杀伤距离较近
+Item_Bullet_Sniper_Space_Desc,Bends the space with mysterious power.,打猎用的鹿弹，杀伤距离较近
+Item_Bullet_Sniper_Electric_Desc,Deals electric damage.,电能装药，能够造成电击伤害。
+Item_Bullet_Sniper_Piercing3_Desc,Able to penetrate lower leveled armors.,能够穿透较低等级的护甲。
+Item_Bullet_Sniper_Piercing5_Desc,Penetrates most kind of armors,能够穿透大多数护甲。
+Item_Bullet_Rocket,Rocket,火箭弹 Lv1
+Item_Bullet_Rocket_Desc,Compatible with rocket launchers.,发射器弹药
+Item_Bullet_Arrow_Normal,Wooden Arrow,木箭矢
+Item_Bullet_Arrow_Normal_Desc,Made with tree branches.,用树枝制作的箭矢。
+Item_L_RPK_Lv_1,RPK (Poor Quality),RPK 劣质
+Item_L_RPK_Lv_1_Desc,A machine gun with high endurance.,一挺机枪，高续航
+Item_L_AK102_Lv_1,AK102 (Poor Quality),AK102 劣质
+Item_L_AK102_Lv_1_Desc,"Modernized AK, capable of installing more accessories.",现代化版本的AK，能够装配更多的配件
+Item_L_VPO_Lv_1,VPO (Poor Quality),VPO 劣质
+Item_L_VPO_Lv_1_Desc,Bolt-action sniper rifle,栓动狙击步枪
+Item_Shot_MP155_Lv_1,MP155 (Poor Quality),MP155 劣质
+Item_Shot_MP155_Lv_1_Desc,Standard shotgun,标准霰弹枪
+Item_S_AK74_Lv_1,AK74U (Poor Quality),AK74U 劣质
+Item_S_AK74_Lv_1_Desc,A common mini submachine gun.,一把普通的微型冲锋枪。
+Item_S_UAK45_Lv_1,UAK45 (Poor Quality),UAK45 劣质
+Item_S_UAK45_Lv_1_Desc,A common mini submachine gun.,一把普通的微型冲锋枪。
+Item_A_Bow_Lv_1,Bad Bow,劣质弓
+Item_A_Bow_Lv_1_Desc,A bad bow,劣质弓
+Item_S_GLick_Lv_1,Glick (Poor Quality),格力克 劣质
+Item_S_GLick_Lv_1_Desc,Glick pistol,舔舔手枪
+Item_L_AK47_Lv_1,AK-47 (Poor Quality),AK-47 劣质
+Item_L_AK47_Lv_1_Desc,"Machine gun, with high endurance",一挺机枪，高续航
+Item_L_MF_Lv_1,MF (Poor Quality),MF 劣质
+Item_L_MF_Lv_1_Desc,Western standard weapon.,西方制式武器
+Item_S_MP7_Lv_1,MP7 (Poor Quality),MP7 劣质
+Item_S_MP7_Lv_1_Desc,A common mini submachine gun..,一把普通的微型冲锋枪。
+Item_S_UZI_Lv_1,UZI (Poor Quality),UZI 劣质
+Item_S_UZI_Lv_1_Desc,A common mini submachine gun.,一把普通的微型冲锋枪。
+Item_Grip_AS_Lv_1,Assault Grip Lv1,突击握把 Lv1
+Item_Grip_AS_Lv_1_Desc,Imporves stability,增强稳定性
+Item_Grip_AS_Lv_2,Assault Grip Lv2,突击握把 Lv2
+Item_Grip_AS_Lv_2_Desc,Imporves stability,增强稳定性
+Item_Grip_AS_Lv_3,Assault Grip Lv3,突击握把 Lv3
+Item_Grip_AS_Lv_3_Desc,Imporves stability,增强稳定性
+Item_Grip_SP_Lv_1,Quick-Release Grip Lv1,快拆握把 Lv1
+Item_Grip_SP_Lv_1_Desc,Imporves stability,增强稳定性
+Item_Grip_SP_Lv_2,Quick-Release Grip Lv2,快拆握把 Lv2
+Item_Grip_SP_Lv_2_Desc,Imporves stability,增强稳定性
+Item_Grip_SP_Lv_3,Quick-Release Grip Lv3,快拆握把 Lv3
+Item_Grip_SP_Lv_3_Desc,Imporves stability,增强稳定性
+Item_Grip_Verticle_Lv_1,Vertical Grip Lv1,垂直握把 Lv1
+Item_Grip_Verticle_Lv_1_Desc,Imporves stability,增强稳定性
+Item_Grip_Verticle_Lv_2,Vertical Grip Lv2,垂直握把 Lv2
+Item_Grip_Verticle_Lv_2_Desc,Imporves stability,增强稳定性
+Item_Grip_Verticle_Lv_3,Vertical Grip Lv3,垂直握把 Lv3
+Item_Grip_Verticle_Lv_3_Desc,Imporves stability,增强稳定性
+Item_Muzzle_L_Type_1_Desc,Improves accuracy,可增加精确度
+Item_Muzzle_L_Type_2_Desc,Improves accuracy,可增加精确度
+Item_Muzzle_L_Type_3_Desc,Improves accuracy,可增加精确度
+Item_Muzzle_Shot_Type_1,Shotgun Choke Lv.1,霰弹枪集束器 Lv.1
+Item_Muzzle_Shot_Type_1_Desc,Improves accuracy,可增加精确度
+Item_Muzzle_Shot_Type_2,Shotgun Choke Lv.2,霰弹枪集束器 Lv.2
+Item_Muzzle_Shot_Type_2_Desc,Improves accuracy,可增加精确度
+Item_Muzzle_Shot_Type_3,Shotgun Choke Lv.3,霰弹枪集束器 Lv.3
+Item_Muzzle_Shot_Type_3_Desc,Improves accuracy,可增加精确度
+Item_Muzzle_Sniper_Type_1,Sniper Rifle Silencer Lv.1,狙击枪消音器 Lv.1
+Item_Muzzle_Sniper_Type_1_Desc,Improves accuracy,可增加精确度
+Item_Muzzle_Sniper_Type_2,Sniper Rifle Silencer Lv.2,狙击枪消音器 Lv.2
+Item_Muzzle_Sniper_Type_2_Desc,Improves accuracy,可增加精确度
+Item_Muzzle_Sniper_Type_3,Sniper Rifle Silencer Lv.3,狙击枪消音器 Lv.3
+Item_Muzzle_Sniper_Type_3_Desc,Improves accuracy,可增加精确度
+Item_Muzzle_S_Type_1_Desc,Improves accuracy,可增加精确度
+Item_Muzzle_S_Type_2_Desc,Improves accuracy,可增加精确度
+Item_Muzzle_S_Type_3_Desc,Improves accuracy,可增加精确度
+Item_Scope_4X_Lv_1,4x Scope Lv1,4倍镜 Lv1
+Item_Scope_4X_Lv_1_Desc,Improves accuracy,可增加精确度
+Item_Scope_4X_Lv_2,4x Scope Lv2,4倍镜 Lv2
+Item_Scope_4X_Lv_2_Desc,Improves accuracy,可增加精确度
+Item_Scope_4X_Lv_3,4x Scope Lv3,4倍镜 Lv3
+Item_Scope_4X_Lv_3_Desc,Improves accuracy,可增加精确度
+Item_Scope_8X_Lv_1,8x Scope Lv1,8倍镜 Lv1
+Item_Scope_8X_Lv_1_Desc,Improves accuracy,可增加精确度
+Item_Scope_8X_Lv_2,8x Scope Lv2,8倍镜 Lv2
+Item_Scope_8X_Lv_2_Desc,Improves accuracy,可增加精确度
+Item_Scope_8X_Lv_3,8x Scope Lv3,8倍镜 Lv3
+Item_Scope_8X_Lv_3_Desc,Improves accuracy,可增加精确度
+Item_Scope_Digit_Lv_1,Digital Sight Lv1,数字瞄具 Lv1
+Item_Scope_Digit_Lv_1_Desc,Improves accuracy,可增加精确度
+Item_Scope_Digit_Lv_2,Digital Sight Lv2,数字瞄具 Lv2
+Item_Scope_Digit_Lv_2_Desc,Improves accuracy,可增加精确度
+Item_Scope_Digit_Lv_3,Digital Sight Lv3,数字瞄具 Lv3
+Item_Scope_Digit_Lv_3_Desc,Improves accuracy,可增加精确度
+Item_Scope_Holo_Lv_1,Holographic Sight Lv1,全息瞄具 Lv1
+Item_Scope_Holo_Lv_1_Desc,Improves accuracy,可增加精确度
+Item_Scope_Holo_Lv_2,Holographic Sight Lv2,全息瞄具 Lv2
+Item_Scope_Holo_Lv_2_Desc,Improves accuracy,可增加精确度
+Item_Scope_Holo_Lv_3,Holographic Sight Lv3,全息瞄具 Lv3
+Item_Scope_Holo_Lv_3_Desc,Improves accuracy,可增加精确度
+Item_Scope_Long_Lv_1,Quick Sight Lv1,快速瞄具 Lv1
+Item_Scope_Long_Lv_1_Desc,Improves accuracy,可增加精确度
+Item_Scope_Long_Lv_2,Quick Sight Lv2,快速瞄具 Lv2
+Item_Scope_Long_Lv_2_Desc,Improves accuracy,可增加精确度
+Item_Scope_Long_Lv_3,Quick Sight Lv3,快速瞄具 Lv3
+Item_Scope_Long_Lv_3_Desc,Improves accuracy,可增加精确度
+Item_Scope_RedDot_Lv_1,Red Dot Sight Lv1,红点瞄具 Lv1
+Item_Scope_RedDot_Lv_1_Desc,Improves accuracy,可增加精确度
+Item_Scope_RedDot_Lv_2,Red Dot Sight Lv2,红点瞄具 Lv2
+Item_Scope_RedDot_Lv_2_Desc,Improves accuracy,可增加精确度
+Item_Scope_RedDot_Lv_3,Red Dot Sight Lv3,红点瞄具 Lv3
+Item_Scope_RedDot_Lv_3_Desc,Improves accuracy,可增加精确度
+Item_Stock_Rifle_Lv_1,Rifle Stock Lv1,步枪枪托 Lv1
+Item_Stock_Rifle_Lv_1_Desc,Imporves stability,增强稳定性
+Item_Stock_Rifle_Lv_2,Rifle Stock Lv2,步枪枪托 Lv2
+Item_Stock_Rifle_Lv_2_Desc,Imporves stability,增强稳定性
+Item_Stock_Rifle_Lv_3,Rifle Stock Lv3,步枪枪托 Lv3
+Item_Stock_Rifle_Lv_3_Desc,Imporves stability,增强稳定性
+Item_Stock_Shot_Lv_1,Shotgun Stock Lv1,霰弹枪托 Lv1
+Item_Stock_Shot_Lv_1_Desc,Imporves stability,增强稳定性
+Item_Stock_Shot_Lv_2,Shotgun Stock Lv2,霰弹枪托 Lv2
+Item_Stock_Shot_Lv_2_Desc,Imporves stability,增强稳定性
+Item_Stock_Shot_Lv_3,Shotgun Stock Lv3,霰弹枪托 Lv3
+Item_Stock_Shot_Lv_3_Desc,Imporves stability,增强稳定性
+Item_Stock_SMG_Lv_1,Submachine Gun Stock Lv1,冲锋枪枪托 Lv1
+Item_Stock_SMG_Lv_1_Desc,Imporves stability,增强稳定性
+Item_Stock_SMG_Lv_2,Submachine Gun Stock Lv2,冲锋枪枪托 Lv2
+Item_Stock_SMG_Lv_2_Desc,Imporves stability,增强稳定性
+Item_Stock_SMG_Lv_3,Submachine Gun Stock Lv3,冲锋枪枪托 Lv3
+Item_Stock_SMG_Lv_3_Desc,Imporves stability,增强稳定性
+Item_Stock_Sniper_Lv_1,Sniper Stock Lv1,狙击枪枪托 Lv1
+Item_Stock_Sniper_Lv_1_Desc,Imporves stability,增强稳定性
+Item_Stock_Sniper_Lv_2,Sniper Stock Lv2,狙击枪枪托 Lv2
+Item_Stock_Sniper_Lv_2_Desc,Imporves stability,增强稳定性
+Item_Stock_Sniper_Lv_3,Sniper Stock Lv3,狙击枪枪托 Lv3
+Item_Stock_Sniper_Lv_3_Desc,Imporves stability,增强稳定性
+Item_Tec_Lazer_Lv_1,Tactical Laser Lv1,战术激光 Lv1
+Item_Tec_Lazer_Lv_1_Desc,More accurate shots.,更加精准的射击
+Item_Tec_Lazer_Lv_2,Tactical Laser Lv2,战术激光 Lv2
+Item_Tec_Lazer_Lv_2_Desc,More accurate shots.,更加精准的射击
+Item_Tec_Lazer_Lv_3,Tactical Laser Lv3,战术激光 Lv3
+Item_Tec_Lazer_Lv_3_Desc,More accurate shots.,更加精准的射击
+Item_Tec_Light_Lv_1,Tactical Flashlight Lv1,战术手电 Lv1
+Item_Tec_Light_Lv_1_Desc,Point toward enemies' heads to make them vulnerable.,照射对方头部，使其变得脆弱
+Item_Tec_Light_Lv_2,Tactical Flashlight Lv2,战术手电 Lv2
+Item_Tec_Light_Lv_2_Desc,Point toward enemies' heads to make them vulnerable.,照射对方头部，使其变得脆弱
+Item_Tec_Light_Lv_3,Tactical Flashlight Lv3,战术手电 Lv3
+Item_Tec_Light_Lv_3_Desc,Point toward enemies' heads to make them vulnerable.,照射对方头部，使其变得脆弱
+Item_Magazine_Rifle_Lv_1_Desc,Increased magazine capability.,增加弹药数量
+Item_Magazine_Rifle_Lv_2_Desc,Increased magazine capability.,增加弹药数量
+Item_Magazine_Rifle_Lv_3_Desc,Increased magazine capability.,增加弹药数量
+Item_Magazine_SMG_Lv_1_Desc,Increased magazine capability.,增加弹药数量
+Item_Magazine_SMG_Lv_2_Desc,Increased magazine capability.,增加弹药数量
+Item_Magazine_SMG_Lv_3_Desc,Increased magazine capability.,增加弹药数量
+Item_L_AK102_Lv_2_Desc,"Modernized AK, capable of installing more accessories.",现代化版本的AK，能够装配更多的配件
+Item_L_AK102_Lv_3,AK102,AK102
+Item_L_AK102_Lv_3_Desc,"Modernized AK, capable of installing more accessories.",现代化版本的AK，能够装配更多的配件
+Item_L_AK47_Lv_2_Desc,"A machine gun, high endurance.",一挺机枪，高续航
+Item_L_AK47_Lv_3,AK-47,AK-47
+Item_L_AK47_Lv_3_Desc,"A machine gun, high endurance.",一挺机枪，高续航
+Item_L_MF_Lv_2_Desc,Western standard weapon,西方制式武器
+Item_L_MF_Lv_3,MF,MF
+Item_L_MF_Lv_3_Desc,Western standard weapon,西方制式武器
+Item_L_RPK_Lv_2_Desc,"A machine gun, high endurance.",一挺机枪，高续航
+Item_L_RPK_Lv_3,RPK,RPK
+Item_L_RPK_Lv_3_Desc,"A machine gun, high endurance.",一挺机枪，高续航
+Item_L_VPO_Lv_2_Desc,Bolt-action sniper rifle,栓动狙击步枪
+Item_L_VPO_Lv_3,VPO,VPO
+Item_L_VPO_Lv_3_Desc,Bolt-action sniper rifle,栓动狙击步枪
+Item_Shot_Hand_Lv_2_Desc,Shotgun with poor stability.,稳定性较差的霰弹枪。
+Item_Shot_Hand_Lv_3,Homemade Shotgun,土制猎枪
+Item_Shot_Hand_Lv_3_Desc,Shotgun with poor stability.,稳定性较差的霰弹枪。
+Item_Shot_MP155_Lv_2_Desc,Standard shotgun,标准霰弹枪
+Item_Shot_MP155_Lv_3,MP155,MP155
+Item_Shot_MP155_Lv_3_Desc,Standard shotgun,标准霰弹枪
+Item_S_AK74_Lv_2_Desc,A common mini submachine gun.,一把普通的微型冲锋枪。
+Item_S_AK74_Lv_3,AK74U,AK74U
+Item_S_AK74_Lv_3_Desc,A common mini submachine gun.,一把普通的微型冲锋枪。
+Item_S_GLick_Lv_2_Desc,Glick pistol,舔舔手枪
+Item_S_GLick_Lv_3,Glick,格力克
+Item_S_GLick_Lv_3_Desc,Glick Pistol,舔舔手枪
+Item_S_MMG_Lv_2_Desc,A common mini submachine gun.,一把普通的微型冲锋枪。
+Item_S_MMG_Lv_3,MMG,MMG
+Item_S_MMG_Lv_3_Desc,A common mini submachine gun.,一把普通的微型冲锋枪。
+Item_S_MP7_Lv_2_Desc,A common mini submachine gun.,一把普通的微型冲锋枪。
+Item_S_MP7_Lv_3,MP7,MP7
+Item_S_MP7_Lv_3_Desc,A common mini submachine gun.,一把普通的微型冲锋枪。
+Item_S_UAK45_Lv_2_Desc,A common mini submachine gun.,一把普通的微型冲锋枪。
+Item_S_UAK45_Lv_3,UAK45,UAK45
+Item_S_UAK45_Lv_3_Desc,A common mini submachine gun.,一把普通的微型冲锋枪。
+Item_S_UZI_Lv_2_Desc,A common mini submachine gun.,一把普通的微型冲锋枪。
+Item_S_UZI_Lv_3,UZI,UZI
+Item_S_UZI_Lv_3_Desc,A common mini submachine gun.,一把普通的微型冲锋枪。
+Item_Grip_AS_Lv_4,Assault Grip Lv4,突击握把 Lv4
+Item_Grip_AS_Lv_4_Desc,Imporves stability,增强稳定性
+Item_Grip_SP_Lv_4,Quick-Release Grip Lv4,快拆握把 Lv4
+Item_Grip_SP_Lv_4_Desc,Imporves stability,增强稳定性
+Item_Grip_Verticle_Lv_4,Vertical Grip Lv4,垂直握把 Lv4
+Item_Grip_Verticle_Lv_4_Desc,Imporves stability,增强稳定性
+Item_Magazine_Rifle_Lv_4_Desc,Increased magazine capability.,增加弹药数量
+Item_Magazine_SMG_Lv_4_Desc,Increased magazine capability.,增加弹药数量
+Item_Muzzle_L_Type_4_Desc,Improves accuracy,可增加精确度
+Item_Muzzle_Shot_Type_4,Shotgun Choke Lv.4,霰弹枪集束器 Lv.4
+Item_Muzzle_Shot_Type_4_Desc,Improves accuracy,可增加精确度
+Item_Muzzle_Sniper_Type_4,Sniper Rifle Silencer Lv.4,狙击枪消音器 Lv.4
+Item_Muzzle_Sniper_Type_4_Desc,Improves accuracy,可增加精确度
+Item_Muzzle_S_Type_4_Desc,Improves accuracy,可增加精确度
+Item_Scope_4X_Lv_4,4x Scope Lv4,4倍镜 Lv4
+Item_Scope_4X_Lv_4_Desc,Improves accuracy,可增加精确度
+Item_Scope_8X_Lv_4,8x Scope Lv4,8倍镜 Lv4
+Item_Scope_8X_Lv_4_Desc,Improves accuracy,可增加精确度
+Item_Scope_Digit_Lv_4,Digital Sight Lv4,数字瞄具 Lv4
+Item_Scope_Digit_Lv_4_Desc,Improves accuracy,可增加精确度
+Item_Scope_Holo_Lv_4,Holographic Sight Lv4,全息瞄具 Lv4
+Item_Scope_Holo_Lv_4_Desc,Improves accuracy,可增加精确度
+Item_Scope_Long_Lv_4,Quick Sight Lv4,快速瞄具 Lv4
+Item_Scope_Long_Lv_4_Desc,Improves accuracy,可增加精确度
+Item_Scope_RedDot_Lv_4,Red Dot Sight Lv4,红点瞄具 Lv4
+Item_Scope_RedDot_Lv_4_Desc,Improves accuracy,可增加精确度
+Item_Stock_Rifle_Lv_4,Rifle Stock Lv4,步枪枪托 Lv4
+Item_Stock_Rifle_Lv_4_Desc,Imporves stability,增强稳定性
+Item_Stock_Shot_Lv_4,Shotgun Stock Lv4,霰弹枪托 Lv4
+Item_Stock_Shot_Lv_4_Desc,Imporves stability,增强稳定性
+Item_Stock_SMG_Lv_4,Submachine Gun Stock Lv4,冲锋枪枪托 Lv4
+Item_Stock_SMG_Lv_4_Desc,Imporves stability,增强稳定性
+Item_Stock_Sniper_Lv_4,Sniper Stock Lv4,狙击枪枪托 Lv4
+Item_Stock_Sniper_Lv_4_Desc,Imporves stability,增强稳定性
+Item_Tec_Lazer_Lv_4,Tactical Laser Lv4,战术激光 Lv4
+Item_Tec_Lazer_Lv_4_Desc,More accurate shots.,更加精准的射击
+Item_Tec_Light_Lv_4,Tactical Flashlight Lv4,战术手电 Lv4
+Item_Tec_Light_Lv_4_Desc,Point toward enemies' heads to make them vulnerable.,照射对方头部，使其变得脆弱
+Item_1_Blueprint,Blueprint Template,蓝图模板
+Item_1_Blueprint_Desc,For researching：XXXX。,用于研发武器：XXXX。
+Item_BP_AK102,Blueprint: AK-102,蓝图：AK-102
+Item_BP_AK102_Desc,For weapon researching: AK-102 Assault Rifle,用于研发武器：AK-102突击步枪。
+Item_BP_AK47,Blueprint: AK-47,蓝图：AK-47
+Item_BP_AK47_Desc,For weapon researching: AK-47Assault Rifle,用于研发武器：AK-47突击步枪。
+Item_BP_AK74U_Desc,For weapon researching: AK-74U,用于研发武器：AK-74U。
+Item_BP_GLick,Blueprint: GLICK,蓝图：GLICK
+Item_BP_GLick_Desc,For weapon researching: Glick Pistol。,用于研发武器：Glick手枪。
+Item_BP_HAND,Blueprint: Homemade Shotgun,蓝图：土制猎枪
+Item_BP_HAND_Desc,For weapon researching: Homemade Shotgun.,用于研发武器：土制猎枪。
+Item_BP_MF,Blueprint: MF Assault Rifle,蓝图：MF突击步枪
+Item_BP_MF_Desc,For weapon researching: MF Assault Rifle,用于研发武器：MF突击步枪。
+Item_BP_MMG,Blueprint: MMG,蓝图：MMG
+Item_BP_MMG_Desc,For weapon researching: MMG Submachine Gun,用于研发武器：MMG冲锋枪。
+Item_BP_MP155,Blueprint: MP-155,蓝图：MP-155
+Item_BP_MP155_Desc,For weapon researching: MP-155。,用于研发武器：MP-155。
+Item_BP_MP7,Blueprint: MP7,蓝图：MP7
+Item_BP_MP7_Desc,For weapon researching: MP7 Submachine Gun,用于研发武器：MP7冲锋枪。
+Item_BP_RPK,Blueprint: RPK,蓝图：RPK
+Item_BP_RPK_Desc,For weapon researching: RPK Light Machine Gun,用于研发武器：RPK轻机枪。
+Item_BP_VPO,Blueprint: VPO,蓝图：VPO
+Item_BP_VPO_Desc,For weapon researching: VPO Marksman Rifle,用于研发武器：VPO精准射手步枪。
+Item_BP_UAK45,Blueprint: UAK45,蓝图：UAK45
+Item_BP_UAK45_Desc,For weapon researching: UAK45 Submachine Gun,用于研发武器：UAK45冲锋枪。
+Item_BP_UZI,Blueprint: UZI,蓝图：UZI
+Item_BP_UZI_Desc,For weapon researching: UZI Submachine Gun,用于研发武器：UZI冲锋枪。
+Item_HardDrive,Portable Hard Drive,移动硬盘
+Item_HardDrive_Desc,Solid quality hard drive for data storage,能够承载数据的移动硬盘，质量非常好。
+Item_Quest_HardDrive_Dormitory,Portable Hard Drive: Dormitory,移动硬盘：宿舍楼
+Item_Quest_HardDrive_Dormitory_Desc,Hard drive with data from the dormitory.,装有宿舍电脑数据的硬盘。
+Item_Quest_HardDrive_GasStation,Hard Drive: Gas Station Recording,移动硬盘：加油站录像
+Item_Quest_HardDrive_GasStation_Desc,Hard drive with videos recorded by the CCTV at the gas station.,装有加油站监控录像的硬盘。
+Item_FloppyDisk,J-Lab Floppy Disk,J-Lab软盘
+Item_FloppyDisk_Desc,Floppy disk with encrypted data.,装有加密数据的软盘。
+Item_1_EnemyGun_Template_Desc,"A machine gun, high endurance.",一挺机枪，高续航
+Item_EnemyGun_SHOT,Shotgun-Enhanced,AK-47-强化版
+Item_EnemyGun_SHOT_Desc,A shotgun.,一挺机枪，高续航
+Item_EnemyGun_AR_Desc,AR gun.,一挺机枪，高续航
+Item_PigKnife,Cleaver,切肉刀
+Item_PigKnife_Desc,"Rough knife, looks not very sharp.",看起来很粗犷的刀，不是很锋利。
+Item_Axe,Axe,战斧
+Item_Axe_Desc,Made for berserkers,狂战士专用
+Item_1_Armor_Template,Armor Lv1,一级防弹衣
+Item_1_Armor_Template_Desc,"Thinner than paper, blocks water gun",比纸还薄，能挡一发水弹枪
+Item_ColdCore,Cold Fusion Core,冷核碎片
+Item_ColdCore_Desc,Glows dimmer blue light,发出幽幽的蓝光。
+Item_FlamingCore,Flaming Core Fragments,赤核碎片
+Item_FlamingCore_Desc,"Unstable, bursting strong energy beams",不稳定，散发巨大能量。
+Item_EnemyGun_AR_2_Desc,"A machine gun, high endurance.",一挺机枪，高续航
+Item_EnemyGun_SMG_Desc,"A machine gun, high endurance.",一挺机枪，高续航
+Item_BP_Weapon_0_Basic,Weapon Blueprint: Basic,武器蓝图：基础
+Item_BP_Weapon_0_Basic_Desc,Basic blueprint for researching weapons.,用于研发武器的基础蓝图。
+Item_BP_Weapon_2_Pro,Weapon Blueprint: 专业,武器蓝图：专业
+Item_BP_Weapon_2_Pro_Desc,Professional blueprints for researching weapons.,用于研发武器的专业蓝图。
+Item_BP_Weapon_1_Advanced,Weapon Blueprint: Advanced,武器蓝图：进阶
+Item_BP_Weapon_1_Advanced_Desc,Advanced blueprints for researching weapons.,用于研发武器的进阶蓝图。
+Item_BP_Weapon_3_Ultimate,Weapon Blueprint: Ultimate,武器蓝图：终极
+Item_BP_Weapon_3_Ultimate_Desc,Ultimate blueprints for researching weapons.,用于研发武器的终极蓝图。
+Item_Totem_Armor_2_Desc,Improves defending ability.,增强防护属性。
+Item_Totem_Armor_Desc,Improves defending ability.,增强防护属性。
+Item_Totem_Attack_2_Desc,Increases gun damage,增加枪械输出。
+Item_Totem_Attack_Desc,Increases gun damage,增加枪械输出。
+Item_Totem_MeleeAttack_2_Desc,Increases melee damage,增加近战输出。
+Item_Totem_MeleeAttack_Desc,Increases melee damage,增加近战输出。
+Item_Totem_Speed,Totem: Light,图腾:轻盈
+Item_Totem_Speed_Desc,Improves agility,增加移动属性。
+Item_Totem_Strong,Totem: Backpack Master,图腾:背包大师
+Item_Totem_Strong_Desc,"Improves heavy bearing ability, expands inventory capacity",负重属性增强，背包容量增加。
+Item_Rocket_RPG_Lv_1,RPG,RPG
+Item_Rocket_RPG_Lv_1_Desc,Explosive damage.,爆炸性伤害。
+Item_InformationFiles,Intelligence Documents,情报文件
+Item_InformationFiles_Desc,An intelligence document containing a variety of classified information.,包含了各种机密信息的情报文件。
+Item_PowerBank,Power Bank,充电宝
+Item_PowerBank_Desc,"Nice and cheap, but have little capacity.",物美价廉的充电宝，不过充不了几次。
+Item_GPU,Graphics Card,显示卡
+Item_GPU_Desc,A worn graphics card covered in dust,久经沙场的图形处理卡，布满灰尘。
+Item_LEDX,LEDX,LEDX皮肤透照仪
+Item_LEDX_Desc,Used to make blood vessels visible for easy injection.,血管显像仪，用于显示血管，便于注射。
+Item_Bolt,Bolt,螺栓
+Item_Bolt_Desc,It's a little bit rusty. Has nice hardness.,略微生锈的螺栓，硬度够用。
+Item_Nut,Nut,螺母
+Item_Nut_Desc,A nut covered with scratches.,充满划痕的螺母。
+Item_Bulb,Bulb,灯泡
+Item_Bulb_Desc,A common bulb. Seems to be intact.,普通的灯泡，看起来还能工作。
+Item_Bulb2,Eco-Lamp,节能灯
+Item_Bulb2_Desc,Energy saving feature branded bulb. Don't have a high-quality look though.,亮起来更加省电，不过看起来质量不太好。
+Item_Cable,Power Cord,电源线
+Item_Cable_Desc,Commonly used on computers.,电脑用的电源线。
+Item_Cables,Cables,电线
+Item_Cables_Desc,All kinds of cables.,各种电线。
+Item_CDDriver,CD Driver,CD驱动器
+Item_CDDriver_Desc,Reads CD discs.,用来读取CD光盘。
+Item_CircuitBoard,Circuit Board,电路板
+Item_CircuitBoard_Desc,Motherboard used on computers.,电脑主板。
+Item_ElectricParts,Electronic Parts,电子元件
+Item_ElectricParts_Desc,Unidentified strange electronic parts,不知道是啥的奇怪电子零件。
+Item_FishingRod,Simple Fishing Rod,简易鱼竿
+Item_FishingRod_Desc,A simple fishing rod made with wood and rope. It's likely not able to handle big fish.,木棍和绳子制成的简易鱼竿，钓到大鱼怕是会坏掉。
+Item_Wood,Wood,木料
+Item_Wood_Desc,Processed wood blocks.,经过了加工的木料。
+Item_MetalSlice,Metal Plate,金属片
+Item_MetalSlice_Desc,Slightly rusted metal sheet.,略微生锈的金属片
+Item_Quest_Letter_Explorer,Letter by the Explorer,探索者的信
+Item_Quest_Letter_Explorer_Desc,A Letter from explorer who came to Duckov first.,先行来到Duckov的探索者的信件。
+Item_Key_Dormitory103_Desc,A key to a dormitory room. Maybe it can open the door to 103.,一把宿舍楼的钥匙。也许可以打开103的门。
+Item_Key_Dormitory106_Desc,A key to a dormitory room. Maybe it can open the door to 106.,一把宿舍楼的钥匙。也许可以打开106的门。
+Item_Key_Card_Factory,Factory Access Card,工厂门禁卡
+Item_Key_Card_Factory_Desc,Access card for factory employees.,工厂员工的门禁卡
+Item_Key_Card_Factory_Uncrack,Factory Access Card (Encrypted),工厂门禁卡(加密)
+Item_Key_Card_Factory_Uncrack_Desc,"Access card for factory employees. (Encrypted, not usable)",工厂员工的门禁卡（已被加密，无法使用）
+Item_Key_BlueHouse,Key to Blue House,蓝房钥匙,2025/1/10 10:49:44
+Item_Key_BlueHouse_Desc,A key to the blue house near the water.,能够打开仓库区的一栋蓝色房子的房间。,2025/1/10 10:50:18
+Item_Key_GroundZero_GHouse_Desc,Key to a resident house  in ground zero.,零号区域的一处民房钥匙。
+Item_Key_GroundZero_Storage_Desc,An inconspicuous junk storage area on the hill.,山丘一处不起眼的杂物堆放处。
+Item_WoodStick,Wood Stick,木棍
+Item_WoodStick_Desc,"Swingable wooden stick, very straight.",可以挥来挥去的木棍，非常直。
+Item_Quest_Letter_EquipmentMercent_Desc,Do you see the camp over there? There's a broken wire fence at the back. They patched it up with some iron sheets that do not seem reliable. Bet I can tear it open easily with a crowbar. I brought a lot of stuff from there before.,看见对面的营地没，后面有一块铁丝网坏掉了，然后他们用铁皮给补上了，但是一点也不牢靠，我用一个撬棍就能轻松打开。我之前从那进了不少货。
+Item_WeaponParts,Weapon Parts,武器零件
+Item_WeaponParts_Desc,A pile of parts for making weapons.,一堆用来制造枪械的零件。
+Item_Feather,Fading Feather,虚化的羽毛
+Item_Feather_Desc,It seems it's going to disappear very soon.,感觉很快就会消失。
+Item_Totem_Stamina,Totem：Stamina,图腾：耐力
+Item_Totem_Stamina_Desc,"Increases max stamina, and stamina recovering speed.",增加耐力上限，并加快体力恢复速度。
+Item_Totem_Hunger,Totem：Master of Hunger,图腾：饥饿大师
+Item_Totem_Hunger_Desc,Energy and hydration draining rates are decreased,减少能量和水分的消耗。
+Item_Totem_FinalDash,Totem: Marathon,图腾：马拉松
+Item_Totem_FinalDash_Desc,"Walk faster, run slower. Stamina draining is decreased.",走的更快，但跑的更慢。减少耐力消耗。
+Item_Totem_Marathon,Totem: Maratho:,图腾：马拉松
+Item_Totem_NoBleed,Totem: Bleed No More,图腾：止血
+Item_Totem_NoBleed_Desc,Stops bleeding automatically in a short time.,在短时间内自动止血。
+Item_Quest_Blueprint_TeleporterMachine,Blueprint: Teleporter,传送装置图纸
+Item_Quest_Blueprint_TeleporterMachine_Desc,Describes the process of making a teleporter machine in detail. It's surprisingly easy.,详细描述了传送装置的制作过程，异常的简单。
+Item_Formula_L_AK47_Lv_2,Blueprint: AK47,图纸：AK47
+Item_Formula_L_AK47_Lv_2_Desc,The blueprint of AK47.,AK47的设计图纸。
+Item_Quest_GroundZero_Signal,Farm Town Teleportation Key,农场镇传送密钥
+Item_Quest_GroundZero_Signal_Desc,"With this, we can teleport to the Farm Town.",有了这个，我们就可以传送到农场镇了。
+Item_BP_RPG,Blueprint: RPG Launcher,蓝图：RPG发射器
+Item_BP_RPG_Desc,A blueprint of RPG Launcer. *
+Item_Formula_Trap,Formula: Animal Trap,配方：捕兽夹
+Item_Formula_Trap_Desc,A formula of making an animal trap.,制作捕兽陷阱的配方。
+Item_Armor_Cai,Suspenders,背带衣
+Item_Armor_Cai_Desc,Nostalgic design.,Music
+Item_Basketball,T.H. Basketball,T.H篮球
+Item_Basketball_Desc,Still full of gas.,气还很足。
+Item_Formula_ArmorCai,Formula: Suspenders,配方：背带衣
+Item_Formula_ArmorCai_Desc,Nostalgic design.,谢谢
+Item_Formula_Wrench03,Formula:Crowbar,配方：撬棍
+Item_Formula_Wrench03_Desc,Formula for making a crowbar,制作撬棍的配方。
+Item_L_TPS_Lv_1,TPS (Poor Quality),TPS 劣质
+Item_Cola,Cola,可乐,2024/12/6 17:30:46
+Item_Cola_Desc,Sugar is the soul of cola.,有糖的可乐才有灵魂。,2024/12/6 17:43:21
+Item_Formula_Cable,Formula: Power Cord,配方：电源线,2024/12/10 14:45:56
+Item_Formula_Cable_Desc,Formula for making a power cord,制作电源线的配方,2024/12/10 14:46:09
+Item_Key_Machine_Desc,A key to some car door.,打开某个车门的钥匙,2024/12/10 15:11:42
+Item_Quest_Watch,Watch,怀表,2024/12/10 15:24:01
+Item_Quest_Watch_Desc,It seems to be made of zinc alloy.,好像是锌合金做的。,2024/12/10 15:24:53
+Item_Quest_List_GroundZeroGoods,Cargo List,货物清单,2024/12/10 15:56:05
+Item_Quest_List_GroundZeroGoods_Desc,Weapons delivery cargo manifest.,武器运送货物清单。,2024/12/10 15:57:49
+Item_L_AK102_Lv_2,AK102,AK102,2024/12/11 10:08:53
+Item_L_AK47_Lv_2,AK-47,AK-47,2024/12/11 10:08:44
+Item_L_MF_Lv_2,MF,MF,2024/12/11 10:08:59
+Item_L_RPK_Lv_2,RPK,RPK,2024/12/11 10:09:04
+Item_L_VPO_Lv_2,VPO,VPO,2024/12/11 10:09:09
+Item_Shot_Hand_Lv_2,Homemade Shotgun,土制猎枪,2024/12/11 10:09:49
+Item_Shot_MP155_Lv_2,MP-155,MP-155,2024/12/11 10:10:13
+Item_S_AK74_Lv_2,AK74U,AK74U,2024/12/11 10:09:16
+Item_S_GLick_Lv_2,Glick,格力克,2024/12/11 10:09:21
+Item_S_MMG_Lv_2,MMG,MMG,2024/12/11 10:09:26
+Item_S_MP7_Lv_2,MP7,MP7,2024/12/11 10:09:32
+Item_S_UAK45_Lv_2,UAK45,UAK45,2024/12/11 10:09:36
+Item_S_UZI_Lv_2,UZI,UZI,2024/12/11 10:09:43
+Item_BPI_CircuitBoard,Blueprint: Circuit Board,蓝图：电路板,2024/12/12 11:13:54
+Item_Formula_CircuitBoard,Formula: Circuit Board,配方：电路板,2024/12/12 11:15:33
+Item_Formula_CircuitBoard_Desc,Formula for making a circuit board on the workbench.,在工作台制作电路板的配方。,2024/12/12 11:15:48
+Item_BitCoin,0.2BTC,0.2BTC,2024/12/14 12:31:59
+Item_BitCoin_Desc,Didn't know it was substantial,这玩意也有实体的？,2024/12/14 10:35:35
+Item_Quest_Letter_InShop,Secret Message,神秘留言,2024/12/14 11:19:29
+Item_Quest_Letter_InShop_Desc,"Let me tell you, the stuff they sell in that vending machine are way too expensive! The selling price there is several times higher! And the price it buys from you is only half the original price. What a profiteer!",告诉你，售货机里的东西，都超贵！售卖价格翻了好几倍！而且回收价竟然只有原价的一半！奸商，奸商！,2024/12/14 11:15:38
+Item_Bullet_Energy_S,Energy Bullet S,小型能量弹,2024/12/19 15:59:17
+Item_Bullet_Energy_S_Desc,Provides energy for small-sized energy weapon.,为小型能量武器提供能量。,2024/12/19 16:00:38
+Item_Energy_CubeGun,Cube Gun,方块枪,2024/12/19 16:02:25
+Item_Energy_CubeGun_Desc,Tiny energy blaster.,小巧的能量发射武器。,2024/12/19 16:02:40
+Item_BP_CubeGun,Blueprint: Cube Gun,蓝图：方块枪,2024/12/19 16:14:53
+Item_BP_CubeGun_Desc,Blueprint for making the energy weapon: Cube Gun,制作能量武器：方块枪的蓝图。,2024/12/19 16:15:10
+Item_BP_Bullet_Energy_S,Blueprint: Energy Bullet S,蓝图：小型能量弹药,2024/12/19 16:30:42
+Item_BP_Bullet_Energy_S_Desc,They way of making small energy bullets by hand.,手工制作小型能量弹药的方法。,2024/12/19 16:30:58
+Item_ComputeCore,Computer Core,计算核心,2024/12/19 17:40:36
+Item_ComputeCore_Desc,The core of a spider bot.,蜘蛛型机器人的计算核心,2024/12/19 17:40:47
+Item_Injection_A_Desc,Boosts 25% of move speed. Lasts 120s.,提升25%移动速度，持续120s。,2024/12/23 15:00:09
+Item_BP_AK74U,Blueprint: AK-74U,蓝图：AK-74U,2024/12/23 14:22:14
+Item_Jinitaimei,Black Injection,黑色针剂,2024/12/23 14:30:54
+Item_Jinitaimei_Desc,"The prototype is the 'Dirty Water' biochemical agent developed by BeLand. After two and a half years of research, J-Lab has improved it and greatly reduced the side effects on the host. The full name of the drug is Ginius-PEP-Mg, which can also be called JI-NI-TAI-MEI (基尼肽镁 in Chinese).",原型是BeLand公司研发的“脏水”生化药剂。J-Lab经过两年半研究，对其进行改良，极大降低了对宿主造成的副作用。药物全称是Ginius-PEP-Mg，也可称作基尼肽镁。,2024/12/23 14:35:15
+Item_Formula_Jinitaimei,Formula: Black Injection,配方：黑色药剂,2024/12/23 17:56:09
+Item_Formula_Jinitaimei_Desc,Formula of making Black Injection.,在医疗站解锁黑色药剂的配方。,2024/12/23 17:56:26
+Item_BitcionMiner,Bitcoin Miner,比特币矿机,2024/12/24 11:30:11
+Item_Injection_Weight,Weight Bearing Injection,负重针,2024/12/24 17:02:19
+Item_Injection_Weight_Desc,Boosts weight bearing ability for 240 seconds.,增加负重，持续240秒。,2024/12/24 17:02:31
+Item_Bullet_Arrow_Explosion,Explosive Arrow,爆炸箭,2024/12/25 11:14:37
+Item_Bullet_Arrow_Explosion_Desc,This thing has no safe explosion distance.,这玩意没有安全爆炸距离。,2024/12/25 11:15:14
+Item_BP_ArrowExplosion,Blueprint: Explosive Arrow,蓝图：爆炸箭,2024/12/25 12:12:49
+Item_BP_ArrowExplosion_Desc,Formula of making an explosive arrow at the workbench.,在工作台制作爆炸箭的配方。,2024/12/25 12:13:08
+Item_Gem_Desc,A golden five-pointed star made of mysterious material. Increases melee weapon attack power.,神秘物质构成的金色五角星。增加近战武器攻击力。,2024/12/27 15:20:57
+Item_Aspirin_Desc,A small dose of medicine restores health and provides analgesic effects.,小剂量药品，回复血量，并提供镇痛效果。,2025/1/8 16:24:39
+Item_WD40_Desc,A bottle of MD40 rust remover.,一瓶MD40除锈剂。,2024/12/26 10:20:51
+Item_Drugs,Pile of Medicine,一堆药,2024/12/27 15:25:11
+Item_Drugs_Desc,This is not edible. Expect anything in it.,不能吃，里面什么都有。,2024/12/27 15:24:56
+Item_HammerL_Desc,Cannot be used to break walls. Not in this game for now.,不可以用来砸墙，在这个游戏里现在还不能。,2024/12/26 13:09:19
+Item_1_EnemyGun_Template,Gun,枪,2024/12/27 15:22:09
+Item_EnemyGun_AR,Gun,枪,2024/12/27 15:21:56
+Item_EnemyGun_AR_2,Gun,枪,2024/12/27 15:22:02
+Item_EnemyGun_SMG,Gun,枪,2024/12/27 15:22:15
+Item_Totem_Marathon_Desc,Decreases stamina consumption.,减少耐力消耗。,2025/1/2 12:05:39
+Item_Formula_WD40,Formula: MD40,配方：MD40,2024/12/26 10:21:09
+Item_Formula_WD40_Desc,A formula for making MD40.,制作MD40的配方。,2024/12/26 10:21:17
+Item_BitcoinMiner,Bit Coin Miner,比特币矿机,2024/12/24 11:30:26
+Item_GPU_Potato,Potato Graphics Card,土豆显卡,2024/12/25 13:02:26
+Item_GPU_Potato_Desc,What a miracle!,真是一场奇迹。,2024/12/25 13:02:51
+Item_Potato,Potato,土豆,2024/12/25 13:06:03
+Item_Potato_Desc,The aroma of potatoes.,土豆的香气。,2024/12/25 13:06:28
+Item_BP_GPU_Potato,Blueprint: Potato Graphics Card,蓝图：土豆显卡,2024/12/25 13:07:20
+Item_BP_GPU_Potato_Desc,"A blueprint of making graphics cards from potato by hand. There is also a top view of stool on it, don’t know what the purpose is.",手搓土豆显卡的图纸，上面还画了大便的俯视图，不知是何用意。,2024/12/25 13:08:08
+Item_AnimalWeapon,Barehand,空手,2024/12/27 15:21:16
+Item_EnemyGun_Spider_Rifle,Rrrrattattattattat!,突突突,2024/12/27 15:22:31
+Item_EnemyGun_Spider_Ring,S Bullet,S弹,2024/12/27 15:22:40
+Item_Bullet_SHOT_Rusted_Desc,The case is decaying. The pellets inside could be worse.,弹壳已经老化了，里面的弹丸估计也好不到哪去。,2024/12/31 16:24:32
+Item_BP_GasMask,Blueprint: Gas Mask,蓝图：防毒面具,2025/1/8 18:08:39
+Item_BP_GasMask_Desc,A blueprint for making a gas mask.,制作防毒面具的蓝图。,2025/1/8 18:08:52
+Item_Bullet_Sniper_Rusted_Desc,Bullets that cut corners.,偷工减料的子弹。,2025/1/9 10:57:03
+Item_Sniper_Balett,Ballett Sniper Rifle,巴莱特狙击步枪,2025/1/9 18:36:54
+Item_Sniper_Balett_Desc,Elegant and fierce.,很猛。,2025/1/9 18:37:24
+Item_Sniper_VPO,VPO,VPO,2025/1/9 18:40:59
+Item_Sniper_VPO_Desc,A bolt-action sniper rifle.,栓动式狙击步枪,2025/1/9 18:41:15
+Item_Injection_PainResist,Anodyne,镇痛剂,2025/1/13 16:21:31
+Item_Injection_PainResist_Desc,Make you ignore painfulness in a short amount of time.,让你在一段时间内无视疼痛,2025/1/13 16:21:44
+Item_Injection_ElecResist,Electric Resistance Injection,电抗性针,2025/1/13 16:24:24
+Item_Injection_ElecResist_Desc,"Immune to electric shock, reduced electric element damage for a short amount of time.",一段时间内不会被电击麻痹，并降低电击伤害。,2025/1/13 16:30:41
+Item_Formula_Injection_ElecResist,Formula: Electric Resistance Injection,配方：抗电性针,2025/1/13 17:31:57
+Item_Formula_Injection_PainResist,Formula: Anodyne,配方：镇痛剂,2025/1/13 17:32:41
+Item_Formula_Injection_ElecResist_Desc,Formula of making electric resistance injection in the medic,在医疗站制作抗电性针的配方。,2025/1/13 17:33:02
+Item_Magazine_Sniper_Lv_1,Sniper Rifle Magazine Lv1,狙击枪弹匣 Lv1,2025/1/13 19:25:32
+Item_Magazine_Sniper_Lv_2,Sniper Rifle Magazine Lv2,狙击枪弹匣 Lv2,2025/1/13 19:25:37
+Item_Magazine_Sniper_Lv_3,Sniper Rifle Magazine Lv3,狙击枪弹匣 Lv3,2025/1/13 19:25:42
+Item_Magazine_Sniper_Lv_4,Sniper Rifle Magazine Lv4,狙击枪弹匣 Lv4,2025/1/13 19:25:47
+Item_Magazine_Sniper_Lv_1_Desc,Expanded magazine.,扩容弹匣。,2025/1/13 19:25:59
+Item_Magazine_Sniper_Lv_2_Desc,Expanded magazine.,扩容弹匣。,2025/1/13 19:26:05
+Item_Magazine_Sniper_Lv_3_Desc,Expanded magazine.,扩容弹匣。,2025/1/13 19:26:08
+Item_Magazine_Sniper_Lv_4_Desc,Expanded magazine.,扩容弹匣。,2025/1/13 19:26:11
+Item_Muzzle_L_Slience_1_Desc,Reduce the distance sound propagates.,减弱声音传播距离。,2025/1/13 19:26:28
+Item_Muzzle_L_Slience_2_Desc,Reduce the distance sound propagates.,减弱声音传播距离。,2025/1/13 19:26:32
+Item_Muzzle_L_Slience_3_Desc,Reduce the distance sound propagates.,减弱声音传播距离。,2025/1/13 19:26:35
+Item_Muzzle_L_Slience_4_Desc,Reduce the distance sound propagates.,减弱声音传播距离。,2025/1/13 19:26:39
+Item_Muzzle_S_Slience_1_Desc,Reduce the distance sound propagates.,减弱声音传播距离。,2025/1/13 19:30:05
+Item_Muzzle_S_Slience_2_Desc,Reduce the distance sound propagates.,减弱声音传播距离。,2025/1/13 19:30:09
+Item_Muzzle_S_Slience_3_Desc,Reduce the distance sound propagates.,减弱声音传播距离。,2025/1/13 19:30:13
+Item_Muzzle_S_Slience_4_Desc,Reduce the distance sound propagates.,减弱声音传播距离。,2025/1/13 19:30:16
+Item_Note_BlackMarket,Black Market Contact Notes,黑市联络笔记,2025/1/14 11:32:31
+Item_Note_BlackMarket_Desc,"It was covered with black stuff, recording the information of various merchants, but it was encrypted in some way.",沾满黑乎乎的东西，记录着各路商人的信息，但是用某种方式加密了。,2025/1/14 12:04:40
+Item_UDisk,Encrypted Flash Drive,加密U盘,2025/1/14 12:36:57
+Item_UDisk_Desc,Can be used to store data.,可用于存储资料。,2025/1/14 12:37:17
+Item_Bullet_AR_L_Rusted,L Expired Bullet,L-过期子弹,2025/1/15 13:57:18
+Item_Bullet_AR_L_Normal,L Normal Bullet,L-普通弹,2025/1/15 13:57:00
+Item_Bullet_AR_L_Burn,L Incendiary Bullet,L-燃烧弹,2025/1/15 13:56:44
+Item_Bullet_AR_L_Piercing3,L Armor-Piercing Bullet,L-穿甲弹,2025/1/15 13:57:05
+Item_Bullet_AR_L_Piercing5,L Advanced Armor-Piercing Bullet,L-高级穿甲弹,2025/1/15 13:57:09
+Item_Bullet_AR_L_Poison,L Poisoned Bullet,L-涂毒弹,2025/1/15 13:57:14
+Item_Bullet_AR_L_Electric,L Shock Bullet,L-电击弹,2025/1/15 13:56:51
+Item_Bullet_AR_L_Space,L Spacial Bullet,L-空间弹,2025/1/15 13:57:22
+Item_Bullet_AR_S_Rusted,S Rusty Bullet,S-生锈子弹,2025/1/15 13:58:07
+Item_Bullet_AR_S_Normal,S Normal Bullet,S-普通弹,2025/1/15 13:57:46
+Item_Bullet_AR_S_Burn,S Incendiary Bullet,S-燃烧弹,2025/1/15 13:57:27
+Item_Bullet_AR_S_Dumdums,S Dumdum Bullet,S-达姆弹,2025/1/15 13:57:34
+Item_Bullet_AR_S_Piercing2,S Armor-Piercing Bullet,S-穿甲弹,2025/1/15 13:57:51
+Item_Bullet_AR_S_Piercing4,S Advanced Armor-Piercing Bullet,S-高级穿甲弹,2025/1/15 13:57:56
+Item_Bullet_AR_S_Poison,S Poisoned Bullet,S-涂毒弹,2025/1/15 13:58:02
+Item_Bullet_AR_S_Electric,S Shock Bullet,S-电击弹,2025/1/15 13:57:40
+Item_Bullet_AR_S_Space,S Spacial Bullet,S-空间弹,2025/1/15 13:58:13
+Item_Bullet_SHOT_Normal,Shotshell Deer,霰弹-鹿弹,2025/1/15 13:59:03
+Item_Bullet_SHOT_Piranha,Shotshell Piranha,霰弹-食人鱼,2025/1/15 13:59:23
+Item_Bullet_SHOT_Burn,Shotshell Dragon,霰弹-龙息,2025/1/15 13:58:40
+Item_Bullet_SHOT_Piercing2,Shotshell Piercing,霰弹-穿甲弹,2025/1/15 13:59:30
+Item_Bullet_SHOT_Piercing4,Shotshell Arrow-Shaped,霰弹-箭形弹,2025/1/15 13:59:15
+Item_Bullet_SHOT_Electric,Shotshell Shock,霰弹-电击,2025/1/15 13:58:47
+Item_Bullet_Sniper_Normal,Sniper Normal Bullet,狙击-普通弹,2025/1/15 13:59:57
+Item_Bullet_Sniper_Space,Sniper Spacial Bullet,狙击-空间弹,2025/1/15 14:00:23
+Item_Bullet_Sniper_Electric,Sniper Shock Bullet,狙击-电击弹,2025/1/15 13:59:52
+Item_Bullet_Sniper_Piercing3,Sniper Armor-Piercing Bullet,狙击-穿甲弹,2025/1/15 14:00:04
+Item_Bullet_Sniper_Piercing5,Sniper Advanced Armor-Piercing Bullet,狙击-高级穿甲弹,2025/1/15 14:00:09
+Item_Totem_Armor_2,Totem: Armor II,图腾:甲胄 II,2025/1/15 18:01:05
+Item_Totem_Armor,Totem: Armor I,图腾:甲胄 I,2025/1/15 18:00:57
+Item_Totem_Attack_2,Totem: Attack II,图腾:进击 II,2025/1/15 18:01:19
+Item_Totem_Attack,Totem: Attack I,图腾:进击 I,2025/1/15 18:01:12
+Item_Key_Dormitory103,Dorm-103 Key (Not Usable in DEMO),宿舍楼103钥匙(DEMO不可用),2025/1/17 14:13:40
+Item_Key_Dormitory106,Dorm-106 Key (Not Usable in DEMO),宿舍楼106钥匙(DEMO不可用),2025/1/17 14:13:32
+Item_Key_GroundZero_GHouse,Gray House Key,灰房子钥匙,2025/1/17 14:13:54
+Item_Key_GroundZero_Storage,Debris Fence Key,杂物围栏钥匙,2025/1/17 14:14:00
+Item_Quest_Letter_EquipmentMercent,Letter from a Old Friend,老朋友的信,2025/1/14 19:40:10
+Item_Key_Machine,Mechanical Key,机械钥匙,2025/1/17 14:15:00
+Item_Bullet_SHOT_Rusted,Shotshell Poor,霰弹-破烂,2025/1/15 13:59:40
+Item_Bullet_Sniper_Rusted,Sniper Poor Bullet,狙击-劣质子弹,2025/1/15 14:00:17
+Item_Formula_Injection_PainResist_Desc,Formula of making anodyne at the medic station.,在医疗站制作镇痛剂的配方。,2025/1/17 11:05:47
+Item_Quest_Letter_HiddenWarehouse_Explorer,Letter from the Hermit,隐居者的信,2025/1/14 19:41:13
+Item_Quest_Letter_HiddenWarehouse_Explorer_Desc,"I dug a tunnel that led directly to the back of the warehouse, but I lost the key.",我挖了条地道，直通对面的仓库后面。但是钥匙让我整丢了。,2025/1/14 19:41:54
+Item_Key_HiddenWarehouse_Cellar,Cellar Key,地窖钥匙,2025/1/14 19:42:45
+Item_Key_HiddenWarehouse_Cellar_Desc,Key to some cellar.,通往某处地窖。,2025/1/14 19:43:02
+Item_Water,Bottled Water,瓶装水,2025/1/15 10:10:54
+Item_Water_Desc,Bottled mineral water with a slightly green shade.,瓶装矿泉水，微微发绿。,2025/1/15 10:11:35
+Item_PowerOfWishlist,Power of Wishlist,愿望单之力,2025/1/15 15:00:55
+Item_PowerOfWishlist_Desc,"The reward for the warrior who wishlist. You did wishlist this game, didn't you?",奖励给添加愿望单的勇士。你一定已经添加愿望单了对吧？对吧？,2025/1/15 15:01:33
+Item_Totem_ElecResist,Tootem: Electric Resist I,图腾:抗电 I,2025/1/15 18:11:59
+Item_Totem_ElecResist_2,Tootem: Electric Resist II,图腾:抗电 II,2025/1/15 18:11:45
+Item_Totem_ElecResist_Desc,Slightly decreases electric damage.,略微降低电属性伤害。,2025/1/15 18:12:38
+Item_Totem_ElecResist_2_Desc,Decreases electric damage.,降低电属性伤害。,2025/1/15 18:12:31
+Item_Totem_Heal,Totem: Heal,图腾:治疗,2025/1/15 18:16:40
+Item_Totem_Heal_Desc,Boosts the efficiency of healing.,提升药物的治疗效率。,2025/1/15 18:16:33
+Item_Totem_RecoilControl,Totem: Spray Controlist,图腾:压枪高手,2025/1/15 18:20:19
+Item_Totem_RecoilControl_Desc,Increases ability of recoil controlling.,提升后座力控制能力。,2025/1/15 18:19:14
+Item_Totem_Reload,Totem: Tactic Reload,图腾：战术换弹,2025/1/15 18:22:14
+Item_Totem_Reload_Desc,Make reloading faster by 40%.,加快40%换弹速度。,2025/1/15 18:23:42
+Item_Totem_Ninja,Totem: Ninja,图腾:忍者 I,2025/1/15 18:54:21
+Item_Totem_Ninja_Desc,Reduces the distance sound travels while running.,降低奔跑时的声音传播距离。,2025/1/15 18:54:37
+Item_Totem_Ninja_2,Totem: Ninja,图腾:忍者 II,2025/1/15 18:55:52
+Item_Totem_Ninja_2_Desc,Greatly reduces the distance sound travels while running.,大幅降低奔跑时的声音传播距离。,2025/1/15 18:56:10
+Item_Formula_GasMask,Formula: Gas Mask,配方：防毒面罩,2025/1/17 10:32:07
+Item_Formula_GasMask_Desc,Formula of making gas mask at the workbench.,在工作台制作防毒面罩的配方。,2025/1/17 10:32:20
+Item_Sniper_VPO_Deng,VPO by Lordon,VPO-劳登改,2025/1/17 10:40:31
+Item_Sniper_VPO_Deng_Desc,VPO sniper rifle modified by Lordon.,经过劳登改造的VPO狙击步枪。,2025/1/17 10:40:50
+Item_Injection_HotBlood,Hot-Blood Injection,热血针剂,2025/1/17 11:00:47
+Item_Injection_HotBlood_Desc,Improves endurance.,强化耐力。,2025/1/17 11:00:55
+Item_Formula_Injection_HotBlood,Formula: Hot-Blood Injection,配方：热血针剂,2025/1/17 11:05:21
+Item_Formula_Injection_HotBlood_Desc,Formula of making hot-blood injection at the medic station.,在医疗站制作热血针剂的配方。,2025/1/17 11:05:40
+Item_Key_GasStation_Warehouse,Abandonded Gas Station Key,废弃加油站钥匙,2025/1/17 14:15:14
+Item_Key_GasStation_Warehouse_Desc,Key to some abandonded gas station.,某处废弃加油站的钥匙。,2025/1/17 14:15:27
+Item_Key_RedWareHosue_Warehouse,Factory Office Key,厂区办公室钥匙,2025/1/17 14:16:29
+Item_Key_RedWareHosue_Warehouse_Desc,Key to some office in the factory.,打开位于工厂区的某处办公室。,2025/1/17 14:16:48
+Item_Key_SmallRoom_HiddenWarehouse,Small Room Key,小隔间钥匙,2025/1/17 15:36:36
+Item_Key_SmallRoom_HiddenWarehouse_Desc,Key to some small room of some house.,打开某个房子的小隔间。,2025/1/17 15:36:50
+Item_Key_HiddenWarehouse_Cellar_Wire,Cellar Fence Key,地窖围栏钥匙,2025/1/17 16:31:12
+Item_Key_HiddenWarehouse_Cellar_Wire_Desc,Key to some fence in the cellar.,地窖中一处围栏的钥匙。,2025/1/17 16:31:25
+Item_Bullet_AR_L_Rusted_Desc,It has passed its service life and will break at the slightest touch. It can't even penetrate paper. Using this kind of bullet will quickly reduce the durability of the gun.,已经过了使用年限，一碰就碎。甚至连纸都打不穿。打这种子弹会较快降低枪械耐久。,2025/1/22 10:15:57
+Item_Bullet_AR_S_Rusted_Desc,Rusty small-caliber bullets. They can't penetrate anything. Firing such bullets will quickly reduce the durability of the gun.,生了锈的小口径子弹。打不穿任何东西。打这种子弹会较快降低枪械耐久。,2025/1/22 10:16:06
+Item_Magazine_Rifle_Lv_1,Large Caliber Expanded Magazine Lv1,大口径扩容弹匣 Lv1,2025/1/22 10:14:21
+Item_Magazine_Rifle_Lv_2,Large Caliber Expanded Magazine Lv2,大口径扩容弹匣 Lv2,2025/1/22 10:14:25
+Item_Magazine_Rifle_Lv_3,Large Caliber Expanded Magazine Lv3,大口径扩容弹匣 Lv3,2025/1/22 10:14:29
+Item_Magazine_SMG_Lv_1,Small Caliber Expanded Magazine Lv1,小口径扩容弹匣 Lv1,2025/1/22 10:13:58
+Item_Magazine_SMG_Lv_2,Small Caliber Expanded Magazine Lv2,小口径扩容弹匣 Lv2,2025/1/22 10:13:53
+Item_Magazine_SMG_Lv_3,Small Caliber Expanded Magazine Lv3,小口径扩容弹匣 Lv3,2025/1/22 10:14:06
+Item_Magazine_Rifle_Lv_4,Large Caliber Expanded Magazine Lv4,大口径扩容弹匣 Lv4,2025/1/22 10:14:35
+Item_Magazine_SMG_Lv_4,Small Caliber Expanded Magazine Lv4,小口径扩容弹匣 Lv4,2025/1/22 10:14:12
+Item_RedBag,Red Envelope,红包,2025/1/22 16:11:50
+Item_RedBag_Desc,This four-dimensional red envelope probably has some good stuff in it. Why not open it and take a look?,四次元红包，里面不一定装着什么好东西，拆开看看？,2025/1/22 16:16:42
+Item_LuckyNote_1,Small Note,小纸条,2025/1/22 16:43:33
+Item_LuckyNote_1_Desc,恭喜发财！（Gong-Xi-Fa-Cai）May you be happy and prosperous.,恭喜发财。,2025/1/22 16:43:40
+Usage_RedBag,Open the red envelope to get random rewards.,打开红包以获得随机奖励。,2025/1/22 16:55:14
+Item_Muzzle_L_Type_1,Large Caliber Muzzle Brake Lv.1,大口径制退器 Lv.1,2025/1/23 10:55:33
+Item_Muzzle_L_Type_2,Large Caliber Muzzle Brake Lv.2,大口径制退器 Lv.2,2025/1/23 10:55:37
+Item_Muzzle_L_Type_3,Large Caliber Muzzle Brake Lv.3,大口径制退器 Lv.3,2025/1/23 10:55:41
+Item_Muzzle_S_Type_1,Small Caliber muzzle brake Lv.1,小口径制退器 Lv.1,2025/1/23 10:56:23
+Item_Muzzle_S_Type_2,Small Caliber muzzle brake Lv.2,小口径制退器 Lv.2,2025/1/23 10:56:28
+Item_Muzzle_S_Type_3,Small Caliber muzzle brake Lv.3,小口径制退器 Lv.3,2025/1/23 10:56:33
+Item_Muzzle_L_Type_4,Large Caliber Muzzle Brake Lv.4,大口径制退器 Lv.4,2025/1/23 10:55:47
+Item_Muzzle_S_Type_4,Small Caliber muzzle brake Lv.4,小口径制退器 Lv.4,2025/1/23 10:56:38
+Item_Totem_MeleeAttack_2,Totem: Warrior II,图腾:战士 II,2025/1/23 10:16:54
+Item_Totem_MeleeAttack,Totem: Warrior I,图腾:战士 I,2025/1/23 10:16:48
+Item_Muzzle_L_Slience_1,Large Caliber Silencer Lv1,大口径消音器 Lv1,2025/1/23 10:55:11
+Item_Muzzle_L_Slience_2,Large Caliber Silencer Lv2,大口径消音器 Lv2,2025/1/23 10:55:17
+Item_Muzzle_L_Slience_3,Large Caliber Silencer Lv3,大口径消音器 Lv3,2025/1/23 10:55:21
+Item_Muzzle_L_Slience_4,Large Caliber Silencer Lv4,大口径消音器 Lv4,2025/1/23 10:55:27
+Item_Muzzle_S_Slience_1,Small Caliber Silencer Lv1,小口径消音器 Lv1,2025/1/23 10:55:59
+Item_Muzzle_S_Slience_2,Small Caliber Silencer Lv2,小口径消音器 Lv2,2025/1/23 10:56:04
+Item_Muzzle_S_Slience_3,Small Caliber Silencer Lv3,小口径消音器 Lv3,2025/1/23 10:56:09
+Item_Muzzle_S_Slience_4,Small Caliber Silencer Lv4,小口径消音器 Lv4,2025/1/23 10:56:16
+Item_Dumpling,Dumpling,饺子,2025/1/23 15:35:37
+Item_Dumpling_Desc,Tasty!,好吃！,2025/1/23 15:35:49
+Item_ChineseKnot,Chinese Knot,中国结,2025/1/23 15:37:41
+Item_ChineseKnot_Desc,Nice!,好看！,2025/1/23 15:37:49
+Item_AncientCoins,Coin String,铜钱串,2025/1/23 15:36:51
+Item_AncientCoins_Desc,Expensive!,好贵！,2025/1/23 15:37:59
+Item_ChineseLantern,Red Lantern,红灯笼,2025/1/23 15:38:31
+Item_ChineseLantern_Desc,So lively!,好热闹！,2025/1/23 15:38:43
+Item_S_GLick_Low,Crappy Glick,烂格力克,2025/1/24 16:46:48
+Item_S_GLick_Low_Desc,A crappy defective Glick pistol.,残次品的格力克。,2025/1/24 16:47:24

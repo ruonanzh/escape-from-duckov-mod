@@ -1,0 +1,73 @@
+Base_Intro_0,Hey! You are finally awake!,嘿!你终于睡醒了！
+Base_Intro_1,Since we just got here，there are something I have to explain for you.,刚来基地，有些事情我要先说明一下。
+Base_Intro_2,"I will handle the logistics. As for the work outside, I'll leave them to you. Thank you!",分工的话，我来处理后勤事务，外面的事情就拜托你了。
+Base_Intro_3,This is the storage. The stuff you take from outside could be stored here.,这里是仓库，你捡回来的东西都可在这存起来。
+Base_Intro_4,This is the building billboard. You can build facilities or destroy them here.,这里是建造面板，你可以在这里建造设施，或者拆除他们。
+Base_Intro_5,This is the vending  machine. We don't have much variety here though. You can also sell your items here if you want to.,这个是售货机，商品种类不多。你如果有不想要的东西，也可以直接卖给它。
+Base_Intro_6,Here is the exit of our bunker. Depart here.,这里就是地堡的出口，你得从这里出发。
+Base_Intro_7,"Now we don't have much to look at, so it's on you to bring us some wealth.",咱现在没什么家底，所以你要多搞些东西回来。
+Base_Intro_8,"Before you set off, don't for get that I've got some quests for you.",出门之前，别忘了我这里有任务交给你。
+Dialogue_Quest_8_Build1_0,Hunger in Tar...,饥饿在塔...
+Dialogue_Quest_8_Build1_1,Hunger in Duckov can get very dangerous.,饥饿在鸭科夫是一件非常危险得事。
+Dialogue_Quest_8_Build1_2,You need to watch your energy and hydration all the time.,你要时刻关注你得能量和水分。
+Dialogue_Quest_8_Build1_3,"Go find some food. I'm feeling hungry, that's another reason.",你得去看看哪里能找到食物，主要是我也有点饿了。
+Prologue_CustomFace_0,Hello!,哈喽！
+Prologue_CustomFace_1,Welcome to this dream.,这里是梦！
+Prologue_CustomFace_2,Do you remember how you look?,还记得自己长什么样子吗？
+Prologue_CustomFace_3,Come here!,来这里！
+Prologue_AirWall_0,Don't walk around like this! Invisible walls are everywhere in this dream!,别乱逛！梦里到处都是空气墙！
+Prologue_AirWall_1,Watch out for the invisible walls!,小心空气墙！
+Prologue_Dream_Door_0,What a face...,什么玩意。
+Prologue_Dream_Door_1,"Okay! Now, wake up.",好了！你可以醒了。
+Prologue_Dream_Door_2,Wake up here.,从这醒过来！
+Dialogue_bunkerDoor_Welcome,Welcome back!,回来啦
+Dialogue_bunkerDoor_Leave,Don't push yourself too hard.,差不多就回来
+Base_Intro_9,This is... Call it Enforcing-Machine if you will.,这个是...你就叫他强化机吧。
+Base_Intro_10,"Soon as you find the right material, you can get enforced abilities from it.",只要找到对应的材料，就可以用它加强你的能力。
+Base_Intro_11,A bit of sacrifice might also be necessary.,可能也要付出一点点的代价。
+GroundZero_Intro_0,Wait a minut!,嘿！等一下！
+GroundZero_Intro_1,There are enemies near  by. They are too dangerous for you to handle for now. Better avoid combat.,附近就有敌人，他们对于现在的你来说很危险。所以尽量避免交战。
+GroundZero_Intro_2,You can come back to the bunker anytime from this hatch door.,如果要回来的话，从这里就能直接回到地堡。
+GroundZero_Intro_3,"If you walked too far, you can also come back by standing in those spots flowing green smoke.",当然，如果你走得比较远，从这种冒着绿烟的地方也能回来。
+GroundZero_Intro_4,"I prepared a wooden stick for you. Better than nothing, right?",这里给你准备了一根木棍，拿着用来防身吧。总比没有好是吧？
+GroundZero_Intro_5,"Done, let's go!",行了，快出发吧！
+CutScene_MudFirstMeet_0,Who is that!,什么人？
+CutScene_MudFirstMeet_1,Emmm...,嗯......
+CutScene_MudFirstMeet_2,"Your bones and muscles, they are gifted. How about some Somastic tranings with me?",我看你骨骼惊奇。不如跟我锻体术吧。
+CutScene_MudFirstMeet_3,"These trainings will not only strengthen your body, but will also enlighten your mind.",锻体术不只能够强身健体，还能让你更聪明！
+CutScene_MudFirstMeet_4,"Come here! I, your master, is going to assign your first challenge.",过来！为师要给你第一个考验了！
+Dialogue_Quest_36_Health1_0,"Somastic Trainings! As the name says, nutrition is the most important aspect to concern.",锻体术，顾名思义，营养最重要！
+Dialogue_Quest_36_Health1_2,Find while doing squat walks! Go!,一边深蹲一边找！去吧！
+Dialogue_Quest_36_Health1_3,"Remember, Self-discipline makes you free!",记住，自律使你自由！
+Dialogue_Quest_36_Health2_0,Cough...,咳......
+Dialogue_Quest_36_Health2_1,Sure enought I can't live with just protien...,光吃蛋白质果然还是不够啊...
+Dialogue_Quest_36_Health2_2,Carbohydrate is also important!,碳水也很重要！
+Dialogue_Quest_36_Health2_3,Go get some biscuits for your master.,去！给为师找两块饼干回来！
+Dialogue_Quest_36_Health2_4,Run!,用跑的！
+Dialogue_Quest_38_Health3_0,Good!,不错不错！
+Dialogue_Quest_38_Health3_1,But I still feel something missing...,但还是感觉少了点啥。
+Dialogue_Quest_38_Health3_2,"As the saying goes, one cigaritte after a meal... cough...cough...",正所谓，饭后一支...咳咳...
+Dialogue_Quest_38_Health3_3,"Go, find your master a pack of cigaritte! This is your last challenge!",去，给为师找一包烟来！这是最后一个考验！
+Dialogue_Quest_39_BuildGem_0,Good! You've passed my tests!,很好，你顺利的通过了我的考验。
+Dialogue_Quest_39_BuildGem_1,I've made the decision to go live in your home!,我决定以后就住你家了。
+Dialogue_Quest_39_BuildGem_2,I will move in when you're done building a gym in your place.,等你在住处造好健身房，为师就搬进去。
+Base_Intro_Heart7_0,One false step brings everlasting grief...,真是一失足成千古恨啊...
+Base_Intro_Heart7_1,"Your stuff are all lost, aren't they?",你的东西，全丢里面了吧？
+Base_Intro_Heart7_2,You can take them back in your next run.,其实，你可以下一次自己去把它们捡回来
+Base_Intro_Heart7_3,But time waits for no one...,但时间不等人啊...
+Dialogue_Roadsign_Dash,"Bad Bird Ahead, Space Dodge",前有恶鸟，空格翻滚。
+Dialogue_Niganma,What are you doing~~ Hey hey yooo~~~,你干嘛~嗨嗨哟~
+FirstFarm_0,Didn't expect that you have come so far!,你竟然真的来了！,2024/12/13 16:59:03
+FirstFarm_4,"Last but not least, thank you for playing!",总之，感谢你的游玩！,2024/12/13 17:04:39
+quak_Alert,！,！,2024/12/20 14:11:41
+Quak_Suspicion,?,?,2024/12/20 14:12:07
+Dialogue_Quest_36_Health1_1,My first challenge is... Find two eggs for me!,为师的第一个任务是，找两个鸭蛋回来！,2024/12/23 14:21:59
+FirstFarm_1,This map is still under construction! Staying in Ground Zero is recommended.,这张地图还在建设中！建议你回到零号区游玩。,2024/12/23 18:49:27
+FirstFarm_2,"This Farm Town is filled with bugs and errors, you might get stuck by those problems.",农场镇这张地图充满了BUG和错误，你会被一些问题卡住不能动弹。,2024/12/23 18:49:49
+FirstFarm_3,"If you encounter those problems, you can force close (Alt+F4) the game application to solve it.",如果非要玩的话，一旦遇到卡住的问题，建议重新进入游戏来解决问题。,2024/12/23 18:50:24
+Dialogue_SpawnEgg,Ewwww...,呕,2024/12/23 15:26:15
+Dialogue_Kun_OnlyCloth,"Even if you only have this skin, you are not him.",空有这身皮，你也不是他。,2024/12/23 18:23:34
+Dialogue_Kun_AllRight,Brother Chiken! Is that you!,鸡哥！是你吗！,2024/12/23 18:24:42
+PopText_Reloading,Reloading!,换弹！,2024/12/25 10:48:44
+Dialogue_Kun_NotRight,You are not hit after all.,你终究不是梦里的他。,2024/12/27 16:18:15
+Dialogue_Kun_OnlyFace,"You actually look a lot like him, but you are still not him in my dream.",你竟有三分似他，可你依然不是梦里的他。,2024/12/27 16:19:23

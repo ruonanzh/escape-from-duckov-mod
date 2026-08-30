@@ -1,0 +1,23 @@
+Building_Merchant_Equipment,Armor Shop,防具店
+Building_Merchant_Equipment_Desc,"Selling all kinds of helmets, armors, etc.",出售各种头盔、护甲。
+Building_Merchant_Normal,Sundry Shop,杂货店
+Building_Merchant_Normal_Desc,"Where to buy drugs, sundries, or sell your items for money.",购买各种药品、杂货。或者卖东西换钱。
+Building_Merchant_Weapon,Weapon Shop,武器店
+Building_Merchant_Weapon_Desc,"Weapons, ammos, all the deathful stuff.",武器，弹药，杀人越货的东西。
+Building_PrototypeMachine,Prototype Machine,原型机
+Building_PrototypeMachine_Desc,Upgrade your skills here for better survival and combat ability.,在这里升级你的技能，提高生存和战斗能力。
+Building_Workbench,Basic Workbench,简易工作台
+Building_Workbench_Desc,Where to craft some basic items.,制作一些基本物品。
+Building_WorkbenchAdvance,Advanced Workbench,高级工作台
+Building_WorkbenchAdvance_Desc,Where to craft advanced items. Also avaliable for modifying and repairing items.,制作高级物品，改装、维修。
+Building_MasterKey,Master Key Recorded,钥匙录入机
+Building_MasterKey_Desc,Get the ability to open corresponding doors freely after recording the key.,录入钥匙后，可以随意打开对应的门。
+Building_Bathroom,Bathroom,卫生间
+Building_Bathroom_Desc,Offeres clean water. Without dirt at least.,提供干净的水，至少没有泥土。
+Building_FoodTable,Dining Table,餐桌
+Building_FoodTable_Desc,For dining.,吃东西用的。
+Building_QuestGiver,Quest Billboard,任务板
+Building_QuestGiver_Desc,"Become a mercenary, accomplish the quests, get paid.",成为雇佣兵，完成任务，获得奖励。
+MerchantName_Merchant_Equipment,Equipment Merchant,装备商人
+MerchantName_Merchant_Weapon,Weapon Merchant,武器商人
+MerchantName_Merchant_Normal,Vending Machine,售货机

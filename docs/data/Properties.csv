@@ -1,0 +1,96 @@
+Stat_WalkSpeed,Walking Speed,行走速度
+Stat_RunSpeed,Running Speed,奔跑速度
+Stat_AimTurnSpeed,Aiming Rotation Speed,瞄准转向速度
+Stat_WalkAcc,Walking Acceleration,行走加速度
+Stat_RunAcc,Running Acceleration,奔跑加速度
+Stat_MaxHealth,Max Health,最大生命值
+Stat_MaxEnergy,Max Energy,最大能量
+Stat_EnergyCost,Energy Drain,能量消耗
+Stat_MaxWeight,Max Weight,最大负重
+Stat_Stamina,Stamina,体力
+Stat_StaminaDrainRate,Stamina Drain,体力消耗
+Stat_StaminaRecoverTime,Stamina Recover Time,体力恢复时间
+Stat_HungerDuratbility,Hunger,饥饿
+Stat_BodyArmor,Body Armor,身体护甲
+Stat_HeadArmor,Head Armor,头部护甲
+Stat_Attack,Attack,攻击力
+Stat_MaxWater,Max Hydration,最大水分
+Stat_WaterCost,Hydration Drain,水分消耗
+Stat_GunDamageMultiplier,Gun Damage Factor,枪械伤害倍率
+Stat_ReloadSpeedGain,Relaod Speed,换弹速率
+Stat_FoodGain,Food Efficiency,食物效率
+Stat_HealGain,Heal Efficiency,治疗效率
+Stat_GunCritRateGain,Gun Critical Rate,枪械暴击率
+Stat_GunCritDamageGain,Gun Critical Damage,枪械暴击伤害
+Stat_InventoryCapacity,Inventory Capacity,背包空间
+Stat_MeleeDamageMultiplier,Melee Damage Factor,近战伤害倍率
+Stat_Damage,Damage,伤害
+Stat_ShootSpeed,Shoot Speed,射速
+Stat_Capacity,Magazine Capacity,弹匣容量
+Stat_ReloadTime,Reload Time,换弹时间
+Stat_BulletSpeed,Bullet Speed,子弹速度
+Stat_BulletDistance,Range,射程
+Stat_Penetrate,Penetration,单位穿透
+Stat_ArmorPiercing,Armor Piercing Level,穿甲等级
+Stat_ArmorBreak,Armor Damage,护甲破坏
+Stat_CritRate,Critical Rate,暴击率
+Stat_CritDamageFactor,Critical Damage Factor,暴击伤害倍率
+Stat_DefaultScatter,Hippie Scatter,腰射初始扩散
+Stat_MaxScatter,Hippie Scatter Max,腰射最大扩散
+Stat_ScatterGrow,Recoil,后坐力
+Stat_ScatterRecover,Recoil Recover,后坐力回复
+Stat_DefaultScatterADS,Hippie Scatter,瞄准初始扩散
+Stat_MaxScatterADS,ADS Scatter Max,瞄准最大扩散
+Stat_ScatterGrowADS,ADS Recoil 瞄准后坐力,瞄准后坐力
+Stat_ScatterRecoverADS,ADS Recoil Recover,瞄准后坐力回复
+Stat_DamageGain,Damage,伤害
+Stat_CritDamageFactorGain,Critical Damage Factor,暴击伤害倍率
+Stat_CritRateGain,Critical Rate,暴击率
+Stat_ArmorPiercingGain,Armor Piercing,护甲穿透
+Stat_ArmorBreakGain,Armor Breaking,护甲破坏
+Stat_DurabilityCost,Durability Cost,耐久消耗
+Stat_AttackRange,Attack Range,攻击距离
+Stat_AttackSpeed,Attack Speed,攻击速度
+Stat_StaminaCost,Stamina Drain,体力消耗
+Stat_StaminaRecoverRate,Stamina Recover,体力恢复
+Stat_TurnSpeed,Turning Speed,转向速度
+Stat_GunDamageGain,Gun Damage,枪械伤害
+Var_BulletCount,Bullet Count,当前载弹
+Var_Caliber,Caliber,口径
+Var_Element_Physics,Physics Damage,物理伤害倍率
+Var_Element_Fire,Fire Damage,火焰伤害倍率
+Var_Element_Poison,Poison Damage,毒性伤害倍率
+Var_Element_Electricity,Electricity Damage,电伤害倍率
+Var_Element_Space,Spacial Damage,空间伤害倍率
+Var_CritDamageFactorGain,Critical Damage Gain,暴击伤害增益
+Var_CritRateGain,Critical Rate Gain,暴击率增益
+Var_ArmorPiercingGain,Armor Piercing Level,穿甲等级
+Var_ArmorBreakGain,Armor Breaking,护甲破坏
+Var_DurabilityCost,Durabiltiy Cost,枪械损耗
+Sniper,Sniper Bullet,狙击弹
+AR_L,Large,大口径
+AR_S,Small,小口径
+Shot,Shot,霰弹
+Arrow,Arrow,箭矢
+Usable,Usable,可使用
+Energy_L,Large Enery Bullet,大型能量弹
+Energy_S,Small Enerygy Bullet,小型能量弹
+Var_ExplosionRange,Explosion Range,爆炸范围
+Var_ExplosionDamage,Explosive Damage,爆炸伤害
+Stat_Moveability,Moveability,移动能力
+Stat_MoveSpeedMultiplier,Move-speed factor,移动速度系数
+Stat_GasMask,Gas Protection,毒气防护
+Stat_RecoilControl,Recoil Control,后座力控制
+SHOT,Shotgun Cartridge,霰弹
+Stat_WalkSoundRange,Walking Sound Range,行走声音距离
+Stat_RunSoundRange,Running Sound Range,奔跑声音距离
+Stat_HungerDurability,Max Hunger Durability,最大能量
+Stat_BulletSpeedMultiplier,Bullet Flying Speed Factor,子弹速度倍率
+Stat_ElementFactor_Physics,Physics Damage Factor,物理承伤倍率
+Stat_ElementFactor_Fire,Fire Damage Factor,火承伤倍率
+Stat_ElementFactor_Poison,Poison Damage Facator,毒承伤倍率
+Stat_ElementFactor_Electricity,Electric Damage Factor,电承伤倍率
+Stat_ElementFactor_Space,Spacial Damage Factor,空间承伤倍率
+Stat_DashSpeed,Dodge Roll Speed,翻滚速度
+Stat_DashCanControl,Dodge Roll Direction Control,翻滚方向控制
+Stat_SoundRange,Sound Distance,声音距离

@@ -1,0 +1,135 @@
+Quest_0,Medical Supplies,医疗物资
+Quest_0_Desc,"Medical supplies are very important in Duckov. I need a First Aid Kit S now. Go find one, or craft one on the workbench.",医疗物资在鸭科夫十分重要，我现在就需要一些小急救包，你可以去找找，或者直接在工作台制作也行。
+Quest_1,Welcome To Duckov,欢迎来到Duckov
+Quest_1_Desc,Your first mission is simple: prove that you can get back alive.,你的第一个任务很简单，证明你能够活着回来。
+Quest_2,A Letter from the Explorer,探索者的信
+Quest_2_Desc,"Before you arrive, we sent an advance team here, Duckov. But until now, we still have no information from them. Their safe house is located in a factory building. Can you go check them out?",在你来到这之前，我们有一个先遣队进入了Duckov，但我们一直没有受到他们的回信，他们的安全屋就在一个工厂区的建筑内，你能去看看吗。
+Quest_3,Restricted Weapons,管制武器
+Quest_3_Desc,Get some pistols.,搞两把手枪。
+Quest_4,A New Hunter,猎人上路
+Quest_5,Old Residence,老旧居所
+Quest_5_Desc,"According to the advance team, the staff of J-Lab all live in a small dormitory in the trees. We need to find out more about that place, please help.",根据先遣队的信息，J-Lab的员工都居住在小树林中的一个宿舍楼内，不知道那里的情况如何，麻烦你去帮我查看一下。
+Quest_6,Data 1,数据 1
+Quest_6_Desc,"Looks like the J-Lab crew left in a hurry. The data in the laboratories were all destroyed long before we got there. But here in these dormitories, they didn't have enough time to clean it up. Please make another trip and copy all the data on those computers for me. Just a reminder, don't forget to bring the portable hard drive before you leave.",看来J-Lab撤离的很匆忙，之前我们去查看实验室的时候，里面的数据都早已被人销毁了，但是宿舍楼中的这些数据他们应该是没来得及处理。麻烦你再跑一趟，把里面电脑的资料都拷贝一份给我。提醒一下，出发前别忘了带移动硬盘。
+Quest_7,Stop Bleeding,止血的重要性
+Quest_7_Desc,"Bleeding is very deadly. Although you won't die immediately, if you don't stop the bleeding in time, you'll keep losing HP. Bandages are the simplest tool to stop bleeding. Try to use them to stop the bleeding. If you can't find bandages, you can buy some from the vending machine.",流血是非常要命的，虽然一时半会死不了，但如果不及时止血，就会持续受到伤害。绷带是最简单的止血工具，试着用绷带来止血吧。如果找不到绷带的话，可以去售货机买点。
+Quest_8,Food Source,食物的来源
+Quest_8_Desc,"I'm hungry, please get some food.",饿了，整点吃的。
+Quest_9,Walls Have Ears,隔墙有耳
+Quest_9_Desc,A crow we were paying attention to called Sunspot went to a gas station to meet some other suspicious crow. We want to know what they were talking about. Could you go there and get the CCTV recording back? Remember to bring a portable hard drive.,一只我们关注的乌鸦“黑子”曾经去过加油站，跟另一个神秘乌鸦会面，我们想知道他们说了什么，你能去帮我们拿回那里的监控录像吗，别忘了带着移动硬盘去！
+Quest_10,Check The Power Supply,检查电源
+Quest_10_Desc,Check the warehouse's power supply facility.,检查仓库的电源设施。
+Quest_10_Task_1,Check the power supply facility in the dock warehouse.,检查码头仓库中的一处电源设施
+Quest_11,Hidden Deeply,深藏不漏
+Quest_11_Desc,"All the data you brought back was encrypted, we cannot figure out the actual data. We need a few floppy disks from J-Lab to decrypt the data. Could you go and find us one? It's possible to find one anywhere the J-Lab staff were.",你带回来的数据似乎都经过了加密，我们没办法从中获取到关键数据，我们需要几张J-Lab的软盘用于解密，你能去帮我们找一张吗。J-Lab人员去过的地方都可能会有软盘，不是很稀奇。
+Quest_12,Black Hand,黑手
+Quest_12_Desc,"We have decrypted the data from the gas station. That crow there is a messenger. He came to notify the sneak attack against J-Lab. The incident happened to J-Lab really had something to do with these crows. We need more information about this messenger. We just found out that he visited an office in the customs. Could you go there and check it out? That food factory the office in, it's not that simple.",我们解开了加油站的数据。会面者这似乎是一个传话人。他是来通知对J-Lab的偷袭计划的，看来J-Lab发生的事情真的和这些乌鸦有关。我们需要找到这个传话人的信息，据说他曾经去过一个海关办公室，你能去那里看看吗，或许这里不只是食品工厂这么简单？
+Quest_13,Gamer 1,玩家-1
+Quest_13_Desc,"What a boring place... It's going to be totally different if we have a gaming console here. Could you find me a console called FC (Future Computer)? I happen to have an FC cassette. Oh, don't forget to find a controller too.",这个地方太无聊了，如果能有一个游戏机，那就全都不一样了。你能帮我找来一台FC(Future Computer)游戏机吗？我刚好有一个FC卡带。对了，别忘了找个手柄回来。
+Quest_14,Gamer 2,玩家-2
+Quest_14_Desc,"The console you brought me is broken. But it's okay! Help me find these parts, I will fix it!",你给我带来的游戏机是坏掉的，不过没关系，帮我找些零件来，我就能修好它！
+Quest_15,High-Score Player,高分玩家
+Quest_15_Desc,Break Tom's record in the game Brick Breaker.,在打砖块中打破Tom的记录。
+Quest_16,Gamer 4,玩家-4
+Quest_16_Desc,"There was a very popular game back then called Blokkle Bobble . I could never reach 1,000 points, and it became an obsession of mine. So, can you help me find a Blokkle Bobble?",当年有一个特别火爆的游戏，叫做块块龙，我的分数一直打不到1000分，这成了我的一个执念，所以，你能帮我找一个块块龙回来吗？
+Quest_17,Gamer 5,玩家-5
+Quest_17_Desc,"Aw, man... Blokkle Bobble is totally unplayable with this monochrome TV! Guess we need to upgrade it to a colored one. Help me find some parts!",哇，这单色电视机完全不能用来玩块块龙啊！看来我们要把他升级成彩电了！帮我找些零件回来吧！
+Quest_18,Gamer 6,玩家-6
+Quest_18_Desc,"I finally broke through 1000 points. And I'm also tired of this game. You can try this if you want. See if you can break my record. By the way, when I was a kid I always wanted to play a game called Duckland, and I saw the grown-ups having a lot of fun playing it, so could you help me find one?",我终于突破1000分了！不过这个我也玩腻了，没事的话，你也可以来试试，看看能不能打破我的记录！话说回来，小时候我一直想玩一个叫做鸭子大陆的游戏，我看大人们都玩的很开心，所以你能帮我找一个来吗？
+Quest_19,Game 7,玩家-7
+Quest_19_Desc,No way! The Duckland needs a memory card to run? Or I have to start over from the first level after restarting the console? How torturous is that! Could you find a memory card? Please!,"鸭子大陆竟然要记忆卡？否则一关机就只能从头开始玩了，这也太折磨了！帮我找回来一个记忆卡吧,求你了！"
+Quest_20,Gamer 3,玩家-3
+Quest_20_Desc,Assembling a gaming console is also fun! This time I'll leave the fun to you! Try the game by the way!,组装游戏机也是非常快乐的！这次我就把这个乐趣让给你吧！顺便试试游戏！
+Quest_21,Infrastructure,基础建设
+Quest_21_Desc,"Collect materials and build a workbench. There are enemies all around, so don't walk too far. After you collect enough materials, go check out the building billboard, it's right there by the side of that vending machine.",收集材料建设工作台。附近全是敌人，所以不要走太远。材料集齐后，就去建设面板看看，就是在售货机旁边的那块板子。
+Quest_22,Keyman,关键人物
+Quest_22_Desc,"Based on the information we have, we have located a batch of J-Lab supplies. They are right inside the factory area. We need a key card to get into the factory area. You might find one on the body of an elite crow.",根据已有的信息，我们定位到了一批J-Lab的物资，他们就在工厂区内。进入工厂需要钥匙卡，在精英乌鸦身上或许能找到。
+Quest_23,Infrastructure 2,基础建设-2
+Quest_23_Desc,"Thanks to your fixing the signal tower, I have made contact with an old friend. He is a firearm merchant. He put forward an offer, if we can build a weapon shop for him, he will move in immediately.",多亏你修好了信号塔，我跟一个老朋友取得了联系，他是一个武器商人，他提出了一个条件，我们在这里搭好一个武器店，他立刻就过来。
+Quest_24,Infrastructure 3,基础建设-3
+Quest_24_Desc,"I made contact with another old friend. He is an equipment merchant with a lot of connections. After you set up the store, he will come in.",我联系到我的老朋友了。他是一个装备商人，路子很多。接下来，你把店铺搭好，他就过来了。
+Quest_25,Defensive Weapons,防卫武器
+Quest_25_Desc,"Put a knife underneath your bed, and you can sleep more peacefully.",床下藏把刀，睡觉也能安心点。
+Quest_26,Signal Tower,信号塔
+Quest_26_Task_1,Repair the Signal Tower on the north side. 修理北侧信号塔。,修理北侧信号塔。
+Quest_27,A Letter from an Old Friend,老朋友的信
+Quest_28,Craftsmanship,工匠精神
+Quest_28_Desc,Build a better workbench.,整个更好的工作台。
+Quest_29,Large Capacity,大存储
+Quest_29_Desc,Expand the capacity of the storage once. 对仓库进行一次扩容。,对仓库进行一次扩容。
+Quest_30,Infrastructure-Medical,基础建设-医疗
+Quest_30_Desc,"If we can make various medical supplies ourselves, that would be much more convenient.",如果我们能够自己制造各种医疗用品，那就方便多了。
+Quest_31,Generic Drugs,仿制药
+Quest_31_Desc,How about trying out the new medical station?,试试新的医疗站好不好用？
+Quest_32,Unreliable Machine,不靠谱的机器
+Quest_32_Desc,"If we have the teleporter, we will not be limited to departing from the bunker hatch door. We need to find the blueprint to build a teleporter. As far as I know, there is one in the cave. Bring a shovel there!","如果有了传送装置，就不必每次都从地堡出发了。我们要找到图纸，造一台传送装置出来。据我所知，图纸就在山洞里,带把铲子！"
+Quest_35,Replica Pistol,仿制手枪
+Quest_35_Desc,"Bring me some pistols, let me have some studies on them. If things go well, you will be able to buy pistols from the vending machine.",给我搞几把手枪回来，让我研究研究。顺利的话，以后你就可以在售货机买手枪了。
+Quest_36,Balanced Nutrition,营养均衡-1
+Quest_36_Desc,Satisfy the protein needs of the muscular duck.,满足肌肉鸭的蛋白质需求。
+Quest_37,Balanced Nutrition 2,营养均衡-2
+Quest_38,Balanced Nutrition 3,营养均衡-3
+Quest_39,Fitness Trainer,健身教练
+Quest_37_Desc,Satisfy the carbohydrate needs of the muscular duck.,满足肌肉鸭的碳水需求。
+Quest_38_Desc,Satisfy the mental needs of the muscular duck.,满足肌肉鸭的精神需求。
+Quest_39_Desc,Build a nice gym form Mud at the base.,在基地为泥巴打造一个漂亮的健身房
+Quest_40,Parts Wholesale,零件批发
+Quest_40_Desc,"My supplier is short of some raw materials recently, we can take advantage of this opportunity to make some money.",我的供应商最近缺一些原材料，咱可以趁机捞上一笔。
+Quest_34_Desc,"Try to find the beacon key to the farm town. If I'm not mistaken, it's in a computer in the road camp. Bring a portable hard drive and copy the beacon data back.",想办法找到通往农场镇的信标密钥，如果我没猜错的话，他就在公路营地的某台电脑里。带上移动硬盘，去把信标数据拷贝回来。,2024/12/10 16:10:16
+Quest_41,Bronze Poket Watch,青铜怀表,2024/12/10 15:25:47
+Quest_41_Desc,"There is a pocket watch, and I need it very much now, don't ask why. It is in a tanker truck at the east end of the road. I can't find the car key either, you have to find the key and then get the pocket watch back.",有一块怀表，我现在非常需要它，别问为什么。马路东边尽头的一辆油罐车里。车钥匙我也找不到了，你得去找到钥匙，然后把怀表拿回来。,2024/12/10 15:31:25
+Quest_42,Cargo List,货物清单,2024/12/10 15:48:22
+Quest_42_Desc,It seems that the scavengers have looted a batch of good stuff and put it in the northernmost camp. I want to know what those goods are. Can you see if you can find a cargo list or something? I guess it is in a container?,之前拾荒者好像劫了一批好货，就放在最北边的营地里。我想知道这批货里都有什么，你去看看能不能找到货物清单什么的，我猜就放在某个集装箱里面？,2024/12/10 15:54:07
+Quest_43,Fishing Hobbyist,爱好钓鱼,2024/12/10 16:02:25
+Quest_43_Desc,I'm still trying to get to know this place better. Can you help me find two suitable places for fishing?,刚来这里人生地不熟，你能帮我找两个适合钓鱼的地方吗？,2024/12/10 16:03:00
+Quest_4_Desc,"If you have some good weapons, you can go after the rampaging scavengers, those with the cleavers.",如果你有趁手的家伙，可以去和那些暴走拾荒者碰一碰，就是那些拿着切肉刀的家伙。,2024/12/11 10:12:33
+Quest_45,Strange Feather,怪异羽毛,2024/12/10 17:04:38
+Quest_44,Performace Test,性能测试,2024/12/10 17:28:33
+Quest_44_Desc,I need you to test the performance of AK-74U for me.,我需要你帮我测试一下AK-74U的武器性能如何。,2024/12/10 17:29:37
+Quest_46,Punisher 1,惩罚者-1,2024/12/11 10:02:03
+Quest_46_Desc,"They call them selves scavengers, sounds harmless right? But they do all the filthy deeds! It's time to punish them.",这些家伙称自己为拾荒者，听起来人畜无害对吧？但他们基本什么坏事都干，是时候教训一下他们了。,2024/12/11 10:05:49
+Quest_33,Unreliable Machine,主线-不靠谱的机器,2024/12/18 19:33:54
+Quest_33_Desc,"To expand our range of operations, we must build a teleport machine. After years of research I did, I finally figured out how to build one. The only problem is I don't have the materials.",为了扩大我们的行动范围，我们必须建造一台传送装置。经过我多年研究，我已经知道该怎么造出来了，唯一的问题是，我没有原料啊。,2024/12/18 19:35:41
+Quest_45_Desc,"Have you found those glowing feathers on their bodies? They seem to be useful. Find some for me to research, would you?",不知道你在他们身上找到过那种发着光的羽毛没有？这东西看起来有点用，你帮我找一些来研究一下吧。,2024/12/23 19:12:30
+Quest_26_Desc,"I have made an appointment with a merchant to help us deliver supplies, but the signal tower on the east side of the bunker seems to be broken. I can't contact them. Can you repair it?",我之前约好了商人帮我们运送物资，但是地堡东边的信号塔好像是坏了，我联系不上他们，你能去修一下吗？,2024/12/30 16:28:40
+Quest_27_Desc,"There was a letter sent to me by a friend, and I left it in a red tent on the top of the short hill. His contact information was on it, and I am now eager to find him.",有一位朋友寄给我的信，我给落在矮山头的红色帐篷里了，上面有他的联系方式，我现在急着要找他。,2024/12/30 16:28:06
+Quest_34,New Beginning,新的起点,2025/1/20 14:40:59
+Quest_47,Explore The Warehouses,探索仓库区,2025/1/14 19:01:06
+Quest_47_Desc,Teleporter is built. Currently we can only reach the warehouse area. Go take a look.,传送机已经建好了，目前我们只能到达仓库区，你先去探探路吧。,2025/1/14 19:01:50
+Quest_48,Men From The West,打西边来的人,2025/1/14 18:01:57
+Quest_48_Desc,"There are a lot of mercenaries in the warehouse area, it's very dangerous. Can you can deal with a few of them with the weapons I specify?",仓库区有大量的雇佣兵出没，非常危险，你能不能去搞定几个，就用我指定的武器。,2025/1/14 18:18:58
+Quest_49,Archer,弓箭手,2025/1/14 19:18:39
+Quest_49_Desc,"Someone told me that bows and arrows are useless. As a bow and arrow enthusiast, I can't stand it. You have to prove this for me. If you can do it, I will give you a sniper rifle.",有人跟我说弓箭是废物，作为弓箭爱好者我可忍不了，你得替我证明这点。搞定了我就给你发把狙。,2025/1/14 19:27:24
+Quest_50,Delicious Secrets,美味的秘密,2025/1/14 19:19:08
+Quest_50_Desc,"A beverage factory seems to be hiding some secrets. There is a water tower next to the lumberyard in the factory area, which contains their secret raw materials. Recently, that water tower started leaking a little. Go and get some samples.",某个饮料工厂似乎隐瞒着某些秘密，在工厂区的伐木场旁边有个水塔，里面就藏有他们的秘密原料。最近那里面的东西泄露了出来。你去搞点样本回来。,2025/1/14 19:23:20
+Quest_51,Fishing Hobbyist 2,爱好钓鱼-2,2025/1/14 19:28:35
+Quest_51_Desc,Have you been to the warehouse area? A friend told me there is a nice spot for fishing. Could you help me find one?,你已经去过仓库区了？有朋友跟我说哪里有非常适合钓鱼的地方，你能帮我找找吗。,2025/1/14 19:29:17
+Quest_52,Seclusion,隐居,2025/1/14 19:35:11
+Quest_52_Desc,"One of my friends is missing, I need you to go to where he lives to see if there are any clues. His residence is in the corner of the south side of the gully in the warehouse area, it is a green house.",我的一个朋友失踪了，我需要你去他居住的地方看看有没有什么线索。他的住处就在仓库区沟壑南边的角落里，是一个绿色的房子。,2025/1/15 10:25:27
+Quest_53,Duck Hunting: Chapo,猎鸭-矮鸭,2025/1/14 19:57:43
+Quest_53_Desc,It seems that you have adapted to life here. It's time for a challenge. The short duck in the road camp. Get him.,看来你已经适应这里的生活了，是时候来点挑战了。公路营地里矮鸭，搞定他。,2025/1/14 19:55:04
+Quest_54,Chapo Challenge,矮鸭挑战,2025/1/14 19:58:40
+Quest_54_Desc,"Pistols are small, but with big potential.",手枪虽小，潜力巨大。,2025/1/14 20:03:21
+Quest_55,,电源检修,2025/1/14 20:30:47
+Quest_55_Desc,"There is a power problem in one of our safe houses in the warehouse area, and we need you to repair it. It is located next to a blue house next to the broken bridge in the middle.",我们在仓库区的一处安全屋电力出现了问题，需要你去维修一下。位置就在中间断桥边的一处蓝色房屋旁边。,2025/1/14 20:31:49
+Quest_55_Task_1,Repair the power supply located in the Warehouse Area hideout.,修理位于仓库区藏身处的电源。,2025/1/14 20:18:22
+Quest_56,Stalker,尾随的怪人,2025/1/14 20:33:26
+Quest_56_Desc,There's a weird guy in the warehouse area who's elusive and likes to attack from a distance. Let's teach him a lesson.,仓库区有一个怪人，神出鬼没，喜欢大老远偷袭，给他点教训。,2025/1/14 20:30:35
+Quest_57,God of Cleaver,切肉刀战神,2025/1/14 20:34:53
+Quest_57_Desc,"It seems that bows and arrows are way too easy for you. My friend made a bet with me again, saying that you definitely can't handle those mercenaries with a knife, I bet 10,000 dollars, you can definitely do it!",看来弓箭完全难不倒你。我的朋友又跟我打赌，说你用片刀肯定没法搞定那些雇佣兵，我赌一万块，你肯定能行！,2025/1/14 20:37:13
+Quest_58,Warehouse Routes,仓库路线,2025/1/14 20:42:40
+Quest_59,Water Resource,水资源,2025/1/15 10:21:52
+Quest_59_Desc,"I have a client who is going to hide in a farmhouse in the warehouse area for a few days, but he is running out of water, so I need you to bring him some. Prepare three bottles of water and put them in the shed in the farmhouse.",我得一个客户准备在仓库区的农舍躲上几天，但是水不够了，需要你去给他带一些。准备三瓶水放到农舍的窝棚里吧。,2025/1/15 10:27:32
+Quest_59_Task_1,Hide bottled water in the designated location.,将瓶装水藏匿到指定地点。,2025/1/15 10:28:15
+Quest_60,DEMO Ending,DEMO完结,2025/1/15 10:58:32
+Quest_60_Desc,"Congratulations, you have completed this DEMO! Let's create a DEMO trophy!",恭喜，你完成了这个DEMO！我们来打造一个DEMO奖杯吧！,2025/1/15 11:01:16
+Quest_50_Task_1,Collect samples from the lumberyard water tower.,采集伐木场水塔样本。,2025/1/15 11:04:28
+Quest_61,Talking Trophy!,会说话的奖杯！,2025/1/15 11:30:00
+Quest_61_Desc,Build the DEMO trophy.,把DEMO奖杯建造出来！,2025/1/15 11:30:12
+Quest_62,Nice Guy,好心人,2025/1/15 12:10:54
+Quest_62_Desc,"I know a developer (not me) who has been acting weird lately and repeatedly saying, 'Add to wishlist, please!' He's a pretty good person, but I don't know why he went crazy. Do you want to help him?",我认识一个开发者（不是我），最近精神不太正常，嘴里不停说着“加个愿望单吧，求求了！”，挺好的一个人，不知道为啥就疯了，你要不要去帮帮他？,2025/1/15 14:51:26
+Quest_63,Challenge: Speedy Commander,挑战：急速团长,2025/1/20 15:24:01
+Quest_63_Desc,Beat the yellow duck 5 times.,揍那个黄鸭子5次。,2025/1/20 15:24:31
+Quest_58_Desc,"The West Factory is the core area of the Warehouse Area, where many good things are hidden - but it is also dangerous. There are 3 entrances to the Warehouse, and I need you to help me check them out.",西厂区是仓库区的核心区域，里面藏着不少好东西-当然，也很危险。仓库区有3个入口，我需要你去帮我踩踩点。,2025/1/23 15:02:42
+Quest_64,Happy New Year,新年快乐！,2025/1/23 15:41:04
+Quest_64_Desc,Happy New Year! Let's decorate for the New Year!,新年好啊！我们来整点新年装饰吧！,2025/1/23 14:58:13

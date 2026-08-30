@@ -1,0 +1,16 @@
+Scene_Any,Any,任意地图
+Scene_Base,Base,基地
+Scene_Custom,Customs,海关
+Scene_Custom_01,Customs 1,海关1
+Scene_Custom_02,Customs 2,海关2
+Scene_Custom_03,Customs 3,海关3
+Scene_Custom_04,Customs 4,海关4
+Scene_Custom_05,Customs 5,海关5
+Scene_Factory,Factory,工厂
+Scene_Factory_01,Factory 1,工厂1
+Scene_Factory_02,Factory 2,工厂2
+Scene_Factory_03,Factory 3,工厂3
+Scene_Factory_04,Factory 4,工厂4
+Scene_Village,Village,村庄
+Scene_Village_01,Village 1,村庄1
+QuestLocations/Explor_Dormitory,Workers' Dorminoty,工厂员工宿舍楼

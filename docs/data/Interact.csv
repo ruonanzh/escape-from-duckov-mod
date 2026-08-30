@@ -1,0 +1,42 @@
+UI_Interact,Interact,交互
+UI_Interact_Modify,Customize,改装
+UI_Interact_Repair,Repair,维修
+UI_Interact_OpenStorage,Storage,打开仓库
+UI_Interact_Expansion,Storage Expansion,扩容
+UI_Interact_Quest,Quest,任务
+UI_Interact_Develope,Tech Research,科技研发
+UI_Interact_BPDevelope,Blueprint Research,蓝图研发
+UI_Interact_Download,Download Data,下载资料
+UI_Interact_CheckPower,Examine,检查电源
+UI_Interact_Go,Depart,出发
+UI_Interact_ExitBunker,Leave The Bunker,离开地堡
+UI_Interact_EnterBunker,Enter The Bunker,进入地堡
+UI_Interact_Build,Build,建造
+UI_Interact_Fix,Repair,修理
+UI_WeakUp,Weak Up,醒过来
+UI_Interact_RememberFace,How Do I Look,我长啥样？
+UI_GoToBed,Regret Looking Like This,真后悔长成这样
+UI_Interact_Remove,Remove,移除
+UI_Interact_Handover,Submit,交付
+UI_Interact_Cloth,Cloth,衣服
+UI_Interact_Sacrifice,Sacrifice,献上
+UI_Interact_TeleportMachine,Teleport Machine,传送台
+UI_Interact_FixTeleportMachine,Fix The Teleport Machine,修理传送装置
+UI_Interact_Open,Open,打开
+UI_Interact_Skill,Strengthen,强化
+UI_Interact_DeathLottery,Death Lottery,失物招抽
+UI_Interact_PhysicalTraining,Physical Training,锻炼身体
+UI_Interact_Read,Read,阅读
+UI_LootBox_Open,Open,打开,2024/12/10 15:06:25
+UI_LootBox_CarDoor,Car Door,车门,2024/12/10 15:07:53
+UI_Interact_UnlockFormula,Formula Research,配方研究,2024/12/12 14:40:09
+UI_Interact_GoDown,Go Down,下去,2024/12/11 12:05:56
+UI_Interact_GoUp,Go Up,上去,2024/12/11 12:06:41
+UI_Interact_UnlockBlueprint,Blueprint Research,蓝图研究,2024/12/12 14:40:34
+UI_Interact_MiningMachine,Miner,矿机,2024/12/24 17:03:34
+UI_Interact_BlackMarketDemands,View Orders,浏览订单,2025/1/14 17:43:58
+UI_Interact_BlackMarketSupply,Buy Goods,购买黑货,2025/1/14 16:17:07
+UI_Interact_Sample,Collect Sample,采集样本,2025/1/15 11:02:18
+UI_Interact_Hide,Place,放置,2025/1/15 12:30:25
+UI_Interact_WishList,Whishlist,添加愿望单,2025/1/15 14:43:16
+UI_Interact_Move,Move,移动,2025/1/15 18:36:02
