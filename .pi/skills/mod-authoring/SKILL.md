@@ -13,7 +13,7 @@ description: 在 Escape From Duckov 的 modding 环境里创建、编译、校�
 
 ## 步骤
 
-1. 先跑 `node tools/check_runtime.mjs` 确认环境就绪（dotnet SDK + 游戏目录）。缺失则跑 `node tools/install_runtime.mjs`。
+1. 先调 `check_runtime` 工具确认环境就绪（dotnet SDK + 游戏目录）。缺失则调 `install_runtime` 工具。
 2. 读 `specs/mod-spec.md`（info.ini schema + 命名）和 `docs/mod-api.md`（可用 API）。
 3. 在 `your_mods/<mod名>/` 下创建 `info.ini`。
 4. 创建 `<ModName>.csproj`（参考 `reference/example_mod/ExampleMod.csproj`，改 `AssemblyName`/`RootNamespace` 为你的 mod 名）。
@@ -74,7 +74,7 @@ node lint/check_mod.mjs your_mods/<mod名>/
 - `FAIL: missing ModBehaviour.cs` → 缺入口类，创建继承 `Duckov.Modding.ModBehaviour` 的 `ModBehaviour` 类。
 - `FAIL: dotnet build failed: ...` → 编译错误，读报错定位（多半是 API 用法/引用问题）。
 - `FAIL: missing <ModName>.dll` → 编译没产出 dll，先跑 dotnet build。
-- `WARN: dotnet not found — skip compile check` → 跑 `node tools/check_runtime.mjs` / `install_runtime.mjs` 装 dotnet。
+- `WARN: dotnet not found — skip compile check` → 调 `check_runtime` / `install_runtime` 工具装 dotnet。
 - `WARN: missing preview.png` → 缺预览图（不影响本地加载，Workshop 上传需要 256×256）。
 
 ## 参考
