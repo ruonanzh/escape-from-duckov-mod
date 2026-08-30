@@ -9,7 +9,7 @@
 - `docs/data/` **游戏数据表**（物品/UI/任务等 CSV 含本地化；resources.csv = 美术资源清单，只读，grep 检索）
 - `specs/`    mod 制作规范（info.ini schema、目录结构、命名）
 - `reference/` 官方示例 mod（可编译、可过 lint 的正确答案）
-- `lint/`     mod 校验工具（含编译校验）——**你做 mod 时跑**
+- `.pi/extensions/` **工具**（registerTool 注册 `check_runtime` / `install_runtime` / `validate_mod`）——**你做 mod 时直接调这些工具**
 - `.pi/extensions/` 运行时工具（registerTool 注册 `check_runtime` / `install_runtime`）——**你做 mod 前直接调这两个工具**
 - `scripts/`  **维护工具**（inspect_game / extract_data，repo 作者跑；**你不要跑**，会失败）
 - `libs/`     Harmony 2.4.1（编译引用 + 随 mod 分发）
@@ -18,7 +18,7 @@
 
 ## 硬规则
 
-mod 只能写到 `your_mods/<mod名>/`，环境的其它目录（.pi/docs/specs/lint/reference/libs/scripts）只读。
+mod 只能写到 `your_mods/<mod名>/`，环境的其它目录（.pi/docs/specs/reference/libs/scripts）只读。
 
 ## 做 mod（流程概览）
 
