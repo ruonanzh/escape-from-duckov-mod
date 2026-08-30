@@ -1,6 +1,6 @@
 # TeamSoda.Duckov.Core.dll
 
-1239 public types
+1199 public types (game-owned; 40 third-party filtered)
 
 ## ADSAimMarker [class] : UnityEngine.MonoBehaviour
 
@@ -5531,30 +5531,6 @@
 - method Void Awake()
 - method Void Refresh()
 
-## NodeCanvas.DialogueTrees.LocalizedMultipleChoiceNode [class] : NodeCanvas.DialogueTrees.DTNode
-
-- prop [get] Int32 maxOutConnections
-- prop [get] Boolean requireActorSelection
-
-## NodeCanvas.Tasks.Actions.Dash.DashDirectionModes [enum]
-
-- random = 0
-- targetTransform = 1
-
-## NodeCanvas.Tasks.Actions.PostSound.VoiceSounds [enum]
-
-- normal = 0
-- surprise = 1
-- death = 2
-
-## NodeCanvas.Tasks.Actions.ReleaseItemSkillIfHas [class] : NodeCanvas.Framework.ActionTask<AICharacterController>
-
-- prop [get] Single checkTimeSpace
-
-## NodeCanvas.Tasks.Actions.TryToReloadIfEmpty [class] : NodeCanvas.Framework.ActionTask<AICharacterController>
-
-- prop [get] String SoundKey
-
 ## NotHurtForSeconds [class] : ItemStatsSystem.EffectFilter
 
 - prop [get] String DisplayName
@@ -6397,60 +6373,6 @@
 - method String GetCurrentOption()
 - method String[] GetOptions()
 - method Void Set(Int32 index)
-
-## UnityEngine.Splines.SplineFlatExtrude [class] : UnityEngine.MonoBehaviour
-
-- prop [get/set] SplineContainer Container
-- prop [get/set] Single Height
-- prop [get/set] Int32 ProfileSeg
-- prop [get/set] Vector2 Range
-- prop [get/set] Int32 RebuildFrequency
-- prop [get/set] Boolean RebuildOnSplineChange
-- prop [get/set] Single SegmentsPerUnit
-- prop [get] Spline Spline
-- prop [get] IReadOnlyList<Spline> Splines
-- prop [get/set] Single Width
-- prop [get] SplineContainer container
-- prop [get] Boolean rebuildOnSplineChange
-- method Void Rebuild()
-
-## UnityEngine.Splines.SplineProfileExtrude [class] : UnityEngine.MonoBehaviour
-
-- prop [get/set] SplineContainer Container
-- prop [get/set] Single Height
-- prop [get] Int32 ProfileSeg
-- prop [get/set] Vector2 Range
-- prop [get/set] Int32 RebuildFrequency
-- prop [get/set] Boolean RebuildOnSplineChange
-- prop [get/set] Single SegmentsPerUnit
-- prop [get] Spline Spline
-- prop [get] IReadOnlyList<Spline> Splines
-- prop [get/set] Single Width
-- prop [get] SplineContainer container
-- prop [get] Boolean rebuildOnSplineChange
-- method Void Rebuild()
-
-## UnityEngine.Splines.SplineSidewalkExtrude [class] : UnityEngine.MonoBehaviour
-
-- prop [get/set] SplineContainer Container
-- prop [get/set] Single Height
-- prop [get/set] Vector2 Range
-- prop [get/set] Int32 RebuildFrequency
-- prop [get/set] Boolean RebuildOnSplineChange
-- prop [get/set] Single SegmentsPerUnit
-- prop [get] Spline Spline
-- prop [get] IReadOnlyList<Spline> Splines
-- prop [get/set] Single Width
-- prop [get] SplineContainer container
-- prop [get] Boolean rebuildOnSplineChange
-- method Void Rebuild()
-
-## UnityEngine.Splines.SplineSidewalkExtrude.Sides [enum]
-
-- None = 0
-- Left = 1
-- Right = 2
-- Both = 3
 
 ## UnlockStockShopItem [class] : Duckov.PerkTrees.PerkBehaviour
 

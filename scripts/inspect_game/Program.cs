@@ -56,6 +56,16 @@ var unityResourceTypes = new (string dll, string[] typeNames)[]
     }),
 };
 
+// Third-party library namespaces compiled into the game-owned DLLs. Their type
+// definitions are noise for mod authors (only game-owned types are useful).
+// Game method signatures that reference these types are still kept (the type
+// name appears as a parameter/return type, just without its own section).
+var thirdPartyNamespaces = new[]
+{
+    "VLB", "VLB_Samples", "ECM2", "KINEMATION", "NodeCanvas", "ParadoxNotion", "JoshH",
+    "UnityEngine", "Sirenix", "DOTween", "ShapesRuntime", "FMODUnity",
+};
+
 var allProblems = new StringBuilder();
 
 foreach (var dllName in dlls)
@@ -83,17 +93,18 @@ foreach (var dllName in dlls)
     var sb = new StringBuilder();
     sb.AppendLine($"# {dllName}.dll");
     sb.AppendLine();
-    sb.AppendLine($"{types.Length} public types");
+    var kept = types.Where(t => !IsThirdParty(t.Namespace, thirdPartyNamespaces)).ToArray();
+    sb.AppendLine($"{kept.Length} public types (game-owned; {types.Length - kept.Length} third-party filtered)");
     sb.AppendLine();
 
-    foreach (var t in types.OrderBy(t => FriendlyFullName(t)))
+    foreach (var t in kept.OrderBy(t => FriendlyFullName(t)))
     {
         DumpType(t, sb);
     }
 
     var outPath = Path.Combine(outDir, dllName + ".md");
     File.WriteAllText(outPath, sb.ToString());
-    Console.WriteLine($"{dllName}.dll -> {outPath} ({types.Length} types)");
+    Console.WriteLine($"{dllName}.dll -> {outPath} ({kept.Length} types, {types.Length - kept.Length} filtered)");
 }
 
 if (allProblems.Length > 0)
@@ -103,6 +114,12 @@ if (allProblems.Length > 0)
 }
 
 DumpUnityResources(managedDir, outDir, unityResourceTypes, allProblems);
+
+static bool IsThirdParty(string ns, string[] thirdPartyNamespaces)
+{
+    if (string.IsNullOrEmpty(ns)) return false; // (global) — keep, contains game types
+    return thirdPartyNamespaces.Any(p => ns == p || ns.StartsWith(p + "."));
+}
 
 static void DumpUnityResources(string managedDir, string outDir, (string dll, string[] typeNames)[] spec, StringBuilder problems)
 {

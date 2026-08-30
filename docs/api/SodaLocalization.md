@@ -1,6 +1,6 @@
 # SodaLocalization.dll
 
-10 public types
+10 public types (game-owned; 0 third-party filtered)
 
 ## LocalizationDataModel [class]
 

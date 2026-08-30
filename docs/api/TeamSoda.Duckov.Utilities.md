@@ -1,6 +1,6 @@
 # TeamSoda.Duckov.Utilities.dll
 
-20 public types
+20 public types (game-owned; 0 third-party filtered)
 
 ## Duckov.Utilities.CustomData [class]
 

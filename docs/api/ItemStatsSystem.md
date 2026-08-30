@@ -1,6 +1,6 @@
 # ItemStatsSystem.dll
 
-52 public types
+52 public types (game-owned; 0 third-party filtered)
 
 ## ItemGraphicInfo [class] : UnityEngine.MonoBehaviour
 

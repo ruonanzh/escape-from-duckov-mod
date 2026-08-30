@@ -1,6 +1,6 @@
 # TeamSoda.MiniLocalizor.dll
 
-3 public types
+3 public types (game-owned; 0 third-party filtered)
 
 ## CSVFileLocalizor [class]
 
