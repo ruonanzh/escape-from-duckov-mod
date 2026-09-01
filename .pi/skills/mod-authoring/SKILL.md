@@ -14,12 +14,13 @@ description: 在 Escape From Duckov 的 modding 环境里创建、编译、校�
 ## 步骤
 
 1. 先调 `check_runtime` 工具确认环境就绪（dotnet SDK + 游戏目录）。缺失则调 `install_runtime` 工具。
-2. 读 `specs/mod-spec.md`（info.ini schema + 命名）和 `docs/mod-api.md`（可用 API）。
-3. 在 `your_mods/<mod名>/` 下创建 `info.ini`。
-4. 创建 `<ModName>.csproj`（参考 `reference/example_mod/ExampleMod.csproj`，改 `AssemblyName`/`RootNamespace` 为你的 mod 名）。
-5. 创建 `ModBehaviour.cs`（继承 `Duckov.Modding.ModBehaviour`，命名空间 = mod 名）。
-6. 编译：`dotnet build <ModName>.csproj -c Release`（需先设 `DUCKOV_DIR` 环境变量为游戏目录；或直接调 `validate_mod`，它自动编译）。
-7. 校验：调 `validate_mod` 工具（参数 modDir），直到返回 `PASS`。
+2. 调 `create_mod_folder` 工具创建 mod 目录：给它一个简短的 `PascalCase` 名字，它会建好 `your_mods/<mod名>/` 并登记；**在此之前任何 write/edit 都会被拒**。
+3. 读 `specs/mod-spec.md`（info.ini schema + 命名）和 `docs/mod-api.md`（可用 API）。
+4. 在 `your_mods/<mod名>/` 下创建 `info.ini`。
+5. 创建 `<ModName>.csproj`（参考 `reference/example_mod/ExampleMod.csproj`，改 `AssemblyName`/`RootNamespace` 为你的 mod 名）。
+6. 创建 `ModBehaviour.cs`（继承 `Duckov.Modding.ModBehaviour`，命名空间 = mod 名）。
+7. 编译：`dotnet build <ModName>.csproj -c Release`（需先设 `DUCKOV_DIR` 环境变量为游戏目录；或直接调 `validate_mod`，它自动编译）。
+8. 校验：调 `validate_mod` 工具（参数 modDir），直到返回 `PASS`。
 
 ## info.ini
 
