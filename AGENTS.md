@@ -10,8 +10,7 @@
 - `specs/`    mod 制作规范（info.ini schema、目录结构、命名）
 - `reference/` 官方示例 mod（可编译、可过 lint 的正确答案）
 - `.pi/extensions/` **工具**（registerTool 注册 `check_runtime` / `install_runtime` / `validate_mod`）——**你做 mod 时直接调这些工具**
-- `.pi/extensions/` 运行时工具（registerTool 注册 `check_runtime` / `install_runtime`）——**你做 mod 前直接调这两个工具**
-- `scripts/`  **维护工具**（inspect_game / extract_data，repo 作者跑；**你不要跑**，会失败）
+- `scripts/`  **维护工具**（inspect_game / extract_data / extract_resources / refresh.py，repo 作者跑；**你不要跑**，会失败）
 - `libs/`     Harmony 2.4.1（编译引用 + 随 mod 分发）
 - `mod-repo.json` 机器可读配置（modType/游戏目录声明）
 - `your_mods/` **唯一可写目录**，你的每个 mod 放这里（环境其余部分只读）
@@ -23,9 +22,10 @@ mod 只能写到 `your_mods/<mod名>/`，环境的其它目录（.pi/docs/specs/
 ## 做 mod（流程概览）
 
 1. 先调 `check_runtime` 工具确认环境就绪（dotnet + 游戏目录）；缺失则调 `install_runtime`
-2. 用 **grep** 在 `docs/api/`（接口签名）和 `docs/data/`（物品/文本）里检索你要改的东西，定位到具体 API
-3. 读 `specs/` 了解产物结构，在 `your_mods/<mod名>/` 下创建 `<ModName>.csproj` + `ModBehaviour.cs` + `info.ini`
-4. 编译：`dotnet build`（lint 会自动做），产出 `<ModName>.dll`
-5. 调 `validate_mod` 工具校验（返回 PASS 即通过）
+2. 调 `create_mod_folder` 工具创建你的 mod 目录（起个 PascalCase 名字，如 `WeaponDamageTweaks`）——**在此之前所有 write/edit 都会被拒**
+3. 用 **grep** 在 `docs/api/`（接口签名）和 `docs/data/`（物品/文本）里检索你要改的东西，定位到具体 API
+4. 读 `specs/` 了解产物结构，在 `your_mods/<mod名>/` 下创建 `<ModName>.csproj` + `ModBehaviour.cs` + `info.ini`
+5. 编译：`dotnet build`（lint 会自动做），产出 `<ModName>.dll`
+6. 调 `validate_mod` 工具校验（返回 PASS 即通过）
 
 详细步骤、字段说明、常见错误见 skill：`.pi/skills/mod-authoring/`（做 mod 时先加载它）。
