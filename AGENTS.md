@@ -12,7 +12,7 @@
 - `.pi/extensions/` **工具**（registerTool 注册 `check_runtime` / `install_runtime` / `validate_mod`）——**你做 mod 时直接调这些工具**
 - `scripts/`  **维护工具**（inspect_game / extract_data / extract_resources / refresh.py，repo 作者跑；**你不要跑**，会失败）
 - `libs/`     Harmony 2.4.1（编译引用 + 随 mod 分发）
-- `mod-repo.json` 机器可读配置（modType/游戏目录声明）
+- `mod-repo.json` 机器可读配置（modType/游戏目录声明；`game.version` 记录当前数据层对应的游戏版本，游戏 patch 后由 `scripts/refresh.py` 自动更新）
 - `your_mods/` **唯一可写目录**，你的每个 mod 放这里（环境其余部分只读）
 
 ## 硬规则

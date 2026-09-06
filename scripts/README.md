@@ -39,8 +39,8 @@ managedDir 由 `mod-repo.json` 的 `compile.managedDir` 按平台推导（mac `D
 ## 注意事项
 
 1. **maintainer-only**：脚本读的是维护者本机的游戏安装目录；玩家/agent 不要跑，产品不负责这里的运行时。
-2. **游戏 patch 后重跑**：`docs/api` + `docs/data` 是「某游戏版本的快照」，游戏更新后要重跑 refresh 刷新（对应 R2 数据层刷新机制）。
-3. **review 后提交**：`refresh.py` 只生成、**不自动 commit**；确认 `git diff docs/api docs/data` 无误后手动提交。
+2. **游戏 patch 后重跑**：`docs/api` + `docs/data` 是「某游戏版本的快照」，游戏更新后要重跑 refresh 刷新。refresh 会**自动探测游戏版本并写回 `mod-repo.json` 的 `game.version`**（mac 读 `Info.plist` 的 `CFBundleShortVersionString`；win/linux 读 `globalgamemanagers`、排除 Unity 引擎的 `20xx.x.x` 版本号）；探测失败则打印警告，手动更新该字段即可。
+3. **review 后提交**：`refresh.py` 只生成、**不自动 commit**；确认 `git diff docs/api docs/data mod-repo.json` 无误后手动提交（`mod-repo.json` 的 `game.version` 会随数据层一起更新）。
 4. **跨平台路径**：managedDir/dataDir 按 `mod-repo.json` + 平台推导，不要在脚本里写死路径。
 5. **编译/字节码产物不进 git**：`.gitignore` 已排 `**/bin/`、`**/obj/`、`__pycache__/`、`*.pyc`——`dotnet run` 和 python 脚本都会生成这些，不要提交。
 6. **Windows 终端编码**：脚本输出含中文 + emoji（✅/❌），Windows 请用 UTF-8 终端（Windows Terminal / Git Bash / VSCode 集成终端），GBK 下会乱码。

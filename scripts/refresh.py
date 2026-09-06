@@ -16,6 +16,7 @@
 """
 import json
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -97,6 +98,54 @@ def resolve_dotnet():
     return path
 
 
+def detect_game_version(game_dir):
+    """探测游戏版本（尽力而为；失败返回 None，由维护者手动填 mod-repo.json 的 game.version）。
+
+    mac：读 Duckov.app/Contents/Info.plist 的 CFBundleShortVersionString（最可靠）。
+    win/linux（及 mac 回退）：读 globalgamemanagers 里的版本号，排除 Unity 引擎版本（20xx.x.x）。
+    """
+    key = platform_key()
+    if key == "mac":
+        plist = os.path.join(game_dir, "Duckov.app", "Contents", "Info.plist")
+        if os.path.exists(plist):
+            r = subprocess.run(
+                ["plutil", "-extract", "CFBundleShortVersionString", "raw", plist],
+                capture_output=True,
+                text=True,
+            )
+            if r.returncode == 0 and r.stdout.strip():
+                return r.stdout.strip()
+    for gm_rel in (
+        os.path.join("Duckov_Data", "globalgamemanagers"),
+        os.path.join("Duckov.app", "Contents", "Resources", "Data", "globalgamemanagers"),
+    ):
+        gm = os.path.join(game_dir, gm_rel)
+        if not os.path.exists(gm):
+            continue
+        try:
+            with open(gm, "rb") as f:
+                data = f.read()
+        except OSError:
+            continue
+        for m in re.finditer(rb"\d+\.\d+\.\d+", data):
+            ver = m.group(0).decode()
+            if not ver.startswith("20"):  # 排除 Unity 引擎版本（20xx.x.x）
+                return ver
+    return None
+
+
+def update_game_version(version):
+    """把探测到的游戏版本写回 mod-repo.json 的 game.version；未变返回 False。"""
+    cfg = load_json(MOD_REPO_FILE)
+    if cfg.get("game", {}).get("version") == version:
+        return False
+    cfg.setdefault("game", {})["version"] = version
+    with open(MOD_REPO_FILE, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, ensure_ascii=False, indent=2)
+        f.write("\n")
+    return True
+
+
 def main():
     game_dir = resolve_game_dir()
     if not os.path.isdir(game_dir):
@@ -134,11 +183,22 @@ def main():
     # 3. 资源清单（python）
     run([sys.executable, "scripts/extract_resources.py", data_dir, data_out_dir])
 
+    # 记录数据层对应的游戏版本（R2：游戏 patch 后 refresh 会更新 game.version）
+    info("\n" + "=" * 60)
+    version = detect_game_version(game_dir)
+    if version:
+        if update_game_version(version):
+            info(f"✅ 游戏版本已记录：{version}（mod-repo.json 的 game.version 已更新）")
+        else:
+            info(f"游戏版本：{version}（与 mod-repo.json 已记录的 game.version 一致，未变）")
+    else:
+        info("⚠️ 无法自动探测游戏版本，请手动更新 mod-repo.json 的 game.version。")
+
     info("\n" + "=" * 60)
     info("✅ 三个工具全部跑完。下一步（review 后手动提交，refresh 不自动 commit）：")
     info("  git status")
-    info("  git diff docs/api docs/data")
-    info('  确认无误后：git add docs/api docs/data && git commit -m "data: refresh game data layer"')
+    info("  git diff docs/api docs/data mod-repo.json")
+    info('  确认无误后：git add docs/api docs/data mod-repo.json && git commit -m "data: refresh game data layer"')
     info("=" * 60)
 
 
