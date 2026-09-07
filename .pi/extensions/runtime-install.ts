@@ -14,8 +14,8 @@ export default function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "install_runtime",
     label: "Install Runtime",
-    description: "Guide installation of the mod runtime (.NET SDK 8.0)",
-    promptSnippet: "Install mod runtime",
+    description: "Return platform-specific instructions for installing .NET SDK >= 8, or report that it is already present. Read-only probing only: this tool does NOT run an installer, download software, or locate the game. The caller must distinguish instructions provided from installation completed.",
+    promptSnippet: "Get SDK installation instructions when an SDK prerequisite is missing",
     promptGuidelines: ["Use install_runtime when check_runtime reports a missing dotnet SDK."],
     parameters: Type.Object({}),
     async execute(_toolCallId, _params, _signal, _onUpdate, _ctx) {
@@ -23,11 +23,11 @@ export default function (pi: ExtensionAPI) {
       if (v) {
         const major = parseInt(v.split(".")[0], 10);
         if (major >= 8) {
-          return { content: [{ type: "text", text: `SKIP: dotnet SDK ${v} already present` }], details: { ok: true } };
+          return { content: [{ type: "text", text: `SKIP: dotnet SDK ${v} already present; no installation performed. Game location has not been checked here.` }], details: { ok: true, status: "already_present", installationPerformed: false, sdkReady: true, nextAction: "Use check_runtime if game location or overall readiness still needs checking." } };
         }
       }
 
-      const lines = ["Install .NET SDK 8.0 — user-level install (no admin/UAC, recommended):"];
+      const lines = ["INSTRUCTIONS PROVIDED: No installation has been performed.", "Install .NET SDK 8.0 - user-level install (no admin/UAC, recommended):"];
       if (process.platform === "win32") {
         lines.push(
           "  PowerShell:",
@@ -55,7 +55,11 @@ export default function (pi: ExtensionAPI) {
         "After installing, call check_runtime again.",
       );
 
-      return { content: [{ type: "text", text: lines.join("\n") }], details: { ok: true } };
+      return {
+        content: [{ type: "text", text: lines.join("\n") }],
+        // ok means the guidance operation succeeded, NOT that installation completed.
+        details: { ok: true, status: "instructions_provided", installationPerformed: false, sdkReady: false, nextAction: "Follow the platform-specific installation instructions, then run check_runtime to verify readiness." },
+      };
     },
   });
 }

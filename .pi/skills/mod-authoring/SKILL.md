@@ -1,26 +1,22 @@
 ---
 name: mod-authoring
-description: 在 Escape From Duckov 的 modding 环境里创建、编译、校验 C# mod（your_mods/<mod名>/ 下的 csproj + ModBehaviour.cs + info.ini）。当任务是在本环境做 mod、编译 DLL、调 validate_mod 工具校验 mod 时使用。
+description: Escape From Duckov 的 C# mod 制作、修改、可行性/制作方法解释及编译排错。涉及 csproj、ModBehaviour、info.ini、DLL 或 validate_mod 时按需读取；咨询不要求创建文件，实际写入取决于 session 权限。
 ---
 
 # 做 mod（Escape From Duckov）
 
 在 `your_mods/<mod名>/` 下做一个 C# mod，编译成 DLL，用 `validate_mod` 工具校验。
 
-## 唯一可写目录
+## 使用方式与条件分支
 
-`your_mods/<mod名>/` 是唯一可写目录。环境的 `docs/`、`specs/`、`.pi/`、`reference/`、`libs/` 一律只读，别把中间文件写回去。
+本技能提供领域方法，不授予权限；Game Helper 可解释方法、通过获准工具校验已有 mod，不能因此创建目录或修改源码。以下路径均相对 workspace 根目录（不是技能目录）。
 
-## 步骤
-
-1. 先调 `check_runtime` 工具确认环境就绪（dotnet SDK + 游戏目录）。缺失则调 `install_runtime` 工具。
-2. 调 `create_mod_folder` 工具创建 mod 目录：给它一个简短的 `PascalCase` 名字，它会建好 `your_mods/<mod名>/` 并登记；**在此之前任何 write/edit 都会被拒**。
-3. 读 `specs/mod-spec.md`（info.ini schema + 命名）和 `docs/mod-api.md`（可用 API）。
-4. 在 `your_mods/<mod名>/` 下创建 `info.ini`。
-5. 创建 `<ModName>.csproj`（参考 `reference/example_mod/ExampleMod.csproj`，改 `AssemblyName`/`RootNamespace` 为你的 mod 名）。
-6. 创建 `ModBehaviour.cs`（继承 `Duckov.Modding.ModBehaviour`，命名空间 = mod 名）。
-7. 编译：`dotnet build <ModName>.csproj -c Release`（需先设 `DUCKOV_DIR` 环境变量为游戏目录；或直接调 `validate_mod`，它自动编译）。
-8. 校验：调 `validate_mod` 工具（参数 modDir），直到返回 `PASS`。
+- **咨询/可行性**：按目标检索 `docs/api/`、`docs/data/` 与 `docs/mod-api.md`，确认 API/数据依据；只是讨论时不必建目录或安装环境。数据层版本见 `mod-repo.json` 的 `game.version`，不臆测最新补丁行为。
+- **实际制作/修改**：写入仅限当前 session 绑定目录。无绑定且准备写入时才调 `create_mod_folder`，选择合法 C# 标识符（通常 PascalCase）；有绑定就复用，目录缺失先说明阻塞，不另建第二个绑定。
+- **规范与实现**：按需读 `specs/mod-spec.md`，复用 `reference/example_mod/ExampleMod.csproj` 与入口类。保持 info.ini 名称、AssemblyName、RootNamespace 和 DLL 名一致。
+- **需要编译而环境未知/已变化**：用 `check_runtime` 核实 dotnet SDK 与游戏目录。有仍有效的结果无需每轮重复检查。缺 SDK 才取 `install_runtime` 安装指引；找不到游戏目录则确认安装位置，不用 SDK 安装解决。工具提供指引不等于已安装。
+- **验证产物**：`validate_mod` 做字段检查，并在环境就绪时执行编译；不必再机械地重复同一次 `dotnet build`。若需手工排错，使用返回的运行时路径与游戏目录，不依赖偶然的 PATH。
+- **失败处理**：按错误定位修复；环境缺失/网络阻塞或同类失败重复出现时先解决前置条件，不无限“直到 PASS”。
 
 ## info.ini
 
@@ -62,9 +58,9 @@ namespace MyMod
 
 调 `validate_mod` 工具，参数 `modDir = your_mods/<mod名>/`。
 
-- 返回 `PASS: <名> is valid`：通过。
-- 返回 `FAIL: <原因>`（逐条，英文）：失败，直接定位缺失/非法字段或编译错误。
-- `details.ok` 为 false 时表示校验未通过。
+- `PASS: <名> is valid` 表示本工具所需检查通过；仍不代表游戏内加载/玩法已经验证。
+- `FAIL` 表示校验失败；`PARTIAL` 表示有检查未执行（例如缺 SDK 跳过编译）。依据 `details.checks`、`warnings` 和 `nextAction` 说明实际完成范围，不把旧 DLL 的存在当作本次编译成功。
+- `details.ok` 保留为完整校验成功标志；false 时不能声称 mod 已全部验证。最终报告实现效果、实际验证和剩余步骤。
 
 ## 常见错误（对照修正）
 
@@ -73,7 +69,7 @@ namespace MyMod
 - `FAIL: missing ModBehaviour.cs` → 缺入口类，创建继承 `Duckov.Modding.ModBehaviour` 的 `ModBehaviour` 类。
 - `FAIL: dotnet build failed: ...` → 编译错误，读报错定位（多半是 API 用法/引用问题）。
 - `FAIL: missing <ModName>.dll` → 编译没产出 dll，先跑 dotnet build。
-- `WARN: dotnet not found — skip compile check` → 调 `check_runtime` / `install_runtime` 工具装 dotnet。
+- `WARN: dotnet not found` → 用 `check_runtime` 核实，按 `install_runtime` 返回的指引准备 SDK；再次检查确认后才能编译。工具本身不执行安装。
 - `WARN: missing preview.png` → 缺预览图（不影响本地加载，Workshop 上传需要 256×256）。
 
 ## 参考

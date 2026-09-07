@@ -2,7 +2,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import os from "node:os";
 
 /**
@@ -14,18 +14,25 @@ export default function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "check_runtime",
     label: "Check Runtime",
-    description: "Check whether the mod runtime is ready (dotnet SDK + game install dir)",
-    promptSnippet: "Check mod runtime readiness (dotnet + game dir)",
+    description: "Check .NET SDK >= 8 and locate the installed game using an optional gameDir, cached path or platform hint. Relative gameDir is resolved from the workspace. Writes discovery results to .gamer-agent.local.json; does not install software or modify mod source files.",
+    promptSnippet: "Check SDK and game location when compilation needs them or the player asks about setup",
     promptGuidelines: [
-      "Use check_runtime before writing mod code; if it reports missing dotnet or game dir, call install_runtime.",
+      "Use check_runtime when runtime readiness is unknown or has changed. Only SDK problems need install_runtime; a missing game directory needs a valid installation path, not SDK installation.",
     ],
-    parameters: Type.Object({}),
-    async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
+    parameters: Type.Object({
+      gameDir: Type.Optional(Type.String({ description: "Game installation directory supplied by the player; relative paths use the workspace root. Omit to try cached paths and platform hints." })),
+    }),
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       const repoRoot = ctx.cwd;
       const stateFile = join(repoRoot, ".gamer-agent.local.json");
       const platform = process.platform === "win32" ? "windows" : process.platform === "darwin" ? "mac" : "linux";
 
-      const cfg = JSON.parse(readFileSync(join(repoRoot, "mod-repo.json"), "utf8"));
+      let cfg;
+      try {
+        cfg = JSON.parse(readFileSync(join(repoRoot, "mod-repo.json"), "utf8"));
+      } catch {
+        throw new Error("INVALID_WORKSPACE_CONFIG: Cannot read mod-repo.json. Reopen or update the game workspace; do not edit its maintainer configuration.");
+      }
       const loadState = () => {
         try {
           return JSON.parse(readFileSync(stateFile, "utf8"));
@@ -49,11 +56,18 @@ export default function (pi: ExtensionAPI) {
       // 2. game dir
       const expandHome = (p: string) => (p.startsWith("~/") || p === "~" ? join(os.homedir(), p.slice(2)) : p);
       const discoverGameDir = () => {
-        const hint = cfg.game?.installDirHint?.[platform];
-        if (!hint) return null;
-        const dir = expandHome(hint);
-        const managed = join(dir, cfg.compile?.managedDir?.[platform] ?? "Duckov_Data/Managed");
-        return existsSync(join(managed, "TeamSoda.Duckov.Core.dll")) ? { gameDir: dir, managedDir: managed } : null;
+        const candidates = params.gameDir !== undefined
+          ? [params.gameDir]
+          : [state.gameDir, cfg.game?.installDirHint?.[platform]];
+        const managedRel = cfg.compile?.managedDir?.[platform];
+        if (typeof managedRel !== "string") return null;
+        for (const candidate of candidates) {
+          if (typeof candidate !== "string" || !candidate.trim()) continue;
+          const dir = resolve(repoRoot, expandHome(candidate.trim()));
+          const managed = join(dir, managedRel);
+          if (existsSync(join(managed, "TeamSoda.Duckov.Core.dll"))) return { gameDir: dir, managedDir: managed };
+        }
+        return null;
       };
 
       const found = discoverGameDir();
@@ -65,19 +79,22 @@ export default function (pi: ExtensionAPI) {
         writeFileSync(stateFile, `${JSON.stringify(state, null, 2)}\n`);
       } else {
         problems.push(
-          `FAIL: game install dir not found (${cfg.game?.name}). Install the game via Steam, then re-run. Expected near: ${cfg.game?.installDirHint?.[platform] ?? "(no hint)"}`,
+          `FAIL: GAME_DIRECTORY_NOT_FOUND (${cfg.game?.name}). Ask the player for the installed game directory and re-run check_runtime with gameDir; if not installed, install the game first. install_runtime only guides SDK setup and cannot fix this.`, 
         );
       }
 
       if (problems.length) {
+        const nextAction = !found
+          ? "GAME_DIRECTORY: Ask the player for the installed game directory and re-run check_runtime with gameDir, or install the game first. install_runtime only guides SDK setup and cannot fix game location."
+          : "SDK: Follow install_runtime's installation instructions, then re-run check_runtime to verify readiness.";
         return {
           content: [{ type: "text", text: problems.join("\n") }],
-          details: { ok: false },
+          details: { ok: false, status: "blocked", errors: problems, checks: { sdk: dotnet.ok, gameDirectory: !!found }, nextAction },
         };
       }
       return {
         content: [{ type: "text", text: `PASS: dotnet ${dotnet.version} (${dotnet.path}); gameDir ${state.gameDir}` }],
-        details: { ok: true, ...state },
+        details: { ...state, ok: true, status: "ready", checks: { sdk: true, gameDirectory: true }, nextAction: "Reuse this discovery result while the installation remains unchanged." },
       };
     },
   });
@@ -100,7 +117,7 @@ function checkDotnet() {
     }
   };
   const fromPath = tryRun("dotnet");
-  if (fromPath) return { ok: true, version: fromPath, path: "dotnet" };
+  if (fromPath) return { ok: parseInt(fromPath.split(".")[0], 10) >= 8, version: fromPath, path: "dotnet" };
   for (const c of candidates) {
     if (!existsSync(c)) continue;
     const v = tryRun(c);

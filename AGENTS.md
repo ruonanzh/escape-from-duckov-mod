@@ -1,31 +1,17 @@
 # Escape From Duckov Mod 工作区
 
-这是 **Escape From Duckov**（鸭子世界 PVES 生存 RPG，Team Soda 开发）的 modding 环境。mod 是 **C# 编译出的 DLL**（不是 JSON）。
+这是 **Escape From Duckov**（Team Soda）的 modding 环境，产物为 **C# DLL + info.ini**，不是 JSON mod。
 
-## 目录
+## 资料导航
 
-- `docs/`     游戏机制（game.md）、物品数据（items.md）、mod API（mod-api.md）、**资源替换指南（asset-mods.md）**
-- `docs/api/` **游戏 API 参考**（反射 dump 的签名，只读，用 grep 检索；含 unity-resources.md = Unity 资源 API）
-- `docs/data/` **游戏数据表**（物品/UI/任务等 CSV 含本地化；resources.csv = 美术资源清单，只读，grep 检索）
-- `specs/`    mod 制作规范（info.ini schema、目录结构、命名）
-- `reference/` 官方示例 mod（可编译、可过 lint 的正确答案）
-- `.pi/extensions/` **工具**（registerTool 注册 `check_runtime` / `install_runtime` / `validate_mod`）——**你做 mod 时直接调这些工具**
-- `scripts/`  **维护工具**（inspect_game / extract_data / extract_resources / refresh.py，repo 作者跑；**你不要跑**，会失败）
-- `libs/`     Harmony 2.4.1（编译引用 + 随 mod 分发）
-- `mod-repo.json` 机器可读配置（modType/游戏目录声明；`game.version` 记录当前数据层对应的游戏版本，游戏 patch 后由 `scripts/refresh.py` 自动更新）
-- `your_mods/` **唯一可写目录**，你的每个 mod 放这里（环境其余部分只读）
+- `docs/game.md`、`docs/items.md`：游戏机制与物品；`docs/mod-api.md`：mod API；`docs/asset-mods.md`：资源替换方法。
+- `docs/api/`：生成的 API 签名；`docs/data/`：数据/本地化 CSV、资源清单。按问题检索，不全量读入；这些是版本快照，不保证对应玩家最新游戏版本。
+- `specs/`：产物规范；`reference/example_mod/`：可编译样例；`libs/`：编译/分发依赖。
+- `mod-repo.json`：平台路径和依赖声明；`game.version` 记录数据层快照对应版本。
+- `.pi/skills/mod-authoring/`：制作、修改、编译和校验方法，任务需要时读取。
+- `.pi/extensions/`：环境检查、安装指引、mod 校验工具；以实际返回的执行状态为准。
+- `scripts/`：维护者刷新数据层的工具，玩家/agent 不运行；运行时准备与数据层维护是两件事。
 
-## 硬规则
+## 工作区边界
 
-mod 只能写到 `your_mods/<mod名>/`，环境的其它目录（.pi/docs/specs/reference/libs/scripts）只读。
-
-## 做 mod（流程概览）
-
-1. 先调 `check_runtime` 工具确认环境就绪（dotnet + 游戏目录）；缺失则调 `install_runtime`
-2. 调 `create_mod_folder` 工具创建你的 mod 目录（起个 PascalCase 名字，如 `WeaponDamageTweaks`）——**在此之前所有 write/edit 都会被拒**
-3. 用 **grep** 在 `docs/api/`（接口签名）和 `docs/data/`（物品/文本）里检索你要改的东西，定位到具体 API
-4. 读 `specs/` 了解产物结构，在 `your_mods/<mod名>/` 下创建 `<ModName>.csproj` + `ModBehaviour.cs` + `info.ini`
-5. 编译：`dotnet build`（lint 会自动做），产出 `<ModName>.dll`
-6. 调 `validate_mod` 工具校验（返回 PASS 即通过）
-
-详细步骤、字段说明、常见错误见 skill：`.pi/skills/mod-authoring/`（做 mod 时先加载它）。
+`docs/`、`specs/`、`.pi/`、`reference/`、`libs/`、`scripts/` 等环境内容由维护者管理。`your_mods/` 是玩家成果区；**源码写入权限由当前 session 的角色和 mod 绑定决定**，不是整个 `your_mods/` 都可写。Game Helper 不编辑源码；获准的环境检查/校验工具可能写自己的缓存或编译产物，不授予通用写权限。
