@@ -16,6 +16,13 @@ function parseIni(text: string) {
   return result;
 }
 
+/** 截断长输出，避免爆 LLM 上下文（pi 标准 50KB/2000 行，这里取保守的 200 行）。 */
+function truncateLines(text: string, maxLines = 200): string {
+  const lines = text.split("\n");
+  if (lines.length <= maxLines) return text;
+  return `${lines.slice(0, maxLines).join("\n")}\n... (${lines.length - maxLines} more lines truncated)`;
+}
+
 /**
  * validate_mod — mod 校验工具（替代原 lint/check_mod.mjs 脚本）。
  * 校验 info.ini 字段、编译源文件、dotnet build 编译、dll 产物。
@@ -41,12 +48,9 @@ export default function (pi: ExtensionAPI) {
       const warnings: string[] = [];
       let modName = basename(modDir);
 
-      // 0. mod 目录存在
+      // 0. mod 目录存在（不存在 = 参数错误/前置条件不满足，throw 标记 isError）
       if (!statSync(modDir, { throwIfNoEntry: false })?.isDirectory()) {
-        return {
-          content: [{ type: "text", text: `FAIL: ${modDir} is not a directory. Check the session's bound path or ask the player to restore it; do not create a replacement merely to validate.` }],
-          details: { ok: false, errors: [`${modDir} is not a directory`], warnings: [] },
-        };
+        throw new Error(`INVALID_MOD_DIR: ${modDir} is not a directory. Check the session's bound path or ask the player to restore it; do not create a replacement merely to validate.`);
       }
 
       // 1. info.ini
@@ -119,7 +123,7 @@ export default function (pi: ExtensionAPI) {
       else if (status === "partial") lines.push("PARTIAL: Static checks passed, but compilation was not performed.");
       lines.push(`NEXT: ${nextAction}`);
       return {
-        content: [{ type: "text", text: lines.join("\n") }],
+        content: [{ type: "text", text: truncateLines(lines.join("\n")) }],
         details: { ok, errors, warnings },
       };
     },
