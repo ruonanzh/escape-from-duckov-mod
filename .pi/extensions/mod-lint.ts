@@ -25,10 +25,10 @@ export default function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "validate_mod",
     label: "Validate Mod",
-    description: "Validate info.ini and C# source files in an existing mod directory (relative modDir uses workspace root). With ready SDK/game paths, runs dotnet build, which may restore dependencies and write build outputs; does not edit source or test gameplay. Reports ok/errors/warnings and status/checks/nextAction. Skipped compilation is PARTIAL, never full PASS.",
+    description: "Validate info.ini and C# source files in an existing mod directory (relative modDir uses workspace root). With ready SDK/game paths, runs dotnet build, which may restore dependencies and write build outputs; does not edit source or test gameplay. Output text uses PASS/FAIL/PARTIAL and a NEXT line for next steps. Skipped compilation is PARTIAL, never full PASS.",
     promptSnippet: "Check an existing C# mod and compile it when runtime prerequisites are ready",
     promptGuidelines: [
-      "Use validate_mod for changed code or requested validation. It can compile, so do not mechanically duplicate the same dotnet build. Inspect skipped checks; resolve their prerequisites before claiming success.",
+      "Use validate_mod for changed code or requested validation. It can compile, so do not mechanically duplicate the same dotnet build. Inspect the PARTIAL status in output text; resolve skipped-compilation prerequisites before claiming success.",
     ],
     parameters: Type.Object({
       modDir: Type.String({ minLength: 1, description: "Existing mod directory; absolute or relative to the workspace root, e.g. your_mods/MyMod (not relative to the skill)." }),
@@ -45,7 +45,7 @@ export default function (pi: ExtensionAPI) {
       if (!statSync(modDir, { throwIfNoEntry: false })?.isDirectory()) {
         return {
           content: [{ type: "text", text: `FAIL: ${modDir} is not a directory. Check the session's bound path or ask the player to restore it; do not create a replacement merely to validate.` }],
-          details: { ok: false, status: "blocked", errors: [`${modDir} is not a directory`], warnings: [], nextAction: "Provide an existing directory; relative paths use the workspace root." },
+          details: { ok: false, errors: [`${modDir} is not a directory`], warnings: [] },
         };
       }
 
@@ -120,7 +120,7 @@ export default function (pi: ExtensionAPI) {
       lines.push(`NEXT: ${nextAction}`);
       return {
         content: [{ type: "text", text: lines.join("\n") }],
-        details: { ok, errors, warnings, status, checks: { static: staticOk ? "passed" : "failed", compilation, artifactPresent, gameRuntime: "not_run" }, nextAction },
+        details: { ok, errors, warnings },
       };
     },
   });

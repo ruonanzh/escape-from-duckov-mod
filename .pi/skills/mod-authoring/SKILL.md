@@ -59,8 +59,8 @@ namespace MyMod
 调 `validate_mod` 工具，参数 `modDir = your_mods/<mod名>/`。
 
 - `PASS: <名> is valid` 表示本工具所需检查通过；仍不代表游戏内加载/玩法已经验证。
-- `FAIL` 表示校验失败；`PARTIAL` 表示有检查未执行（例如缺 SDK 跳过编译）。依据 `details.checks`、`warnings` 和 `nextAction` 说明实际完成范围，不把旧 DLL 的存在当作本次编译成功。
-- `details.ok` 保留为完整校验成功标志；false 时不能声称 mod 已全部验证。最终报告实现效果、实际验证和剩余步骤。
+- `FAIL` 表示校验失败；`PARTIAL` 表示有检查未执行（例如缺 SDK 跳过编译）。依据输出文本的 `PASS`/`FAIL`/`PARTIAL` 和 `NEXT:` 行说明实际完成范围，不把旧 DLL 的存在当作本次编译成功。
+- 输出含 `FAIL` 时不能声称 mod 已全部验证；最终报告实现效果、实际验证和剩余步骤。
 
 ## 常见错误（对照修正）
 

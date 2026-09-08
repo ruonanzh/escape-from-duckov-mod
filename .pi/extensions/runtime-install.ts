@@ -23,7 +23,7 @@ export default function (pi: ExtensionAPI) {
       if (v) {
         const major = parseInt(v.split(".")[0], 10);
         if (major >= 8) {
-          return { content: [{ type: "text", text: `SKIP: dotnet SDK ${v} already present; no installation performed. Game location has not been checked here.` }], details: { ok: true, status: "already_present", installationPerformed: false, sdkReady: true, nextAction: "Use check_runtime if game location or overall readiness still needs checking." } };
+          return { content: [{ type: "text", text: `SKIP: dotnet SDK ${v} already present; no installation performed. Game location has not been checked here.` }], details: { ok: true } };
         }
       }
 
@@ -58,7 +58,7 @@ export default function (pi: ExtensionAPI) {
       return {
         content: [{ type: "text", text: lines.join("\n") }],
         // ok means the guidance operation succeeded, NOT that installation completed.
-        details: { ok: true, status: "instructions_provided", installationPerformed: false, sdkReady: false, nextAction: "Follow the platform-specific installation instructions, then run check_runtime to verify readiness." },
+        details: { ok: true },
       };
     },
   });

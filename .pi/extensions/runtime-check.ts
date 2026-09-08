@@ -84,17 +84,14 @@ export default function (pi: ExtensionAPI) {
       }
 
       if (problems.length) {
-        const nextAction = !found
-          ? "GAME_DIRECTORY: Ask the player for the installed game directory and re-run check_runtime with gameDir, or install the game first. install_runtime only guides SDK setup and cannot fix game location."
-          : "SDK: Follow install_runtime's installation instructions, then re-run check_runtime to verify readiness.";
         return {
           content: [{ type: "text", text: problems.join("\n") }],
-          details: { ok: false, status: "blocked", errors: problems, checks: { sdk: dotnet.ok, gameDirectory: !!found }, nextAction },
+          details: { ok: false, errors: problems },
         };
       }
       return {
         content: [{ type: "text", text: `PASS: dotnet ${dotnet.version} (${dotnet.path}); gameDir ${state.gameDir}` }],
-        details: { ...state, ok: true, status: "ready", checks: { sdk: true, gameDirectory: true }, nextAction: "Reuse this discovery result while the installation remains unchanged." },
+        details: { ...state, ok: true },
       };
     },
   });
