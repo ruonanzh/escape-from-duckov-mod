@@ -1,4 +1,4 @@
-# mod 制作规范
+# mod 产物说明
 
 ## 目录结构
 
@@ -13,31 +13,21 @@
 
 ## info.ini
 
-```ini
-name = MyMod
-displayName = 我的 Mod
-description = 这个 mod 做了什么
+mod 元信息，字段：
 
-tags = Quality of Life
-version = 1.0
-publishedFileId = 1234567890
-```
-
-| 字段 | 必填 | 说明 |
-|---|---|---|
-| `name` | ✅ | mod 名，**= 命名空间 = dll 文件名**，合法 C# 命名空间（`^[A-Za-z_][A-Za-z0-9_]*$`） |
-| `displayName` | ✅ | 显示名 |
-| `description` | ✅ | 描述 |
-| `tags` | 可选 | Workshop 标签，逗号分隔 |
-| `version` | 可选 | 版本号 |
-| `publishedFileId` | 可选 | Workshop 的 mod ID（上传后回填） |
-
-> 上传 Workshop 时 `info.ini` 会被覆盖，别存多余字段。
+- `name` — mod 名（也是命名空间和 dll 文件名）
+- `displayName` — 显示名
+- `description` — 描述
+- `tags` — Workshop 标签，逗号分隔，可选值见下
+- `version` — 版本号
+- `publishedFileId` — Workshop 的 mod ID（上传后回填）
 
 ## ModBehaviour
 
+mod 入口类，继承 `Duckov.Modding.ModBehaviour`：
+
 ```csharp
-namespace MyMod
+namespace <ModName>
 {
     public class ModBehaviour : Duckov.Modding.ModBehaviour
     {
@@ -48,16 +38,10 @@ namespace MyMod
 }
 ```
 
-- **命名空间 = info.ini 的 name**，类名固定 `ModBehaviour`
-- 游戏加载 `<name>.ModBehaviour`，命名空间/类名不匹配则加载失败
-
-## 命名约定
-
-- mod 名 / 命名空间：合法 C# 标识符（`^[A-Za-z_][A-Za-z0-9_]*$`），习惯用 PascalCase（如 `DisplayItemValue`）
-- dll 文件名必须 = mod 名（`<ModName>.dll`）
+命名空间通常跟 mod 名一致，类名通常叫 `ModBehaviour`（游戏按 `<name>.ModBehaviour` 加载）。
 
 ## tags 可选值
 
 Weapon / Equipment & Gear / Loot & Economy / Quality of Life / Cheats & Exploits / Visual Enhancements / Sound / Quest & Progression / Companion & NPC / Collectibles / Gameplay / Multiplayer & Co-op / Utility
 
-> 本规范的可执行版是 `validate_mod` 工具——这里每条约束，它都要能校验。
+> 字段的必填/格式/命名等约束由 `validate_mod` 工具校验——做错了会返回 FAIL + 定位到具体字段，照着改即可。
