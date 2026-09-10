@@ -116,7 +116,7 @@ export default function (pi: ExtensionAPI) {
       const nextAction = ok
         ? "Report validation and compilation passed; in-game loading and behavior still require testing."
         : errors.length
-          ? "Inspect the reported errors and specs/mod-spec.md. Fix only in an authorized mod-development session, then validate again."
+          ? "Inspect the reported errors. Fix only in an authorized mod-development session, then validate again."
           : "Run check_runtime to resolve the skipped compilation prerequisites, then re-run validate_mod. An existing DLL is not proof of a build in this run.";
       const lines = [...warnings.map((w) => `WARN: ${w}`), ...errors.map((e) => `FAIL: ${e}`)];
       if (ok) lines.push(`PASS: ${basename(modDir)} is valid (compiled; not tested in-game).`);
