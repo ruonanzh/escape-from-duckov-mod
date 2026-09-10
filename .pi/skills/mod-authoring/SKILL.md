@@ -5,7 +5,14 @@ description: Escape From Duckov 的 C# mod 制作、修改、可行性/制作方
 
 # 做 mod（Escape From Duckov）
 
-在 `your_mods/<mod名>/` 下做一个 C# mod，编译成 DLL，用 `validate_mod` 工具校验。
+一个 mod 是 `your_mods/<mod名>/` 目录，含：
+
+- `<ModName>.csproj` — 编译配置
+- `ModBehaviour.cs` — mod 入口类（继承 `Duckov.Modding.ModBehaviour`）
+- `info.ini` — mod 元信息
+- `preview.png` — 256×256 预览图（Workshop 上传用，可选）
+
+编译成 DLL，用 `validate_mod` 工具校验。
 
 ## 使用方式与条件分支
 
@@ -13,7 +20,7 @@ description: Escape From Duckov 的 C# mod 制作、修改、可行性/制作方
 
 - **咨询/可行性**：按目标检索 `docs/api/`、`docs/data/` 与 `docs/mod-api.md`，确认 API/数据依据；只是讨论时不必建目录或安装环境。数据层版本见 `mod-repo.json` 的 `game.version`，不臆测最新补丁行为。
 - **实际制作/修改**：写入仅限当前 session 绑定目录。无绑定且准备写入时才调 `create_mod_folder`，选择合法 C# 标识符（通常 PascalCase）；有绑定就复用，目录缺失先说明阻塞，不另建第二个绑定。
-- **规范与实现**：按需读 `specs/mod-spec.md`，复用 `reference/example_mod/ExampleMod.csproj` 与入口类。保持 info.ini 名称、AssemblyName、RootNamespace 和 DLL 名一致。
+- **规范与实现**：复用 `reference/example_mod/ExampleMod.csproj` 与入口类。保持 info.ini 名称、AssemblyName、RootNamespace 和 DLL 名一致（validate_mod 校验）。
 - **需要编译而环境未知/已变化**：用 `check_runtime` 核实 dotnet SDK 与游戏目录。有仍有效的结果无需每轮重复检查。缺 SDK 才取 `install_runtime` 安装指引；找不到游戏目录则确认安装位置，不用 SDK 安装解决。工具提供指引不等于已安装。
 - **验证产物**：`validate_mod` 做字段检查，并在环境就绪时执行编译；不必再机械地重复同一次 `dotnet build`。若需手工排错，使用返回的运行时路径与游戏目录，不依赖偶然的 PATH。
 - **失败处理**：按错误定位修复；环境缺失/网络阻塞或同类失败重复出现时先解决前置条件，不无限“直到 PASS”。
@@ -29,9 +36,16 @@ tags = Quality of Life
 version = 1.0
 ```
 
-- `name`：必填，= 命名空间 = dll 文件名，合法 C# 标识符（PascalCase）。
-- `displayName`、`description`：必填。
-- `tags`、`version`、`publishedFileId`：可选。
+- `name`：mod 名，= 命名空间 = dll 文件名，合法 C# 标识符（validate_mod 校验）。
+- `displayName`：显示名（validate_mod 校验非空）。
+- `description`：描述（validate_mod 校验非空）。
+- `tags`：Workshop 标签，逗号分隔，可选值见下。
+- `version`：版本号。
+- `publishedFileId`：Workshop 的 mod ID（上传后回填）。
+
+### tags 可选值
+
+Weapon / Equipment & Gear / Loot & Economy / Quality of Life / Cheats & Exploits / Visual Enhancements / Sound / Quest & Progression / Companion & NPC / Collectibles / Gameplay / Multiplayer & Co-op / Utility
 
 ## csproj 要点
 
@@ -41,6 +55,8 @@ version = 1.0
 - 游戏目录用 `$(DUCKOV_DIR)` 环境变量注入（check_runtime 发现后写进状态文件，编译时导出）
 
 ## ModBehaviour
+
+mod 入口类，继承 `Duckov.Modding.ModBehaviour`：
 
 ```csharp
 using UnityEngine;
@@ -53,6 +69,8 @@ namespace MyMod
     }
 }
 ```
+
+命名空间通常跟 mod 名一致，类名通常叫 `ModBehaviour`（游戏按 `<name>.ModBehaviour` 加载）。
 
 ## validate_mod 工具用法
 
@@ -75,4 +93,4 @@ namespace MyMod
 ## 参考
 
 - 完整可编译样例：`reference/example_mod/`。
-- 字段定义：`specs/mod-spec.md`；API：`docs/mod-api.md`；物品：`docs/items.md`。
+- API：`docs/mod-api.md`；物品：`docs/items.md`。
