@@ -2,19 +2,19 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import os from "node:os";
 
 /**
  * check_runtime — 运行时契约（docs/mod-repo-guide.md §4）
- * 检查：1) dotnet SDK；2) 游戏安装目录。
+ * 检查：1) dotnet SDK；2) 游戏安装目录；3) Steam Workshop 内容目录（若有 steamAppId）。
  * 发现结果缓存到 <repo>/.gamer-agent.local.json（gitignored）。
  */
 export default function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "check_runtime",
     label: "Check Runtime",
-    description: "Check .NET SDK >= 8 and locate the installed game using an optional gameDir, cached path or platform hint. Relative gameDir is resolved from the workspace. Writes discovery results to .gamer-agent.local.json; does not install software or modify mod source files.",
+    description: "Check .NET SDK >= 8 and locate the installed game, plus its Steam Workshop content dir when a Steam app id is set. Uses an optional gameDir, cached path or platform hint; relative gameDir is resolved from the workspace. Writes discovery results to .gamer-agent.local.json; does not install software or modify mod source files.",
     promptSnippet: "Check SDK and game location when compilation needs them or the player asks about setup",
     promptGuidelines: [
       "Use check_runtime when runtime readiness is unknown or has changed. Only SDK problems need install_runtime; a missing game directory needs a valid installation path, not SDK installation.",
@@ -75,6 +75,12 @@ export default function (pi: ExtensionAPI) {
         state.gameDir = found.gameDir;
         state.managedDir = found.managedDir;
         state.modInstallDir = join(found.gameDir, cfg.modInstall?.path?.[platform] ?? "");
+        // Steam Workshop 内容目录（只读参考，可选）：gameDir 位于 steamapps/common/<game> 下，
+        // workshop 在同级 steamapps/workshop/content/<steamAppId>。
+        const steamAppId = cfg.game?.steamAppId;
+        if (steamAppId) {
+          state.workshopDir = join(dirname(dirname(found.gameDir)), "workshop", "content", String(steamAppId));
+        }
         state.runtime = { dotnet: dotnet.path, dotnetVersion: dotnet.version };
         writeFileSync(stateFile, `${JSON.stringify(state, null, 2)}\n`);
       } else {
