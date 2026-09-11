@@ -5,6 +5,7 @@
     "name": "Escape From Duckov",
     "steamAppId": 3167020,
     "version": "2.3.30",
+    "platforms": ["windows", "mac"],
     "installDirHint": {
       "windows": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Escape from Duckov",
       "mac": "~/Library/Application Support/Steam/steamapps/common/Escape from Duckov"
