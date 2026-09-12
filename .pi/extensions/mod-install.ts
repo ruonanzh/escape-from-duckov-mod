@@ -18,15 +18,16 @@ import { join, resolve, basename } from "node:path";
  *
  * 安装目标不自己探测：读 check_runtime 写的 .gamer-agent.local.json（单一事实源）。
  *
- * 身份与冲突（契约见 desktop-gamer-agent-pi/docs/mod-repo-guide.md §4.1）：
- * 本类型的 mod 身份 = info.ini 的 `name` = C# 命名空间 = `<name>.dll` 文件名，**编进编译产物**。
- * 因此目标目录已存在、且不是本 mod 时**不能靠改目录名解决**（DLL 里的命名空间不会跟着变），
- * 这种冲突只能由玩家/agent 改 mod 名并重新编译——install_mod 绝不静默覆盖。
+ * 同名冲突（契约见 desktop-gamer-agent-pi/docs/mod-repo-guide.md §4.1）：
+ * 安装工具的职责是**装得进去**——目标目录被别的 mod 占用时，改名装到 `<name>_pimod`（再撞则 _pimod2…），
+ * 并如实告知；**绝不覆盖别人的内容**。
+ * 「两个 mod 在游戏里身份相同」是 mod 冲突问题，不属安装职责（本类型的身份 = info.ini 的 name =
+ * C# 命名空间 = `<name>.dll`，编进产物，只有改 mod 名重新编译才能变）。
  *
  * 识别「是不是本 mod」靠目标目录里的 `.pi-mod.json`（记录 id 等）：
  * - 先扫 mod 根下所有 `.pi-mod.json`，按 id 找到本 mod 上次装在哪 → 就地更新（目录名不漂移）
  * - 目标目录里标记 id 相同 → 覆盖（重装/升级幂等）
- * - 目标目录没有标记、或 id 不同 → FAIL + NEXT，交给人决定
+ * - 目标目录没有标记、或 id 不同 → 改名安装 + 告知（不阻塞）
  */
 
 /** dev-only 产物，不装进游戏（obj/bin 是编译中间物，.cs/.csproj 是源码） */
@@ -216,35 +217,24 @@ export default function (pi: ExtensionAPI) {
       const previousDir = findInstalledDirByModId(modRoot, id);
       const targetDir = previousDir ?? join(modRoot, identity.name);
 
-      if (existsSync(targetDir) && !previousDir) {
-        const marker = readInstalledMarker(targetDir);
+      // 目标被别的 mod 占用 → 改名安装（不覆盖、不阻塞）。
+      // 「两个 mod 在游戏里身份相同」是 mod 冲突问题，不是安装的职责：安装只保证装得进去、不毁别人的东西。
+      let occupiedBy: string | null = null;
+      let installDir = targetDir;
+      if (existsSync(installDir) && !previousDir) {
+        const marker = readInstalledMarker(installDir);
         if (marker?.id !== id) {
-          const who = marker?.id
-            ? `another mod installed by this tool (${marker.id})`
-            : "content not installed by this tool (no .pi-mod.json)";
-          return {
-            content: [
-              {
-                type: "text",
-                text:
-                  `FAIL: ${targetDir} already exists and holds ${who}.\n` +
-                  `NEXT: this modType cannot resolve a name clash by installing elsewhere — info.ini's name is the C# namespace and is compiled into ${identity.name}.dll, so a renamed copy would still load as ${identity.name}. ` +
-                  `Ask the player: if that directory is an older copy of this mod, remove it (or confirm removal) and run install_mod again; if it is a different mod, change this mod's name (info.ini name + csproj AssemblyName/RootNamespace + namespaces), re-run validate_mod, then install_mod.`,
-              },
-            ],
-            details: {
-              ok: false,
-              reason: "MOD_NAME_CONFLICT",
-              targetDir,
-              occupiedBy: marker?.id ?? null,
-              id,
-            },
-          };
+          occupiedBy = marker?.id ?? null;
+          let suffix = 1;
+          do {
+            installDir = join(modRoot, `${identity.name}_pimod${suffix === 1 ? "" : suffix}`);
+            suffix += 1;
+          } while (existsSync(installDir) && readInstalledMarker(installDir)?.id !== id);
         }
       }
 
       // 先复制到临时目录再切换，避免中途失败留下半个安装
-      const staging = `${targetDir}.staging-${process.pid}`;
+      const staging = `${installDir}.staging-${process.pid}`;
       rmSync(staging, { recursive: true, force: true });
       const copied = copyModProducts(modDir, staging);
       writeFileSync(
@@ -258,7 +248,8 @@ export default function (pi: ExtensionAPI) {
             displayName: identity.displayName,
             version: identity.version,
             source: `your_mods/${basename(modDir)}`,
-            installedDir: basename(targetDir),
+            installedDir: basename(installDir),
+            ...(installDir === targetDir ? {} : { renamedFrom: basename(targetDir) }),
             installedAt: new Date().toISOString(),
             installedBy: "pi-desktop",
           },
@@ -266,24 +257,34 @@ export default function (pi: ExtensionAPI) {
           2,
         )}\n`,
       );
-      rmSync(targetDir, { recursive: true, force: true });
-      renameSync(staging, targetDir);
+      rmSync(installDir, { recursive: true, force: true });
+      renameSync(staging, installDir);
 
+      const renamed = installDir !== targetDir;
+      const note = renamed
+        ? `\nNOTE: ${basename(targetDir)} was already taken by ` +
+          `${occupiedBy ? `another mod (${occupiedBy})` : "content this tool did not install"}, ` +
+          `so it was installed to ${basename(installDir)} instead; that directory was left untouched.` +
+          `\nNEXT: the mod keeps its in-game identity ${identity.name} (info.ini name = namespace = ${identity.name}.dll). ` +
+          `If that clashes with the other mod in-game, change this mod's name (info.ini name + csproj AssemblyName/RootNamespace + namespaces), re-run validate_mod, then install_mod. Tell the player about the rename.`
+        : `\nNEXT: ask the player to launch the game and confirm the mod loads; restart the game if it was already running.`;
       return {
         content: [
           {
             type: "text",
             text:
-              `PASS: ${identity.name}${identity.version ? ` ${identity.version}` : ""} installed to ${targetDir} (${copied.length} files).\n` +
-              `NEXT: ask the player to launch the game and confirm the mod loads; restart the game if it was already running.`,
+              `PASS: ${identity.name}${identity.version ? ` ${identity.version}` : ""} installed to ${installDir} (${copied.length} files).` +
+              note,
           },
         ],
         details: {
           ok: true,
           id,
           modName: identity.name,
-          targetDir,
+          targetDir: installDir,
           updated: Boolean(previousDir),
+          renamed,
+          occupiedBy,
           files: copied,
         },
       };
