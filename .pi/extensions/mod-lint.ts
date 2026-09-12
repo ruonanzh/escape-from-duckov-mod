@@ -42,7 +42,7 @@ export default function (pi: ExtensionAPI) {
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       const repoRoot = ctx.cwd;
-      if (!params.modDir.trim()) throw new Error("INVALID_MOD_DIR: Provide an existing mod directory, e.g. your_mods/MyMod.");
+      if (!params.modDir?.trim()) throw new Error("INVALID_MOD_DIR: Provide an existing mod directory, e.g. your_mods/MyMod.");
       const modDir = resolve(repoRoot, params.modDir);
       const errors: string[] = [];
       const warnings: string[] = [];
