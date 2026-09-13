@@ -1,11 +1,11 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { CODE_IDENTIFIER_RE, isCodeIdentifier } from "../lib/mod-identity";
 import { Type } from "typebox";
 import { readFileSync, existsSync, statSync, readdirSync } from "node:fs";
 import { join, basename, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import os from "node:os";
 
-const NAME_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 function parseIni(text: string) {
   const result: Record<string, string> = {};
@@ -63,8 +63,8 @@ export default function (pi: ExtensionAPI) {
         if (!ini.name) errors.push("info.ini: name is missing");
         if (!ini.displayName) errors.push("info.ini: displayName is missing");
         if (!ini.description) errors.push("info.ini: description is missing");
-        if (ini.name && !NAME_RE.test(ini.name)) {
-          errors.push(`info.ini: name (${ini.name}) is not a valid namespace (${NAME_RE})`);
+        if (ini.name && !isCodeIdentifier(ini.name)) {
+          errors.push(`info.ini: name (${ini.name}) is not a valid namespace (${CODE_IDENTIFIER_RE})`);
         }
       }
 

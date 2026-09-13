@@ -13,6 +13,7 @@ import {
 } from "node:fs";
 import { basename, isAbsolute, join, resolve } from "node:path";
 import { checkModInstallDir } from "../lib/game-paths";
+import { isCodeIdentifier, readModIdentity } from "../lib/mod-identity";
 
 /**
  * install_mod — 把 your_mods/<ModName>/ 的产物装进游戏的 Mods 目录。
@@ -34,19 +35,6 @@ const EXCLUDED_DIRS = new Set(["obj", "bin", ".git", "node_modules"]);
 const EXCLUDED_EXT = new Set([".cs", ".csproj", ".sln", ".pdb", ".user"]);
 
 /** 读 mod 身份：info.ini 的 name（= 命名空间 = dll 名） */
-export function readModIdentity(
-  modDir: string,
-): { name: string; version: string } | null {
-  const iniPath = join(modDir, "info.ini");
-  if (!existsSync(iniPath)) return null;
-  const fields: Record<string, string> = {};
-  for (const line of readFileSync(iniPath, "utf8").split(/\r?\n/)) {
-    const m = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(line);
-    if (m) fields[m[1]] = m[2].trim();
-  }
-  const name = fields.name?.trim();
-  return name ? { name, version: fields.version?.trim() ?? "" } : null;
-}
 
 /** 这个目录是不是本 mod 上次装的 */
 export function readMarkerName(dir: string): string | null {
