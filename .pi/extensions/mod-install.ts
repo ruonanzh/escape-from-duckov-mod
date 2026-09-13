@@ -11,7 +11,7 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { basename, isAbsolute, join, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 
 /**
  * install_mod — 把 your_mods/<ModName>/ 的产物装进游戏的 Mods 目录。
@@ -212,6 +212,29 @@ export default function (pi: ExtensionAPI) {
         };
       }
       const targetWasMissing = !targetStat;
+
+      // 这个目标目录**在游戏目录里面**（mod-repo.json: modInstall.relativeTo = gameDir），所以先确认那条路径
+      // 确实长在一个真的 Duckov 目录里：向上找**兄弟目录**里的游戏自带程序集（哨兵，与 Managed 同级。
+      // Windows: <gameDir>/Duckov_Data/{Mods,Managed}；macOS: <...>/Data/{Mods,Managed}）。
+      // 为什么不能只验"目录存在"：游戏换盘/卸载后旧路径可能还"存在"（残留目录）→ 我们会 mkdirSync(recursive)
+      // 造出一条假路径、把 mod 装到游戏永远不读的地方，而且看起来还成功。
+      // 不自己探测 Steam 库（那是 check_runtime 的职责）→ 只报告这份缓存已失效，让 agent 去重跑它。
+      const managedSibling = join(dirname(modRoot), "Managed", "TeamSoda.Duckov.Core.dll");
+      if (!existsSync(managedSibling)) {
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                `FAIL: GAME_DIRECTORY_NOT_FOUND: ${modRoot} does not look like it is inside the game folder ` +
+                `(expected the game's own assembly next to it: ${managedSibling}). ` +
+                "The game may have been moved or uninstalled since check_runtime last ran." +
+                "\nNEXT: run check_runtime again to re-locate the game directory, then re-run install_mod.",
+            },
+          ],
+          details: { ok: false, reason: "GAME_DIRECTORY_NOT_FOUND" },
+        };
+      }
 
       const identity = readModIdentity(modDir);
       if (!identity) {
