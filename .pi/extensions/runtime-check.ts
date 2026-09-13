@@ -74,13 +74,23 @@ export default function (pi: ExtensionAPI) {
       if (found) {
         state.gameDir = found.gameDir;
         state.managedDir = found.managedDir;
-        state.modInstallDir = join(found.gameDir, cfg.modInstall?.path?.[platform] ?? "");
-        // Steam Workshop 内容目录（只读参考，可选）：gameDir 位于 steamapps/common/<game> 下，
-        // workshop 在同级 steamapps/workshop/content/<steamAppId>。
-        const steamAppId = cfg.game?.steamAppId;
-        if (steamAppId) {
-          state.workshopDir = join(dirname(dirname(found.gameDir)), "workshop", "content", String(steamAppId));
-        }
+          // modInstall.path 缺本平台取值时**不能**退化成 gameDir：旧写法 `?? ""` 会让 join(gameDir, "") === gameDir，
+          // 等于把 mod 装进游戏根目录 → 直接报配置错误（与 eu5 的 INVALID_WORKSPACE_CONFIG 对齐）。
+          const modInstallRel = cfg.modInstall?.path?.[platform];
+          if (typeof modInstallRel !== "string" || !modInstallRel.trim()) {
+            problems.push(
+              "FAIL: INVALID_WORKSPACE_CONFIG: mod-repo.json has no modInstall.path for this platform; cannot determine where mods go.",
+            );
+          } else {
+            state.modInstallDir = join(found.gameDir, modInstallRel);
+          }
+          // Steam Workshop 内容目录（只读参考，可选）：gameDir 位于 steamapps/common/<game> 下，
+          // workshop 在同级 steamapps/workshop/content/<steamAppId>。与 eu5 对齐：不存在就不写进状态。
+          const steamAppId = cfg.game?.steamAppId;
+          if (steamAppId) {
+            const workshop = join(dirname(dirname(found.gameDir)), "workshop", "content", String(steamAppId));
+            if (existsSync(workshop)) state.workshopDir = workshop;
+          }
         state.runtime = { dotnet: dotnet.path, dotnetVersion: dotnet.version };
         writeFileSync(stateFile, `${JSON.stringify(state, null, 2)}\n`);
       } else {
