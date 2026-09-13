@@ -160,3 +160,62 @@ export function checkWorkshopDir(dir: string | null | undefined, appId: string):
     };
   return { ok: true, path: p };
 }
+
+// ── 发现（Duckov：显式入参 → 缓存 → mod-repo.json 的平台提示；不扫 Steam 库，
+//    因为它的 Workshop 目录可由游戏目录推导出来）─────────────────────────────────
+export interface TriedCandidate {
+  path: string;
+  reason?: string;
+}
+
+/** 候选游戏目录（去重、保序） */
+export function gameDirCandidates(
+  cfg: ModRepoConfig,
+  state: RuntimeState,
+  platform = platformKey(),
+  explicit?: string,
+): string[] {
+  const out: string[] = [];
+  const push = (v: unknown) => {
+    if (typeof v === "string" && v.trim()) out.push(v);
+  };
+  if (explicit?.trim()) push(explicit);
+  push(state.gameDir);
+  push(cfg.game?.installDirHint?.[platform]);
+  return [...new Set(out)];
+}
+
+/** 依次验证候选，返回第一个通过的游戏目录（**发现 ≠ 信任**：每个候选都过 checkGameDir） */
+export function discoverGameDir(
+  cfg: ModRepoConfig,
+  state: RuntimeState,
+  platform = platformKey(),
+  explicit?: string,
+): { gameDir: string | null; tried: TriedCandidate[] } {
+  const tried: TriedCandidate[] = [];
+  for (const c of gameDirCandidates(cfg, state, platform, explicit)) {
+    const v = checkGameDir(c, cfg, platform);
+    if (v.ok) return { gameDir: c, tried };
+    tried.push({ path: c, reason: v.reason });
+  }
+  return { gameDir: null, tried };
+}
+
+/** 由已确认的 gameDir 派生其余路径；只读参考类目录**不存在就不记**（不让状态撒谎） */
+export function pathsFromGameDir(
+  gameDir: string,
+  cfg: ModRepoConfig,
+  platform = platformKey(),
+): { managedDir: string | null; modInstallDir: string | null; workshopDir: string | null; notes: string[] } {
+  const notes: string[] = [];
+  const managedDir = managedDirFor(gameDir, cfg, platform);
+  const modInstallDir = modInstallDirFor(gameDir, cfg, platform);
+  let workshopDir: string | null = null;
+  const appId = cfg.game?.steamAppId;
+  if (appId) {
+    const ws = join(dirname(dirname(gameDir)), "workshop", "content", String(appId));
+    if (existsSync(ws)) workshopDir = ws;
+    else notes.push(`NOTE: Workshop 目录不存在，未记入状态（可选、只读参考）：${ws}`);
+  }
+  return { managedDir, modInstallDir, workshopDir, notes };
+}
