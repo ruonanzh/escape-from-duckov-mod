@@ -241,7 +241,7 @@ export default function (pi: ExtensionAPI) {
       }
       // 身份会被拼进路径（下面的 <name>.dll 与安装标记）。它由 info.ini 决定，不由目录名决定，
       // 所以这里必须复用 validate_mod 的同一套规则 —— 否则 `../x` 这类名字能读到 mod 目录之外。
-      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(identity.name)) {
+      if (!isCodeIdentifier(identity.name)) {
         return {
           content: [
             {
