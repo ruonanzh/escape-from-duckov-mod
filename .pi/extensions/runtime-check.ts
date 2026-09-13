@@ -105,8 +105,23 @@ export default function (pi: ExtensionAPI) {
           details: { ok: false, errors: problems },
         };
       }
+      // 与 eu5 对齐：安装目标目录尚不存在时只给 WARN（全新机器的正常状态，install_mod 会创建）；
+      // 若玩家把「文档」/游戏目录挪过位置，这里算出的路径可能是错的 → 把判断交回 agent/玩家。
+      const modTarget =
+        typeof state.modInstallDir === "string" && state.modInstallDir ? state.modInstallDir : null;
+      const modDirWarn =
+        modTarget && !existsSync(modTarget)
+          ? `\nWARN: that mod directory does not exist yet — normal on a first install (install_mod creates it). If the player moved their Documents or the game folder, this path may be wrong: confirm with the player where the game expects mods.`
+          : "";
       return {
-        content: [{ type: "text", text: `PASS: dotnet ${dotnet.version} (${dotnet.path}); gameDir ${state.gameDir}` }],
+        content: [
+          {
+            type: "text",
+            text: `PASS: dotnet ${dotnet.version} (${dotnet.path}); gameDir ${state.gameDir}${
+              modTarget ? `; modInstallDir ${modTarget}` : ""
+            }${modDirWarn}`,
+          },
+        ],
         details: { ...state, ok: true },
       };
     },
