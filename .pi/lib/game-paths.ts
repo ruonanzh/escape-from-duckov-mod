@@ -156,9 +156,9 @@ export function checkWorkshopDir(dir: string | null | undefined, appId: string):
   if (!p)
     return { ok: false, path: null, reason: "no Workshop directory was given (optional)", next: "Omit it; it is only used to read Workshop content for reference." };
   if (!existsSync(p)) return { ok: false, path: p, reason: "the directory does not exist", next: "Omit this argument (the Workshop directory is an optional read-only reference)." };
-    // 归一化（反斜杠/尾斜杠/大小写）后比较 —— Windows 路径不区分大小写；
-    // appid 未知时只校验存在性（形状校验是"当我们知道规则"时才有意义）。
-    const norm = (v: string) => v.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+  // 归一化（反斜杠/尾斜杠/大小写）后比较 —— Windows 路径不区分大小写；
+  // appid 未知时只校验存在性（形状校验是"当我们知道规则"时才有意义）。
+  const norm = (v: string) => v.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
   if (appId && !norm(p).endsWith(norm(`/workshop/content/${appId}`)))
     return {
       ok: false,
