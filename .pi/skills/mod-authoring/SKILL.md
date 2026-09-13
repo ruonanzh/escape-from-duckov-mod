@@ -23,7 +23,11 @@ description: Escape From Duckov 的 C# mod 制作、修改、可行性/制作方
 - **规范与实现**：复用 `reference/example_mod/ExampleMod.csproj` 与入口类。保持 info.ini 名称、AssemblyName、RootNamespace 和 DLL 名一致（validate_mod 校验）。
 - **需要编译而环境未知/已变化**：用 `check_runtime` 核实 dotnet SDK 与游戏目录。有仍有效的结果无需每轮重复检查。缺 SDK 才取 `install_runtime` 安装指引；找不到游戏目录则确认安装位置，不用 SDK 安装解决。工具提供指引不等于已安装。
 - **验证产物**：`validate_mod` 做字段检查，并在环境就绪时执行编译；不必再机械地重复同一次 `dotnet build`。若需手工排错，使用返回的运行时路径与游戏目录，不依赖偶然的 PATH。
-- **装进游戏**：`install_mod` 把产物复制到游戏 `Mods/` 目录（目标来自 `check_runtime` 的发现结果，它不自己探测）。同一个 mod 重复安装是原地更新；目标目录若已被**别的 mod** 占用会直接 FAIL —— 本类型 mod 身份 = `info.ini` 的 `name` = C# 命名空间，编进 DLL，**改目录名解决不了冲突**，必须改 mod 名（info.ini + csproj AssemblyName/RootNamespace + 命名空间）后重新校验再装，且不要覆盖别人的内容。
+- **装进游戏**：`install_mod` 把产物复制到游戏 `Mods/` 目录（目标来自 `check_runtime` 的发现结果，它不自己探测）。
+  - **装进去的目录名 = `your_mods/` 下的目录名**（不是 `info.ini` 的 `name`）：这样一个目录名做单层校验就够了，不可能写到游戏目录之外；你在工作区看到的目录名与游戏 `Mods/` 里的一致，便于对号入座。
+  - 同一个 mod 重装 = 原地更新（靠安装目录里的 `.pi-mod.json` 标记识别"这是我上次装的"）；目标目录被**别的 mod** 占用时不覆盖别人，改装成 `<目录名>_pimod`（再撞顺延 `_pimod2`…），返回文案会说明占用者与落点。
+  - **身份**是 `info.ini` 的 `name` = C# 命名空间 = `<name>.dll`（必须为合法 C# 标识符，`validate_mod` 会校验）。它编进 DLL，**改目录名解决不了游戏里的身份冲突**——那种冲突要改 mod 名（info.ini + csproj AssemblyName/RootNamespace + 命名空间）后重新编译、校验再装。
+  - 替换是事务性的：装新版本时旧版本先挪到旁边、换入成功后才删；失败时旧版本仍在（不会新旧两份都丢）。
 - **失败处理**：按错误定位修复；环境缺失/网络阻塞或同类失败重复出现时先解决前置条件，不无限“直到 PASS”。
 
 ## info.ini
