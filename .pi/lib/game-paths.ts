@@ -97,7 +97,7 @@ export function modInstallDirFor(gameDir: string, cfg: ModRepoConfig, platform =
   return typeof rel === "string" && rel.trim() ? join(gameDir, rel) : null;
 }
 
-const NEXT_STEAM = "玩家可在 Steam → 库 → 右键游戏 → 管理 → 浏览本地文件 里核对游戏目录。";
+const NEXT_STEAM = "The player can find it in Steam -> Library -> right-click the game -> Manage -> Browse local files.";
 
 /** 判据 1：这个目录是不是 Duckov 的安装目录（看游戏自带的哨兵程序集） */
 export function checkGameDir(dir: string | null | undefined, cfg: ModRepoConfig, platform = platformKey()): PathVerdict {
@@ -106,23 +106,23 @@ export function checkGameDir(dir: string | null | undefined, cfg: ModRepoConfig,
     return {
       ok: false,
       path: null,
-      reason: "没有给出游戏目录",
-      next: `让玩家提供游戏安装目录，带上 gameDir 重新验证；${NEXT_STEAM}`,
+      reason: "no game directory was given",
+      next: `Ask the player for the game install directory, then re-run this with gameDir. ${NEXT_STEAM}`,
     };
   const managed = managedDirFor(p, cfg, platform);
   if (!managed)
     return {
       ok: false,
       path: p,
-      reason: "mod-repo.json 缺少 compile.managedDir 的本平台取值",
-      next: "重开或更新这个游戏工作区（不要手改维护者配置）。",
+      reason: "mod-repo.json has no compile.managedDir entry for this platform",
+      next: "Reopen or update this game workspace (do not edit the maintainer configuration).",
     };
   if (!existsSync(join(managed, GAME_SENTINEL)))
     return {
       ok: false,
       path: p,
-      reason: `该目录下找不到游戏自带的 ${GAME_SENTINEL}（期望在 ${managed}）`,
-      next: `确认这是游戏的安装目录，而不是存档/其它版本目录；${NEXT_STEAM}`,
+      reason: `the game's own ${GAME_SENTINEL} was not found under this directory (expected in ${managed})`,
+      next: `Confirm this is the game install directory, not a save folder or another version. ${NEXT_STEAM}`,
     };
   return { ok: true, path: p };
 }
@@ -135,16 +135,16 @@ export function checkModInstallDir(dir: string | null | undefined): PathVerdict 
     return {
       ok: false,
       path: null,
-      reason: "没有给出 mod 安装目录",
-      next: "先运行 try_set_game_paths 定位，或让玩家提供游戏安装目录后再验证。",
+      reason: "no mod install directory was given",
+      next: "Run try_set_game_paths to locate it, or ask the player for the game install directory and verify again.",
     };
   const sibling = join(dirname(p), "Managed", GAME_SENTINEL);
   if (!existsSync(sibling))
     return {
       ok: false,
       path: p,
-      reason: `这条路径不像在游戏目录里（同级目录下没有 ${GAME_SENTINEL}）—— 游戏可能已被移动或卸载`,
-      next: `重新运行 try_set_game_paths 定位游戏；若玩家把游戏装在别处，请提供实际路径后可重新验证。${NEXT_STEAM}`,
+      reason: `this path does not look like it is inside the game folder (no ${GAME_SENTINEL} next to it) - the game may have been moved or uninstalled`,
+      next: `Run try_set_game_paths again to re-locate the game; if the game is installed elsewhere, pass that path and verify again. ${NEXT_STEAM}`,
     };
   return { ok: true, path: p };
 }
@@ -154,15 +154,15 @@ export function checkWorkshopDir(dir: string | null | undefined, appId: string):
   // 状态里可能是历史遗留的 ~/… → 统一展开后再判
   const p = dir ? expandHome(dir) : null;
   if (!p)
-    return { ok: false, path: null, reason: "没有给出 Workshop 目录（可选）", next: "省略即可；它只用于读取 Workshop 内容做参考。" };
-  if (!existsSync(p)) return { ok: false, path: p, reason: "目录不存在", next: "省略该参数即可（Workshop 目录是可选的只读参考）。" };
+    return { ok: false, path: null, reason: "no Workshop directory was given (optional)", next: "Omit it; it is only used to read Workshop content for reference." };
+  if (!existsSync(p)) return { ok: false, path: p, reason: "the directory does not exist", next: "Omit this argument (the Workshop directory is an optional read-only reference)." };
   const norm = p.replace(/\\/g, "/");
   if (!norm.endsWith(`/workshop/content/${appId}`))
     return {
       ok: false,
       path: p,
-      reason: `路径不以 workshop/content/${appId} 结尾（appid 见 mod-repo.json）`,
-      next: "确认这是这个游戏的 Workshop 内容目录；不确定时可省略该参数。",
+      reason: `the path does not end with workshop/content/${appId} (see the appid in mod-repo.json)`,
+      next: "Confirm this is the Workshop content directory for this game; omit it if unsure.",
     };
   return { ok: true, path: p };
 }
@@ -201,7 +201,7 @@ export function discoverGameDir(
   const tried: TriedCandidate[] = [];
   for (const c of gameDirCandidates(cfg, state, platform, explicit)) {
     const v = checkGameDir(c, cfg, platform);
-    if (v.ok) return { gameDir: v.path ?? c, tried };   // 存绝对路径：不把 ~/… 写进状态
+    if (v.ok) return { gameDir: v.path ?? c, tried };   // 存绝对路径：不把 ~/... 写进状态
     tried.push({ path: c, reason: v.reason });
   }
   return { gameDir: null, tried };
@@ -221,7 +221,7 @@ export function pathsFromGameDir(
   if (appId) {
     const ws = join(dirname(dirname(gameDir)), "workshop", "content", String(appId));
     if (existsSync(ws)) workshopDir = ws;
-    else notes.push(`NOTE: Workshop 目录不存在，未记入状态（可选、只读参考）：${ws}`);
+    else notes.push(`NOTE: the Workshop directory does not exist, so it was not recorded (optional, read-only reference): ${ws}`);
   }
   return { managedDir, modInstallDir, workshopDir, notes };
 }

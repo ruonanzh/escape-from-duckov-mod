@@ -33,7 +33,7 @@ export default function (pi: ExtensionAPI) {
     promptSnippet: "Verify game/mod paths without scanning or writing",
     promptGuidelines: [
       "Use check_game_paths (not check_runtime) when the player gives you a path: it verifies without scanning Steam and without writing state.",
-      "check_game_paths never writes .gamer-agent.local.json — if a path is wrong, ask the player for the real one (Steam → Library → right-click the game → Manage → Browse local files) and verify again with gameDir.",
+      "check_game_paths never writes .gamer-agent.local.json - if a path is wrong, ask the player for the real one (Steam -> Library -> right-click the game -> Manage -> Browse local files) and verify again with gameDir.",
       "If nothing is known yet about the game location, run try_set_game_paths first; check_game_paths only verifies what you pass it or what is already remembered.",
       "Do not create or install anything as a result of a failed check_game_paths: report the FAIL text and its NEXT line to the player.",
     ],
@@ -77,7 +77,7 @@ export default function (pi: ExtensionAPI) {
           content: [
             {
               type: "text",
-              text: "FAIL: nothing to check — no paths were given and none are remembered in .gamer-agent.local.json.\nNEXT: run try_set_game_paths to locate the game, or pass gameDir explicitly (ask the player where the game is).",
+              text: "FAIL: nothing to check - no paths were given and none are remembered in .gamer-agent.local.json.\nNEXT: run try_set_game_paths to locate the game, or pass gameDir explicitly (ask the player where the game is).",
             },
           ],
           details: { ok: false, reason: "NOTHING_TO_CHECK" },
@@ -95,9 +95,9 @@ export default function (pi: ExtensionAPI) {
       const lines: string[] = [];
       const failed: string[] = [];
       for (const [key, v] of Object.entries(verdicts)) {
-        if (v.ok) lines.push(`PASS: ${key} ${v.path}（已验证）`);
+        if (v.ok) lines.push(`PASS: ${key} ${v.path} (verified)`);
         else {
-          lines.push(`FAIL: ${key} ${v.path ?? "(未提供)"} — ${v.reason}`);
+          lines.push(`FAIL: ${key} ${v.path ?? "(not given)"} - ${v.reason}`);
           if (v.next) lines.push(`  NEXT: ${v.next}`);
           failed.push(key);
         }
@@ -105,7 +105,7 @@ export default function (pi: ExtensionAPI) {
       const ok = failed.length === 0;
       if (!ok) {
         lines.push(
-          "NOTE: nothing was changed — this tool never writes state or creates directories. Report the above to the player; once you have a correct path, try_set_game_paths can record it (or install_mod can use it as-is if it is already remembered).",
+          "NOTE: nothing was changed - this tool never writes state or creates directories. Report the above to the player; once you have a correct path, try_set_game_paths can record it (or install_mod can use it as-is if it is already remembered).",
         );
       }
 

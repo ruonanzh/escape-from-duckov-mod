@@ -92,11 +92,11 @@ export default function (pi: ExtensionAPI) {
           lines.push(`modInstallDir ${modInstallDir}`);
           if (!existsSync(modInstallDir)) {
             lines.push(
-              "WARN: that mod directory does not exist yet — normal on a first install (install_mod creates it). If the player moved the game, confirm this is where the game expects mods.",
+              "WARN: that mod directory does not exist yet - normal on a first install (install_mod creates it). If the player moved the game, confirm this is where the game expects mods.",
             );
           }
         } else {
-          problems.push("FAIL: INVALID_WORKSPACE_CONFIG: mod-repo.json 缺少 modInstall.path 的本平台取值");
+          problems.push("FAIL: INVALID_WORKSPACE_CONFIG: mod-repo.json has no modInstall.path for this platform");
         }
         lines.push(...notes);
       }

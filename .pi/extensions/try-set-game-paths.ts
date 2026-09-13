@@ -40,8 +40,8 @@ export default function (pi: ExtensionAPI) {
     promptSnippet: "Find and record the game/mod directories (writes state)",
     promptGuidelines: [
       "Use try_set_game_paths when the game location is unknown: it scans the known candidates and records what it verifies.",
-      "try_set_game_paths writes .gamer-agent.local.json — do not use it to re-check an already remembered path; use check_game_paths for that (read-only).",
-      "If try_set_game_paths fails, ask the player for the game install directory (Steam → Library → right-click the game → Manage → Browse local files), then either pass it as gameDir to this tool or verify it first with check_game_paths.",
+      "try_set_game_paths writes .gamer-agent.local.json - do not use it to re-check an already remembered path; use check_game_paths for that (read-only).",
+      "If try_set_game_paths fails, ask the player for the game install directory (Steam -> Library -> right-click the game -> Manage -> Browse local files), then either pass it as gameDir to this tool or verify it first with check_game_paths.",
       "After try_set_game_paths succeeds, install_mod can use the recorded paths; no need to call check_runtime just to refresh them.",
     ],
     parameters: Type.Object({
@@ -68,8 +68,8 @@ export default function (pi: ExtensionAPI) {
 
       const { gameDir, tried } = discoverGameDir(cfg, state, platform, explicit);
       const triedText = tried.length
-        ? tried.map((t) => `  · ${t.path} — ${t.reason ?? "未通过验证"}`).join("\n")
-        : "  （没有可用的候选路径）";
+        ? tried.map((t) => `  - ${t.path} - ${t.reason ?? "did not pass validation"}`).join("\n")
+        : "  (no usable candidate paths)";
 
       if (!gameDir) {
         return {
@@ -77,11 +77,11 @@ export default function (pi: ExtensionAPI) {
             {
               type: "text",
               text:
-                "FAIL: GAME_DIRECTORY_NOT_FOUND — could not find the game install directory.\n" +
+                "FAIL: GAME_DIRECTORY_NOT_FOUND - could not find the game install directory.\n" +
                 `Tried:\n${triedText}\n` +
                 `Each candidate was checked for the game's own ${GAME_SENTINEL}.\n` +
-                "NOTE: nothing was written — the remembered paths (if any) were left untouched and may be stale.\n" +
-                "NEXT: ask the player for the game install directory (Steam → Library → right-click the game → Manage → Browse local files), then call try_set_game_paths with that gameDir (or verify it first with check_game_paths). If the game is not installed at all, install it first.",
+                "NOTE: nothing was written - the remembered paths (if any) were left untouched and may be stale.\n" +
+                "NEXT: ask the player for the game install directory (Steam -> Library -> right-click the game -> Manage -> Browse local files), then call try_set_game_paths with that gameDir (or verify it first with check_game_paths). If the game is not installed at all, install it first.",
             },
           ],
           details: { ok: false, reason: "GAME_DIRECTORY_NOT_FOUND", wroteState: false, tried },
@@ -91,21 +91,21 @@ export default function (pi: ExtensionAPI) {
       const { managedDir, modInstallDir, workshopDir, notes } = pathsFromGameDir(gameDir, cfg, platform);
       const problems: string[] = [];
       if (!managedDir)
-        problems.push("FAIL: INVALID_WORKSPACE_CONFIG: mod-repo.json 缺少 compile.managedDir 的本平台取值");
+        problems.push("FAIL: INVALID_WORKSPACE_CONFIG: mod-repo.json has no compile.managedDir entry for this platform");
       if (!modInstallDir)
-        problems.push("FAIL: INVALID_WORKSPACE_CONFIG: mod-repo.json 缺少 modInstall.path 的本平台取值");
+        problems.push("FAIL: INVALID_WORKSPACE_CONFIG: mod-repo.json has no modInstall.path for this platform");
 
       if (problems.length) {
         return {
-          content: [{ type: "text", text: `${problems.join("\n")}\nNOTE: nothing was written.\nNEXT: 重开或更新这个游戏工作区（不要手改维护者配置）。` }],
+          content: [{ type: "text", text: `${problems.join("\n")}\nNOTE: nothing was written.\nNEXT: Reopen or update this game workspace (do not edit the maintainer configuration).` }],
           details: { ok: false, reason: "INVALID_WORKSPACE_CONFIG", wroteState: false },
         };
       }
 
-      // 目标目录不存在是正常初始状态（安装时创建）；但若它已经存在，顺手验一下是否真在游戏目录里。
+      // 目标the directory does not exist是正常初始状态（安装时创建）；但若它已经存在，顺手验一下是否真在游戏目录里。
       const targetNote =
         modInstallDir && readState(cwd).modInstallDir && checkModInstallDir(modInstallDir).ok === false
-          ? `\nWARN: modInstallDir ${modInstallDir} 不是新值，且它不像在游戏目录里 —— 可能会被安装时重建，请与玩家确认。`
+          ? `\nWARN: modInstallDir ${modInstallDir} is not a new value and does not look like it is inside the game folder - it may be recreated on install; confirm with the player.`
           : "";
 
       writeState(cwd, {
