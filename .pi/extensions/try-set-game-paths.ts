@@ -102,7 +102,7 @@ export default function (pi: ExtensionAPI) {
         };
       }
 
-      // 目标the directory does not exist是正常初始状态（安装时创建）；但若它已经存在，顺手验一下是否真在游戏目录里。
+      // 目标目录不存在是正常初始状态（安装时创建）；但若它已经存在，顺手验一下是否真在游戏目录里。
       const targetNote =
         modInstallDir && readState(cwd).modInstallDir && checkModInstallDir(modInstallDir).ok === false
           ? `\nWARN: modInstallDir ${modInstallDir} is not a new value and does not look like it is inside the game folder - it may be recreated on install; confirm with the player.`
