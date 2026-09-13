@@ -11,7 +11,7 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { basename, join, resolve } from "node:path";
+import { basename, isAbsolute, join, resolve } from "node:path";
 
 /**
  * install_mod — 把 your_mods/<ModName>/ 的产物装进游戏的 Mods 目录。
@@ -179,10 +179,7 @@ export default function (pi: ExtensionAPI) {
       } catch {
         modRoot = null;
       }
-      if (
-        !modRoot ||
-        !statSync(modRoot, { throwIfNoEntry: false })?.isDirectory()
-      ) {
+      if (!modRoot) {
         return {
           content: [
             {
@@ -193,6 +190,28 @@ export default function (pi: ExtensionAPI) {
           details: { ok: false, reason: "TARGET_NOT_FOUND" },
         };
       }
+      // 目标目录「不存在」是全新机器的正常状态（游戏从没跑过、Duckov_Data/Mods 还没被创建）→ **不是错误**：
+      // 继续往下走，由下面的 mkdirSync(destDir, { recursive: true }) 连缺失的父级一起创建。
+      // 旧行为要求「必须已存在」：check_runtime 报可安装 → install 因目标不存在失败 → 再 check 仍不创建 → 死循环（B18）。
+      // 仍然拒绝的只有两种：路径不是绝对路径 / 路径存在但不是目录（此时继续只会在 cp·rename 阶段抛出更难懂的错）。
+      const targetStat = statSync(modRoot, { throwIfNoEntry: false });
+      if (!isAbsolute(modRoot) || (targetStat && !targetStat.isDirectory())) {
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                `FAIL: TARGET_INVALID: ${modRoot} ` +
+                (targetStat
+                  ? "exists but is not a directory."
+                  : "is not an absolute path.") +
+                "\nNEXT: run check_runtime again to re-derive the game's Mods directory; if it still looks wrong, ask the player where the game is installed.",
+            },
+          ],
+          details: { ok: false, reason: "TARGET_INVALID" },
+        };
+      }
+      const targetWasMissing = !targetStat;
 
       const identity = readModIdentity(modDir);
       if (!identity) {
@@ -238,11 +257,12 @@ export default function (pi: ExtensionAPI) {
       const modName = basename(modDir);
 
       // 上次替换在「旧版本挪开、新版本换入」之间崩溃 → 目标缺失但旁边留着 .previous-*：先恢复
-      for (const entry of readdirSync(modRoot)) {
-        if (entry.startsWith(`${modName}.previous-`) && !existsSync(join(modRoot, modName))) {
-          renameSync(join(modRoot, entry), join(modRoot, modName));
+      if (existsSync(modRoot))
+        for (const entry of readdirSync(modRoot)) {
+          if (entry.startsWith(`${modName}.previous-`) && !existsSync(join(modRoot, modName))) {
+            renameSync(join(modRoot, entry), join(modRoot, modName));
+          }
         }
-      }
 
       const { dir: installDir, renamed, occupiedBy, reused } = pickInstallDir(modRoot, modName, identity.name);
 
@@ -253,7 +273,7 @@ export default function (pi: ExtensionAPI) {
       let duplicateDir: string | null = null;
       if (identity.name !== modName) {
         const installedName = basename(installDir);
-        for (const entry of readdirSync(modRoot, { withFileTypes: true })) {
+        for (const entry of existsSync(modRoot) ? readdirSync(modRoot, { withFileTypes: true }) : []) {
           if (!entry.isDirectory() || entry.name === installedName) continue;
           if (readMarkerName(join(modRoot, entry.name)) === identity.name) duplicateDir = entry.name;
         }
@@ -305,6 +325,11 @@ export default function (pi: ExtensionAPI) {
 
       const mismatched = identity.name !== modName;
       const notes: string[] = [];
+      if (targetWasMissing) {
+        notes.push(
+          `\nNOTE: the mod directory ${modRoot} did not exist and was created (normal on a first install — the game had not created it yet). If the player expected mods somewhere else, tell them where this mod actually landed: ${installDir}.`,
+        );
+      }
       if (mismatched) {
         notes.push(
           `\nNOTE: the installed folder is named ${modName} (the your_mods directory name), while the mod declares name ${identity.name} — the game loads <name>.dll by the namespaces inside, so keep info.ini, csproj and the dll name consistent.`,
@@ -337,6 +362,7 @@ export default function (pi: ExtensionAPI) {
           renamed,
           occupiedBy,
           files,
+          targetCreated: targetWasMissing,
         },
       };
     },
