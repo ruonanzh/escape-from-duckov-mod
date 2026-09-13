@@ -247,11 +247,16 @@ export default function (pi: ExtensionAPI) {
       const { dir: installDir, renamed, occupiedBy, reused } = pickInstallDir(modRoot, modName, identity.name);
 
       // 同一个 mod（marker 里的身份相同）曾以别的目录名装过 → 只提示，不删它
+      // 只在「身份 ≠ 目录名」时才需要扫：两者相同时，上次安装用的目录名必然就是本次的目标目录名，
+      // 重装/冲突都由 pickInstallDir 在目标目录上解决 → 不可能出现"同一个 mod 装在两个目录名"。
+      // （这样常见路径上没有 O(n) 扫描，而"身份≠目录名"的类型仍能拿到那条提示。）
       let duplicateDir: string | null = null;
-      const installedName = basename(installDir);
-      for (const entry of readdirSync(modRoot, { withFileTypes: true })) {
-        if (!entry.isDirectory() || entry.name === installedName) continue;
-        if (readMarkerName(join(modRoot, entry.name)) === identity.name) duplicateDir = entry.name;
+      if (identity.name !== modName) {
+        const installedName = basename(installDir);
+        for (const entry of readdirSync(modRoot, { withFileTypes: true })) {
+          if (!entry.isDirectory() || entry.name === installedName) continue;
+          if (readMarkerName(join(modRoot, entry.name)) === identity.name) duplicateDir = entry.name;
+        }
       }
 
       // 先复制到临时目录再切换，避免中途失败留下半个安装
