@@ -1,49 +1,64 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import os from "node:os";
+import {
+  discoverGameDir,
+  pathsFromGameDir,
+  platformKey,
+  readModRepoConfig,
+  readState,
+  resolveUserPath,
+  writeState,
+  type ModRepoConfig,
+} from "../lib/game-paths";
 
 /**
- * check_runtime — 运行时契约（docs/mod-repo-guide.md §4）
- * 检查：1) dotnet SDK；2) 游戏安装目录；3) Steam Workshop 内容目录（若有 steamAppId）。
- * 发现结果缓存到 <repo>/.gamer-agent.local.json（gitignored）。
+ * check_runtime — 运行时契约（docs/mod-repo-guide.md §4）的一次跑完入口。
+ *
+ * 拆分后的分工（本工具只做**编排**，判据与发现都在 .pi/lib/game-paths.ts）：
+ *   · check_game_paths     只验给定/已记住的路径（只读）
+ *   · try_set_game_paths   位置未知时去找并落库
+ *   · check_runtime        SDK 检查 + 发现 + 校验 + 落库 + 汇总   ← 本工具
+ *   · install_mod          安装（同一份判据；目标不存在则创建）
  */
 export default function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "check_runtime",
     label: "Check Runtime",
-    description: "Check .NET SDK >= 8 and locate the installed game, plus its Steam Workshop content dir when a Steam app id is set. Uses an optional gameDir, cached path or platform hint; relative gameDir is resolved from the workspace. Writes discovery results to .gamer-agent.local.json; does not install software or modify mod source files.",
+    description:
+      "One-stop runtime check: verifies the .NET SDK (>= 8), locates the installed game, verifies the game/mod paths with the game's own marker, and records the result in .gamer-agent.local.json. Uses an optional gameDir, then the remembered path, then the platform hint in mod-repo.json. Does not install software or modify mod source files. For a read-only path check use check_game_paths; to only locate and record the game use try_set_game_paths.",
     promptSnippet: "Check SDK and game location when compilation needs them or the player asks about setup",
     promptGuidelines: [
-      "Use check_runtime when runtime readiness is unknown or has changed. Only SDK problems need install_runtime; a missing game directory needs a valid installation path, not SDK installation.",
+      "Use check_runtime when runtime readiness is unknown or has changed: it checks the SDK, locates the game and records the verified paths in one go.",
+      "Only SDK problems need install_runtime; a missing game directory needs a valid installation path, not SDK installation.",
+      "If the player already gave you a path, prefer check_game_paths (read-only) to verify it, or pass gameDir here to locate and record it.",
     ],
     parameters: Type.Object({
-      gameDir: Type.Optional(Type.String({ description: "Game installation directory supplied by the player; relative paths use the workspace root. Omit to try cached paths and platform hints." })),
+      gameDir: Type.Optional(
+        Type.String({
+          description:
+            "Game installation directory supplied by the player; relative paths use the workspace root. Omit to try the remembered path and the platform hint.",
+        }),
+      ),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-      const repoRoot = ctx.cwd;
-      const stateFile = join(repoRoot, ".gamer-agent.local.json");
-      const platform = process.platform === "win32" ? "windows" : process.platform === "darwin" ? "mac" : "linux";
-
-      let cfg;
+      const cwd = ctx.cwd;
+      let cfg: ModRepoConfig;
       try {
-        cfg = JSON.parse(readFileSync(join(repoRoot, "mod-repo.json"), "utf8"));
+        cfg = readModRepoConfig(cwd);
       } catch {
-        throw new Error("INVALID_WORKSPACE_CONFIG: Cannot read mod-repo.json. Reopen or update the game workspace; do not edit its maintainer configuration.");
+        throw new Error(
+          "INVALID_WORKSPACE_CONFIG: Cannot read mod-repo.json. Reopen or update the game workspace; do not edit its maintainer configuration.",
+        );
       }
-      const loadState = () => {
-        try {
-          return JSON.parse(readFileSync(stateFile, "utf8"));
-        } catch {
-          return {};
-        }
-      };
-      const state = loadState();
+      const platform = platformKey();
+      const state = readState(cwd);
       const problems: string[] = [];
 
-      // 1. dotnet
+      // 1) dotnet SDK（与路径无关，留在本工具）
       const dotnet = checkDotnet();
       if (!dotnet.ok) {
         problems.push(
@@ -53,81 +68,59 @@ export default function (pi: ExtensionAPI) {
         );
       }
 
-      // 2. game dir
-      const expandHome = (p: string) => (p.startsWith("~/") || p === "~" ? join(os.homedir(), p.slice(2)) : p);
-      const discoverGameDir = () => {
-        const candidates = params.gameDir !== undefined
-          ? [params.gameDir]
-          : [state.gameDir, cfg.game?.installDirHint?.[platform]];
-        const managedRel = cfg.compile?.managedDir?.[platform];
-        if (typeof managedRel !== "string") return null;
-        for (const candidate of candidates) {
-          if (typeof candidate !== "string" || !candidate.trim()) continue;
-          const dir = resolve(repoRoot, expandHome(candidate.trim()));
-          const managed = join(dir, managedRel);
-          if (existsSync(join(managed, "TeamSoda.Duckov.Core.dll"))) return { gameDir: dir, managedDir: managed };
-        }
-        return null;
-      };
+      // 2) 发现 + 校验（与 try_set_game_paths 共用同一份实现：每个候选都要过哨兵检查）
+      const explicit = params.gameDir?.trim() ? resolveUserPath(cwd, params.gameDir) : undefined;
+      const { gameDir } = discoverGameDir(cfg, state, platform, explicit);
 
-      const found = discoverGameDir();
-      if (found) {
-        state.gameDir = found.gameDir;
-        state.managedDir = found.managedDir;
-          // modInstall.path 缺本平台取值时**不能**退化成 gameDir：旧写法 `?? ""` 会让 join(gameDir, "") === gameDir，
-          // 等于把 mod 装进游戏根目录 → 直接报配置错误（与 eu5 的 INVALID_WORKSPACE_CONFIG 对齐）。
-          const modInstallRel = cfg.modInstall?.path?.[platform];
-          if (typeof modInstallRel !== "string" || !modInstallRel.trim()) {
-            problems.push(
-              "FAIL: INVALID_WORKSPACE_CONFIG: mod-repo.json has no modInstall.path for this platform; cannot determine where mods go.",
-            );
-          } else {
-            state.modInstallDir = join(found.gameDir, modInstallRel);
-          }
-          // Steam Workshop 内容目录（只读参考，可选）：gameDir 位于 steamapps/common/<game> 下，
-          // workshop 在同级 steamapps/workshop/content/<steamAppId>。与 eu5 对齐：不存在就不写进状态。
-          const steamAppId = cfg.game?.steamAppId;
-          if (steamAppId) {
-            const workshop = join(dirname(dirname(found.gameDir)), "workshop", "content", String(steamAppId));
-            if (existsSync(workshop)) state.workshopDir = workshop;
-          }
-        state.runtime = { dotnet: dotnet.path, dotnetVersion: dotnet.version };
-        writeFileSync(stateFile, `${JSON.stringify(state, null, 2)}\n`);
-      } else {
+      const lines: string[] = [];
+      if (!gameDir) {
         problems.push(
-          `FAIL: GAME_DIRECTORY_NOT_FOUND (${cfg.game?.name}). Ask the player for the installed game directory and re-run check_runtime with gameDir; if not installed, install the game first. install_runtime only guides SDK setup and cannot fix this.`, 
+          `FAIL: GAME_DIRECTORY_NOT_FOUND (${cfg.game?.name ?? "the game"}). Ask the player for the installed game directory and re-run check_runtime with gameDir; if not installed, install the game first. install_runtime only guides SDK setup and cannot fix this.`,
         );
+      } else {
+        const { managedDir, modInstallDir, workshopDir, notes } = pathsFromGameDir(gameDir, cfg, platform);
+        writeState(cwd, {
+          gameDir,
+          managedDir,
+          modInstallDir,
+          workshopDir: workshopDir ?? null,
+          runtime: { dotnet: dotnet.path, dotnetVersion: dotnet.version },
+        });
+        lines.push(`PASS: gameDir ${gameDir}`);
+        lines.push(workshopDir ? `workshopDir ${workshopDir}` : "workshopDir (not found; optional)");
+        if (modInstallDir) {
+          lines.push(`modInstallDir ${modInstallDir}`);
+          if (!existsSync(modInstallDir)) {
+            lines.push(
+              "WARN: that mod directory does not exist yet — normal on a first install (install_mod creates it). If the player moved the game, confirm this is where the game expects mods.",
+            );
+          }
+        } else {
+          problems.push("FAIL: INVALID_WORKSPACE_CONFIG: mod-repo.json 缺少 modInstall.path 的本平台取值");
+        }
+        lines.push(...notes);
       }
 
       if (problems.length) {
         return {
           content: [{ type: "text", text: problems.join("\n") }],
-          details: { ok: false, errors: problems },
+          details: { ...readState(cwd), ok: false, errors: problems },
         };
       }
-      // 与 eu5 对齐：安装目标目录尚不存在时只给 WARN（全新机器的正常状态，install_mod 会创建）；
-      // 若玩家把「文档」/游戏目录挪过位置，这里算出的路径可能是错的 → 把判断交回 agent/玩家。
-      const modTarget =
-        typeof state.modInstallDir === "string" && state.modInstallDir ? state.modInstallDir : null;
-      const modDirWarn =
-        modTarget && !existsSync(modTarget)
-          ? `\nWARN: that mod directory does not exist yet — normal on a first install (install_mod creates it). If the player moved their Documents or the game folder, this path may be wrong: confirm with the player where the game expects mods.`
-          : "";
       return {
         content: [
           {
             type: "text",
-            text: `PASS: dotnet ${dotnet.version} (${dotnet.path}); gameDir ${state.gameDir}${
-              modTarget ? `; modInstallDir ${modTarget}` : ""
-            }${modDirWarn}`,
+            text: `PASS: dotnet ${dotnet.version} (${dotnet.path}); ${lines.join("; ")}`,
           },
         ],
-        details: { ...state, ok: true },
+        details: { ...readState(cwd), ok: true },
       };
     },
   });
 }
 
+/** .NET SDK >= 8 检查（本工具特有；游戏目录的判据已移到 lib） */
 function checkDotnet() {
   const bin = process.platform === "win32" ? "dotnet.exe" : "dotnet";
   const candidates = [join(os.homedir(), ".dotnet", bin)];
