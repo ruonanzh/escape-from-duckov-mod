@@ -346,7 +346,7 @@ export default function (pi: ExtensionAPI) {
       }
       if (mismatched) {
         notes.push(
-          `\nNOTE: the installed folder is named ${modName} (the your_mods directory name), while the mod declares name ${identity.name} - the game loads <name>.dll by the namespaces inside, so keep info.ini, csproj and the dll name consistent.`,
+          `\nNOTE: the installed folder is named ${modName} (the your_mods directory name), while the mod declares name ${identity.name} - that difference is fine: the game loads <name>.dll by the declared name, not by the folder name. Keep info.ini, the csproj and the dll name consistent with each other.`,
         );
       }
       if (duplicateDir) {
