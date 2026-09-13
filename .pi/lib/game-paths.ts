@@ -227,3 +227,125 @@ export function pathsFromGameDir(
   }
   return { managedDir, modInstallDir, workshopDir, notes };
 }
+
+// ── agent 入口的内部实现（**不注册为工具**）────────────────────────────────────
+// 语义（set_game_dir / set_workshop_dir / set_mod_install_dir / set_game_paths 共用）：
+//   ① 给了路径 → 用判据验 → 过 → 落库（PASS）
+//   ② 没过 → 走内部发现/派生（"无参那一层"）→ 成功 → 落库 + WARN（说明给的那条为什么没用、实际记的是哪条）
+//   ③ 内部也失败 → FAIL（**不落库**：不做假成功）
+export type PathKind = "gameDir" | "workshopDir" | "modInstallDir";
+
+export interface PathOutcome {
+  kind: PathKind;
+  status: "PASS" | "WARN" | "FAIL";
+  given: string | null;
+  recorded: string | null;
+  /** WARN/FAIL 的原因（为什么给的那条不算数） */
+  reason?: string;
+  /** 给 agent 的下一步 */
+  next?: string;
+}
+
+const ASK_PLAYER =
+  "Ask the player for the correct path (Steam -> Library -> right-click the game -> Manage -> Browse local files), then call this setter again with it.";
+
+function verifyPath(kind: PathKind, p: string, cfg: ModRepoConfig, appId: string): PathVerdict {
+  if (kind === "gameDir") return checkGameDir(p, cfg);
+  if (kind === "workshopDir") return checkWorkshopDir(p, appId);
+  return checkModInstallDir(p);
+}
+
+/** 内部发现/派生（无参那一层）：游戏目录走发现，其它两条由已确认的游戏目录派生 */
+function deriveFallback(
+  cwd: string,
+  cfg: ModRepoConfig,
+  kind: PathKind,
+): { ok: boolean; path?: string; note?: string; reason?: string } {
+  const state = readState(cwd);
+  const rememberedGame = checkGameDir(typeof state.gameDir === "string" ? state.gameDir : null, cfg);
+  const gameDir = rememberedGame.ok
+    ? (rememberedGame.path as string)
+    : (() => {
+        const d = discoverGameDir(cfg, state);
+        return d.gameDir;
+      })();
+  if (!gameDir) {
+    return { ok: false, reason: "automatic discovery could not find the game either" };
+  }
+  if (kind === "gameDir") return { ok: true, path: gameDir };
+  const derived = pathsFromGameDir(gameDir, cfg);
+  const path = kind === "workshopDir" ? derived.workshopDir : derived.modInstallDir;
+  if (!path) return { ok: false, reason: `${kind} cannot be derived from the game directory` };
+  return { ok: true, path, note: derived.notes.join(" ") };
+}
+
+/** 落库：设游戏目录时连带刷新它的派生项；设单条时只改那一条 */
+function record(cwd: string, cfg: ModRepoConfig, kind: PathKind, path: string): void {
+  if (kind === "gameDir") {
+    const d = pathsFromGameDir(path, cfg);
+    writeState(cwd, { gameDir: path, managedDir: d.managedDir, modInstallDir: d.modInstallDir, workshopDir: d.workshopDir ?? null });
+    return;
+  }
+  writeState(cwd, kind === "modInstallDir" ? { modInstallDir: path } : { workshopDir: path });
+}
+
+/** 单个字段的「验 → 不过则内部发现 → 都失败则 FAIL」 */
+export function setPathWithFallback(
+  cwd: string,
+  cfg: ModRepoConfig,
+  kind: PathKind,
+  givenRaw: string | null,
+): PathOutcome {
+  const appId = String(cfg.game?.steamAppId ?? "");
+  const given = givenRaw && givenRaw.trim() ? expandHome(givenRaw) : null;
+  if (!given) {
+    return { kind, status: "FAIL", given: null, recorded: null, reason: "no path was given", next: "Pass the path the player provided (this setter requires it)." };
+  }
+
+  const v = verifyPath(kind, given, cfg, appId);
+  if (v.ok) {
+    record(cwd, cfg, kind, given);
+    return { kind, status: "PASS", given, recorded: given };
+  }
+
+  const fallback = deriveFallback(cwd, cfg, kind);
+  if (fallback.ok && fallback.path) {
+    record(cwd, cfg, kind, fallback.path);
+    return {
+      kind,
+      status: "WARN",
+      given,
+      recorded: fallback.path,
+      reason: v.reason,
+      next: `The path you passed did not pass validation, so ${fallback.path} was located and recorded instead.${fallback.note ? ` ${fallback.note}` : ""} Tell the player which path is actually in use.`,
+    };
+  }
+
+  return {
+    kind,
+    status: "FAIL",
+    given,
+    recorded: null,
+    reason: `${v.reason} (${fallback.reason ?? "and it could not be derived either"})`,
+    next: ASK_PLAYER,
+  };
+}
+
+/** 四个 setter 共用的输出格式（PASS / WARN / FAIL 三种语义各说清） */
+export function formatPathOutcome(o: PathOutcome): { text: string; ok: boolean; status: PathOutcome["status"] } {
+  if (o.status === "PASS")
+    return { text: `PASS: recorded ${o.kind} ${o.recorded} (validated).`, ok: true, status: o.status };
+  if (o.status === "WARN")
+    return {
+      text:
+        `WARN: the ${o.kind} you passed (${o.given}) did not pass validation - ${o.reason}.\n` +
+        `Recorded ${o.recorded} instead.\nNEXT: ${o.next ?? "Tell the player which path is actually in use."}`,
+      ok: true,
+      status: o.status,
+    };
+  return {
+    text: `FAIL: could not record ${o.kind}.\nGiven: ${o.given ?? "(none)"}\nReason: ${o.reason ?? "unknown"}.\nNEXT: ${o.next ?? ASK_PLAYER}`,
+    ok: false,
+    status: o.status,
+  };
+}
