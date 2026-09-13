@@ -68,6 +68,7 @@ export function readMarkerName(dir: string): string | null {
 export function pickInstallDir(
   modRoot: string,
   modName: string,
+  modIdentity: string = modName,
 ): {
   dir: string;
   renamed: boolean;
@@ -77,7 +78,7 @@ export function pickInstallDir(
   const primary = join(modRoot, modName);
   const free = (dir: string) => {
     if (!existsSync(dir)) return true;
-    return readMarkerName(dir) === modName;
+    return readMarkerName(dir) === modIdentity;
   };
   if (free(primary))
     return {
@@ -205,6 +206,19 @@ export default function (pi: ExtensionAPI) {
           details: { ok: false, reason: "MISSING_INFO_INI" },
         };
       }
+      // 身份会被拼进路径（下面的 <name>.dll 与安装标记）。它由 info.ini 决定，不由目录名决定，
+      // 所以这里必须复用 validate_mod 的同一套规则 —— 否则 `../x` 这类名字能读到 mod 目录之外。
+      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(identity.name)) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `FAIL: info.ini name ${JSON.stringify(identity.name)} is not a valid C# namespace.\nNEXT: fix info.ini (name = namespace = <name>.dll), rebuild, then run validate_mod again.`,
+            },
+          ],
+          details: { ok: false, reason: "INVALID_IDENTITY" },
+        };
+      }
       if (!existsSync(join(modDir, `${identity.name}.dll`))) {
         return {
           content: [
@@ -217,16 +231,34 @@ export default function (pi: ExtensionAPI) {
         };
       }
 
-      const {
-        dir: installDir,
-        renamed,
-        occupiedBy,
-        reused,
-      } = pickInstallDir(modRoot, identity.name);
+      // 安装目录名 = your_mods 下的**目录名**（不是 info.ini 的 name）：
+      // · basename 一定是单层名字 → 构造上不可能越界（旧版用 info.ini 的 name 拼路径，带 ../ 就能写出去）
+      // · 目录名在 create_mod_folder 时已按规则校验过
+      // · 玩家在游戏 Mods 目录里看到的与工作区目录名一致，便于对号入座
+      const modName = basename(modDir);
+
+      // 上次替换在「旧版本挪开、新版本换入」之间崩溃 → 目标缺失但旁边留着 .previous-*：先恢复
+      for (const entry of readdirSync(modRoot)) {
+        if (entry.startsWith(`${modName}.previous-`) && !existsSync(join(modRoot, modName))) {
+          renameSync(join(modRoot, entry), join(modRoot, modName));
+        }
+      }
+
+      const { dir: installDir, renamed, occupiedBy, reused } = pickInstallDir(modRoot, modName, identity.name);
+
+      // 同一个 mod（marker 里的身份相同）曾以别的目录名装过 → 只提示，不删它
+      let duplicateDir: string | null = null;
+      const installedName = basename(installDir);
+      for (const entry of readdirSync(modRoot, { withFileTypes: true })) {
+        if (!entry.isDirectory() || entry.name === installedName) continue;
+        if (readMarkerName(join(modRoot, entry.name)) === identity.name) duplicateDir = entry.name;
+      }
 
       // 先复制到临时目录再切换，避免中途失败留下半个安装
       const staging = `${installDir}.staging-${process.pid}`;
+      const previous = `${installDir}.previous-${process.pid}`;
       rmSync(staging, { recursive: true, force: true });
+      rmSync(previous, { recursive: true, force: true });
       let files = 0;
       try {
         files = copyModProducts(modDir, staging);
@@ -234,21 +266,43 @@ export default function (pi: ExtensionAPI) {
           join(staging, ".pi-mod.json"),
           `${JSON.stringify({ name: identity.name }, null, 2)}\n`,
         );
-        rmSync(installDir, { recursive: true, force: true });
-        renameSync(staging, installDir);
+        // 事务化替换：旧版本先 rename 到旁边（不删）→ 换入新版本 → 成功后才删旧的；
+        // 换入失败就把旧版本挪回。旧版是「先 rmSync 再 rename」，中间失败会让新旧两份都丢。
+        const hadPrevious = existsSync(installDir);
+        if (hadPrevious) renameSync(installDir, previous);
+        try {
+          renameSync(staging, installDir);
+        } catch (error) {
+          if (hadPrevious) renameSync(previous, installDir);
+          throw error;
+        }
+        if (hadPrevious) rmSync(previous, { recursive: true, force: true });
       } catch (error) {
         rmSync(staging, { recursive: true, force: true });
         return {
           content: [
             {
               type: "text",
-              text: `FAIL: copy failed: ${error instanceof Error ? error.message : String(error)}\nNEXT: check write permission on ${modRoot}.`,
+              text: `FAIL: copy failed: ${error instanceof Error ? error.message : String(error)}\nNEXT: check write permission on ${modRoot}. The previously installed copy (if any) was left in place.`,
             },
           ],
           details: { ok: false, reason: "COPY_FAILED" },
         };
       }
 
+      const mismatched = identity.name !== modName;
+      const notes: string[] = [];
+      if (mismatched) {
+        notes.push(
+          `\nNOTE: the installed folder is named ${modName} (the your_mods directory name), while the mod declares name ${identity.name} — the game loads <name>.dll by the namespaces inside, so keep info.ini, csproj and the dll name consistent.`,
+        );
+      }
+      if (duplicateDir) {
+        notes.push(
+          `\nNOTE: the same mod (name ${identity.name}) is also installed as ${duplicateDir}; this tool did not touch it — tell the player which one to enable, and remove the other manually if it is stale.`,
+        );
+      }
+      const extraNotes = notes.join("");
       const note = renamed
         ? `\nNOTE: ${identity.name} was already taken by ${occupiedBy ? `another mod (${occupiedBy})` : "content this tool did not install"}, ` +
           `so it went to ${basename(installDir)} instead; that directory was left untouched.` +
@@ -259,7 +313,7 @@ export default function (pi: ExtensionAPI) {
         content: [
           {
             type: "text",
-            text: `PASS: ${identity.name}${identity.version ? ` ${identity.version}` : ""} installed to ${installDir} (${files} files).${note}`,
+            text: `PASS: ${identity.name}${identity.version ? ` ${identity.version}` : ""} installed to ${installDir} (${files} files).${extraNotes}${note}`,
           },
         ],
         details: {
