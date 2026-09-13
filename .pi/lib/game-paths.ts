@@ -15,7 +15,8 @@
  *                   但要验"这条路径确实长在游戏目录里"（向上找兄弟目录里的哨兵）
  */
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
+import { execFileSync } from "node:child_process";
 
 /** 游戏自带的程序集（哨兵）：它在，才说明这个目录确实是 Duckov。 */
 export const GAME_SENTINEL = "TeamSoda.Duckov.Core.dll";
@@ -169,8 +170,69 @@ export function checkWorkshopDir(dir: string | null | undefined, appId: string):
   return { ok: true, path: p };
 }
 
-// ── 发现（Duckov：显式入参 → 缓存 → mod-repo.json 的平台提示；不扫 Steam 库，
-//    因为它的 Workshop 目录可由游戏目录推导出来）─────────────────────────────────
+// ── Steam 库发现（区分操作系统）────────────────────────────────────────────
+// 工具链原来只靠 installDirHint（默认 C 盘），游戏装在非默认盘时找不到。
+// 参考 EU5 的做法扫 Steam 库，但 Duckov 支持 windows + mac，所以要分平台：
+//   · windows：注册表 HKCU\Software\Valve\Steam 的 SteamPath + 常见默认路径
+//   · mac    ：~/Library/Application Support/Steam（Steam 固定位置，无注册表）
+// 两者的 libraryfolders.vdf 格式相同（"path" 字段列出各库），解析共用。
+
+/** Windows：从注册表读 Steam 安装路径（mac 无此项）。 */
+function readRegistrySteamPath(): string | null {
+  try {
+    const out = execFileSync("reg", ["query", "HKCU\\Software\\Valve\\Steam", "/v", "SteamPath"], {
+      encoding: "utf8",
+      windowsHide: true,
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    const m = out.match(/SteamPath\s+REG_SZ\s+(.+)/i);
+    return m ? m[1].trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** 读某个 Steam 根下的 libraryfolders.vdf，返回它列出的各库根（跨平台格式相同）。 */
+function parseLibraryFolders(steamRoot: string): string[] {
+  try {
+    const text = readFileSync(join(steamRoot, "steamapps", "libraryfolders.vdf"), "utf8");
+    const roots: string[] = [];
+    const re = /"path"\s+"([^"]+)"/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text)) !== null) roots.push(m[1].replace(/\\\\/g, "\\"));
+    return roots;
+  } catch {
+    return [];
+  }
+}
+
+/** 该平台的 Steam 根候选（不存在的也没关系，后续用哨兵验证会自然滤掉）。 */
+function steamRoots(platform: string): string[] {
+  const roots: string[] = [];
+  if (platform === "windows") {
+    const fromRegistry = readRegistrySteamPath();
+    if (fromRegistry) roots.push(fromRegistry);
+    for (const p of ["C:\\Program Files (x86)\\Steam", "C:\\Program Files\\Steam"]) roots.push(p);
+  } else if (platform === "mac") {
+    const home = process.env.HOME ?? process.env.USERPROFILE ?? "";
+    if (home) roots.push(join(home, "Library", "Application Support", "Steam"));
+  }
+  return [...new Set(roots)];
+}
+
+/** 所有 Steam 库根：各 Steam 根自身 + 它们 libraryfolders.vdf 列出的库（去重）。 */
+function discoverSteamLibraryRoots(platform: string): string[] {
+  const roots = steamRoots(platform);
+  const all = [...roots];
+  for (const r of roots) {
+    for (const lib of parseLibraryFolders(r)) {
+      if (!all.includes(lib)) all.push(lib);
+    }
+  }
+  return all;
+}
+
+// ── 发现（Duckov：显式入参 → 缓存 → mod-repo.json 的平台提示 → 各 Steam 库）──
 export interface TriedCandidate {
   path: string;
   reason?: string;
@@ -190,6 +252,14 @@ export function gameDirCandidates(
   if (explicit?.trim()) push(explicit);
   push(state.gameDir);
   push(cfg.game?.installDirHint?.[platform]);
+  // 各 Steam 库的 steamapps/common/<游戏目录名>（目录名取自 installDirHint 的 basename，
+  // 比 cfg.game.name 可靠——后者是显示名，未必等于文件夹名）。
+  const folder = basename(cfg.game?.installDirHint?.[platform] ?? "") || cfg.game?.name;
+  if (folder) {
+    for (const root of discoverSteamLibraryRoots(platform)) {
+      push(join(root, "steamapps", "common", folder));
+    }
+  }
   return [...new Set(out)];
 }
 
