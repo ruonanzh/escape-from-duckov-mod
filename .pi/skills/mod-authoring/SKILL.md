@@ -99,3 +99,21 @@ namespace MyMod
 
 - 完整可编译样例：`reference/example_mod/`。
 - API：`docs/mod-api.md`；物品：`docs/items.md`。
+
+## 路径工具（gameDir / workshopDir / modInstallDir）
+
+三个工具分工不同，**别混用**（判据是同一份实现，见 `.pi/lib/game-paths.ts`）：
+
+| 工具 | 什么时候用 | 副作用 |
+|---|---|---|
+| `check_game_paths` | **只验**：玩家给了一个路径（"我的游戏装在 D:\Games\Duckov"）、或想确认已记住的路径还对不对 | **无**（只读、不扫描、不写状态、不创建）|
+| `try_set_game_paths` | 位置**未知或已变**：去找（显式 → 缓存 → 平台提示，每个候选都验）并记录 | 写运行时状态 |
+| `check_runtime` | 一次跑全流程：.NET SDK + 发现 + 校验 + 记录 | 写运行时状态 |
+| `install_mod` | 安装（复用同一判据；目标目录不存在时会**创建**，这是全新机器的正常状态）| 写安装目标 |
+
+要点：
+
+- **发现 ≠ 信任**：目录存在还不够，必须能在里面找到游戏自带的 `TeamSoda.Duckov.Core.dll`。
+- **验 ≠ 改**：`check_game_paths` 从不写状态；要"记录"就用 `try_set_game_paths`。
+- 遇到 FAIL 先读它的 `NEXT:` 行 —— 大多是要玩家提供游戏目录（Steam → 库 → 右键游戏 → 管理 → 浏览本地文件）。
+- 玩家环境特殊（如"文档"被 OneDrive 接管）时，不要自己猜：**让 `check_game_paths` 验玩家给的路径**。
