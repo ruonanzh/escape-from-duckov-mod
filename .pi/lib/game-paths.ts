@@ -75,11 +75,15 @@ export function writeState(cwd: string, patch: RuntimeState): RuntimeState {
   return next;
 }
 
-const expand = (p: string): string =>
-  p.startsWith("~/") || p === "~" ? join(process.env.HOME ?? process.env.USERPROFILE ?? "", p.slice(2)) : p;
+/** 展开 `~` / `~/…`（mod-repo.json 的 installDirHint 是这么写的；不展开会永远验不过） */
+export const expandHome = (p: string): string => {
+  const t = p.trim();
+  if (t !== "~" && !t.startsWith("~/")) return t;
+  return join(process.env.HOME ?? process.env.USERPROFILE ?? "", t.slice(2));
+};
 
 /** 把工具入参里的相对路径按 workspace 根解析（与其它工具一致） */
-export const resolveUserPath = (cwd: string, p: string): string => resolve(cwd, expand(p.trim()));
+export const resolveUserPath = (cwd: string, p: string): string => resolve(cwd, expandHome(p));
 
 /** 编译要引用的程序集目录（由 gameDir + mod-repo.json 拼出来，不信任状态里存的值） */
 export function managedDirFor(gameDir: string, cfg: ModRepoConfig, platform = platformKey()): string | null {
@@ -97,7 +101,7 @@ const NEXT_STEAM = "玩家可在 Steam → 库 → 右键游戏 → 管理 → �
 
 /** 判据 1：这个目录是不是 Duckov 的安装目录（看游戏自带的哨兵程序集） */
 export function checkGameDir(dir: string | null | undefined, cfg: ModRepoConfig, platform = platformKey()): PathVerdict {
-  const p = dir ?? null;
+  const p = dir ? expandHome(dir) : null;
   if (!p)
     return {
       ok: false,
@@ -125,7 +129,8 @@ export function checkGameDir(dir: string | null | undefined, cfg: ModRepoConfig,
 
 /** 判据 2：mod 安装目标 —— **向上一步**看兄弟目录里的哨兵（目标与 Managed 同级） */
 export function checkModInstallDir(dir: string | null | undefined): PathVerdict {
-  const p = dir ?? null;
+  // 状态里可能是历史遗留的 ~/… → 统一展开后再判
+  const p = dir ? expandHome(dir) : null;
   if (!p)
     return {
       ok: false,
@@ -146,7 +151,8 @@ export function checkModInstallDir(dir: string | null | undefined): PathVerdict 
 
 /** 判据 3：Steam Workshop 内容目录（只读参考；必须是 …/steamapps/workshop/content/<appId>） */
 export function checkWorkshopDir(dir: string | null | undefined, appId: string): PathVerdict {
-  const p = dir ?? null;
+  // 状态里可能是历史遗留的 ~/… → 统一展开后再判
+  const p = dir ? expandHome(dir) : null;
   if (!p)
     return { ok: false, path: null, reason: "没有给出 Workshop 目录（可选）", next: "省略即可；它只用于读取 Workshop 内容做参考。" };
   if (!existsSync(p)) return { ok: false, path: p, reason: "目录不存在", next: "省略该参数即可（Workshop 目录是可选的只读参考）。" };
@@ -195,7 +201,7 @@ export function discoverGameDir(
   const tried: TriedCandidate[] = [];
   for (const c of gameDirCandidates(cfg, state, platform, explicit)) {
     const v = checkGameDir(c, cfg, platform);
-    if (v.ok) return { gameDir: c, tried };
+    if (v.ok) return { gameDir: v.path ?? c, tried };   // 存绝对路径：不把 ~/… 写进状态
     tried.push({ path: c, reason: v.reason });
   }
   return { gameDir: null, tried };
