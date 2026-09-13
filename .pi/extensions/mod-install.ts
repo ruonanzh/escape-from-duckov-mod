@@ -262,6 +262,14 @@ export default function (pi: ExtensionAPI) {
       let files = 0;
       try {
         files = copyModProducts(modDir, staging);
+        // `.pi-mod.json` 的来龙去脉（避免后来人误判它的用途）：
+        // · 最初的设计用意：一份**安装指南**，放在 mod 自己的工作区目录里（your_mods/<mod>/.pi-mod.json），
+        //   描述"这个 mod 该怎么装"（当时没沟通清楚，没实现成那个形态）。
+        // · 现在实际承担的角色：**归属标记**，写在**安装副本**里，内容只记 `{ "name": <mod 身份> }`,
+        //   用来回答"这个目标目录是不是我上次装的" → 命中就地更新，没命中则改名装 `<目录名>_pimod`。
+        // · 关键约束：**存什么就拿什么比**（这里存身份、判断也用身份）。若改成存目录名，就等于放弃
+        //   "同一 mod 换目录名后仍能识别为同一份安装"的能力（Duckov 这类身份≠目录名的类型会静默装成两份）。
+        // · 若将来真的要实现"工作区侧的安装指南"，需另定文件名或明确优先级，不要复用这个文件。
         writeFileSync(
           join(staging, ".pi-mod.json"),
           `${JSON.stringify({ name: identity.name }, null, 2)}\n`,
