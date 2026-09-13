@@ -11,7 +11,8 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { basename, dirname, isAbsolute, join, resolve } from "node:path";
+import { basename, isAbsolute, join, resolve } from "node:path";
+import { checkModInstallDir } from "../lib/game-paths";
 
 /**
  * install_mod — 把 your_mods/<ModName>/ 的产物装进游戏的 Mods 目录。
@@ -219,17 +220,19 @@ export default function (pi: ExtensionAPI) {
       // 为什么不能只验"目录存在"：游戏换盘/卸载后旧路径可能还"存在"（残留目录）→ 我们会 mkdirSync(recursive)
       // 造出一条假路径、把 mod 装到游戏永远不读的地方，而且看起来还成功。
       // 不自己探测 Steam 库（那是 check_runtime 的职责）→ 只报告这份缓存已失效，让 agent 去重跑它。
-      const managedSibling = join(dirname(modRoot), "Managed", "TeamSoda.Duckov.Core.dll");
-      if (!existsSync(managedSibling)) {
+      // 判据与 check_game_paths / try_set_game_paths 共用一份（lib/game-paths）：
+      // 目标目录在游戏目录里（relativeTo=gameDir）→ 向上一步看兄弟目录 Managed/ 里的游戏哨兵。
+      // 游戏换盘/卸载后旧路径可能"还存在"（残留目录），只验"目录在不在"会造出假路径并报成功。
+      const targetVerdict = checkModInstallDir(modRoot);
+      if (!targetVerdict.ok) {
         return {
           content: [
             {
               type: "text",
               text:
-                `FAIL: GAME_DIRECTORY_NOT_FOUND: ${modRoot} does not look like it is inside the game folder ` +
-                `(expected the game's own assembly next to it: ${managedSibling}). ` +
+                `FAIL: GAME_DIRECTORY_NOT_FOUND: ${targetVerdict.reason}. ` +
                 "The game may have been moved or uninstalled since check_runtime last ran." +
-                "\nNEXT: run check_runtime again to re-locate the game directory, then re-run install_mod.",
+                `\nNEXT: ${targetVerdict.next}`,
             },
           ],
           details: { ok: false, reason: "GAME_DIRECTORY_NOT_FOUND" },
