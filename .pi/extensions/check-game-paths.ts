@@ -3,7 +3,7 @@
  *
  * 与其它工具的分工（别混用）：
  *   · check_game_paths   只验给定或已记住的路径            ← 本工具（无副作用，helper 只读会话也能用）
- *   · try_set_game_paths 扫描发现路径并写入状态            ← 位置未知时用它
+ *   · （无人值守的发现/派生是内部实现，不注册为工具：见 lib 的 setPathWithFallback）
  *   · check_runtime      一次跑完整流程（SDK + 发现 + 校验）
  *   · install_mod        安装（复用同一份判据，目标不存在则创建）
  *
@@ -29,12 +29,12 @@ export default function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "check_game_paths",
     description:
-      "Verify game-related directories (game install, Steam Workshop content, mod install target). Read-only: it never writes .gamer-agent.local.json, never scans Steam, never creates directories. Pass any subset of gameDir/workshopDir/modInstallDir to verify just those; omit them all to verify the paths currently remembered in .gamer-agent.local.json. Use it when the player tells you a path (to find out whether it is right) or to re-check remembered paths; use try_set_game_paths when the location is unknown and needs scanning.",
+      "Verify game-related directories (game install, Steam Workshop content, mod install target). Read-only: it never writes .gamer-agent.local.json, never scans Steam, never creates directories. Pass any subset of gameDir/workshopDir/modInstallDir to verify just those; omit them all to verify the paths currently remembered in .gamer-agent.local.json. Use it when the player tells you a path (to find out whether it is right) or to re-check remembered paths; use set_game_paths when the location is unknown and needs scanning.",
     promptSnippet: "Verify game/mod paths without scanning or writing",
     promptGuidelines: [
       "Use check_game_paths (not check_runtime) when the player gives you a path: it verifies without scanning Steam and without writing state.",
       "check_game_paths never writes .gamer-agent.local.json - if a path is wrong, ask the player for the real one (Steam -> Library -> right-click the game -> Manage -> Browse local files) and verify again with gameDir.",
-      "If nothing is known yet about the game location, run try_set_game_paths first; check_game_paths only verifies what you pass it or what is already remembered.",
+      "If nothing is known yet about the game location, run check_runtime first (or ask the player for the path and record it with set_game_dir); check_game_paths only verifies what you pass it or what is already remembered.",
       "Do not create or install anything as a result of a failed check_game_paths: report the FAIL text and its NEXT line to the player.",
     ],
     parameters: Type.Object({
@@ -77,7 +77,7 @@ export default function (pi: ExtensionAPI) {
           content: [
             {
               type: "text",
-              text: "FAIL: nothing to check - no paths were given and none are remembered in .gamer-agent.local.json.\nNEXT: run try_set_game_paths to locate the game, or pass gameDir explicitly (ask the player where the game is).",
+              text: "FAIL: nothing to check - no paths were given and none are remembered in .gamer-agent.local.json.\nNEXT: run set_game_paths to locate the game, or pass gameDir explicitly (ask the player where the game is).",
             },
           ],
           details: { ok: false, reason: "NOTHING_TO_CHECK" },
@@ -105,7 +105,7 @@ export default function (pi: ExtensionAPI) {
       const ok = failed.length === 0;
       if (!ok) {
         lines.push(
-          "NOTE: nothing was changed - this tool never writes state or creates directories. Report the above to the player; once you have a correct path, try_set_game_paths can record it (or install_mod can use it as-is if it is already remembered).",
+          "NOTE: nothing was changed - this tool never writes state or creates directories. Report the above to the player; once you have a correct path, set_game_paths can record it (or install_mod can use it as-is if it is already remembered).",
         );
       }
 

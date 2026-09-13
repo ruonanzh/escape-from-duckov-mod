@@ -5,7 +5,7 @@
  * 共享模块放进 extensions/ 会被当成扩展加载。这里由各工具用相对路径 import。
  *
  * 这里的判据是**游戏专属知识**（Duckov 自带的程序集名、Steam 目录形状等）：
- * check_game_paths / try_set_game_paths / check_runtime / install_mod 共用同一份，
+ * check_game_paths / set_game_paths / check_runtime / install_mod 共用同一份，
  * 保证"验"与"装"不会各写一套、各自漂移。
  *
  * 三类路径的性质不同，判据也不同：
@@ -62,7 +62,7 @@ export function readState(cwd: string): RuntimeState {
 }
 
 /**
- * 读改写 + **原子替换**。以前只有 check_runtime 写这个文件；现在多了 try_set_game_paths，
+ * 读改写 + **原子替换**。以前只有 check_runtime 写这个文件；现在多了 set_game_paths，
  * 所以统一走这里：写临时文件再 rename，避免留下半个 JSON（同盘 rename 是原子的）。
  */
 export function writeState(cwd: string, patch: RuntimeState): RuntimeState {
@@ -136,7 +136,7 @@ export function checkModInstallDir(dir: string | null | undefined): PathVerdict 
       ok: false,
       path: null,
       reason: "no mod install directory was given",
-      next: "Run try_set_game_paths to locate it, or ask the player for the game install directory and verify again.",
+      next: "Run check_runtime to locate it, or ask the player for the game install directory and verify it with check_game_paths.",
     };
   const sibling = join(dirname(p), "Managed", GAME_SENTINEL);
   if (!existsSync(sibling))
@@ -144,7 +144,7 @@ export function checkModInstallDir(dir: string | null | undefined): PathVerdict 
       ok: false,
       path: p,
       reason: `this path does not look like it is inside the game folder (no ${GAME_SENTINEL} next to it) - the game may have been moved or uninstalled`,
-      next: `Run try_set_game_paths again to re-locate the game; if the game is installed elsewhere, pass that path and verify again. ${NEXT_STEAM}`,
+      next: `Run check_runtime again to re-locate the game; if the game is installed elsewhere, pass that path and verify again. ${NEXT_STEAM}`,
     };
   return { ok: true, path: p };
 }

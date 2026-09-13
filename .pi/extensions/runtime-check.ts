@@ -20,7 +20,7 @@ import {
  *
  * 拆分后的分工（本工具只做**编排**，判据与发现都在 .pi/lib/game-paths.ts）：
  *   · check_game_paths     只验给定/已记住的路径（只读）
- *   · try_set_game_paths   位置未知时去找并落库
+ *   · set_game_dir / set_game_paths   记住玩家给的路径（不过判据则走内部发现/派生）
  *   · check_runtime        SDK 检查 + 发现 + 校验 + 落库 + 汇总   ← 本工具
  *   · install_mod          安装（同一份判据；目标不存在则创建）
  */
@@ -29,7 +29,7 @@ export default function (pi: ExtensionAPI) {
     name: "check_runtime",
     label: "Check Runtime",
     description:
-      "One-stop runtime check: verifies the .NET SDK (>= 8), locates the installed game, verifies the game/mod paths with the game's own marker, and records the result in .gamer-agent.local.json. Uses an optional gameDir, then the remembered path, then the platform hint in mod-repo.json. Does not install software or modify mod source files. For a read-only path check use check_game_paths; to only locate and record the game use try_set_game_paths.",
+      "One-stop runtime check: verifies the .NET SDK (>= 8), locates the installed game, verifies the game/mod paths with the game's own marker, and records the result in .gamer-agent.local.json. Uses an optional gameDir, then the remembered path, then the platform hint in mod-repo.json. Does not install software or modify mod source files. For a read-only path check use check_game_paths; to only locate and record the game use set_game_paths.",
     promptSnippet: "Check SDK and game location when compilation needs them or the player asks about setup",
     promptGuidelines: [
       "Use check_runtime when runtime readiness is unknown or has changed: it checks the SDK, locates the game and records the verified paths in one go.",
@@ -68,7 +68,7 @@ export default function (pi: ExtensionAPI) {
         );
       }
 
-      // 2) 发现 + 校验（与 try_set_game_paths 共用同一份实现：每个候选都要过哨兵检查）
+      // 2) 发现 + 校验（与 set_game_paths 共用同一份实现：每个候选都要过哨兵检查）
       const explicit = params.gameDir?.trim() ? resolveUserPath(cwd, params.gameDir) : undefined;
       const { gameDir } = discoverGameDir(cfg, state, platform, explicit);
 
