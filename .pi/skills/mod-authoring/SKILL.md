@@ -23,6 +23,7 @@ description: Escape From Duckov 的 C# mod 制作、修改、可行性/制作方
 - **规范与实现**：复用 `reference/example_mod/ExampleMod.csproj` 与入口类。保持 info.ini 名称、AssemblyName、RootNamespace 和 DLL 名一致（validate_mod 校验）。
 - **需要编译而环境未知/已变化**：用 `check_runtime` 核实 dotnet SDK 与游戏目录。有仍有效的结果无需每轮重复检查。缺 SDK 才取 `install_runtime` 安装指引；找不到游戏目录则确认安装位置，不用 SDK 安装解决。工具提供指引不等于已安装。
 - **验证产物**：`validate_mod` 做字段检查，并在环境就绪时执行编译；不必再机械地重复同一次 `dotnet build`。若需手工排错，使用返回的运行时路径与游戏目录，不依赖偶然的 PATH。
+- **不要改 csproj 的 `OutputPath` 到项目根**：SDK 的默认排除规则会把项目根下的 `*.cs` 全排掉 → `dotnet build` 仍报成功、却产出**空壳 dll**（游戏里能看到、勾不上）。产物走默认的 `bin/Release/`，`install_mod` / `validate_mod` 都会去那里取。
 - **装进游戏**：`install_mod` 把产物复制到游戏 `Mods/` 目录（目标来自 `check_runtime` 的发现结果，它不自己探测）。
   - **装进去的目录名 = `your_mods/` 下的目录名**（不是 `info.ini` 的 `name`）：这样一个目录名做单层校验就够了，不可能写到游戏目录之外；你在工作区看到的目录名与游戏 `Mods/` 里的一致，便于对号入座。
   - **目录名（我们这边的规则，由 `create_mod_folder` 强制）**：小写字母开头，其后只能是小写字母/数字/下划线，总长 ≤ 40，且不得是 Windows 保留设备名（con/prn/aux/nul/com1-9/lpt1-9）。

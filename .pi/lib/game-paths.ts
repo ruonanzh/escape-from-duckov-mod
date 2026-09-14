@@ -17,12 +17,15 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
-
 /** 游戏自带的程序集（哨兵）：它在，才说明这个目录确实是 Duckov。 */
 export const GAME_SENTINEL = "TeamSoda.Duckov.Core.dll";
 
 export interface ModRepoConfig {
-  game?: { name?: string; steamAppId?: string | number; installDirHint?: Record<string, string> };
+  game?: {
+    name?: string;
+    steamAppId?: string | number;
+    installDirHint?: Record<string, string>;
+  };
   compile?: { managedDir?: Record<string, string> };
   modInstall?: { path?: Record<string, string>; relativeTo?: string };
 }
@@ -46,12 +49,19 @@ export interface PathVerdict {
 
 /** 配置里用的平台键（mod-repo.json 的 windows/mac/linux） */
 export const platformKey = (): string =>
-  process.platform === "win32" ? "windows" : process.platform === "darwin" ? "mac" : "linux";
+  process.platform === "win32"
+    ? "windows"
+    : process.platform === "darwin"
+      ? "mac"
+      : "linux";
 
-export const statePath = (cwd: string): string => join(cwd, ".gamer-agent.local.json");
+export const statePath = (cwd: string): string =>
+  join(cwd, ".gamer-agent.local.json");
 
 export function readModRepoConfig(cwd: string): ModRepoConfig {
-  return JSON.parse(readFileSync(join(cwd, "mod-repo.json"), "utf8")) as ModRepoConfig;
+  return JSON.parse(
+    readFileSync(join(cwd, "mod-repo.json"), "utf8"),
+  ) as ModRepoConfig;
 }
 
 export function readState(cwd: string): RuntimeState {
@@ -84,24 +94,38 @@ export const expandHome = (p: string): string => {
 };
 
 /** 把工具入参里的相对路径按 workspace 根解析（与其它工具一致） */
-export const resolveUserPath = (cwd: string, p: string): string => resolve(cwd, expandHome(p));
+export const resolveUserPath = (cwd: string, p: string): string =>
+  resolve(cwd, expandHome(p));
 
 /** 编译要引用的程序集目录（由 gameDir + mod-repo.json 拼出来，不信任状态里存的值） */
-export function managedDirFor(gameDir: string, cfg: ModRepoConfig, platform = platformKey()): string | null {
+export function managedDirFor(
+  gameDir: string,
+  cfg: ModRepoConfig,
+  platform = platformKey(),
+): string | null {
   const rel = cfg.compile?.managedDir?.[platform];
   return typeof rel === "string" && rel ? join(gameDir, rel) : null;
 }
 
 /** mod 安装目标（相对 gameDir，见 mod-repo.json 的 modInstall.relativeTo=gameDir） */
-export function modInstallDirFor(gameDir: string, cfg: ModRepoConfig, platform = platformKey()): string | null {
+export function modInstallDirFor(
+  gameDir: string,
+  cfg: ModRepoConfig,
+  platform = platformKey(),
+): string | null {
   const rel = cfg.modInstall?.path?.[platform];
   return typeof rel === "string" && rel.trim() ? join(gameDir, rel) : null;
 }
 
-const NEXT_STEAM = "The player can find it in Steam -> Library -> right-click the game -> Manage -> Browse local files.";
+const NEXT_STEAM =
+  "The player can find it in Steam -> Library -> right-click the game -> Manage -> Browse local files.";
 
 /** 判据 1：这个目录是不是 Duckov 的安装目录（看游戏自带的哨兵程序集） */
-export function checkGameDir(dir: string | null | undefined, cfg: ModRepoConfig, platform = platformKey()): PathVerdict {
+export function checkGameDir(
+  dir: string | null | undefined,
+  cfg: ModRepoConfig,
+  platform = platformKey(),
+): PathVerdict {
   const p = dir ? expandHome(dir) : null;
   if (!p)
     return {
@@ -129,7 +153,9 @@ export function checkGameDir(dir: string | null | undefined, cfg: ModRepoConfig,
 }
 
 /** 判据 2：mod 安装目标 —— **向上一步**看兄弟目录里的哨兵（目标与 Managed 同级） */
-export function checkModInstallDir(dir: string | null | undefined): PathVerdict {
+export function checkModInstallDir(
+  dir: string | null | undefined,
+): PathVerdict {
   // 状态里可能是历史遗留的 ~/… → 统一展开后再判
   const p = dir ? expandHome(dir) : null;
   if (!p)
@@ -139,8 +165,15 @@ export function checkModInstallDir(dir: string | null | undefined): PathVerdict 
       reason: "no mod install directory was given",
       next: "Run check_runtime to locate it, or ask the player for the game install directory and verify it with check_game_paths.",
     };
-  const sibling = join(dirname(p), "Managed", GAME_SENTINEL);
-  if (!existsSync(sibling))
+  // 哨兵位置随平台布局不同（U24 实机发现：macOS 的 mod 目录在 .app/Contents/Mods，
+  // 不是 .app/Contents/Resources/Data/Mods）：
+  //   Windows: <gameDir>/Duckov_Data/Mods         → 兄弟 <gameDir>/Duckov_Data/Managed/<哨兵>
+  //   macOS  : <gameDir>/Duckov.app/Contents/Mods → 兄弟 <…>/Contents/Resources/Data/Managed/<哨兵>
+  const anchors = [
+    join(dirname(p), "Managed", GAME_SENTINEL),
+    join(dirname(p), "Resources", "Data", "Managed", GAME_SENTINEL),
+  ];
+  if (!anchors.some((a) => existsSync(a)))
     return {
       ok: false,
       path: p,
@@ -151,15 +184,30 @@ export function checkModInstallDir(dir: string | null | undefined): PathVerdict 
 }
 
 /** 判据 3：Steam Workshop 内容目录（只读参考；必须是 …/steamapps/workshop/content/<appId>） */
-export function checkWorkshopDir(dir: string | null | undefined, appId: string): PathVerdict {
+export function checkWorkshopDir(
+  dir: string | null | undefined,
+  appId: string,
+): PathVerdict {
   // 状态里可能是历史遗留的 ~/… → 统一展开后再判
   const p = dir ? expandHome(dir) : null;
   if (!p)
-    return { ok: false, path: null, reason: "no Workshop directory was given (optional)", next: "Omit it; it is only used to read Workshop content for reference." };
-  if (!existsSync(p)) return { ok: false, path: p, reason: "the directory does not exist", next: "Omit this argument (the Workshop directory is an optional read-only reference)." };
+    return {
+      ok: false,
+      path: null,
+      reason: "no Workshop directory was given (optional)",
+      next: "Omit it; it is only used to read Workshop content for reference.",
+    };
+  if (!existsSync(p))
+    return {
+      ok: false,
+      path: p,
+      reason: "the directory does not exist",
+      next: "Omit this argument (the Workshop directory is an optional read-only reference).",
+    };
   // 归一化（反斜杠/尾斜杠/大小写）后比较 —— Windows 路径不区分大小写；
   // appid 未知时只校验存在性（形状校验是"当我们知道规则"时才有意义）。
-  const norm = (v: string) => v.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+  const norm = (v: string) =>
+    v.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
   if (appId && !norm(p).endsWith(norm(`/workshop/content/${appId}`)))
     return {
       ok: false,
@@ -273,7 +321,7 @@ export function discoverGameDir(
   const tried: TriedCandidate[] = [];
   for (const c of gameDirCandidates(cfg, state, platform, explicit)) {
     const v = checkGameDir(c, cfg, platform);
-    if (v.ok) return { gameDir: v.path ?? c, tried };   // 存绝对路径：不把 ~/... 写进状态
+    if (v.ok) return { gameDir: v.path ?? c, tried }; // 存绝对路径：不把 ~/... 写进状态
     tried.push({ path: c, reason: v.reason });
   }
   return { gameDir: null, tried };
@@ -284,16 +332,29 @@ export function pathsFromGameDir(
   gameDir: string,
   cfg: ModRepoConfig,
   platform = platformKey(),
-): { managedDir: string | null; modInstallDir: string | null; workshopDir: string | null; notes: string[] } {
+): {
+  managedDir: string | null;
+  modInstallDir: string | null;
+  workshopDir: string | null;
+  notes: string[];
+} {
   const notes: string[] = [];
   const managedDir = managedDirFor(gameDir, cfg, platform);
   const modInstallDir = modInstallDirFor(gameDir, cfg, platform);
   let workshopDir: string | null = null;
   const appId = cfg.game?.steamAppId;
   if (appId) {
-    const ws = join(dirname(dirname(gameDir)), "workshop", "content", String(appId));
+    const ws = join(
+      dirname(dirname(gameDir)),
+      "workshop",
+      "content",
+      String(appId),
+    );
     if (existsSync(ws)) workshopDir = ws;
-    else notes.push(`NOTE: the Workshop directory does not exist, so it was not recorded (optional, read-only reference): ${ws}`);
+    else
+      notes.push(
+        `NOTE: the Workshop directory does not exist, so it was not recorded (optional, read-only reference): ${ws}`,
+      );
   }
   return { managedDir, modInstallDir, workshopDir, notes };
 }
@@ -319,7 +380,12 @@ export interface PathOutcome {
 const ASK_PLAYER =
   "Ask the player for the correct path (Steam -> Library -> right-click the game -> Manage -> Browse local files), then call this setter again with it.";
 
-function verifyPath(kind: PathKind, p: string, cfg: ModRepoConfig, appId: string): PathVerdict {
+function verifyPath(
+  kind: PathKind,
+  p: string,
+  cfg: ModRepoConfig,
+  appId: string,
+): PathVerdict {
   if (kind === "gameDir") return checkGameDir(p, cfg);
   if (kind === "workshopDir") return checkWorkshopDir(p, appId);
   return checkModInstallDir(p);
@@ -332,7 +398,10 @@ function deriveFallback(
   kind: PathKind,
 ): { ok: boolean; path?: string; note?: string; reason?: string } {
   const state = readState(cwd);
-  const rememberedGame = checkGameDir(typeof state.gameDir === "string" ? state.gameDir : null, cfg);
+  const rememberedGame = checkGameDir(
+    typeof state.gameDir === "string" ? state.gameDir : null,
+    cfg,
+  );
   const gameDir = rememberedGame.ok
     ? (rememberedGame.path as string)
     : (() => {
@@ -340,23 +409,44 @@ function deriveFallback(
         return d.gameDir;
       })();
   if (!gameDir) {
-    return { ok: false, reason: "automatic discovery could not find the game either" };
+    return {
+      ok: false,
+      reason: "automatic discovery could not find the game either",
+    };
   }
   if (kind === "gameDir") return { ok: true, path: gameDir };
   const derived = pathsFromGameDir(gameDir, cfg);
-  const path = kind === "workshopDir" ? derived.workshopDir : derived.modInstallDir;
-  if (!path) return { ok: false, reason: `${kind} cannot be derived from the game directory` };
+  const path =
+    kind === "workshopDir" ? derived.workshopDir : derived.modInstallDir;
+  if (!path)
+    return {
+      ok: false,
+      reason: `${kind} cannot be derived from the game directory`,
+    };
   return { ok: true, path, note: derived.notes.join(" ") };
 }
 
 /** 落库：设游戏目录时连带刷新它的派生项；设单条时只改那一条 */
-function record(cwd: string, cfg: ModRepoConfig, kind: PathKind, path: string): void {
+function record(
+  cwd: string,
+  cfg: ModRepoConfig,
+  kind: PathKind,
+  path: string,
+): void {
   if (kind === "gameDir") {
     const d = pathsFromGameDir(path, cfg);
-    writeState(cwd, { gameDir: path, managedDir: d.managedDir, modInstallDir: d.modInstallDir, workshopDir: d.workshopDir ?? null });
+    writeState(cwd, {
+      gameDir: path,
+      managedDir: d.managedDir,
+      modInstallDir: d.modInstallDir,
+      workshopDir: d.workshopDir ?? null,
+    });
     return;
   }
-  writeState(cwd, kind === "modInstallDir" ? { modInstallDir: path } : { workshopDir: path });
+  writeState(
+    cwd,
+    kind === "modInstallDir" ? { modInstallDir: path } : { workshopDir: path },
+  );
 }
 
 /** 单个字段的「验 → 不过则内部发现 → 都失败则 FAIL」 */
@@ -369,7 +459,14 @@ export function setPathWithFallback(
   const appId = String(cfg.game?.steamAppId ?? "");
   const given = givenRaw && givenRaw.trim() ? expandHome(givenRaw) : null;
   if (!given) {
-    return { kind, status: "FAIL", given: null, recorded: null, reason: "no path was given", next: "Pass the path the player provided (this setter requires it)." };
+    return {
+      kind,
+      status: "FAIL",
+      given: null,
+      recorded: null,
+      reason: "no path was given",
+      next: "Pass the path the player provided (this setter requires it).",
+    };
   }
 
   const v = verifyPath(kind, given, cfg, appId);
@@ -402,9 +499,17 @@ export function setPathWithFallback(
 }
 
 /** 四个 setter 共用的输出格式（PASS / WARN / FAIL 三种语义各说清） */
-export function formatPathOutcome(o: PathOutcome): { text: string; ok: boolean; status: PathOutcome["status"] } {
+export function formatPathOutcome(o: PathOutcome): {
+  text: string;
+  ok: boolean;
+  status: PathOutcome["status"];
+} {
   if (o.status === "PASS")
-    return { text: `PASS: recorded ${o.kind} ${o.recorded} (validated).`, ok: true, status: o.status };
+    return {
+      text: `PASS: recorded ${o.kind} ${o.recorded} (validated).`,
+      ok: true,
+      status: o.status,
+    };
   if (o.status === "WARN")
     return {
       text:

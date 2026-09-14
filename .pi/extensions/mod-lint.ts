@@ -6,7 +6,6 @@ import { join, basename, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import os from "node:os";
 
-
 function parseIni(text: string) {
   const result: Record<string, string> = {};
   for (const line of text.split(/\r?\n/)) {
@@ -32,17 +31,26 @@ export default function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "validate_mod",
     label: "Validate Mod",
-    description: "Validate info.ini and C# source files in an existing mod directory (relative modDir uses workspace root). With ready SDK/game paths, runs dotnet build, which may restore dependencies and write build outputs; does not edit source or test gameplay. Output text uses PASS/FAIL/PARTIAL and a NEXT line for next steps. Skipped compilation is PARTIAL, never full PASS.",
-    promptSnippet: "Check an existing C# mod and compile it when runtime prerequisites are ready",
+    description:
+      "Validate info.ini and C# source files in an existing mod directory (relative modDir uses workspace root). With ready SDK/game paths, runs dotnet build, which may restore dependencies and write build outputs; does not edit source or test gameplay. Output text uses PASS/FAIL/PARTIAL and a NEXT line for next steps. Skipped compilation is PARTIAL, never full PASS.",
+    promptSnippet:
+      "Check an existing C# mod and compile it when runtime prerequisites are ready",
     promptGuidelines: [
       "Use validate_mod for changed code or requested validation. It can compile, so do not mechanically duplicate the same dotnet build. Inspect the PARTIAL status in output text; resolve skipped-compilation prerequisites before claiming success.",
     ],
     parameters: Type.Object({
-      modDir: Type.String({ minLength: 1, description: "Existing mod directory; absolute or relative to the workspace root, e.g. your_mods/MyMod (not relative to the skill)." }),
+      modDir: Type.String({
+        minLength: 1,
+        description:
+          "Existing mod directory; absolute or relative to the workspace root, e.g. your_mods/MyMod (not relative to the skill).",
+      }),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       const repoRoot = ctx.cwd;
-      if (!params.modDir?.trim()) throw new Error("INVALID_MOD_DIR: Provide an existing mod directory, e.g. your_mods/MyMod.");
+      if (!params.modDir?.trim())
+        throw new Error(
+          "INVALID_MOD_DIR: Provide an existing mod directory, e.g. your_mods/MyMod.",
+        );
       const modDir = resolve(repoRoot, params.modDir);
       const errors: string[] = [];
       const warnings: string[] = [];
@@ -50,7 +58,9 @@ export default function (pi: ExtensionAPI) {
 
       // 0. mod 目录存在（不存在 = 参数错误/前置条件不满足，throw 标记 isError）
       if (!statSync(modDir, { throwIfNoEntry: false })?.isDirectory()) {
-        throw new Error(`INVALID_MOD_DIR: ${modDir} is not a directory. Check the session's bound path or ask the player to restore it; do not create a replacement merely to validate.`);
+        throw new Error(
+          `INVALID_MOD_DIR: ${modDir} is not a directory. Check the session's bound path or ask the player to restore it; do not create a replacement merely to validate.`,
+        );
       }
 
       // 1. info.ini
@@ -64,14 +74,17 @@ export default function (pi: ExtensionAPI) {
         if (!ini.displayName) errors.push("info.ini: displayName is missing");
         if (!ini.description) errors.push("info.ini: description is missing");
         if (ini.name && !isCodeIdentifier(ini.name)) {
-          errors.push(`info.ini: name (${ini.name}) is not a valid namespace (${CODE_IDENTIFIER_RE})`);
+          errors.push(
+            `info.ini: name (${ini.name}) is not a valid namespace (${CODE_IDENTIFIER_RE})`,
+          );
         }
       }
 
       // 2. compile sources
       const csproj = readdirSync(modDir).find((f) => f.endsWith(".csproj"));
       if (!csproj) errors.push("missing <ModName>.csproj");
-      if (!existsSync(join(modDir, "ModBehaviour.cs"))) errors.push("missing ModBehaviour.cs");
+      if (!existsSync(join(modDir, "ModBehaviour.cs")))
+        errors.push("missing ModBehaviour.cs");
 
       // 3. compile（读 check_runtime 缓存的状态文件拿 dotnet + gameDir）
       const staticOk = errors.length === 0;
@@ -79,11 +92,18 @@ export default function (pi: ExtensionAPI) {
       const state = loadState(repoRoot);
       // check_runtime writes runtime.dotnet; accept the historical flat field too.
       const cachedDotnet = state.runtime?.dotnet ?? state.dotnet;
-      const dotnet = typeof cachedDotnet === "string" && cachedDotnet ? cachedDotnet : findDotnet();
+      const dotnet =
+        typeof cachedDotnet === "string" && cachedDotnet
+          ? cachedDotnet
+          : findDotnet();
       if (!dotnet) {
-        warnings.push("dotnet not found - compile check skipped. Run check_runtime; use install_runtime only for SDK installation instructions.");
+        warnings.push(
+          "dotnet not found - compile check skipped. Run check_runtime; use install_runtime only for SDK installation instructions.",
+        );
       } else if (!state.gameDir) {
-        warnings.push("game dir not found - compile check skipped. Run check_runtime with the installed game directory; SDK installation cannot fix game location.");
+        warnings.push(
+          "game dir not found - compile check skipped. Run check_runtime with the installed game directory; SDK installation cannot fix game location.",
+        );
       } else if (csproj && staticOk) {
         try {
           execFileSync(dotnet, ["build", csproj, "-c", "Release"], {
@@ -95,20 +115,49 @@ export default function (pi: ExtensionAPI) {
           compilation = "passed";
         } catch (e) {
           compilation = "failed";
-          errors.push(`dotnet build failed: ${String(e.stderr || e.stdout || e.message).slice(0, 600)}`);
+          errors.push(
+            `dotnet build failed: ${String(e.stderr || e.stdout || e.message).slice(0, 600)}`,
+          );
         }
       }
 
       // 4. dll produced
-      const dllCandidates = [join(modDir, `${modName}.dll`), join(modDir, "bin", "Release", `${modName}.dll`)];
+      const dllCandidates = [
+        join(modDir, `${modName}.dll`),
+        join(modDir, "bin", "Release", `${modName}.dll`),
+      ];
       const artifactPresent = dllCandidates.some((p) => existsSync(p));
       if (compilation === "passed" && !artifactPresent) {
-        errors.push(`missing ${modName}.dll after build; check AssemblyName and the output directory`);
+        errors.push(
+          `missing ${modName}.dll after build; check AssemblyName and the output directory`,
+        );
+      }
+
+      // 4b. 产物**内容**校验（U25）：`dotnet build` 退出 0 **不等于**真的编译了我们的源文件。
+      // 真实踩坑：csproj 把 OutputPath 指到项目根 → SDK 的默认排除规则把项目根下的 *.cs 全排掉
+      // → "编译成功"但产出 3.5KB 空壳 dll（游戏里能看到、却勾不上）。
+      if (compilation === "passed" && artifactPresent) {
+        const dllPath = dllCandidates.find((candidate) =>
+          existsSync(candidate),
+        ) as string;
+        const bytes = readFileSync(dllPath);
+        if (
+          !bytes.includes("TeamSoda.Duckov.Core") ||
+          !bytes.includes("ModBehaviour")
+        ) {
+          errors.push(
+            `${modName}.dll looks like an empty stub (no reference to the game assembly and/or no ModBehaviour type). ` +
+              "Common cause: csproj sets OutputPath to the project root, so the SDK excludes the project's own *.cs files and compiles nothing — " +
+              "remove that OutputPath (or add EnableDefaultCompileItems=false + an explicit Compile item), then validate again.",
+          );
+        }
       }
 
       // preview.png (warn only)
       if (!existsSync(join(modDir, "preview.png"))) {
-        warnings.push("missing preview.png (256x256, needed for Steam Workshop upload)");
+        warnings.push(
+          "missing preview.png (256x256, needed for Steam Workshop upload)",
+        );
       }
 
       const ok = errors.length === 0 && compilation === "passed";
@@ -118,9 +167,18 @@ export default function (pi: ExtensionAPI) {
         : errors.length
           ? "Inspect the reported errors. Fix only in an authorized mod-development session, then validate again."
           : "Run check_runtime to resolve the skipped compilation prerequisites, then re-run validate_mod. An existing DLL is not proof of a build in this run.";
-      const lines = [...warnings.map((w) => `WARN: ${w}`), ...errors.map((e) => `FAIL: ${e}`)];
-      if (ok) lines.push(`PASS: ${basename(modDir)} is valid (compiled; not tested in-game).`);
-      else if (status === "partial") lines.push("PARTIAL: Static checks passed, but compilation was not performed.");
+      const lines = [
+        ...warnings.map((w) => `WARN: ${w}`),
+        ...errors.map((e) => `FAIL: ${e}`),
+      ];
+      if (ok)
+        lines.push(
+          `PASS: ${basename(modDir)} is valid (compiled; not tested in-game).`,
+        );
+      else if (status === "partial")
+        lines.push(
+          "PARTIAL: Static checks passed, but compilation was not performed.",
+        );
       lines.push(`NEXT: ${nextAction}`);
       return {
         content: [{ type: "text", text: truncateLines(lines.join("\n")) }],
@@ -132,7 +190,9 @@ export default function (pi: ExtensionAPI) {
 
 function loadState(repoRoot: string) {
   try {
-    return JSON.parse(readFileSync(join(repoRoot, ".gamer-agent.local.json"), "utf8"));
+    return JSON.parse(
+      readFileSync(join(repoRoot, ".gamer-agent.local.json"), "utf8"),
+    );
   } catch {
     return {};
   }
