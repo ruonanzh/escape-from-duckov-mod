@@ -17,6 +17,13 @@
     <ManagedDir Condition="'$(IsMac)' != 'true'">$(DuckovDir)/Duckov_Data/Managed</ManagedDir>
   </PropertyGroup>
 
+    <!-- 护栏（U25）：DuckovDir 为空时**直接报错**，而不是让引用静默缺失、编出空壳 dll。
+         validate_mod 会自动带上 DUCKOV_DIR；手工 dotnet build 时必须自己 export。 -->
+    <Target Name="RequireDuckovDir" BeforeTargets="ResolveAssemblyReferences">
+      <Error Condition="'$(DuckovDir)' == ''"
+        Text="DUCKOV_DIR is not set. Export it (export DUCKOV_DIR=&quot;&lt;game install dir&gt;&quot;) or run validate_mod, which passes it. Without it the game references resolve to nothing and the build silently produces an empty stub DLL." />
+    </Target>
+
   <ItemGroup>
     <Reference Include="$(ManagedDir)/TeamSoda.*">
       <Private>false</Private>
