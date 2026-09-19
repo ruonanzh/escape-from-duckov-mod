@@ -31,5 +31,6 @@
       "ItemStatsSystem.dll",
       "Unity*.dll"
     ]
-  }
+  },
+  "workshop": { "supported": true }
 }
