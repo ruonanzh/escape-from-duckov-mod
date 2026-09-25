@@ -20,6 +20,7 @@ import {
   readModRepoConfig,
   readState,
   resolveUserPath,
+  workshopSupported,
   type ModRepoConfig,
   type PathVerdict,
   type RuntimeState,
@@ -60,7 +61,16 @@ export default function (pi: ExtensionAPI) {
 
       // 契约：**传谁验谁**；一个都不传 = 验缓存里记住的那几条。
       // （明确传入时不掺入缓存的其它路径 —— 否则"只验 modInstallDir"会被一个过期的 gameDir 带崩。）
-      const targets: Array<[string, string | null]> = explicit
+      //
+      // U29：哪些路径「必填」、要不要关心创意工坊，由 mod-repo.json 决定：
+      //   · 契约声明了 modInstall（non-null）→ modInstallDir 必填；modInstall: null 的类型不要求
+      //   · workshop.supported === false → **完全不看** workshopDir（不检查、不出现在结果里、不参与判定）
+      //   · workshopDir 无论对错都**不产 ERROR**：它只是只读参考，最多 WARN
+      const requiresModInstall = cfg.modInstall !== null && cfg.modInstall !== undefined;
+      const workshop = workshopSupported(cfg); // true | false | null（未声明 = 未知）
+      const requiredKeys: string[] = ["gameDir", ...(requiresModInstall ? ["modInstallDir"] : [])];
+
+      const allTargets: Array<[string, string | null]> = explicit
         ? [
             ["gameDir", asPath(params.gameDir)],
             ["workshopDir", asPath(params.workshopDir)],
@@ -71,17 +81,35 @@ export default function (pi: ExtensionAPI) {
             ["workshopDir", remembered(state.workshopDir)],
             ["modInstallDir", remembered(state.modInstallDir)],
           ];
+      // 契约说没有创意工坊 → 把 workshopDir 从候选里拿掉（不检查、不出现、不参不判定）
+      const workshopIgnored =
+        workshop === false && allTargets.some(([key, path]) => key === "workshopDir" && path !== null);
+      const targets = allTargets.filter(([key]) => !(key === "workshopDir" && workshop === false));
 
       if (targets.every(([, path]) => path === null)) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: "FAIL: nothing to check - no paths were given and none are remembered in .gamer-agent.local.json.\nNEXT: run set_game_paths to locate the game, or pass gameDir explicitly (ask the player where the game is).",
-            },
-          ],
-          details: { ok: false, reason: "NOTHING_TO_CHECK" },
-        };
+        // 只因为“这个游戏没有创意工坊”而无事可做 → 说清楚，不要报“没有路径可验”（那会误导）
+        if (workshopIgnored && requiredKeys.length === 0) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "PASS: nothing to verify - this game type declares no Steam Workshop (mod-repo.json: workshop.supported = false), so workshopDir was ignored.\nNEXT: pass gameDir/modInstallDir to verify them.",
+              },
+            ],
+            details: { ok: true, checked: {}, failed: [], warnings: [], ignored: ["workshopDir"], wroteState: false },
+          };
+        }
+        if (explicit || requiredKeys.length === 0) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "FAIL: nothing to check - no paths were given and none are remembered in .gamer-agent.local.json.\nNEXT: run set_game_paths to locate the game, or pass gameDir explicitly (ask the player where the game is).",
+              },
+            ],
+            details: { ok: false, reason: "NOTHING_TO_CHECK" },
+          };
+        }
       }
 
       const verdicts: Record<string, PathVerdict> = {};
@@ -94,14 +122,46 @@ export default function (pi: ExtensionAPI) {
 
       const lines: string[] = [];
       const failed: string[] = [];
+      const warnings: string[] = [];
       for (const [key, v] of Object.entries(verdicts)) {
-        if (v.ok) lines.push(`PASS: ${key} ${v.path} (verified)`);
-        else {
-          lines.push(`FAIL: ${key} ${v.path ?? "(not given)"} - ${v.reason}`);
+        if (v.ok) {
+          lines.push(`PASS: ${key} ${v.path} (verified)`);
+          continue;
+        }
+        // U29：workshopDir 是附加信息，永不产 ERROR（与安装/编译无关，只是只读参考）
+        if (key === "workshopDir") {
+          lines.push(`WARN: workshopDir ${v.path ?? "(not given)"} - ${v.reason}`);
           if (v.next) lines.push(`  NEXT: ${v.next}`);
+          warnings.push(key);
+          continue;
+        }
+        lines.push(`FAIL: ${key} ${v.path ?? "(not given)"} - ${v.reason}`);
+        if (v.next) lines.push(`  NEXT: ${v.next}`);
+        failed.push(key);
+      }
+
+      // 必填路径缺失：只在"验缓存"这条路上报（显式传参时遵循"传谁验谁"）
+      if (!explicit) {
+        for (const key of requiredKeys) {
+          if (verdicts[key] || failed.includes(key)) continue;
+          lines.push(`FAIL: ${key} (not recorded) - this path is required for this game type.`);
+          lines.push(
+            key === "gameDir"
+              ? "  NEXT: run check_runtime (or set_game_dir) to locate the game."
+              : "  NEXT: run check_runtime (or set_mod_install_dir) to record the mod install target.",
+          );
           failed.push(key);
         }
+        // 契约声明有创意工坊、但还没记录 workshopDir 时也只是警告，而且仅在必填项全对时才提
+        if (workshop === true && failed.length === 0 && !remembered(state.workshopDir)) {
+          lines.push(
+            "WARN: workshopDir (not recorded) - this game has a Workshop; recording it lets you read existing Workshop content for reference.",
+          );
+          lines.push("  NEXT: run set_workshop_dir (or set_game_paths with workshopDir).");
+          warnings.push("workshopDir");
+        }
       }
+
       const ok = failed.length === 0;
       if (!ok) {
         lines.push(
@@ -111,7 +171,7 @@ export default function (pi: ExtensionAPI) {
 
       return {
         content: [{ type: "text", text: lines.join("\n") }],
-        details: { ok, checked: verdicts, failed, wroteState: false },
+        details: { ok, checked: verdicts, failed, warnings, wroteState: false },
       };
     },
   });

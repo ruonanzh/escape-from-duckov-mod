@@ -104,6 +104,11 @@ namespace MyMod
 
 ## 路径工具（gameDir / workshopDir / modInstallDir）
 
+**必填与附加（U29）**：`gameDir` 必填；契约声明了 `modInstall`（非 null）时 `modInstallDir` 也必填 —— 任一不正确 = `FAIL`。
+`workshopDir` 只是**只读参考**（读创意工坊里现成的脚本/数据用），**不参与安装**：它**永不产 FAIL**，最多 `WARN`；
+契约 `workshop.supported: false` 时**完全不看**（不检查、也不出现在结果里）。
+
+
 三个工具分工不同，**别混用**（判据是同一份实现，见 `.pi/lib/game-paths.ts`）：
 
 | 工具 | 什么时候用 | 副作用 |

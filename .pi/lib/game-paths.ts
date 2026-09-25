@@ -28,6 +28,19 @@ export interface ModRepoConfig {
   };
   compile?: { managedDir?: Record<string, string> };
   modInstall?: { path?: Record<string, string>; relativeTo?: string };
+  /** 这个游戏**有没有创意工坊**（U29/U30）。缺失 = 未知 —— **不是** false。 */
+  workshop?: { supported?: boolean };
+}
+
+/**
+ * 契约里声明的「有没有创意工坊」：`true` / `false` / `null`（未声明 = 未知）。
+ *
+ * 全仓库只留这一份判据：消费者（check_game_paths 等）不要再自己读 `cfg.workshop` ——
+ * 否则“字段缺失算不算 false”会在多处实现得不一致。
+ */
+export function workshopSupported(cfg: ModRepoConfig): boolean | null {
+  const value = cfg.workshop?.supported;
+  return typeof value === "boolean" ? value : null;
 }
 
 export interface RuntimeState {
