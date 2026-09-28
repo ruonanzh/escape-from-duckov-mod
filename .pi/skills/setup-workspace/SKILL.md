@@ -16,7 +16,7 @@ description: Escape From Duckov 的环境与路径准备：定位游戏安装目
 | `workshopDir` | Steam 创意工坊内容目录（`steamapps/workshop/content/3167020`）| **只读参考**：读工坊里现成 mod 的脚本/资源；**不参与安装** |
 | `modInstallDir` | mod 安装目标（游戏目录内的 `Duckov.app/Contents/Mods`（macOS）/ `Duckov_Data/Mods`（Windows））| install_mod 复制产物到此 |
 
-**必填与附加（U29）**：`gameDir` 必填；契约声明了 `modInstall`（非 null）时 `modInstallDir` 也必填 —— 任一不正确 = `FAIL`。
+**必填与附加**：`gameDir` 必填；契约声明了 `modInstall`（非 null）时 `modInstallDir` 也必填 —— 任一不正确 = `FAIL`。
 `workshopDir` 只是**只读参考**，**永不产 FAIL**（最多 `WARN`）；契约 `workshop.supported: false` 时**完全不看**（不检查、也不出现在结果里）。
 本游戏 `mod-repo.json` 里 `workshop.supported = true`。
 
@@ -32,7 +32,7 @@ description: Escape From Duckov 的环境与路径准备：定位游戏安装目
 
 > ⚠️ **验 ≠ 记录**：`check_game_paths` 与 `set_game_paths` 用的是**同一份判据**，区别只在**落不落库** ——
 > 目标是**要落地**时**直接**用 `set_game_paths` 即可，不必「先用 `check_game_paths` 验一下、再 set」：
-> 那样验完没记录，容易被当成任务已完成（U22 踩过）。
+> 只验不记的话，后续的编译/安装仍会因为「没有记录」而失败 —— 所以要落地就直接 `set_game_paths`。
 
 ## 怎么用
 
