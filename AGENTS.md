@@ -1,6 +1,6 @@
 # Escape From Duckov Mod 工作区
 
-这是 **Escape From Duckov**（Team Soda）的 modding 环境，产物为 **C# DLL + info.ini**，不是 JSON mod。
+这是 **Escape From Duckov**（Team Soda）的 modding 环境，产物为 **C# DLL + info.ini**。
 
 ## 资料导航
 
