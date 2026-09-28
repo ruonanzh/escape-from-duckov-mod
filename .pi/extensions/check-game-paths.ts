@@ -34,8 +34,8 @@ export default function (pi: ExtensionAPI) {
     promptSnippet: "Verify game/mod paths without scanning or writing",
     promptGuidelines: [
       "Use check_game_paths (not check_runtime) when the player gives you a path: it verifies without scanning Steam and without writing state.",
-      "check_game_paths never writes .gamer-agent.local.json - if a path is wrong, ask the player for the real one (Steam -> Library -> right-click the game -> Manage -> Browse local files) and verify again with gameDir.",
-      "If nothing is known yet about the game location, run check_runtime first (or ask the player for the path and record it with set_game_dir); check_game_paths only verifies what you pass it or what is already remembered.",
+      "check_game_paths never writes .gamer-agent.local.json - if a path is wrong, do not stop there: run check_runtime to locate the game yourself (it scans Steam's libraryfolders.vdf and every library's steamapps/common) or verify other candidates from hints the player gave. Only if none of that works, ask the player for the real path (Steam -> Library -> right-click the game -> Manage -> Browse local files) and verify it with gameDir.",
+      "If nothing is known yet about the game location, run check_runtime first - it discovers and records the paths (prefer that over asking the player); check_game_paths only verifies what you pass it or what is already remembered.",
       "Do not create or install anything as a result of a failed check_game_paths: report the FAIL text and its NEXT line to the player.",
     ],
     parameters: Type.Object({
@@ -104,7 +104,7 @@ export default function (pi: ExtensionAPI) {
             content: [
               {
                 type: "text",
-                text: "FAIL: nothing to check - no paths were given and none are remembered in .gamer-agent.local.json.\nNEXT: run set_game_paths to locate the game, or pass gameDir explicitly (ask the player where the game is).",
+                text: "FAIL: nothing to check - no paths were given and none are remembered in .gamer-agent.local.json.\nNEXT: run check_runtime to discover the game (it scans Steam's libraries); or pass gameDir explicitly. Ask the player where the game is only if discovery fails.",
               },
             ],
             details: { ok: false, reason: "NOTHING_TO_CHECK" },

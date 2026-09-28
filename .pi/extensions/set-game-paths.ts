@@ -46,7 +46,7 @@ export default function (pi: ExtensionAPI) {
           content: [
             {
               type: "text",
-              text: "FAIL: no paths were given - pass at least one of gameDir / workshopDir / modInstallDir.\nNEXT: ask the player for the path(s), then call this again.",
+              text: "FAIL: no paths were given - pass at least one of gameDir / workshopDir / modInstallDir.\nNEXT: try to locate them yourself first: check_runtime discovers gameDir and derives the other two paths from it; ask the player only if that fails.",
             },
           ],
           details: { ok: false, reason: "NOTHING_GIVEN", wroteState: false },
