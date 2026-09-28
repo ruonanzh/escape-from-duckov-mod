@@ -146,8 +146,8 @@ export default function (pi: ExtensionAPI) {
           lines.push(`FAIL: ${key} (not recorded) - this path is required for this game type.`);
           lines.push(
             key === "gameDir"
-              ? "  NEXT: run check_runtime (or set_game_dir) to locate the game."
-              : "  NEXT: run check_runtime (or set_mod_install_dir) to record the mod install target.",
+              ? "  NEXT: run check_runtime (or set_game_dir) to locate the game. See the 'setup-workspace' skill for how to find it if discovery fails."
+              : "  NEXT: run check_runtime (or set_mod_install_dir) to record the mod install target (it is derived from the game directory).",
           );
           failed.push(key);
         }
