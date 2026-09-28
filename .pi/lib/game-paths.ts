@@ -5,7 +5,7 @@
  * 共享模块放进 extensions/ 会被当成扩展加载。这里由各工具用相对路径 import。
  *
  * 这里的判据是**游戏专属知识**（Duckov 自带的程序集名、Steam 目录形状等）：
- * check_game_paths / set_game_paths / check_runtime / install_mod 共用同一份，
+ * check_game_paths / set_game_dir / try_set_game_dir / check_runtime / install_mod 共用同一份，
  * 保证"验"与"装"不会各写一套、各自漂移。
  *
  * 三类路径的性质不同，判据也不同：
@@ -86,7 +86,7 @@ export function readState(cwd: string): RuntimeState {
 }
 
 /**
- * 读改写 + **原子替换**。以前只有 check_runtime 写这个文件；现在多了 set_game_paths，
+ * 读改写 + **原子替换**。以前只有 check_runtime 写这个文件；现在路径工具也写它，
  * 所以统一走这里：写临时文件再 rename，避免留下半个 JSON（同盘 rename 是原子的）。
  */
 export function writeState(cwd: string, patch: RuntimeState): RuntimeState {
@@ -145,7 +145,7 @@ export function checkGameDir(
       ok: false,
       path: null,
       reason: "no game directory was given",
-      next: `Run set_game_paths with no arguments to discover the game and record all three paths, or verify candidates from the player's hints with check_game_paths. ${NEXT_SKILL}`,
+      next: `Run try_set_game_dir (no arguments) to discover the game and record it (the derived paths come along), or verify candidates from the player's hints with check_game_paths. ${NEXT_SKILL}`,
     };
   const managed = managedDirFor(p, cfg, platform);
   if (!managed)
@@ -160,7 +160,7 @@ export function checkGameDir(
       ok: false,
       path: p,
       reason: `the game's own ${GAME_SENTINEL} was not found under this directory (expected in ${managed})`,
-      next: `Run set_game_paths with no arguments to re-discover the real game directory (the one you passed does not look like it: no game marker next to it). ${NEXT_SKILL}`,
+      next: `Run try_set_game_dir (no arguments) to re-discover the real game directory (the one you passed does not look like it: no game marker next to it). ${NEXT_SKILL}`,
     };
   return { ok: true, path: p };
 }
@@ -389,7 +389,7 @@ export function pathsFromGameDir(
 }
 
 // ── agent 入口的内部实现（**不注册为工具**）────────────────────────────────────
-// 语义（set_game_dir / set_workshop_dir / set_mod_install_dir / set_game_paths 共用）：
+// 语义（set_game_dir 用；「发现」那一层由 try_set_game_dir 走 ensureGameDir）：
 //   ① 给了路径 → 用判据验 → 过 → 落库（PASS）
 //   ② 没过 → 走内部发现/派生（"无参那一层"）→ 成功 → 落库 + WARN（说明给的那条为什么没用、实际记的是哪条）
 //   ③ 内部也失败 → FAIL（**不落库**：不做假成功）
@@ -582,7 +582,7 @@ export function setPathWithFallback(
       given: null,
       recorded: null,
       reason: "no path was given",
-      next: `No path was passed. Run set_game_paths with no arguments to discover the game and record all three paths. ${NEXT_SKILL}`,
+      next: `No path was passed. Run try_set_game_dir (no arguments) to locate the game and record the derived paths. ${NEXT_SKILL}`,
     };
   }
 

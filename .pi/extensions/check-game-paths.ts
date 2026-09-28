@@ -4,7 +4,7 @@
  * 与其它工具的分工（别混用）：
  *   · check_game_paths   只验给定或已记住的路径            ← 本工具（无副作用，helper 只读会话也能用）
  *   · （无人值守的发现/派生是内部实现，不注册为工具：见 lib 的 setPathWithFallback）
- *   · check_runtime      只查 .NET SDK（不碰路径）；发现/记录在 set_game_paths
+ *   · check_runtime      只查 .NET SDK（不碰路径）；发现/记录在 try_set_game_dir
  *   · install_mod        安装（复用同一份判据，目标不存在则创建）
  *
  * 典型用途：玩家说"我的游戏装在 D:\Games\Duckov" → 带上 gameDir 验一下就知道对不对，
@@ -30,7 +30,7 @@ export default function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "check_game_paths",
     description:
-      "Verify game-related directories (game install, Steam Workshop content, mod install target). Read-only: it never writes .gamer-agent.local.json, never scans Steam, never creates directories. Pass any subset of gameDir/workshopDir/modInstallDir to verify just those; omit them all to verify the paths currently remembered in .gamer-agent.local.json. Use it when the player tells you a path (to find out whether it is right) or to re-check remembered paths; use set_game_paths when the location is unknown and needs scanning.",
+      "Verify game-related directories (game install, Steam Workshop content, mod install target). Read-only: it never writes .gamer-agent.local.json, never scans Steam, never creates directories. Pass any subset of gameDir/workshopDir/modInstallDir to verify just those; omit them all to verify the paths currently remembered in .gamer-agent.local.json. Use it when the player tells you a path (to find out whether it is right) or to re-check remembered paths; use try_set_game_dir when the location is unknown and needs finding.",
     promptSnippet: "Verify game/mod paths without scanning or writing",
     promptGuidelines: [
       "Use check_game_paths when the player gives you a path, or to confirm a remembered one: it verifies without scanning Steam and without writing state.",
@@ -103,7 +103,7 @@ export default function (pi: ExtensionAPI) {
             content: [
               {
                 type: "text",
-                text: "FAIL: nothing to check - no paths were given and none are remembered in .gamer-agent.local.json.\nNEXT: run set_game_paths with no arguments to discover the game, or pass gameDir explicitly. See the 'setup-workspace' skill if discovery fails.",
+                text: "FAIL: nothing to check - no paths were given and none are remembered in .gamer-agent.local.json.\nNEXT: run try_set_game_dir with no arguments to discover the game, or pass gameDir explicitly. See the 'setup-workspace' skill if discovery fails.",
               },
             ],
             details: { ok: false, reason: "NOTHING_TO_CHECK" },
@@ -146,8 +146,8 @@ export default function (pi: ExtensionAPI) {
           lines.push(`FAIL: ${key} (not recorded) - this path is required for this game type.`);
           lines.push(
             key === "gameDir"
-              ? "  NEXT: run set_game_paths with no arguments to discover the game and record it. See the 'setup-workspace' skill for how to find it if discovery fails."
-              : "  NEXT: run set_game_paths with no arguments (the mod install target is derived from the game directory), or set_mod_install_dir with an explicit path.",
+              ? "  NEXT: run try_set_game_dir with no arguments to discover the game and record it. See the 'setup-workspace' skill for how to find it if discovery fails."
+              : "  NEXT: run try_set_game_dir (no arguments) - the mod install target is derived from the game directory.",
           );
           failed.push(key);
         }
@@ -156,7 +156,7 @@ export default function (pi: ExtensionAPI) {
           lines.push(
             "WARN: workshopDir (not recorded) - this game has a Workshop; recording it lets you read existing Workshop content for reference.",
           );
-          lines.push("  NEXT: run set_workshop_dir (or set_game_paths with workshopDir).");
+          lines.push("  NEXT: run try_set_game_dir (no arguments) - the Workshop directory is derived together with the game directory.");
           warnings.push("workshopDir");
         }
       }
@@ -164,7 +164,7 @@ export default function (pi: ExtensionAPI) {
       const ok = failed.length === 0;
       if (!ok) {
         lines.push(
-          "NOTE: nothing was changed - this tool never writes state or creates directories. Report the above to the player; once you have a correct path, set_game_paths can record it (or install_mod can use it as-is if it is already remembered).",
+          "NOTE: nothing was changed - this tool never writes state or creates directories. Report the above to the player; once you have a correct path, set_game_dir can record it (or install_mod can use it as-is if it is already remembered).",
         );
       }
 

@@ -18,7 +18,7 @@ import { isCodeIdentifier, readModIdentity } from "../lib/mod-identity";
 /**
  * install_mod — 把 your_mods/<ModName>/ 的产物装进游戏的 Mods 目录。
  *
- * 安装目标不自己探测：读路径工具写进 .gamer-agent.local.json 的记录（单一事实源 —— set_game_paths / set_* 负责发现与记录）。
+ * 安装目标不自己探测：读路径工具写进 .gamer-agent.local.json 的记录（单一事实源 —— try_set_game_dir / set_game_dir 负责发现与记录）。
  *
  * 同名冲突（契约见 desktop-gamer-agent-pi/docs/mod-repo-guide.md §4.1）：
  * 目标目录被**别的 mod** 占用时**改名安装**到 `<mod名>_pimod`（再撞顺延 _pimod2…）——
@@ -254,7 +254,7 @@ export default function (pi: ExtensionAPI) {
       // 为什么不能只验"目录存在"：游戏换盘/卸载后旧路径可能还"存在"（残留目录）→ 我们会 mkdirSync(recursive)
       // 造出一条假路径、把 mod 装到游戏永远不读的地方，而且看起来还成功。
       // 不自己探测 Steam 库（那是路径工具的职责）→ 只报告这份缓存已失效，让 agent 去重跑它。
-      // 判据与 check_game_paths / set_game_paths 共用一份（lib/game-paths）：
+      // 判据与 check_game_paths / set_game_dir / try_set_game_dir 共用一份（lib/game-paths）：
       // 目标目录在游戏目录里（relativeTo=gameDir）→ 向上一步看兄弟目录 Managed/ 里的游戏哨兵。
       // 游戏换盘/卸载后旧路径可能"还存在"（残留目录），只验"目录在不在"会造出假路径并报成功。
       const targetVerdict = checkModInstallDir(modRoot, readModRepoConfig(ctx.cwd), platformKey());

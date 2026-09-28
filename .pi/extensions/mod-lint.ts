@@ -102,7 +102,7 @@ export default function (pi: ExtensionAPI) {
         );
       } else if (!state.gameDir) {
         warnings.push(
-           "game dir not found - compile check skipped. Run set_game_paths to discover and record the game directory (or set_game_dir with an explicit path); SDK installation cannot fix game location.",
+           "game dir not found - compile check skipped. Run try_set_game_dir to discover and record the game directory (or set_game_dir with an explicit path); SDK installation cannot fix game location.",
         );
       } else if (csproj && staticOk) {
         try {
@@ -166,7 +166,7 @@ export default function (pi: ExtensionAPI) {
         ? "Report validation and compilation passed; in-game loading and behavior still require testing."
         : errors.length
           ? "Inspect the reported errors. Fix only in an authorized mod-development session, then validate again."
-           : "Resolve the skipped compilation prerequisites first (check_runtime for the .NET SDK, set_game_paths for the game directory), then re-run validate_mod. An existing DLL is not proof of a build in this run.";
+           : "Resolve the skipped compilation prerequisites first (check_runtime for the .NET SDK, try_set_game_dir for the game directory), then re-run validate_mod. An existing DLL is not proof of a build in this run.";
       const lines = [
         ...warnings.map((w) => `WARN: ${w}`),
         ...errors.map((e) => `FAIL: ${e}`),
