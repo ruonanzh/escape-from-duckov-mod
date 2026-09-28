@@ -165,9 +165,15 @@ export function checkGameDir(
   return { ok: true, path: p };
 }
 
-/** 判据 2：mod 安装目标 —— **向上一步**看兄弟目录里的哨兵（目标与 Managed 同级） */
+/** 判据 2：mod 安装目标 —— 必须是**当前平台**的游戏 mod 目录（用兄弟 Managed 的哨兵验证）
+ *
+ * 平台纯校验（2026-09-27）：只接受 `<gameDir>/<modInstall.path[当前平台]>` 这一个形状。
+ * 以前把 Windows/macOS 两种布局都列为 anchors，导致在 Windows 上会**错误接受** macOS 形状的路径（反之亦然）。
+ */
 export function checkModInstallDir(
   dir: string | null | undefined,
+  cfg: ModRepoConfig,
+  platform = platformKey(),
 ): PathVerdict {
   // 状态里可能是历史遗留的 ~/… → 统一展开后再判
   const p = dir ? expandHome(dir) : null;
@@ -176,23 +182,33 @@ export function checkModInstallDir(
       ok: false,
       path: null,
       reason: "no mod install directory was given",
-      next: "Run set_game_paths with no arguments: it locates the game and derives the mod directory from it - do not ask the player for this one.",
+      next: `Run try_set_game_dir (no arguments): it locates the game and records the derived paths. ${NEXT_SKILL}`,
     };
-  // 哨兵位置随平台布局不同（U24 实机发现：macOS 的 mod 目录在 .app/Contents/Mods，
-  // 不是 .app/Contents/Resources/Data/Mods）：
-  //   Windows: <gameDir>/Duckov_Data/Mods         → 兄弟 <gameDir>/Duckov_Data/Managed/<哨兵>
-  //   macOS  : <gameDir>/Duckov.app/Contents/Mods → 兄弟 <…>/Contents/Resources/Data/Managed/<哨兵>
-  const anchors = [
-    join(dirname(p), "Managed", GAME_SENTINEL),
-    join(dirname(p), "Resources", "Data", "Managed", GAME_SENTINEL),
-  ];
-  if (!anchors.some((a) => existsSync(a)))
-    return {
-      ok: false,
-      path: p,
-      reason: `this path does not look like it is inside the game folder (no ${GAME_SENTINEL} next to it) - the game may have been moved or uninstalled`,
-      next: `Run set_game_paths with no arguments to re-locate the game and re-derive this path (it may have moved or been uninstalled). ${NEXT_SKILL}`,
-    };
+  const rel = cfg.modInstall?.path?.[platform];
+  const relFlat = typeof rel === "string" ? rel.replace(/\\/g, "/").replace(/\/+$/, "") : null;
+  if (relFlat) {
+    const norm = p.replace(/\\/g, "/").replace(/\/+$/, "");
+    const suffix = "/" + relFlat;
+    if (!norm.endsWith(suffix)) {
+      return {
+        ok: false,
+        path: p,
+        reason: `this path is not this game's mod directory (expected <gameDir>/${relFlat} on ${platform})`,
+        next: `Run try_set_game_dir (no arguments) to record the platform-correct paths. ${NEXT_SKILL}`,
+      };
+    }
+    const gameDir = norm.slice(0, norm.length - suffix.length);
+    const managed = managedDirFor(gameDir, cfg, platform);
+    if (!managed || !existsSync(join(managed, GAME_SENTINEL))) {
+      return {
+        ok: false,
+        path: p,
+        reason: `the game's own ${GAME_SENTINEL} was not found under ${managed ?? gameDir} - the game may have moved or been uninstalled`,
+        next: `Run try_set_game_dir (no arguments) to re-locate the game and re-derive this path. ${NEXT_SKILL}`,
+      };
+    }
+    return { ok: true, path: p };
+  }
   return { ok: true, path: p };
 }
 
@@ -463,48 +479,91 @@ function record(
 }
 
 /** 单个字段的「验 → 不过则内部发现 → 都失败则 FAIL」 */
-/**
- * 无参路径入口（`set_game_paths` 不带参数时用）：**发现 → 校验 → 记录三条**。
- *
- * 为什么要有它：`check_runtime` 改为只查 .NET SDK（2026-09-27，单一职责）后，"发现"需要一个明确的家 ——
- * 就是这里。判据仍是同一份：发现走 `discoverGameDir`（每个候选都过哨兵），派生走 `pathsFromGameDir`，
- * 落库走 `record`（原子写）。`workshopDir` 只是只读参考 → 拿不到不报错（U29）；`modInstallDir` 由 `gameDir` 派生。
- */
-export function discoverAndRecordPaths(
-  cwd: string,
-  cfg: ModRepoConfig,
-): {
-  ok: boolean;
-  gameDir: string | null;
-  workshopDir: string | null;
-  modInstallDir: string | null;
-  warnings: string[];
-} {
-  const state = readState(cwd);
-  const { gameDir } = discoverGameDir(cfg, state);
-  if (!gameDir) {
-    return { ok: false, gameDir: null, workshopDir: null, modInstallDir: null, warnings: [] };
-  }
-  // 记录 gameDir（record 会同时写派生的 managedDir / modInstallDir / workshopDir）
-  record(cwd, cfg, "gameDir", gameDir);
-  const d = pathsFromGameDir(gameDir, cfg);
-  const warnings: string[] = [];
-  if (d.modInstallDir && !existsSync(d.modInstallDir)) {
-    warnings.push(
+/** 派生两条的可读提醒（不阻塞，只说明现状）*/
+function derivedWarnings(modInstallDir: string | null, workshopDir: string | null): string[] {
+  const out: string[] = [];
+  if (modInstallDir && !existsSync(modInstallDir)) {
+    out.push(
       "the mod directory does not exist yet - normal on a first install (install_mod creates it).",
     );
   }
-  if (!d.workshopDir) {
-    warnings.push(
+  if (!modInstallDir) {
+    out.push("mod-repo.json declares no mod install path for this platform.");
+  }
+  if (!workshopDir) {
+    out.push(
       "no Steam Workshop directory was found (optional; it is only used to read existing Workshop mods).",
     );
   }
+  return out;
+}
+
+/** try_set_game_dir 的结果（三种成功/失败语义分开，agent 一眼能分辨）*/
+export type EnsureOutcome =
+  | {
+      status: "already";
+      gameDir: string;
+      modInstallDir: string | null;
+      workshopDir: string | null;
+      warnings: string[];
+    }
+  | {
+      status: "recorded";
+      gameDir: string;
+      modInstallDir: string | null;
+      workshopDir: string | null;
+      warnings: string[];
+    }
+  | { status: "missing"; reason: string };
+
+/**
+ * `try_set_game_dir` 的实现：**确保游戏目录（以及由它派生的 mod 安装目录 / 创意工坊目录）已就绪**。
+ *
+ * 语义（无参、幂等）：
+ *   ① 记住的 gameDir 仍有效，且派生的两条与当前平台一致 → 什么都不写 → `already`
+ *   ② 无效 / 过期 / 没记过 → 自动发现（每个候选都过哨兵）→ 记录（含派生两条）→ `recorded`
+ *   ③ 找不到 → 不写状态 → `missing`
+ */
+export function ensureGameDir(cwd: string, cfg: ModRepoConfig): EnsureOutcome {
+  const platform = platformKey();
+  const state = readState(cwd);
+  const remembered = checkGameDir(
+    typeof state.gameDir === "string" ? state.gameDir : null,
+    cfg,
+    platform,
+  );
+  if (remembered.ok) {
+    const d = pathsFromGameDir(remembered.path as string, cfg, platform);
+    const same =
+      state.managedDir === d.managedDir &&
+      (state.modInstallDir ?? null) === (d.modInstallDir ?? null) &&
+      (state.workshopDir ?? null) === (d.workshopDir ?? null);
+    if (same) {
+      return {
+        status: "already",
+        gameDir: remembered.path as string,
+        modInstallDir: d.modInstallDir,
+        workshopDir: d.workshopDir,
+        warnings: derivedWarnings(d.modInstallDir, d.workshopDir),
+      };
+    }
+  }
+  const { gameDir } = discoverGameDir(cfg, state, platform);
+  if (!gameDir) {
+    return {
+      status: "missing",
+      reason:
+        "automatic discovery did not find the game (this platform's Steam locations and every library were searched)",
+    };
+  }
+  record(cwd, cfg, "gameDir", gameDir);
+  const d = pathsFromGameDir(gameDir, cfg, platform);
   return {
-    ok: true,
+    status: "recorded",
     gameDir,
-    workshopDir: d.workshopDir ?? null,
-    modInstallDir: d.modInstallDir ?? null,
-    warnings,
+    modInstallDir: d.modInstallDir,
+    workshopDir: d.workshopDir,
+    warnings: derivedWarnings(d.modInstallDir, d.workshopDir),
   };
 }
 

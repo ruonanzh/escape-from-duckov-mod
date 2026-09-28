@@ -12,7 +12,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { basename, isAbsolute, join, resolve } from "node:path";
-import { checkModInstallDir } from "../lib/game-paths";
+import { checkModInstallDir, platformKey, readModRepoConfig } from "../lib/game-paths";
 import { isCodeIdentifier, readModIdentity } from "../lib/mod-identity";
 
 /**
@@ -219,7 +219,7 @@ export default function (pi: ExtensionAPI) {
           content: [
             {
               type: "text",
-              text: "FAIL: install target not found (no usable modInstallDir in .gamer-agent.local.json).\nNEXT: run set_game_paths with no arguments first; if it cannot find the game, ask the player for the installed game directory.",
+              text: "FAIL: install target not found (no usable modInstallDir in .gamer-agent.local.json).\nNEXT: run try_set_game_dir first; if it cannot find the game, ask the player for the installed game directory.",
             },
           ],
           details: { ok: false, reason: "TARGET_NOT_FOUND" },
@@ -240,7 +240,7 @@ export default function (pi: ExtensionAPI) {
                 (targetStat
                   ? "exists but is not a directory."
                   : "is not an absolute path.") +
-                "\nNEXT: run set_game_paths with no arguments to re-derive the game's Mods directory; if it still looks wrong, ask the player where the game is installed.",
+                "\nNEXT: run try_set_game_dir (no arguments) to re-derive the game's Mods directory; if it still looks wrong, ask the player where the game is installed.",
             },
           ],
           details: { ok: false, reason: "TARGET_INVALID" },
@@ -257,7 +257,7 @@ export default function (pi: ExtensionAPI) {
       // 判据与 check_game_paths / set_game_paths 共用一份（lib/game-paths）：
       // 目标目录在游戏目录里（relativeTo=gameDir）→ 向上一步看兄弟目录 Managed/ 里的游戏哨兵。
       // 游戏换盘/卸载后旧路径可能"还存在"（残留目录），只验"目录在不在"会造出假路径并报成功。
-      const targetVerdict = checkModInstallDir(modRoot);
+      const targetVerdict = checkModInstallDir(modRoot, readModRepoConfig(ctx.cwd), platformKey());
       if (!targetVerdict.ok) {
         return {
           content: [
@@ -265,7 +265,7 @@ export default function (pi: ExtensionAPI) {
               type: "text",
               text:
                 `FAIL: GAME_DIRECTORY_NOT_FOUND: ${targetVerdict.reason}. ` +
-                "The game may have been moved or uninstalled since the paths were last recorded.\nNEXT: run set_game_paths with no arguments to re-discover the game." +
+                "The game may have been moved or uninstalled since the paths were last recorded.\nNEXT: run try_set_game_dir (no arguments) to re-discover the game." +
                 `\nNEXT: ${targetVerdict.next}`,
             },
           ],

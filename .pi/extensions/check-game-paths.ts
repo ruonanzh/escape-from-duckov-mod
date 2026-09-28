@@ -116,7 +116,7 @@ export default function (pi: ExtensionAPI) {
         if (path === null) continue;
         if (key === "gameDir") verdicts[key] = checkGameDir(path, cfg, platform);
         else if (key === "workshopDir") verdicts[key] = checkWorkshopDir(path, appId);
-        else verdicts[key] = checkModInstallDir(path);
+        else verdicts[key] = checkModInstallDir(path, cfg, platform);
       }
 
       const lines: string[] = [];
