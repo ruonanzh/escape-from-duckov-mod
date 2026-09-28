@@ -25,14 +25,18 @@ description: Escape From Duckov 的环境与路径准备：定位游戏安装目
 | 工具 | 什么时候用 | 副作用 |
 |---|---|---|
 | `check_runtime` | **只查 .NET SDK ≥ 8**（并记下 dotnet 路径）；**不找游戏** | 写运行时状态（只写 `runtime` 段）|
-| `check_game_paths` | **只验**：玩家给了路径、或想确认已记住的还对不对 | **无**（只读、不扫描、不写状态）|
+| `check_game_paths` | **只验**（**不打算改状态**时用它）：玩家只是问问、或想核对已记住的还对不对 | **无**（只读、不扫描、不写状态）|
 | `set_game_dir` / `set_workshop_dir` / `set_mod_install_dir` | 玩家给了**具体路径** → 记住它（先过判据；不过则内部发现/派生，返回 WARN）| 写运行时状态 |
-| `set_game_paths` | 记住给定的一条或多条路径；**不带参数 = 自动发现并记录三条**（「发现」的入口）| 写运行时状态 |
+| `set_game_paths` | **路径要落地**（准备编译/安装）时用它：给了路径 = 校验并记录；**不带参数 = 自动发现并记录三条**（「发现」的入口）| 写运行时状态 |
 | `install_runtime` | **只给指引**（或报已装），**不执行安装** | 无 |
+
+> ⚠️ **验 ≠ 记录**：`check_game_paths` 与 `set_game_paths` 用的是**同一份判据**，区别只在**落不落库** ——
+> 目标是**要落地**时**直接**用 `set_game_paths` 即可，不必「先用 `check_game_paths` 验一下、再 set」：
+> 那样验完没记录，容易被当成任务已完成（U22 踩过）。
 
 ## 怎么用
 
-- **需要编译而环境未知/已变化**：`check_runtime` 核实 dotnet SDK；路径用 `check_game_paths`（验）或 `set_game_paths`（发现/记录）。已有仍有效的结果就不必每轮重复检查。
+- **需要编译而环境未知/已变化**：`check_runtime` 核实 dotnet SDK；**路径要落地就用 `set_game_paths`**（带参 = 校验并记录；无参 = 发现并记录三条）；**只想确认、不准备改状态**才用 `check_game_paths`（只读）。已有仍有效的结果就不必每轮重复检查。
 - **缺 SDK**：取 `install_runtime` 的安装指引（工具不执行安装）；装好后**再检查一次**确认，再谈编译。
 - **找不到游戏目录**：交给 `set_game_paths`（**不带参数**）—— 它自己找 Steam 根（Windows 读注册表 + 默认路径；macOS 读 `~/Library/Application Support/Steam`），
   再解析各库的 `libraryfolders.vdf` → `steamapps/common/<游戏名>`，并把三条路径一起记录。**建议顺序**：
