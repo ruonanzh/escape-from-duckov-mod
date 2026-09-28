@@ -75,7 +75,7 @@ export default function (pi: ExtensionAPI) {
       const lines: string[] = [];
       if (!gameDir) {
         problems.push(
-          `FAIL: GAME_DIRECTORY_NOT_FOUND (${cfg.game?.name ?? "the game"}). Locate it yourself first: read Steam's libraryfolders.vdf and scan every library's steamapps/common, and turn any hint the player gave (drive, launcher, store) into candidates; then record the winner with set_game_paths. Only if that fails, ask the player for the installed game directory. If the game is not installed at all, tell the player to install the game first - install_runtime only guides SDK setup and cannot fix this.`,
+          `FAIL: GAME_DIRECTORY_NOT_FOUND (${cfg.game?.name ?? "the game"}). Automatic discovery did not find it (it already searched this platform's Steam locations and every library), so: turn any hint the player gave (drive letter, launcher, store) into candidates and verify them with check_game_paths, then record the winner with set_game_paths. Only if that fails, ask the player for the installed game directory. If the game is not installed at all, tell the player to install the game first - install_runtime only guides SDK setup and cannot fix this.`,
         );
       } else {
         const { managedDir, modInstallDir, workshopDir, notes } = pathsFromGameDir(gameDir, cfg, platform);

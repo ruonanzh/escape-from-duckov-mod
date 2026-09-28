@@ -145,7 +145,7 @@ export function checkGameDir(
       ok: false,
       path: null,
       reason: "no game directory was given",
-      next: `Locate the game yourself first: check_runtime scans Steam's libraryfolders.vdf and every library's steamapps/common, and any hint the player gave (drive, launcher, store) can be turned into candidates - verify each candidate with check_game_paths, then record it. ${NEXT_STEAM}`,
+      next: `Locate the game yourself first: run check_runtime - it knows where to look for this game on this platform and records the result. If you look by hand, turn any hint the player gave (drive letter, launcher, store) into candidates and verify each with check_game_paths. ${NEXT_STEAM}`,
     };
   const managed = managedDirFor(p, cfg, platform);
   if (!managed)
@@ -478,7 +478,7 @@ export function setPathWithFallback(
       given: null,
       recorded: null,
       reason: "no path was given",
-      next: "No path was passed. Try to find it yourself first: check_runtime locates the game from Steam's libraries, and set_game_paths can derive the other two paths from it - only ask the player if that fails.",
+      next: "No path was passed. Try to find it yourself first: check_runtime locates the game on this platform, and set_game_paths can derive the other two paths from it - only ask the player if that fails.",
     };
   }
 
