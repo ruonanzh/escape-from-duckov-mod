@@ -34,7 +34,10 @@ description: Escape From Duckov 的环境与路径准备：定位游戏安装目
 
 - **需要编译而环境未知/已变化**：用 `check_runtime` 核实 dotnet SDK 与游戏目录。已有仍有效的结果就不必每轮重复检查。
 - **缺 SDK**：取 `install_runtime` 的安装指引（工具不执行安装）；装好后**再检查一次**确认，再谈编译。
-- **找不到游戏目录**：`check_runtime` 会先自己扫 Steam 库（`libraryfolders.vdf` + 各库 `steamapps/common/<游戏名>`）；都不行时再按需要向玩家确认安装位置 —— **不要**用装 SDK 去"解决"找不到游戏的问题。
+- **找不到游戏目录**：交给 `check_runtime` —— 它自己找 Steam 根（Windows 读注册表 + 默认路径；macOS 读 `~/Library/Application Support/Steam`），
+  再解析各库的 `libraryfolders.vdf` → `steamapps/common/<游戏名>`。**建议顺序**：
+  ① 先让它自己扫；② 玩家给了**模糊线索**（「装在 D 盘」「Steam 里」「下的那个」）就把线索变成候选目录，逐个用 `check_game_paths` 验证；
+  ③ 全都不行才问玩家，且**说明你已经试过什么** —— **不要**用装 SDK 去「解决」找不到游戏的问题。
 - **玩家给了路径**：先用 `check_game_paths` 验证，再用对应的 `set_*`（或一次 `set_game_paths`）记录。
 - **失败处理**：按错误定位修复；环境缺失/网络阻塞或同类失败重复出现时先解决前置条件，不无限"直到 PASS"。
 
