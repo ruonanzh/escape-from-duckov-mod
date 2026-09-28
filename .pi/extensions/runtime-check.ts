@@ -75,7 +75,7 @@ export default function (pi: ExtensionAPI) {
       const lines: string[] = [];
       if (!gameDir) {
         problems.push(
-          `FAIL: GAME_DIRECTORY_NOT_FOUND (${cfg.game?.name ?? "the game"}). Automatic discovery did not find it (it already searched this platform's Steam locations and every library), so: turn any hint the player gave (drive letter, launcher, store) into candidates and verify them with check_game_paths, then record the winner with set_game_paths. Only if that fails, ask the player for the installed game directory. If the game is not installed at all, tell the player to install the game first - install_runtime only guides SDK setup and cannot fix this.`,
+          `FAIL: GAME_DIRECTORY_NOT_FOUND (${cfg.game?.name ?? "the game"}). Automatic discovery did not find it (it already searched this platform's Steam locations and every library). Verify candidates from the player's hints with check_game_paths, then record the winner with set_game_paths; if the game is not installed at all, tell the player to install the game first. The 'setup-workspace' skill has the full procedure and what to ask the player if nothing works - install_runtime only guides SDK setup and cannot fix this.`,
         );
       } else {
         const { managedDir, modInstallDir, workshopDir, notes } = pathsFromGameDir(gameDir, cfg, platform);

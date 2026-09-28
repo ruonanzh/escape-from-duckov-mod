@@ -130,8 +130,8 @@ export function modInstallDirFor(
   return typeof rel === "string" && rel.trim() ? join(gameDir, rel) : null;
 }
 
-const NEXT_STEAM =
-  "Only if you still cannot find it, ask the player where the game is installed (Steam -> Library -> right-click the game -> Manage -> Browse local files) - and say what you already tried.";
+const NEXT_SKILL =
+  "The 'setup-workspace' skill has the full procedure (auto-discovery, using the player's hints, and what to ask if nothing works).";
 
 /** 判据 1：这个目录是不是 Duckov 的安装目录（看游戏自带的哨兵程序集） */
 export function checkGameDir(
@@ -145,7 +145,7 @@ export function checkGameDir(
       ok: false,
       path: null,
       reason: "no game directory was given",
-      next: `Locate the game yourself first: run check_runtime - it knows where to look for this game on this platform and records the result. If you look by hand, turn any hint the player gave (drive letter, launcher, store) into candidates and verify each with check_game_paths. ${NEXT_STEAM}`,
+      next: `Run check_runtime to locate the game (it records the result), or verify candidates from the player's hints with check_game_paths. ${NEXT_SKILL}`,
     };
   const managed = managedDirFor(p, cfg, platform);
   if (!managed)
@@ -160,7 +160,7 @@ export function checkGameDir(
       ok: false,
       path: p,
       reason: `the game's own ${GAME_SENTINEL} was not found under this directory (expected in ${managed})`,
-      next: `Decide whether this is really the game install directory (not a save folder or another version); if it is not, run check_runtime to re-discover the real one. ${NEXT_STEAM}`,
+      next: `Run check_runtime to re-discover the real game directory (the one you passed does not look like it: no game marker next to it). ${NEXT_SKILL}`,
     };
   return { ok: true, path: p };
 }
@@ -191,7 +191,7 @@ export function checkModInstallDir(
       ok: false,
       path: p,
       reason: `this path does not look like it is inside the game folder (no ${GAME_SENTINEL} next to it) - the game may have been moved or uninstalled`,
-      next: `The game may have moved or been uninstalled - run check_runtime to re-locate it and re-derive this path. ${NEXT_STEAM}`,
+      next: `Run check_runtime to re-locate the game and re-derive this path (it may have moved or been uninstalled). ${NEXT_SKILL}`,
     };
   return { ok: true, path: p };
 }
@@ -391,7 +391,7 @@ export interface PathOutcome {
 }
 
 const ASK_PLAYER =
-  "Automatic discovery failed as well. Ask the player for the correct path (Steam -> Library -> right-click the game -> Manage -> Browse local files), then call this setter again with it - and say what you already tried.";
+  "Automatic discovery failed as well. Ask the player for the correct path (say what you already tried), then call this setter again with it. The 'setup-workspace' skill has what to ask for.";
 
 function verifyPath(
   kind: PathKind,
@@ -478,7 +478,7 @@ export function setPathWithFallback(
       given: null,
       recorded: null,
       reason: "no path was given",
-      next: "No path was passed. Try to find it yourself first: check_runtime locates the game on this platform, and set_game_paths can derive the other two paths from it - only ask the player if that fails.",
+      next: `No path was passed. Run check_runtime to locate the game, then set_game_paths to derive the other two paths from it. ${NEXT_SKILL}`,
     };
   }
 
