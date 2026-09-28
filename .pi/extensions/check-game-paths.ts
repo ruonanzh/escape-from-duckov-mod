@@ -34,8 +34,7 @@ export default function (pi: ExtensionAPI) {
     promptSnippet: "Verify game/mod paths without scanning or writing",
     promptGuidelines: [
       "Use check_game_paths (not check_runtime) when the player gives you a path: it verifies without scanning Steam and without writing state.",
-      "check_game_paths never writes .gamer-agent.local.json - if a path is wrong, run check_runtime (it locates the game and records it) or verify other candidates from the player's hints. The 'setup-workspace' skill has the full procedure, including what to ask the player if nothing works.",
-      "If nothing is known yet about the game location, run check_runtime first - it discovers and records the paths; check_game_paths only verifies what you pass it or what is already remembered. The 'setup-workspace' skill has the full procedure.",
+      "check_game_paths never writes .gamer-agent.local.json - verifying and recording are separate tools.",
       "Do not create or install anything as a result of a failed check_game_paths: report the FAIL text and its NEXT line to the player.",
     ],
     parameters: Type.Object({

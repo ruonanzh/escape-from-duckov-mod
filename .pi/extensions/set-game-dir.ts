@@ -19,7 +19,7 @@ export default function (pi: ExtensionAPI) {
     promptGuidelines: [
       "Use set_game_dir when the player tells you where the game is installed: it validates the path and records it.",
       "If set_game_dir returns WARN, the path the player gave did not validate and a different path was recorded - tell the player which one is in use.",
-      "If it returns FAIL, do not just ask the player: automatic discovery already ran and failed, so verify candidates from the player's hints with check_game_paths. The 'setup-workspace' skill has the full procedure (and what to ask the player if nothing works); never guess and never create directories."
+      "If it returns FAIL, nothing was recorded (neither the path you passed nor the automatic discovery validated)."
     ],
     parameters: Type.Object({
       path: Type.String({ description: "The path the player gave you; relative paths use the workspace root." }),
