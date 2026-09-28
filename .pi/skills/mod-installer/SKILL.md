@@ -6,7 +6,7 @@ description: 把 Escape From Duckov 做好的 mod 产物装进游戏 Mods 目录
 # 装进游戏（Escape From Duckov）
 
 `install_mod` 把 `your_mods/<mod名>/` 的产物复制到游戏 `Mods/` 目录。**它不自己探测目标** ——
-目标来自路径工具写入的状态文件（`modInstallDir`）；没记录时它会 `FAIL` 并让你先跑 `set_game_paths`（不带参数即可发现并记录）。
+目标来自状态文件里的 `modInstallDir`；没记录时它会 `FAIL` 并让你先跑 `try_set_game_dir`（无参，它会找到并记录）。
 
 ## 规则
 
@@ -31,5 +31,5 @@ description: 把 Escape From Duckov 做好的 mod 产物装进游戏 Mods 目录
 
 ## 相关技能
 
-- 目标路径没记录/记错 → 先看 `setup-workspace`（`set_game_paths` 发现并记录 / `check_game_paths` 只验）。
+- 目标路径没记录/记错 → 先看 `setup-workspace`（`try_set_game_dir` 确保就绪 / `check_game_paths` 只验）。
 - 产物本身有问题（编译失败、空壳 dll）→ 先看 `mod-creator`（`validate_mod`）。
