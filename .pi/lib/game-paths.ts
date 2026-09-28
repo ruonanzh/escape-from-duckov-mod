@@ -131,7 +131,7 @@ export function modInstallDirFor(
 }
 
 const NEXT_STEAM =
-  "The player can find it in Steam -> Library -> right-click the game -> Manage -> Browse local files.";
+  "Only if you still cannot find it, ask the player where the game is installed (Steam -> Library -> right-click the game -> Manage -> Browse local files) - and say what you already tried.";
 
 /** 判据 1：这个目录是不是 Duckov 的安装目录（看游戏自带的哨兵程序集） */
 export function checkGameDir(
@@ -145,7 +145,7 @@ export function checkGameDir(
       ok: false,
       path: null,
       reason: "no game directory was given",
-      next: `Ask the player for the game install directory, then re-run this with gameDir. ${NEXT_STEAM}`,
+      next: `Locate the game yourself first: check_runtime scans Steam's libraryfolders.vdf and every library's steamapps/common, and any hint the player gave (drive, launcher, store) can be turned into candidates - verify each candidate with check_game_paths, then record it. ${NEXT_STEAM}`,
     };
   const managed = managedDirFor(p, cfg, platform);
   if (!managed)
@@ -160,7 +160,7 @@ export function checkGameDir(
       ok: false,
       path: p,
       reason: `the game's own ${GAME_SENTINEL} was not found under this directory (expected in ${managed})`,
-      next: `Confirm this is the game install directory, not a save folder or another version. ${NEXT_STEAM}`,
+      next: `Decide whether this is really the game install directory (not a save folder or another version); if it is not, run check_runtime to re-discover the real one. ${NEXT_STEAM}`,
     };
   return { ok: true, path: p };
 }
@@ -176,7 +176,7 @@ export function checkModInstallDir(
       ok: false,
       path: null,
       reason: "no mod install directory was given",
-      next: "Run check_runtime to locate it, or ask the player for the game install directory and verify it with check_game_paths.",
+      next: "Run check_runtime: it locates the game and derives the mod directory from it - do not ask the player for this one.",
     };
   // 哨兵位置随平台布局不同（U24 实机发现：macOS 的 mod 目录在 .app/Contents/Mods，
   // 不是 .app/Contents/Resources/Data/Mods）：
@@ -191,7 +191,7 @@ export function checkModInstallDir(
       ok: false,
       path: p,
       reason: `this path does not look like it is inside the game folder (no ${GAME_SENTINEL} next to it) - the game may have been moved or uninstalled`,
-      next: `Run check_runtime again to re-locate the game; if the game is installed elsewhere, pass that path and verify again. ${NEXT_STEAM}`,
+      next: `The game may have moved or been uninstalled - run check_runtime to re-locate it and re-derive this path. ${NEXT_STEAM}`,
     };
   return { ok: true, path: p };
 }
@@ -391,7 +391,7 @@ export interface PathOutcome {
 }
 
 const ASK_PLAYER =
-  "Ask the player for the correct path (Steam -> Library -> right-click the game -> Manage -> Browse local files), then call this setter again with it.";
+  "Automatic discovery failed as well. Ask the player for the correct path (Steam -> Library -> right-click the game -> Manage -> Browse local files), then call this setter again with it - and say what you already tried.";
 
 function verifyPath(
   kind: PathKind,
@@ -478,7 +478,7 @@ export function setPathWithFallback(
       given: null,
       recorded: null,
       reason: "no path was given",
-      next: "Pass the path the player provided (this setter requires it).",
+      next: "No path was passed. Try to find it yourself first: check_runtime locates the game from Steam's libraries, and set_game_paths can derive the other two paths from it - only ask the player if that fails.",
     };
   }
 
