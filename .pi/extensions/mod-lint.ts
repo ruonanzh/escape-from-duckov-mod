@@ -86,7 +86,7 @@ export default function (pi: ExtensionAPI) {
       if (!existsSync(join(modDir, "ModBehaviour.cs")))
         errors.push("missing ModBehaviour.cs");
 
-      // 3. compile（读 check_runtime 缓存的状态文件拿 dotnet + gameDir）
+      // 3. compile（读状态文件拿 dotnet（check_runtime 写）+ gameDir（路径工具写））
       const staticOk = errors.length === 0;
       let compilation: "skipped" | "passed" | "failed" = "skipped";
       const state = loadState(repoRoot);
@@ -98,11 +98,11 @@ export default function (pi: ExtensionAPI) {
           : findDotnet();
       if (!dotnet) {
         warnings.push(
-          "dotnet not found - compile check skipped. Run check_runtime; use install_runtime only for SDK installation instructions.",
+           "dotnet not found - compile check skipped. Run check_runtime (SDK only); use install_runtime only for SDK installation instructions.",
         );
       } else if (!state.gameDir) {
         warnings.push(
-          "game dir not found - compile check skipped. Run check_runtime with the installed game directory; SDK installation cannot fix game location.",
+           "game dir not found - compile check skipped. Run set_game_paths to discover and record the game directory (or set_game_dir with an explicit path); SDK installation cannot fix game location.",
         );
       } else if (csproj && staticOk) {
         try {
@@ -166,7 +166,7 @@ export default function (pi: ExtensionAPI) {
         ? "Report validation and compilation passed; in-game loading and behavior still require testing."
         : errors.length
           ? "Inspect the reported errors. Fix only in an authorized mod-development session, then validate again."
-          : "Run check_runtime to resolve the skipped compilation prerequisites, then re-run validate_mod. An existing DLL is not proof of a build in this run.";
+           : "Resolve the skipped compilation prerequisites first (check_runtime for the .NET SDK, set_game_paths for the game directory), then re-run validate_mod. An existing DLL is not proof of a build in this run.";
       const lines = [
         ...warnings.map((w) => `WARN: ${w}`),
         ...errors.map((e) => `FAIL: ${e}`),

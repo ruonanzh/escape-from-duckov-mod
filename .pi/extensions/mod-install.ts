@@ -18,7 +18,7 @@ import { isCodeIdentifier, readModIdentity } from "../lib/mod-identity";
 /**
  * install_mod — 把 your_mods/<ModName>/ 的产物装进游戏的 Mods 目录。
  *
- * 安装目标不自己探测：读 check_runtime 写的 .gamer-agent.local.json（单一事实源）。
+ * 安装目标不自己探测：读路径工具写进 .gamer-agent.local.json 的记录（单一事实源 —— set_game_paths / set_* 负责发现与记录）。
  *
  * 同名冲突（契约见 desktop-gamer-agent-pi/docs/mod-repo-guide.md §4.1）：
  * 目标目录被**别的 mod** 占用时**改名安装**到 `<mod名>_pimod`（再撞顺延 _pimod2…）——
@@ -198,7 +198,7 @@ export default function (pi: ExtensionAPI) {
         );
       }
 
-      // 目标目录来自 check_runtime 的发现结果（install_mod 不自己探测）
+      // 目标目录来自路径工具的发现结果（install_mod 不自己探测）
       let modRoot: string | null = null;
       try {
         const state = JSON.parse(
@@ -219,7 +219,7 @@ export default function (pi: ExtensionAPI) {
           content: [
             {
               type: "text",
-              text: "FAIL: install target not found (no usable modInstallDir in .gamer-agent.local.json).\nNEXT: run check_runtime first; if it cannot find the game, ask the player for the installed game directory.",
+              text: "FAIL: install target not found (no usable modInstallDir in .gamer-agent.local.json).\nNEXT: run set_game_paths with no arguments first; if it cannot find the game, ask the player for the installed game directory.",
             },
           ],
           details: { ok: false, reason: "TARGET_NOT_FOUND" },
@@ -227,7 +227,7 @@ export default function (pi: ExtensionAPI) {
       }
       // 目标目录「不存在」是全新机器的正常状态（游戏从没跑过、Duckov_Data/Mods 还没被创建）→ **不是错误**：
       // 继续往下走，由下面的 mkdirSync(destDir, { recursive: true }) 连缺失的父级一起创建。
-      // 旧行为要求「必须已存在」：check_runtime 报可安装 → install 因目标不存在失败 → 再 check 仍不创建 → 死循环（B18）。
+      // 旧行为要求「必须已存在」：路径检查报可安装 → install 因目标不存在失败 → 再检查仍不创建 → 死循环（B18）。
       // 仍然拒绝的只有两种：路径不是绝对路径 / 路径存在但不是目录（否则继续只会在 cp/rename 阶段抛出更难懂的错）。
       const targetStat = statSync(modRoot, { throwIfNoEntry: false });
       if (!isAbsolute(modRoot) || (targetStat && !targetStat.isDirectory())) {
@@ -240,7 +240,7 @@ export default function (pi: ExtensionAPI) {
                 (targetStat
                   ? "exists but is not a directory."
                   : "is not an absolute path.") +
-                "\nNEXT: run check_runtime again to re-derive the game's Mods directory; if it still looks wrong, ask the player where the game is installed.",
+                "\nNEXT: run set_game_paths with no arguments to re-derive the game's Mods directory; if it still looks wrong, ask the player where the game is installed.",
             },
           ],
           details: { ok: false, reason: "TARGET_INVALID" },
@@ -253,7 +253,7 @@ export default function (pi: ExtensionAPI) {
       // Windows: <gameDir>/Duckov_Data/{Mods,Managed}；macOS: <...>/Data/{Mods,Managed}）。
       // 为什么不能只验"目录存在"：游戏换盘/卸载后旧路径可能还"存在"（残留目录）→ 我们会 mkdirSync(recursive)
       // 造出一条假路径、把 mod 装到游戏永远不读的地方，而且看起来还成功。
-      // 不自己探测 Steam 库（那是 check_runtime 的职责）→ 只报告这份缓存已失效，让 agent 去重跑它。
+      // 不自己探测 Steam 库（那是路径工具的职责）→ 只报告这份缓存已失效，让 agent 去重跑它。
       // 判据与 check_game_paths / set_game_paths 共用一份（lib/game-paths）：
       // 目标目录在游戏目录里（relativeTo=gameDir）→ 向上一步看兄弟目录 Managed/ 里的游戏哨兵。
       // 游戏换盘/卸载后旧路径可能"还存在"（残留目录），只验"目录在不在"会造出假路径并报成功。
@@ -265,7 +265,7 @@ export default function (pi: ExtensionAPI) {
               type: "text",
               text:
                 `FAIL: GAME_DIRECTORY_NOT_FOUND: ${targetVerdict.reason}. ` +
-                "The game may have been moved or uninstalled since check_runtime last ran." +
+                "The game may have been moved or uninstalled since the paths were last recorded.\nNEXT: run set_game_paths with no arguments to re-discover the game." +
                 `\nNEXT: ${targetVerdict.next}`,
             },
           ],

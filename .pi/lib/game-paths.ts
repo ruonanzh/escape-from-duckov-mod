@@ -145,7 +145,7 @@ export function checkGameDir(
       ok: false,
       path: null,
       reason: "no game directory was given",
-      next: `Run check_runtime to locate the game (it records the result), or verify candidates from the player's hints with check_game_paths. ${NEXT_SKILL}`,
+      next: `Run set_game_paths with no arguments to discover the game and record all three paths, or verify candidates from the player's hints with check_game_paths. ${NEXT_SKILL}`,
     };
   const managed = managedDirFor(p, cfg, platform);
   if (!managed)
@@ -160,7 +160,7 @@ export function checkGameDir(
       ok: false,
       path: p,
       reason: `the game's own ${GAME_SENTINEL} was not found under this directory (expected in ${managed})`,
-      next: `Run check_runtime to re-discover the real game directory (the one you passed does not look like it: no game marker next to it). ${NEXT_SKILL}`,
+      next: `Run set_game_paths with no arguments to re-discover the real game directory (the one you passed does not look like it: no game marker next to it). ${NEXT_SKILL}`,
     };
   return { ok: true, path: p };
 }
@@ -176,7 +176,7 @@ export function checkModInstallDir(
       ok: false,
       path: null,
       reason: "no mod install directory was given",
-      next: "Run check_runtime: it locates the game and derives the mod directory from it - do not ask the player for this one.",
+      next: "Run set_game_paths with no arguments: it locates the game and derives the mod directory from it - do not ask the player for this one.",
     };
   // 哨兵位置随平台布局不同（U24 实机发现：macOS 的 mod 目录在 .app/Contents/Mods，
   // 不是 .app/Contents/Resources/Data/Mods）：
@@ -191,7 +191,7 @@ export function checkModInstallDir(
       ok: false,
       path: p,
       reason: `this path does not look like it is inside the game folder (no ${GAME_SENTINEL} next to it) - the game may have been moved or uninstalled`,
-      next: `Run check_runtime to re-locate the game and re-derive this path (it may have moved or been uninstalled). ${NEXT_SKILL}`,
+      next: `Run set_game_paths with no arguments to re-locate the game and re-derive this path (it may have moved or been uninstalled). ${NEXT_SKILL}`,
     };
   return { ok: true, path: p };
 }
@@ -463,6 +463,51 @@ function record(
 }
 
 /** 单个字段的「验 → 不过则内部发现 → 都失败则 FAIL」 */
+/**
+ * 无参路径入口（`set_game_paths` 不带参数时用）：**发现 → 校验 → 记录三条**。
+ *
+ * 为什么要有它：`check_runtime` 改为只查 .NET SDK（2026-09-27，单一职责）后，"发现"需要一个明确的家 ——
+ * 就是这里。判据仍是同一份：发现走 `discoverGameDir`（每个候选都过哨兵），派生走 `pathsFromGameDir`，
+ * 落库走 `record`（原子写）。`workshopDir` 只是只读参考 → 拿不到不报错（U29）；`modInstallDir` 由 `gameDir` 派生。
+ */
+export function discoverAndRecordPaths(
+  cwd: string,
+  cfg: ModRepoConfig,
+): {
+  ok: boolean;
+  gameDir: string | null;
+  workshopDir: string | null;
+  modInstallDir: string | null;
+  warnings: string[];
+} {
+  const state = readState(cwd);
+  const { gameDir } = discoverGameDir(cfg, state);
+  if (!gameDir) {
+    return { ok: false, gameDir: null, workshopDir: null, modInstallDir: null, warnings: [] };
+  }
+  // 记录 gameDir（record 会同时写派生的 managedDir / modInstallDir / workshopDir）
+  record(cwd, cfg, "gameDir", gameDir);
+  const d = pathsFromGameDir(gameDir, cfg);
+  const warnings: string[] = [];
+  if (d.modInstallDir && !existsSync(d.modInstallDir)) {
+    warnings.push(
+      "the mod directory does not exist yet - normal on a first install (install_mod creates it).",
+    );
+  }
+  if (!d.workshopDir) {
+    warnings.push(
+      "no Steam Workshop directory was found (optional; it is only used to read existing Workshop mods).",
+    );
+  }
+  return {
+    ok: true,
+    gameDir,
+    workshopDir: d.workshopDir ?? null,
+    modInstallDir: d.modInstallDir ?? null,
+    warnings,
+  };
+}
+
 export function setPathWithFallback(
   cwd: string,
   cfg: ModRepoConfig,
@@ -478,7 +523,7 @@ export function setPathWithFallback(
       given: null,
       recorded: null,
       reason: "no path was given",
-      next: `No path was passed. Run check_runtime to locate the game, then set_game_paths to derive the other two paths from it. ${NEXT_SKILL}`,
+      next: `No path was passed. Run set_game_paths with no arguments to discover the game and record all three paths. ${NEXT_SKILL}`,
     };
   }
 

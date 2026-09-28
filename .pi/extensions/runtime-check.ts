@@ -4,114 +4,59 @@ import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import os from "node:os";
-import {
-  discoverGameDir,
-  pathsFromGameDir,
-  platformKey,
-  readModRepoConfig,
-  readState,
-  resolveUserPath,
-  writeState,
-  type ModRepoConfig,
-} from "../lib/game-paths";
+import { readState, writeState } from "../lib/game-paths";
 
 /**
- * check_runtime — 运行时契约（docs/mod-repo-guide.md §4）的一次跑完入口。
+ * check_runtime —— **只查运行时**：.NET SDK >= 8 是否已装（并把 dotnet 路径记进状态文件）。
  *
- * 拆分后的分工（本工具只做**编排**，判据与发现都在 .pi/lib/game-paths.ts）：
- *   · check_game_paths     只验给定/已记住的路径（只读）
- *   · set_game_dir / set_game_paths   记住玩家给的路径（不过判据则走内部发现/派生）
- *   · check_runtime        SDK 检查 + 发现 + 校验 + 落库 + 汇总   ← 本工具
- *   · install_mod          安装（同一份判据；目标不存在则创建）
+ * 职责边界（2026-09-27 起，一个工具只干一件事）：
+ *   · check_runtime      **只查 .NET SDK**（本工具）—— 不找游戏、不碰三条路径
+ *   · check_game_paths   只**验证**给定/已记住的路径（只读、不扫描、不写状态）
+ *   · set_game_paths     **记录**路径；**不带参数时自动发现并记录三条**（这就是"发现"的入口）
+ *   · set_game_dir / set_workshop_dir / set_mod_install_dir   单条路径的记录
+ *   · install_runtime    只给 SDK 安装指引（不执行安装）
+ *   · install_mod        安装（目标目录不存在则创建）
+ *
+ * 判据与发现都在 .pi/lib/game-paths.ts（单一事实源）；本工具只做 SDK 这一件事。
  */
 export default function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "check_runtime",
     label: "Check Runtime",
     description:
-      "One-stop runtime check: verifies the .NET SDK (>= 8), locates the installed game, verifies the game/mod paths with the game's own marker, and records the result in .gamer-agent.local.json. Uses an optional gameDir, then the remembered path, then the platform hint in mod-repo.json. Does not install software or modify mod source files. For a read-only path check use check_game_paths; to only locate and record the game use set_game_paths.",
-    promptSnippet: "Check SDK and game location when compilation needs them or the player asks about setup",
+      "Checks that the .NET SDK (>= 8.0) is installed and records the resolved dotnet path in .gamer-agent.local.json. It does not locate the game - game/mod paths belong to check_game_paths (verify) and set_game_paths (record).",
+    promptSnippet: "Check the .NET SDK when compilation needs it or the player asks about setup",
     promptGuidelines: [
-      "Use check_runtime when runtime readiness is unknown or has changed: it checks the SDK, locates the game and records the verified paths in one go.",
-      "Only SDK problems need install_runtime; a missing game directory needs a valid installation path, not SDK installation.",
-      "If the player already gave you a path, prefer check_game_paths (read-only) to verify it, or pass gameDir here to locate and record it.",
+      "Use check_runtime when the .NET SDK (>= 8) is needed for compilation, or when the player asks whether the environment is ready.",
+      "check_runtime only checks the SDK and records the dotnet path - game/mod paths are not its job: verify them with check_game_paths, record them with set_game_paths.",
+      "Only SDK problems need install_runtime; a missing game directory is not an SDK problem.",
     ],
-    parameters: Type.Object({
-      gameDir: Type.Optional(
-        Type.String({
-          description:
-            "Game installation directory supplied by the player; relative paths use the workspace root. Omit to try the remembered path and the platform hint.",
-        }),
-      ),
-    }),
-    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+    parameters: Type.Object({}),
+    async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
       const cwd = ctx.cwd;
-      let cfg: ModRepoConfig;
-      try {
-        cfg = readModRepoConfig(cwd);
-      } catch {
-        throw new Error(
-          "INVALID_WORKSPACE_CONFIG: Cannot read mod-repo.json. Reopen or update the game workspace; do not edit its maintainer configuration.",
-        );
-      }
-      const platform = platformKey();
-      const state = readState(cwd);
-      const problems: string[] = [];
-
-      // 1) dotnet SDK（与路径无关，留在本工具）
       const dotnet = checkDotnet();
       if (!dotnet.ok) {
-        problems.push(
-          dotnet.version
-            ? `FAIL: dotnet SDK ${dotnet.version} is too old (need >= 8.0)`
-            : "FAIL: dotnet SDK not found. Call install_runtime for install instructions.",
-        );
-      }
-
-      // 2) 发现 + 校验（与 set_game_paths 共用同一份实现：每个候选都要过哨兵检查）
-      const explicit = params.gameDir?.trim() ? resolveUserPath(cwd, params.gameDir) : undefined;
-      const { gameDir } = discoverGameDir(cfg, state, platform, explicit);
-
-      const lines: string[] = [];
-      if (!gameDir) {
-        problems.push(
-          `FAIL: GAME_DIRECTORY_NOT_FOUND (${cfg.game?.name ?? "the game"}). Automatic discovery did not find it (it already searched this platform's Steam locations and every library). Verify candidates from the player's hints with check_game_paths, then record the winner with set_game_paths; if the game is not installed at all, tell the player to install the game first. The 'setup-workspace' skill has the full procedure and what to ask the player if nothing works - install_runtime only guides SDK setup and cannot fix this.`,
-        );
-      } else {
-        const { managedDir, modInstallDir, workshopDir, notes } = pathsFromGameDir(gameDir, cfg, platform);
-        writeState(cwd, {
-          gameDir,
-          managedDir,
-          modInstallDir,
-          workshopDir: workshopDir ?? null,
-          runtime: { dotnet: dotnet.path, dotnetVersion: dotnet.version },
-        });
-        lines.push(`PASS: gameDir ${gameDir}`);
-        lines.push(workshopDir ? `workshopDir ${workshopDir}` : "workshopDir (not found; optional)");
-        if (modInstallDir) {
-          lines.push(`modInstallDir ${modInstallDir}`);
-          if (!existsSync(modInstallDir)) {
-            lines.push(
-              "WARN: that mod directory does not exist yet - normal on a first install (install_mod creates it). If the player moved the game, confirm this is where the game expects mods.",
-            );
-          }
-        } else {
-          problems.push("FAIL: INVALID_WORKSPACE_CONFIG: mod-repo.json has no modInstall.path for this platform");
-        }
-        lines.push(...notes);
-      }
-
-      if (problems.length) {
         return {
-          content: [{ type: "text", text: problems.join("\n") }],
-          details: { ...readState(cwd), ok: false, errors: problems },
+          content: [
+            {
+              type: "text",
+              text: dotnet.version
+                ? `FAIL: dotnet SDK ${dotnet.version} is too old (need >= 8.0). Call install_runtime for install instructions.`
+                : "FAIL: dotnet SDK not found. Call install_runtime for install instructions.",
+            },
+          ],
+          details: { ...readState(cwd), ok: false },
         };
       }
+      // 只写 runtime 这一段；路径由 set_game_paths / set_* 负责（同一个原子读改写 helper）
+      writeState(cwd, {
+        runtime: { dotnet: dotnet.path, dotnetVersion: dotnet.version },
+      });
       return {
         content: [
           {
             type: "text",
-            text: `PASS: dotnet ${dotnet.version} (${dotnet.path}); ${lines.join("; ")}`,
+            text: `PASS: dotnet ${dotnet.version} (${dotnet.path}) - .NET SDK is ready.`,
           },
         ],
         details: { ...readState(cwd), ok: true },
@@ -120,7 +65,7 @@ export default function (pi: ExtensionAPI) {
   });
 }
 
-/** .NET SDK >= 8 检查（本工具特有；游戏目录的判据已移到 lib） */
+/** .NET SDK >= 8 检查（本工具唯一的判据） */
 function checkDotnet() {
   const bin = process.platform === "win32" ? "dotnet.exe" : "dotnet";
   const candidates = [join(os.homedir(), ".dotnet", bin)];

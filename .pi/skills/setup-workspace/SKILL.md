@@ -24,19 +24,19 @@ description: Escape From Duckov 的环境与路径准备：定位游戏安装目
 
 | 工具 | 什么时候用 | 副作用 |
 |---|---|---|
-| `check_runtime` | 一次跑全流程：发现 + 校验 + 记录（**首次**或环境可能变化时）| 写运行时状态 |
+| `check_runtime` | **只查 .NET SDK ≥ 8**（并记下 dotnet 路径）；**不找游戏** | 写运行时状态（只写 `runtime` 段）|
 | `check_game_paths` | **只验**：玩家给了路径、或想确认已记住的还对不对 | **无**（只读、不扫描、不写状态）|
 | `set_game_dir` / `set_workshop_dir` / `set_mod_install_dir` | 玩家给了**具体路径** → 记住它（先过判据；不过则内部发现/派生，返回 WARN）| 写运行时状态 |
-| `set_game_paths` | 一次给多条路径（至少一条）| 写运行时状态 |
+| `set_game_paths` | 记住给定的一条或多条路径；**不带参数 = 自动发现并记录三条**（「发现」的入口）| 写运行时状态 |
 | `install_runtime` | **只给指引**（或报已装），**不执行安装** | 无 |
 
 ## 怎么用
 
-- **需要编译而环境未知/已变化**：用 `check_runtime` 核实 dotnet SDK 与游戏目录。已有仍有效的结果就不必每轮重复检查。
+- **需要编译而环境未知/已变化**：`check_runtime` 核实 dotnet SDK；路径用 `check_game_paths`（验）或 `set_game_paths`（发现/记录）。已有仍有效的结果就不必每轮重复检查。
 - **缺 SDK**：取 `install_runtime` 的安装指引（工具不执行安装）；装好后**再检查一次**确认，再谈编译。
-- **找不到游戏目录**：交给 `check_runtime` —— 它自己找 Steam 根（Windows 读注册表 + 默认路径；macOS 读 `~/Library/Application Support/Steam`），
-  再解析各库的 `libraryfolders.vdf` → `steamapps/common/<游戏名>`。**建议顺序**：
-  ① 先让它自己扫；② 玩家给了**模糊线索**（「装在 D 盘」「Steam 里」「下的那个」）就把线索变成候选目录，逐个用 `check_game_paths` 验证；
+- **找不到游戏目录**：交给 `set_game_paths`（**不带参数**）—— 它自己找 Steam 根（Windows 读注册表 + 默认路径；macOS 读 `~/Library/Application Support/Steam`），
+  再解析各库的 `libraryfolders.vdf` → `steamapps/common/<游戏名>`，并把三条路径一起记录。**建议顺序**：
+  ① 先让它自己扫（无参调用）；② 玩家给了**模糊线索**（「装在 D 盘」「Steam 里」「下的那个」）就把线索变成候选目录，逐个用 `check_game_paths` 验证，再用 `set_game_paths` 记录；
   ③ **全都不行才问玩家** —— 问的时候：
      - **先说清你已经试过什么**（自动扫过哪些库、验证过哪些候选），不要只说「找不到」；
      - **给玩家可照做的入口**：Steam → 库 → 右键游戏 → 管理 → 浏览本地文件（或让玩家直接贴路径）；
