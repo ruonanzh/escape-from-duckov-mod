@@ -164,7 +164,7 @@ export default function (pi: ExtensionAPI) {
       const ok = failed.length === 0;
       if (!ok) {
         lines.push(
-          "NOTE: nothing was changed - this tool never writes state or creates directories. Report the above to the player; once you have a correct path, set_game_dir can record it (or install_mod can use it as-is if it is already remembered).",
+          "NOTE: nothing was changed - this tool only verifies (read-only) and never writes state or creates directories. To record the paths, run try_set_game_dir (no arguments); only ask the player if discovery fails.",
         );
       }
 
