@@ -18,8 +18,8 @@ description: Escape From Duckov 的环境与路径准备：定位游戏安装目
 
 **两条派生路径不用管**：把 `gameDir` 弄对（`try_set_game_dir` 或 `set_game_dir`），`workshopDir` / `modInstallDir` 会在**当前平台**上一起算好并记录。
 
-**必填与附加**：`gameDir` 必填；契约声明了 `modInstall`（非 null）时 `modInstallDir` 也必填 —— 任一不正确 = `FAIL`。
-`workshopDir` 只是**只读参考**，**永不产 FAIL**（最多 `WARN`）；契约 `workshop.supported: false` 时**完全不看**（不检查、也不出现在结果里）。
+**必填与附加**：`gameDir`、`modInstallDir` 都必填 —— 任一不正确 = `FAIL`。
+`workshopDir` 只是**只读参考**，**永不产 FAIL**（最多 `WARN`）。
 本游戏 `mod-repo.json` 里 `workshop.supported = true`。
 
 ## 完成标准
