@@ -37,6 +37,35 @@ import { isCodeIdentifier, readModIdentity } from "../lib/mod-identity";
 const EXCLUDED_DIRS = new Set(["obj", "bin", ".git", "node_modules"]);
 const EXCLUDED_EXT = new Set([".cs", ".csproj", ".sln", ".pdb", ".user"]);
 
+/**
+ * 找 mod 编译出的 `<name>.dll`：先看 mod 根，再看 `bin/` 下。
+ *
+ * 官方（xvrsl/duckov_modding）与 `reference/example_mod` 的 csproj **默认产物落 `bin/Release[/netstandard2.1]/`**，
+ * 发布时再把它整理到 mod 文件夹根；本工具直接接受两种落点，安装时统一放到游戏 mod 目录**根**
+ * （游戏只从 mod 文件夹根加载 `<name>.dll`）。同名多个（Debug/Release）优先 Release。
+ */
+function findModDll(modDir: string, dllName: string): string | null {
+  const atRoot = join(modDir, dllName);
+  if (existsSync(atRoot)) return atRoot;
+  const matches: string[] = [];
+  const walk = (dir: string) => {
+    let entries;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const p = join(dir, entry.name);
+      if (entry.isDirectory()) walk(p);
+      else if (entry.name === dllName) matches.push(p);
+    }
+  };
+  walk(join(modDir, "bin"));
+  if (matches.length === 0) return null;
+  return matches.find((p) => /[\\/]Release[\\/]/.test(p)) ?? matches[0];
+}
+
 /** 读 mod 身份：info.ini 的 name（= 命名空间 = dll 名） */
 
 /** 这个目录是不是本 mod 上次装的 */
@@ -298,12 +327,14 @@ export default function (pi: ExtensionAPI) {
           details: { ok: false, reason: "INVALID_IDENTITY" },
         };
       }
-      if (!existsSync(join(modDir, `${identity.name}.dll`))) {
+      // 编译产物：mod 根或 bin/ 下都接受（官方/示例 csproj 默认落 bin/）；安装时统一放到游戏 mod 目录根。
+      const dllPath = findModDll(modDir, `${identity.name}.dll`);
+      if (!dllPath) {
         return {
           content: [
             {
               type: "text",
-              text: `FAIL: ${identity.name}.dll not found in ${modDir}.\nNEXT: run validate_mod to compile the mod, then install again.`,
+              text: `FAIL: ${identity.name}.dll not found in ${modDir} (looked in the mod folder and under bin/).\nNEXT: run validate_mod to compile the mod, then install again.`,
             },
           ],
           details: { ok: false, reason: "MISSING_DLL", modName: identity.name },
@@ -353,6 +384,14 @@ export default function (pi: ExtensionAPI) {
       let files = 0;
       try {
         files = copyModProducts(modDir, staging);
+        // 产物若在 bin/ 下（默认），copyModProducts 会跳过 bin → 这里把它放到安装副本根
+        // （游戏只从 mod 文件夹根加载 <name>.dll）。已在根时 copyModProducts 已复制，不重复。
+        const stagedDll = join(staging, `${identity.name}.dll`);
+        if (!existsSync(stagedDll)) {
+          mkdirSync(staging, { recursive: true });
+          cpSync(dllPath, stagedDll);
+          files += 1;
+        }
         // `.pi-mod.json` 的来龙去脉（避免后来人误判它的用途）：
         // · 最初的设计用意：一份**安装指南**，放在 mod 自己的工作区目录里（your_mods/<mod>/.pi-mod.json），
         //   描述"这个 mod 该怎么装"（当时没沟通清楚，没实现成那个形态）。
