@@ -1,9 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
-import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
-import os from "node:os";
+import { probeDotnet } from "../lib/dotnet";
 import { readState, writeState } from "../lib/game-paths";
 
 /**
@@ -17,7 +14,7 @@ import { readState, writeState } from "../lib/game-paths";
  *   · install_runtime    只给 SDK 安装指引（不执行安装）
  *   · install_mod        安装（目标目录不存在则创建）
  *
- * 判据与发现都在 .pi/lib/game-paths.ts（单一事实源）；本工具只做 SDK 这一件事。
+ * 判据：路径在 .pi/lib/game-paths.ts，.NET SDK 在 .pi/lib/dotnet.ts（单一事实源，与 install_runtime 共用）；本工具只做 SDK 这一件事。
  */
 export default function (pi: ExtensionAPI) {
   pi.registerTool({
@@ -34,8 +31,8 @@ export default function (pi: ExtensionAPI) {
     parameters: Type.Object({}),
     async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
       const cwd = ctx.cwd;
-      const dotnet = checkDotnet();
-      if (!dotnet.ok) {
+      const dotnet = probeDotnet();
+      if (!dotnet.found || (dotnet.major ?? 0) < 8) {
         return {
           content: [
             {
@@ -63,31 +60,4 @@ export default function (pi: ExtensionAPI) {
       };
     },
   });
-}
-
-/** .NET SDK >= 8 检查（本工具唯一的判据） */
-function checkDotnet() {
-  const bin = process.platform === "win32" ? "dotnet.exe" : "dotnet";
-  const candidates = [join(os.homedir(), ".dotnet", bin)];
-  if (process.platform === "win32") {
-    candidates.push("C:\\Program Files\\dotnet\\dotnet.exe");
-    if (process.env.LOCALAPPDATA) candidates.push(join(process.env.LOCALAPPDATA, "Microsoft", "dotnet", "dotnet.exe"));
-  } else if (process.platform === "darwin") {
-    candidates.push("/usr/local/share/dotnet/dotnet");
-  }
-  const tryRun = (p: string) => {
-    try {
-      return execFileSync(p, ["--version"], { encoding: "utf8" }).trim();
-    } catch {
-      return null;
-    }
-  };
-  const fromPath = tryRun("dotnet");
-  if (fromPath) return { ok: parseInt(fromPath.split(".")[0], 10) >= 8, version: fromPath, path: "dotnet" };
-  for (const c of candidates) {
-    if (!existsSync(c)) continue;
-    const v = tryRun(c);
-    if (v) return { ok: parseInt(v.split(".")[0], 10) >= 8, version: v, path: c };
-  }
-  return { ok: false, version: null, path: null };
 }

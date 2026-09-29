@@ -1,14 +1,11 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
-import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
-import os from "node:os";
+import { probeDotnet } from "../lib/dotnet";
 
 /**
  * install_runtime — 运行时契约（docs/mod-repo-guide.md §4）
  * 引导安装 .NET SDK（用户级 ~/.dotnet 优先，无权限；系统级备选）。
- * 只管引导装，不管删。
+ * 只管引导装，不管删。（dotnet 探测与 check_runtime 共用 .pi/lib/dotnet.ts）
  */
 export default function (pi: ExtensionAPI) {
   pi.registerTool({
@@ -19,12 +16,9 @@ export default function (pi: ExtensionAPI) {
     promptGuidelines: ["Use install_runtime when check_runtime reports a missing dotnet SDK."],
     parameters: Type.Object({}),
     async execute(_toolCallId, _params, _signal, _onUpdate, _ctx) {
-      const v = findDotnet();
-      if (v) {
-        const major = parseInt(v.split(".")[0], 10);
-        if (major >= 8) {
-          return { content: [{ type: "text", text: `SKIP: dotnet SDK ${v} already present; no installation performed. Game location has not been checked here.` }], details: { ok: true } };
-        }
+      const dotnet = probeDotnet();
+      if (dotnet.found && (dotnet.major ?? 0) >= 8) {
+        return { content: [{ type: "text", text: `SKIP: dotnet SDK ${dotnet.version} already present; no installation performed. Game location has not been checked here.` }], details: { ok: true } };
       }
 
       const lines = ["INSTRUCTIONS PROVIDED: No installation has been performed.", "Install .NET SDK 8.0 - user-level install (no admin/UAC, recommended):"];
@@ -62,20 +56,4 @@ export default function (pi: ExtensionAPI) {
       };
     },
   });
-}
-
-function findDotnet() {
-  const bin = process.platform === "win32" ? "dotnet.exe" : "dotnet";
-  const tryRun = (p: string) => {
-    try {
-      return execFileSync(p, ["--version"], { encoding: "utf8" }).trim();
-    } catch {
-      return null;
-    }
-  };
-  const fromPath = tryRun("dotnet");
-  if (fromPath) return fromPath;
-  const userLevel = join(os.homedir(), ".dotnet", bin);
-  if (existsSync(userLevel)) return tryRun(userLevel);
-  return null;
 }
