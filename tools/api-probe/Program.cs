@@ -13,6 +13,17 @@ using ICSharpCode.Decompiler.TypeSystem;
 
 static class ApiProbe
 {
+    // `--dll *` = 游戏自有 DLL（与维护者 inspect_game 的口径一致）；避免把几百个引擎/第三方库全扫一遍。
+    static readonly string[] GameOwnedDlls =
+    {
+        "TeamSoda.Duckov.Core",
+        "TeamSoda.Duckov.Utilities",
+        "ItemStatsSystem",
+        "Assembly-CSharp",
+        "SodaLocalization",
+        "TeamSoda.MiniLocalizor",
+    };
+
     static int Main(string[] args)
     {
         var opt = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -35,15 +46,23 @@ static class ApiProbe
         }
         var dlls = ResolveDlls(managed, dllArg);
         if (dlls.Count == 0) { Console.Error.WriteLine($"api-probe: no DLL matched '{dllArg}' under {managed}"); return 1; }
-        var sb = new List<string>();
+
+        var outLines = new List<string>();
         foreach (var dll in dlls)
         {
-            try { RunOne(dll, managed, action, target, member, sb); }
-            catch (Exception ex) { sb.Add($"// [{Path.GetFileName(dll)}] ERROR: {ex.Message}"); }
+            try
+            {
+                var lines = RunOne(dll, managed, action, target, member);
+                outLines.AddRange(lines);
+            }
+            catch (Exception ex) { outLines.Add($"## {Path.GetFileName(dll)}\n// ERROR: {ex.Message}"); }
         }
-        var text = string.Join("\n", sb);
-        var lines = text.Split('\n');
-        if (lines.Length > limit) text = string.Join("\n", lines.Take(limit)) + $"\n... ({lines.Length - limit} more lines truncated)";
+        if (outLines.Count == 0)
+            outLines.Add($"# {action}: no result for target='{target}' member='{member}' in {dlls.Count} DLL(s)");
+
+        var text = string.Join("\n", outLines);
+        var lines2 = text.Split('\n');
+        if (lines2.Length > limit) text = string.Join("\n", lines2.Take(limit)) + $"\n... ({lines2.Length - limit} more lines truncated)";
         Console.Write(text);
         if (!text.EndsWith("\n")) Console.WriteLine();
         return 0;
@@ -53,7 +72,15 @@ static class ApiProbe
 
     static List<string> ResolveDlls(string managed, string dllArg)
     {
-        if (dllArg == "*") return Directory.GetFiles(managed, "*.dll").OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList();
+        if (dllArg == "*")
+        {
+            var owned = GameOwnedDlls
+                .Select(n => Path.Combine(managed, n + ".dll"))
+                .Where(File.Exists)
+                .ToList();
+            if (owned.Count > 0) return owned;
+            return Directory.GetFiles(managed, "*.dll").OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList();
+        }
         var list = new List<string>();
         foreach (var raw in dllArg.Split(','))
         {
@@ -65,21 +92,21 @@ static class ApiProbe
         return list;
     }
 
-    static void RunOne(string dll, string managed, string action, string target, string member, List<string> sb)
+    static List<string> RunOne(string dll, string managed, string action, string target, string member)
     {
         var pe = new PEFile(dll);
         var resolver = new UniversalAssemblyResolver(dll, false, pe.Metadata.DetectTargetFrameworkId());
         resolver.AddSearchDirectory(managed);
         var dc = new CSharpDecompiler(pe, resolver, new DecompilerSettings());
-        switch (action)
+        return action switch
         {
-            case "search": Search(dll, dc, target, sb); break;
-            case "members": Members(dll, dc, target, sb); break;
-            case "decompile": Decompile(dll, dc, target, member, sb); break;
-            case "il": Il(dll, pe, dc, target, member, sb); break;
-            case "strings": Strings(dll, target, sb); break;
-            default: sb.Add($"// unknown action '{action}'"); break;
-        }
+            "search" => Search(dll, dc, target),
+            "members" => Members(dll, dc, target),
+            "decompile" => Decompile(dll, dc, target, member),
+            "il" => Il(dll, pe, dc, target, member),
+            "strings" => Strings(dll, target),
+            _ => new List<string> { $"// unknown action '{action}'" },
+        };
     }
 
     static ITypeDefinition FindType(CSharpDecompiler dc, string name)
@@ -111,77 +138,117 @@ static class ApiProbe
         return $"{KindName(m.SymbolKind)} {m.ReturnType.FullName} {m.Name}";
     }
 
-    static void Search(string dll, CSharpDecompiler dc, string target, List<string> sb)
+    // 成员解析：先按名字直接找；找不到时把 get_X/set_X（属性）与 add_X/remove_X（事件）映射回去
+    // （IProperty/IEvent 是成员，但访问器方法不在 ITypeDefinition.Methods 里，模型常直接写 get_X）。
+    static List<IMember> ResolveMembers(ITypeDefinition type, string name)
     {
-        sb.Add($"## {Path.GetFileName(dll)} - search '{target}'");
+        var direct = type.Members.Where(m => m.Name == name).Cast<IMember>().ToList();
+        if (direct.Count > 0) return direct;
+        if (name != null && (name.StartsWith("get_") || name.StartsWith("set_")))
+        {
+            var prop = name.Substring(4);
+            var props = type.Properties.Where(p => p.Name == prop).Cast<IMember>().ToList();
+            if (props.Count > 0) return props;
+        }
+        if (name != null && (name.StartsWith("add_") || name.StartsWith("remove_")))
+        {
+            var ev = name.Substring(name.StartsWith("add_") ? 4 : 7);
+            var evs = type.Events.Where(e => e.Name == ev).Cast<IMember>().ToList();
+            if (evs.Count > 0) return evs;
+        }
+        return new List<IMember>();
+    }
+
+    // IL 需要方法句柄：属性/事件的访问器从 getter/setter 拿。
+    static List<IMethod> ResolveMethods(ITypeDefinition type, string name)
+    {
+        var direct = type.Methods.Where(m => m.Name == name).ToList();
+        if (direct.Count > 0) return direct;
+        if (name != null && (name.StartsWith("get_") || name.StartsWith("set_")))
+        {
+            var prop = name.Substring(4);
+            foreach (var p in type.Properties.Where(p => p.Name == prop))
+            {
+                var acc = name.StartsWith("get_") ? p.Getter : p.Setter;
+                if (acc != null) direct.Add(acc);
+            }
+        }
+        return direct;
+    }
+
+    static List<string> Search(string dll, CSharpDecompiler dc, string target)
+    {
         var t = target ?? "";
-        int hits = 0;
+        var hits = new List<string>();
         foreach (var type in dc.TypeSystem.MainModule.TypeDefinitions)
         {
-            if (type.FullName.IndexOf(t, StringComparison.OrdinalIgnoreCase) >= 0) { sb.Add($"TYPE  {type.FullName}"); hits++; }
+            if (type.FullName.IndexOf(t, StringComparison.OrdinalIgnoreCase) >= 0) hits.Add($"TYPE  {type.FullName}");
             foreach (var m in type.Members)
                 if (m.Name.IndexOf(t, StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    sb.Add($"  {KindName(m.SymbolKind)} {type.FullName}.{m.Name}"); hits++;
-                    if (hits > 500) { sb.Add("... (more matches truncated)"); return; }
-                }
+                    hits.Add($"  {KindName(m.SymbolKind)} {type.FullName}.{m.Name}");
         }
-        if (hits == 0) sb.Add("  (no match)");
+        if (hits.Count == 0) return new List<string>();
+        if (hits.Count > 500) { hits = hits.Take(500).ToList(); hits.Add("... (more matches truncated)"); }
+        var outp = new List<string> { $"## {Path.GetFileName(dll)} - search '{target}'" };
+        outp.AddRange(hits);
+        return outp;
     }
 
-    static void Members(string dll, CSharpDecompiler dc, string target, List<string> sb)
+    static List<string> Members(string dll, CSharpDecompiler dc, string target)
     {
         var type = FindType(dc, target);
-        sb.Add($"## {Path.GetFileName(dll)} - members of {type?.FullName ?? target}");
-        if (type == null) { sb.Add("  (type not found)"); return; }
+        if (type == null) return new List<string>();
+        var outp = new List<string> { $"## {Path.GetFileName(dll)} - members of {type.FullName}" };
         var bases = type.DirectBaseTypes.Where(b => b.Kind != TypeKind.Unknown).Select(b => b.FullName);
-        sb.Add($"  base: {string.Join(", ", bases)}");
-        foreach (var m in type.Members) sb.Add($"  {Sig(m)}");
+        outp.Add($"  base: {string.Join(", ", bases)}");
+        outp.AddRange(type.Members.Select(Sig).Select(s => "  " + s));
+        return outp;
     }
 
-    static void Decompile(string dll, CSharpDecompiler dc, string target, string member, List<string> sb)
+    static List<string> Decompile(string dll, CSharpDecompiler dc, string target, string member)
     {
         var type = FindType(dc, target);
-        sb.Add($"## {Path.GetFileName(dll)} - decompile {type?.FullName ?? target}{(member != null ? "." + member : "")}");
-        if (type == null) { sb.Add("  (type not found)"); return; }
+        if (type == null) return new List<string>();
+        var outp = new List<string> { $"## {Path.GetFileName(dll)} - decompile {type.FullName}{(member != null ? "." + member : "")}" };
         if (member != null)
         {
-            var ms = type.Members.Where(m => m.Name == member).ToList();
-            if (ms.Count == 0) { sb.Add("  (member not found)"); return; }
-            foreach (var m in ms) sb.Add(dc.DecompileAsString(m.MetadataToken));
+            var ms = ResolveMembers(type, member);
+            if (ms.Count == 0) return new List<string>();
+            outp.AddRange(ms.Select(m => dc.DecompileAsString(m.MetadataToken)));
         }
-        else sb.Add(dc.DecompileTypeAsString(type.FullTypeName));
+        else outp.Add(dc.DecompileTypeAsString(type.FullTypeName));
+        return outp;
     }
 
-    static void Il(string dll, PEFile pe, CSharpDecompiler dc, string target, string member, List<string> sb)
+    static List<string> Il(string dll, PEFile pe, CSharpDecompiler dc, string target, string member)
     {
         var type = FindType(dc, target);
-        sb.Add($"## {Path.GetFileName(dll)} - IL {type?.FullName ?? target}{(member != null ? "." + member : "")}");
-        if (type == null) { sb.Add("  (type not found)"); return; }
+        if (type == null) return new List<string>();
         var sw = new StringWriter();
         var dis = new ReflectionDisassembler(new PlainTextOutput(sw), CancellationToken.None);
         if (member != null)
         {
-            var ms = type.Members.OfType<IMethod>().Where(m => m.Name == member).ToList();
-            if (ms.Count == 0) { sb.Add("  (method not found)"); return; }
+            var ms = ResolveMethods(type, member);
+            if (ms.Count == 0) return new List<string>();
             foreach (var m in ms) dis.DisassembleMethod(pe, (MethodDefinitionHandle)m.MetadataToken);
         }
         else dis.DisassembleType(pe, (TypeDefinitionHandle)type.MetadataToken);
-        sb.Add(sw.ToString());
+        var outp = new List<string> { $"## {Path.GetFileName(dll)} - IL {type.FullName}{(member != null ? "." + member : "")}" };
+        outp.AddRange(sw.ToString().Split('\n'));
+        return outp;
     }
 
-    static void Strings(string dll, string target, List<string> sb)
+    static List<string> Strings(string dll, string target)
     {
-        sb.Add($"## {Path.GetFileName(dll)} - strings '{target}'");
         var bytes = File.ReadAllBytes(dll);
+        var hits = new List<string>();
         var cur = new StringBuilder();
-        int hits = 0;
         var flush = new Action(() =>
         {
             if (cur.Length >= 4)
             {
                 var s = cur.ToString();
-                if (target == null || s.IndexOf(target, StringComparison.OrdinalIgnoreCase) >= 0) { sb.Add(s); hits++; }
+                if (target == null || s.IndexOf(target, StringComparison.OrdinalIgnoreCase) >= 0) hits.Add(s);
             }
             cur.Clear();
         });
@@ -191,6 +258,9 @@ static class ApiProbe
             else flush();
         }
         flush();
-        if (hits == 0) sb.Add("  (no match)");
+        if (hits.Count == 0) return new List<string>();
+        var outp = new List<string> { $"## {Path.GetFileName(dll)} - strings '{target}'" };
+        outp.AddRange(hits);
+        return outp;
     }
 }
