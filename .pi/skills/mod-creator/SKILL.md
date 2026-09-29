@@ -16,7 +16,7 @@ description: Escape From Duckov 的 C# mod 制作与修改：目录结构、info
 
 ## 使用方式与条件分支
 
-- **咨询/可行性**：按目标检索 `docs/api/`、`docs/data/` 与 `docs/mod-api.md`，确认 API/数据依据；只是讨论时不必建目录、也不必准备环境。数据层版本见 `mod-repo.json` 的 `game.version`，不臆测最新补丁行为。
+- **咨询/可行性**：按目标检索 `docs/api/`、`docs/data/` 与 `docs/mod-api.md`，确认 API/数据依据；只是讨论时不必建目录、也不必准备环境。数据层版本见 `mod-repo.json` 的 `game.version`，不臆测最新补丁行为。`docs/api/` 只是维护者反射 dump 的**公开**签名；要**私有成员 / 实现行为 / 当前版本**时，用 `inspect_game_api` 读托管 DLL（见「参考」）。
 - **实际制作/修改**：写入仅限当前 session 绑定目录。无绑定且准备写入时才调 `create_mod_folder`，选择合法 C# 标识符（通常 PascalCase）；有绑定就复用，目录缺失先说明阻塞，不另建第二个绑定。
 - **规范与实现**：复用 `reference/example_mod/ExampleMod.csproj` 与入口类。保持 info.ini 名称、AssemblyName、RootNamespace 和 DLL 名一致（validate_mod 校验）。
 - **产物落点**：编译产物放哪都行 —— `install_mod` 会自动找到 `<name>.dll`（mod 根**或 `bin/` 下**）并把它放到游戏 mod 目录**根**（游戏只从根加载 `<name>.dll`）。所以用默认的 `bin/` 即可，不必手动整理。⚠️ **不要**把 csproj 的 `OutputPath` 指到项目根：SDK 默认排除会把项目根下的 `*.cs` 全排掉 → 产出**空壳 dll**（游戏里能看到、勾不上）；确需那就必须同时设 `EnableDefaultCompileItems=false` + 显式 `Compile`。
@@ -94,6 +94,7 @@ namespace MyMod
 
 - 完整可编译样例：`reference/example_mod/`。
 - API：`docs/mod-api.md`；物品：`docs/items.md`。
+- **API 内省**：`docs/api/`（公开签名快照）是第一站；不够时（私有成员 / 实现行为 / 当前版本）用 **`inspect_game_api`** 读托管 DLL —— `search`（找类型/成员）· `members`（全部成员含 private）· `decompile`（反编译 C#）· `il` · `strings`。只读、不执行游戏代码。
 
 ## 相关技能
 
