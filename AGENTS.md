@@ -12,6 +12,11 @@
 - `.pi/extensions/`：环境检查、安装指引、mod 校验、装进游戏（`install_mod`）工具；以实际返回的执行状态为准。
 - `scripts/`：维护者刷新数据层的工具，玩家/agent 不运行；运行时准备与数据层维护是两件事。
 
+## 运行时状态文件
+
+`.gamer-agent.local.json`（**本工作区目录下**）是路径与运行时状态的**唯一来源**，由 `.pi/extensions/` 的工具读写。**只认本工作区的这一份** —— 机器上别处（别的克隆、历史残留）可能有同名文件，用它会得出错误结论。
+**是否就绪以文件里记录的值 + 工具返回为准**：`ls` 看到目录存在 ≠ 已记录/已就绪（工作区面板、`validate_mod`、`install_mod` 读的都是记录）。字段含义见 `.pi/skills/setup-workspace/SKILL.md`。
+
 ## 工作区边界
 
 `docs/`、`.pi/`、`reference/`、`libs/`、`scripts/` 等环境内容由维护者管理。`your_mods/` 是玩家成果区；**源码写入权限由当前 session 的角色和 mod 绑定决定**，不是整个 `your_mods/` 都可写。Game Helper 不编辑源码；获准的环境检查/校验工具可能写自己的缓存或编译产物，不授予通用写权限。

@@ -8,13 +8,17 @@ description: Escape From Duckov 的环境与路径准备：定位游戏安装目
 把「游戏在哪、三条路径是什么、运行时够不够」弄清楚并记录。**这一步只产出事实**，不产出 mod。
 加载技能不等于获得写权限；咨询可以只解释方法。
 
-## 三条路径是什么（本 repo 的约定）
+## 状态文件里有什么（本 repo 的约定）
 
-| 键（状态文件 `.gamer-agent.local.json`）| 含义 | 来源 | 谁用 |
+`.gamer-agent.local.json`（**本工作区目录下**）是运行时状态的唯一来源，由 `.pi/extensions/` 的工具读写。字段：
+
+| 键 | 含义 | 来源 | 谁用 |
 |---|---|---|---|
 | `gameDir` | 游戏安装目录（Steam 库里的 `steamapps/common/Escape from Duckov`）| 玩家给的，或 `try_set_game_dir` 自动发现 | 编译引用 DLL、install_mod 拼安装目标 |
 | `workshopDir` | Steam 创意工坊内容目录（`steamapps/workshop/content/3167020`）| **由 `gameDir` 自动派生**（不用单独设）| **只读参考**：读工坊里现成 mod 的脚本/资源；**不参与安装** |
 | `modInstallDir` | mod 安装目标（游戏目录内的 `Duckov.app/Contents/Mods`（macOS）/ `Duckov_Data/Mods`（Windows））| **由 `gameDir` 自动派生**（不用单独设）| install_mod 复制产物到此 |
+| `managedDir` | 编译引用托管程序集（`TeamSoda.*.dll` 等）的目录 | **由 `gameDir` + `mod-repo.json` 现算**（工具**不信任**文件里的旧值）| 编译（`validate_mod`）|
+| `runtime` | 运行时缓存：`dotnet` 可执行文件路径与版本 | `check_runtime` 探测后写入 | 编译时定位 dotnet |
 
 **两条派生路径不用管**：把 `gameDir` 弄对（`try_set_game_dir` 或 `set_game_dir`），`workshopDir` / `modInstallDir` 会在**当前平台**上一起算好并记录。
 
