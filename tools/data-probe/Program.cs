@@ -31,6 +31,7 @@ static class DataProbe
         if (managed == null || data == null || action == null) { Usage(); return 2; }
         int limit = int.TryParse(Opt(o, "limit"), out var ln) ? ln : 2000;
         int depth = int.TryParse(Opt(o, "depth"), out var dp) ? dp : 3;
+        int offset = int.TryParse(Opt(o, "offset"), out var ofs) ? Math.Max(0, ofs) : 0;
 
         var classData = FindClassData();
         if (classData == null) { Console.Error.WriteLine("data-probe: classdata.tpk not found next to the tool (lib/classdata.tpk)."); return 1; }
@@ -52,8 +53,8 @@ static class DataProbe
         switch (action)
         {
             case "classes": Classes(am, insts, outLines); break;
-            case "list": List(am, insts, Opt(o, "class"), outLines); break;
-            case "search": Search(am, insts, Opt(o, "pattern"), Opt(o, "class"), outLines); break;
+            case "list": List(am, insts, Opt(o, "class"), offset, outLines); break;
+            case "search": Search(am, insts, Opt(o, "pattern"), Opt(o, "class"), offset, outLines); break;
             case "dump": DumpAsset(am, insts, o, depth, outLines); break;
             case "refs": Refs(am, insts, o, outLines); break;
             default: Console.Error.WriteLine($"data-probe: unknown action '{action}'"); return 2;
@@ -88,7 +89,7 @@ static class DataProbe
         "  search  --pattern <p> [--class C]  find assets by name\n" +
         "  dump    --class <C> (--name <n>|--typeid <t>|--pathid <p>) [--depth d] [--follow]\n" +
         "  refs    --class <C> (--name <n>|--typeid <t>|--pathid <p>)   what it references\n" +
-        "  common: [--file <x.assets|levelN>] [--limit N]\n" +
+        "  common: [--file <x.assets|levelN>] [--limit N] [--offset N]\n" +
         "  note:  --file levelN reads a scene (level files are serialized like .assets)");
 
     static string FindClassData()
@@ -195,36 +196,41 @@ static class DataProbe
             outp.Add($"  {kv.Value,6}  {kv.Key}");
     }
 
-    static void List(AssetsManager am, List<AssetsFileInstance> insts, string cls, List<string> outp)
+    static void List(AssetsManager am, List<AssetsFileInstance> insts, string cls, int offset, List<string> outp)
     {
         if (cls == null) { outp.Add("# list: --class required"); return; }
         const int cap = 500;
         var lines = new List<string>();
-        int total = 0, named = 0;
+        int total = 0, named = 0, shown = 0;
         foreach (var (inst, info) in AllInfos(insts))
         {
             if (!string.Equals(ClassNameOf(am, inst, info), cls, StringComparison.Ordinal)) continue;
             total++;
-            if (lines.Count >= cap) continue;
+            if (total <= offset) continue;
+            if (shown >= cap) continue;
             AssetTypeValueField bf = null;
             try { bf = am.GetBaseField(inst, info); } catch { }
             var tid = bf != null ? TypeId(bf) : -1;
             var nm = bf != null ? AssetName(bf) : null;
             if (!string.IsNullOrEmpty(nm)) named++;
             lines.Add($"  {nm ?? "(no name)"}{(tid >= 0 ? $"  typeID={tid}" : "")}  pathID={info.PathId}");
+            shown++;
         }
         outp.Add($"{cls}: {total} asset(s)");
         outp.AddRange(lines);
-        if (total > lines.Count)
-            outp.Add($"... (showing first {lines.Count} of {total}; narrow with --name/--pathid, or use search --pattern)");
+        int last = offset + shown;
+        if (last < total)
+            outp.Add($"... (showing {offset + 1}-{last} of {total}; narrow with --name/--pathid or search --pattern, or use --offset {last} for the next page)");
         if (lines.Count > 0 && named == 0)
             outp.Add($"... (these {cls} objects have no name; locate one with dump --class {cls} --pathid <pathID>)");
     }
 
-    static void Search(AssetsManager am, List<AssetsFileInstance> insts, string pattern, string cls, List<string> outp)
+    static void Search(AssetsManager am, List<AssetsFileInstance> insts, string pattern, string cls, int offset, List<string> outp)
     {
         if (pattern == null) { outp.Add("# search: --pattern required"); return; }
-        int n = 0;
+        const int cap = 500;
+        var lines = new List<string>();
+        int total = 0, shown = 0;
         foreach (var (inst, info) in AllInfos(insts))
         {
             var className = ClassNameOf(am, inst, info);
@@ -235,11 +241,17 @@ static class DataProbe
             var nm = bf != null ? AssetName(bf) : null;
             var hay = (nm ?? "") + " " + (className ?? "") + " " + tid;
             if (hay.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) < 0) continue;
-            outp.Add($"  {className}  {nm ?? "(no name)"}{(tid >= 0 ? $"  typeID={tid}" : "")}  pathID={info.PathId}");
-            n++;
-            if (n >= 500) { outp.Add("... (more matches truncated)"); break; }
+            total++;
+            if (total <= offset) continue;
+            if (shown >= cap) continue;
+            lines.Add($"  {className}  {nm ?? "(no name)"}{(tid >= 0 ? $"  typeID={tid}" : "")}  pathID={info.PathId}");
+            shown++;
         }
-        outp.Insert(0, $"search '{pattern}': {n} match(es)");
+        outp.Add($"search '{pattern}': {total} match(es)");
+        outp.AddRange(lines);
+        int last = offset + shown;
+        if (last < total)
+            outp.Add($"... (showing {offset + 1}-{last} of {total}; refine the pattern, or use --offset {last} for the next page)");
     }
 
     static void DumpAsset(AssetsManager am, List<AssetsFileInstance> insts, Dictionary<string, string> o, int maxDepth, List<string> outp)

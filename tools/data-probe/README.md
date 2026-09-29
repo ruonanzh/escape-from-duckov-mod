@@ -26,12 +26,14 @@ dotnet run --project tools/data-probe -- \
 | action | 选项 | 作用 |
 |---|---|---|
 | `classes` | — | 列出资产**类名 + 数量**（含内置类型：`GameObject`/`Transform`/`Camera`…）|
-| `list` | `--class <C>` | 列出某类的资产（name / typeID / pathID；**最多 500 条**，截断时提示缩小范围）|
-| `search` | `--pattern <p>` `[--class C]` | 按名称/类/typeID 找资产 |
+| `list` | `--class <C>` | 列出某类的资产（name / typeID / pathID；**每次最多 500 条**，用 `--offset` 翻页）|
+| `search` | `--pattern <p>` `[--class C]` | 按名称/类/typeID 找资产（**每次最多 500 条**，用 `--offset` 翻页）|
 | `dump` | `--class <C>` ＋ (`--name`\|`--typeid`\|`--pathid`) `[--depth d] [--follow]` | dump 该资产的**字段 + 值**；`--follow` **跟随引用**（如 `Item.stats` → `StatCollection` 里的 `Damage`）|
 | `refs` | 同 `dump` 的定位 | 列出该资产**引用了哪些对象**（PPtr）|
 
-公共：`--file <x.assets|levelN>`（限定单个数据文件；**`levelN` = 场景文件**，格式与 `.assets` 相同）、`--limit N`（截断，默认 2000 行）、`--depth d`（dump 深度，默认 3）。
+公共：`--file <x.assets|levelN>`（限定单个数据文件；**`levelN` = 场景文件**，格式与 `.assets` 相同）、`--limit N`（截断，默认 2000 行）、`--depth d`（dump 深度，默认 3）、`--offset N`（跳过前 N 条，给 `list`/`search` 翻页用）。
+
+> `list` / `search` 每次最多 500 条；截断时会提示 `--offset <下一页>`——**优先用更窄的查询（`search --pattern` / `dump --name`），确实要枚举时才翻页**。
 
 ## 例
 
