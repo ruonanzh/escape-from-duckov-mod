@@ -22,6 +22,11 @@ description: Escape From Duckov 的环境与路径准备：定位游戏安装目
 `workshopDir` 只是**只读参考**，**永不产 FAIL**（最多 `WARN`）；契约 `workshop.supported: false` 时**完全不看**（不检查、也不出现在结果里）。
 本游戏 `mod-repo.json` 里 `workshop.supported = true`。
 
+## 完成标准
+
+**三条路径都要有交代才算准备好**：`gameDir` 与 `modInstallDir` 必须可用；`workshopDir` 要么可用、要么明说「没找到工坊目录」（它只读，不影响安装）。
+后两条由 `gameDir` 派生 —— 把 `gameDir` 弄对就会一起算好。**不要设完 `gameDir` 就收工。**
+
 ## 工具分工（别混用；判据是同一份实现，见 `.pi/lib/game-paths.ts`）
 
 | 工具 | 做什么 | 副作用 |
