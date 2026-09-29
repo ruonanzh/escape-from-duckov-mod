@@ -6,6 +6,7 @@ import { probeDotnet } from "../lib/dotnet";
  * install_runtime — 运行时契约（docs/mod-repo-guide.md §4）
  * 引导安装 .NET SDK（用户级 ~/.dotnet 优先，无权限；系统级备选）。
  * 只管引导装，不管删。（dotnet 探测与 check_runtime 共用 .pi/lib/dotnet.ts）
+ * 返回指引不等于已装：details.ok 表示「SDK 已就绪」这个前提是否满足，与 check_runtime 一致。
  */
 export default function (pi: ExtensionAPI) {
   pi.registerTool({
@@ -51,8 +52,9 @@ export default function (pi: ExtensionAPI) {
 
       return {
         content: [{ type: "text", text: lines.join("\n") }],
-        // ok means the guidance operation succeeded, NOT that installation completed.
-        details: { ok: true },
+        // ok = the SDK prerequisite is satisfied. Guidance alone does not satisfy it -> false
+        // (same semantics as check_runtime, which returns ok:false when the SDK is missing).
+        details: { ok: false },
       };
     },
   });
