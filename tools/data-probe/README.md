@@ -26,7 +26,7 @@ dotnet run --project tools/data-probe -- \
 | action | 选项 | 作用 |
 |---|---|---|
 | `classes` | — | 列出资产**类名 + 数量**（含内置类型：`GameObject`/`Transform`/`Camera`…）|
-| `list` | `--class <C>` | 列出某类的全部资产（name / typeID / pathID）|
+| `list` | `--class <C>` | 列出某类的资产（name / typeID / pathID；**最多 500 条**，截断时提示缩小范围）|
 | `search` | `--pattern <p>` `[--class C]` | 按名称/类/typeID 找资产 |
 | `dump` | `--class <C>` ＋ (`--name`\|`--typeid`\|`--pathid`) `[--depth d] [--follow]` | dump 该资产的**字段 + 值**；`--follow` **跟随引用**（如 `Item.stats` → `StatCollection` 里的 `Damage`）|
 | `refs` | 同 `dump` 的定位 | 列出该资产**引用了哪些对象**（PPtr）|

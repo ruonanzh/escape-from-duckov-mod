@@ -29,6 +29,7 @@ export default function (pi: ExtensionAPI) {
       "Use inspect_game_data to read the current value of game content (item stats, prices, quest conditions, enemy presets, ...) from the game's data files.",
       "inspect_game_data is read-only; it never changes the game or any scene. Changing a value or behaviour is done by the mod's C# at runtime (see inspect_game_api to find the field/method to change).",
       "It reads serialized Unity objects (prefab / ScriptableObject / MonoBehaviour, and scene files). Start with action=classes or action=search, then action=dump (add follow=true to resolve references such as an item's stats).",
+      "Prefer narrow queries over wide enumeration: do not list a whole large class (list caps at 500 - especially built-in types like GameObject/Transform in a scene, where most entries have no name). Use action=search with a pattern, or action=dump with a concrete class + name/typeid/pathid, to reach a target directly.",
       "A scene is a file named levelN in the game's data dir: pass file=levelN to inspect one. Read a scene only to learn what exists at runtime (which objects and scripts it contains, their transforms) so the mod's C# can find or patch them - you do not edit scenes.",
     ],
     parameters: Type.Object({
@@ -42,7 +43,7 @@ export default function (pi: ExtensionAPI) {
         ],
         {
           description:
-            "classes: list asset class names + counts. search: find assets by name. list: assets of one class. dump: an asset's fields/values. refs: what an object references.",
+            "classes: list asset class names + counts. search: find assets by name. list: assets of one class (caps at 500). dump: an asset's fields/values. refs: what an object references.",
         },
       ),
       class: Type.Optional(Type.String({ description: "Asset class name, e.g. Item / Quest / CharacterRandomPreset." })),

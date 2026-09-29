@@ -95,7 +95,7 @@ namespace MyMod
 - 完整可编译样例：`reference/example_mod/`。
 - API：`docs/mod-api.md`；物品：`docs/items.md`。
 - **API 内省**：`docs/api/`（公开签名快照）是第一站；不够时（私有成员 / 实现行为 / 当前版本）用 **`inspect_game_api`** 读托管 DLL —— `search`（找类型/成员）· `members`（全部成员含 private）· `decompile`（反编译 C#）· `il` · `strings`。只读、不执行游戏代码。
-- **内容数据（数值 / 场景）**：物品数值 / 任务条件 / 敌人预设，以及**场景**（`levelN` 文件里 GameObject / Transform / Camera 等内置对象与挂在它们上的脚本）都在**游戏数据文件**里 → 用 **`inspect_game_data`** 读（`classes` / `search` / `list` / `dump`；`dump` 加 `follow` 跟随引用，看 `Item.stats` 的 `Damage`、场景对象的 `m_LocalPosition` 等；场景用 `--file levelN`）。**只读、只用来"查清楚现在是什么样"**（好让 mod 的 C# 在运行时找到/补丁它们）；**改数值/改行为一律是 mod 运行时 C# 的事**（先 `inspect_game_api` 找字段/patch 点）——不改数据文件，也**不是编辑场景**。
+- **内容数据（数值 / 场景）**：物品数值 / 任务条件 / 敌人预设，以及**场景**（`levelN` 文件里 GameObject / Transform / Camera 等内置对象与挂在它们上的脚本）都在**游戏数据文件**里 → 用 **`inspect_game_data`** 读（`classes` / `search` / `list` / `dump`；`dump` 加 `follow` 跟随引用，看 `Item.stats` 的 `Damage`、场景对象的 `m_LocalPosition` 等；场景用 `--file levelN`）。**先窄后宽**：别 `list` 整个大类（尤其场景里的 `GameObject` / `Transform`；`list` 最多 500 条且多为 `(no name)`）——要具体的用 `search --pattern` 或 `dump --class <C> --name/--pathid`。**只读、只用来"查清楚现在是什么样"**（好让 mod 的 C# 在运行时找到/补丁它们）；**改数值/改行为一律是 mod 运行时 C# 的事**（先 `inspect_game_api` 找字段/patch 点）——不改数据文件，也**不是编辑场景**。
 
 ## 相关技能
 

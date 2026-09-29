@@ -84,7 +84,7 @@ static class DataProbe
     static void Usage() => Console.Error.WriteLine(
         "usage: data-probe --managed <Managed dir> --data <Data dir> --action <classes|search|list|dump|refs>\n" +
         "  classes                         list asset class names + counts\n" +
-        "  list    --class <C>             list assets of a class\n" +
+        "  list    --class <C>             list assets of a class (first 500, with a hint to narrow)\n" +
         "  search  --pattern <p> [--class C]  find assets by name\n" +
         "  dump    --class <C> (--name <n>|--typeid <t>|--pathid <p>) [--depth d] [--follow]\n" +
         "  refs    --class <C> (--name <n>|--typeid <t>|--pathid <p>)   what it references\n" +
@@ -198,18 +198,27 @@ static class DataProbe
     static void List(AssetsManager am, List<AssetsFileInstance> insts, string cls, List<string> outp)
     {
         if (cls == null) { outp.Add("# list: --class required"); return; }
-        int n = 0;
+        const int cap = 500;
+        var lines = new List<string>();
+        int total = 0, named = 0;
         foreach (var (inst, info) in AllInfos(insts))
         {
             if (!string.Equals(ClassNameOf(am, inst, info), cls, StringComparison.Ordinal)) continue;
+            total++;
+            if (lines.Count >= cap) continue;
             AssetTypeValueField bf = null;
             try { bf = am.GetBaseField(inst, info); } catch { }
             var tid = bf != null ? TypeId(bf) : -1;
             var nm = bf != null ? AssetName(bf) : null;
-            outp.Add($"  {nm ?? "(no name)"}{(tid >= 0 ? $"  typeID={tid}" : "")}  pathID={info.PathId}");
-            n++;
+            if (!string.IsNullOrEmpty(nm)) named++;
+            lines.Add($"  {nm ?? "(no name)"}{(tid >= 0 ? $"  typeID={tid}" : "")}  pathID={info.PathId}");
         }
-        outp.Insert(0, $"{cls}: {n} asset(s)");
+        outp.Add($"{cls}: {total} asset(s)");
+        outp.AddRange(lines);
+        if (total > lines.Count)
+            outp.Add($"... (showing first {lines.Count} of {total}; narrow with --name/--pathid, or use search --pattern)");
+        if (lines.Count > 0 && named == 0)
+            outp.Add($"... (these {cls} objects have no name; locate one with dump --class {cls} --pathid <pathID>)");
     }
 
     static void Search(AssetsManager am, List<AssetsFileInstance> insts, string pattern, string cls, List<string> outp)
