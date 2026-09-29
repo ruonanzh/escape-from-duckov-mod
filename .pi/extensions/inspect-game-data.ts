@@ -23,12 +23,13 @@ export default function (pi: ExtensionAPI) {
     name: "inspect_game_data",
     label: "Inspect Game Data",
     description:
-      "Read the Unity3D game's content data: the serialized prefab / ScriptableObject / MonoBehaviour objects and their field values - item stats, quest conditions, enemy presets, and so on. Actions: classes / search / list / dump / refs (dump with follow resolves references). To read them it builds its own vendored C# probe under tools/ (build output is gitignored); it never changes the game, the mod, or workspace sources.",
+      "Read the Unity3D game's content data (read-only): the serialized objects in its data files - prefabs, ScriptableObjects, MonoBehaviours, and scene files (levelN) - with their field values: item stats, quest conditions, enemy presets, a scene's GameObjects and transforms, and so on. Actions: classes / search / list / dump / refs (dump with follow resolves references). It only reads: it never changes the game, the mod, or any scene - to change behaviour or values you patch the game from the mod's C# (see inspect_game_api). It builds its own vendored C# probe under tools/ (build output is gitignored).",
     promptSnippet: "Read game content data (prefab/ScriptableObject field values)",
     promptGuidelines: [
       "Use inspect_game_data to read the current value of game content (item stats, prices, quest conditions, enemy presets, ...) from the game's data files.",
-      "inspect_game_data is read-only; it never changes the game. Changing a value is done by a mod's C# at runtime (see inspect_game_api to find the field/method to change).",
-      "It reads serialized Unity objects (prefab/ScriptableObject/MonoBehaviour). Start with action=classes or action=search, then action=dump (add follow=true to resolve references such as an item's stats).",
+      "inspect_game_data is read-only; it never changes the game or any scene. Changing a value or behaviour is done by the mod's C# at runtime (see inspect_game_api to find the field/method to change).",
+      "It reads serialized Unity objects (prefab / ScriptableObject / MonoBehaviour, and scene files). Start with action=classes or action=search, then action=dump (add follow=true to resolve references such as an item's stats).",
+      "A scene is a file named levelN in the game's data dir: pass file=levelN to inspect one. Read a scene only to learn what exists at runtime (which objects and scripts it contains, their transforms) so the mod's C# can find or patch them - you do not edit scenes.",
     ],
     parameters: Type.Object({
       action: Type.Union(
@@ -49,7 +50,7 @@ export default function (pi: ExtensionAPI) {
       typeid: Type.Optional(Type.Number({ description: "Asset typeID, for dump/refs (e.g. an item's typeID)." })),
       pathid: Type.Optional(Type.Number({ description: "Asset pathID, for dump/refs." })),
       pattern: Type.Optional(Type.String({ description: "Search pattern (name/class/typeID substring), for search." })),
-      file: Type.Optional(Type.String({ description: "Limit to one data file, e.g. resources.assets." })),
+      file: Type.Optional(Type.String({ description: "Limit to one data file, e.g. resources.assets - or levelN to inspect a scene." })),
       depth: Type.Optional(Type.Number({ description: "dump depth (default 3)." })),
       follow: Type.Optional(Type.Boolean({ description: "For dump: also resolve referenced objects (e.g. item stats)." })),
       limit: Type.Optional(Type.Number({ description: "Max output lines (default 2000)." })),

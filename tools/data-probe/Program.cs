@@ -8,9 +8,10 @@ using AssetsTools.NET.Extra;
 // data-probe — read a Unity3D game's content data offline.
 //
 // What it reads: the serialized Unity objects in the game's data files — prefabs,
-// ScriptableObjects and MonoBehaviours — as typed fields + values (e.g. an Item's
-// `value`, a Quest's `requiredItemCount`, a CharacterRandomPreset's `isBoss`).
-// It does NOT read art (textures/meshes/audio) and it does NOT modify anything.
+// ScriptableObjects, MonoBehaviours and scene files (levelN) — as typed fields +
+// values (e.g. an Item's `value`, a Quest's `requiredItemCount`, a
+// CharacterRandomPreset's `isBoss`, a scene object's Transform position).
+// It is READ-ONLY: it never changes the game or the mod.
 //
 // Why it can read custom fields: the game strips type trees from its data files, so
 // we generate them from the game's own managed assemblies (MonoCecilTempGenerator),
@@ -87,7 +88,8 @@ static class DataProbe
         "  search  --pattern <p> [--class C]  find assets by name\n" +
         "  dump    --class <C> (--name <n>|--typeid <t>|--pathid <p>) [--depth d] [--follow]\n" +
         "  refs    --class <C> (--name <n>|--typeid <t>|--pathid <p>)   what it references\n" +
-        "  common: [--file <x.assets>] [--limit N]");
+        "  common: [--file <x.assets|levelN>] [--limit N]\n" +
+        "  note:  --file levelN reads a scene (level files are serialized like .assets)");
 
     static string FindClassData()
     {
@@ -134,20 +136,38 @@ static class DataProbe
         try { return bf["typeID"].AsInt; } catch { return -1; }
     }
 
-    /// Enumerate (inst, info, baseField, className) for every MonoBehaviour; className may be null.
-    static IEnumerable<(AssetsFileInstance inst, AssetFileInfo info, AssetTypeValueField bf, string cls)>
-        AllMonoBehaviours(AssetsManager am, List<AssetsFileInstance> insts)
+    /// Enumerate every asset in the loaded files (all Unity types, not only scripts).
+    static IEnumerable<(AssetsFileInstance inst, AssetFileInfo info)> AllInfos(List<AssetsFileInstance> insts)
     {
         foreach (var inst in insts)
+            foreach (var info in inst.file.AssetInfos)
+                yield return (inst, info);
+    }
+
+    /// Resolve an asset's class name: for a MonoBehaviour via its m_Script, otherwise from the class database.
+    static string ClassNameOf(AssetsManager am, AssetsFileInstance inst, AssetFileInfo info)
+    {
+        if (info.TypeId == 0x72)
         {
-            foreach (var info in inst.file.GetAssetsOfType(0x72))
+            try
             {
-                AssetTypeValueField bf;
-                try { bf = am.GetBaseField(inst, info); } catch { continue; }
-                if (bf == null) continue;
-                yield return (inst, info, bf, ClassName(am, inst, bf));
+                var bf = am.GetBaseField(inst, info);
+                if (bf != null) return ClassName(am, inst, bf);
+            }
+            catch { }
+            return "(MonoBehaviour)";
+        }
+        try
+        {
+            var cdt = am.ClassDatabase?.FindAssetClassByID((int)info.TypeId);
+            if (cdt != null)
+            {
+                var nm = am.ClassDatabase.GetString(cdt.Name);
+                if (!string.IsNullOrEmpty(nm)) return nm;
             }
         }
+        catch { }
+        return $"typeid_{info.TypeId}";
     }
 
     static bool Matches(AssetTypeValueField bf, string className, string filter)
@@ -163,12 +183,14 @@ static class DataProbe
     static void Classes(AssetsManager am, List<AssetsFileInstance> insts, List<string> outp)
     {
         var counts = new Dictionary<string, int>();
-        foreach (var x in AllMonoBehaviours(am, insts))
+        int total = 0;
+        foreach (var (inst, info) in AllInfos(insts))
         {
-            var c = x.cls ?? "(unknown)";
+            var c = ClassNameOf(am, inst, info);
             counts[c] = counts.TryGetValue(c, out var v) ? v + 1 : 1;
+            total++;
         }
-        outp.Add($"{counts.Count} asset classes (MonoBehaviour/ScriptableObject), {counts.Values.Sum()} objects");
+        outp.Add($"{counts.Count} asset classes, {total} objects");
         foreach (var kv in counts.OrderBy(k => k.Key, StringComparer.OrdinalIgnoreCase))
             outp.Add($"  {kv.Value,6}  {kv.Key}");
     }
@@ -177,11 +199,14 @@ static class DataProbe
     {
         if (cls == null) { outp.Add("# list: --class required"); return; }
         int n = 0;
-        foreach (var x in AllMonoBehaviours(am, insts))
+        foreach (var (inst, info) in AllInfos(insts))
         {
-            if (!string.Equals(x.cls, cls, StringComparison.Ordinal)) continue;
-            var tid = TypeId(x.bf);
-            outp.Add($"  {AssetName(x.bf) ?? "(no name)"}{(tid >= 0 ? $"  typeID={tid}" : "")}  pathID={x.info.PathId}");
+            if (!string.Equals(ClassNameOf(am, inst, info), cls, StringComparison.Ordinal)) continue;
+            AssetTypeValueField bf = null;
+            try { bf = am.GetBaseField(inst, info); } catch { }
+            var tid = bf != null ? TypeId(bf) : -1;
+            var nm = bf != null ? AssetName(bf) : null;
+            outp.Add($"  {nm ?? "(no name)"}{(tid >= 0 ? $"  typeID={tid}" : "")}  pathID={info.PathId}");
             n++;
         }
         outp.Insert(0, $"{cls}: {n} asset(s)");
@@ -191,13 +216,17 @@ static class DataProbe
     {
         if (pattern == null) { outp.Add("# search: --pattern required"); return; }
         int n = 0;
-        foreach (var x in AllMonoBehaviours(am, insts))
+        foreach (var (inst, info) in AllInfos(insts))
         {
-            if (cls != null && !string.Equals(x.cls, cls, StringComparison.Ordinal)) continue;
-            var tid = TypeId(x.bf);
-            var hay = (AssetName(x.bf) ?? "") + " " + (x.cls ?? "") + " " + tid;
+            var className = ClassNameOf(am, inst, info);
+            if (cls != null && !string.Equals(className, cls, StringComparison.Ordinal)) continue;
+            AssetTypeValueField bf = null;
+            try { bf = am.GetBaseField(inst, info); } catch { }
+            var tid = bf != null ? TypeId(bf) : -1;
+            var nm = bf != null ? AssetName(bf) : null;
+            var hay = (nm ?? "") + " " + (className ?? "") + " " + tid;
             if (hay.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) < 0) continue;
-            outp.Add($"  {x.cls}  {AssetName(x.bf) ?? "(no name)"}{(tid >= 0 ? $"  typeID={tid}" : "")}  pathID={x.info.PathId}");
+            outp.Add($"  {className}  {nm ?? "(no name)"}{(tid >= 0 ? $"  typeID={tid}" : "")}  pathID={info.PathId}");
             n++;
             if (n >= 500) { outp.Add("... (more matches truncated)"); break; }
         }
@@ -213,22 +242,20 @@ static class DataProbe
         var follow = o.ContainsKey("follow");
         if (cls == null && pathId == null) { outp.Add("# dump: need --class (with --name/--typeid) or --pathid"); return; }
 
-        foreach (var inst in insts)
+        foreach (var (inst, info) in AllInfos(insts))
         {
-            foreach (var info in inst.file.GetAssetsOfType(0x72))
-            {
-                if (pathId != null && info.PathId.ToString() != pathId) continue;
-                AssetTypeValueField bf;
-                try { bf = am.GetBaseField(inst, info); } catch { continue; }
-                if (bf == null) continue;
-                var className = ClassName(am, inst, bf);
-                if (cls != null && !string.Equals(className, cls, StringComparison.Ordinal)) continue;
-                if (typeId != null && TypeId(bf).ToString() != typeId) continue;
-                if (name != null && !Matches(bf, className, name)) continue;
-                outp.Add($"=== {className} {AssetName(bf)} (typeID {TypeId(bf)}, pathID {info.PathId}) ===");
-                DumpField(am, inst, bf, 0, maxDepth, follow, outp);
-                return;
-            }
+            if (pathId != null && info.PathId.ToString() != pathId) continue;
+            var className = ClassNameOf(am, inst, info);
+            if (cls != null && !string.Equals(className, cls, StringComparison.Ordinal)) continue;
+            AssetTypeValueField bf;
+            try { bf = am.GetBaseField(inst, info); } catch { continue; }
+            if (bf == null) continue;
+            if (typeId != null && TypeId(bf).ToString() != typeId) continue;
+            if (name != null && !Matches(bf, className, name)) continue;
+            var tid = TypeId(bf);
+            outp.Add($"=== {className} {AssetName(bf)} ({(tid >= 0 ? $"typeID {tid}, " : "")}classID {info.TypeId}, pathID {info.PathId}) ===");
+            DumpField(am, inst, bf, 0, maxDepth, follow, outp);
+            return;
         }
         outp.Add($"# no asset matched (class={cls} name={name} typeid={typeId} pathid={pathId})");
     }
@@ -252,7 +279,7 @@ static class DataProbe
                     if (ext.baseField != null)
                     {
                         var efile = ext.file ?? inst;
-                        var ec = ClassName(am, efile, ext.baseField);
+                        var ec = ext.info != null ? ClassNameOf(am, efile, ext.info) : ClassName(am, efile, ext.baseField);
                         outp.Add($"{pad}  [ref] {ec ?? "?"} {AssetName(ext.baseField)}");
                         foreach (var c in ext.baseField.Children)
                             DumpField(am, efile, c, depth + 2, maxDepth + 3, false, outp);
@@ -274,21 +301,20 @@ static class DataProbe
         var cls = Opt(o, "class");
         var name = Opt(o, "name");
         var typeId = Opt(o, "typeid");
-        foreach (var inst in insts)
+        var pathId = Opt(o, "pathid");
+        foreach (var (inst, info) in AllInfos(insts))
         {
-            foreach (var info in inst.file.GetAssetsOfType(0x72))
-            {
-                AssetTypeValueField bf;
-                try { bf = am.GetBaseField(inst, info); } catch { continue; }
-                if (bf == null) continue;
-                var className = ClassName(am, inst, bf);
-                if (cls != null && !string.Equals(className, cls, StringComparison.Ordinal)) continue;
-                if (typeId != null && TypeId(bf).ToString() != typeId) continue;
-                if (name != null && !Matches(bf, className, name)) continue;
-                outp.Add($"=== {className} {AssetName(bf)} references ===");
-                CollectPtrs(bf, "", outp, 0);
-                return;
-            }
+            if (pathId != null && info.PathId.ToString() != pathId) continue;
+            var className = ClassNameOf(am, inst, info);
+            if (cls != null && !string.Equals(className, cls, StringComparison.Ordinal)) continue;
+            AssetTypeValueField bf;
+            try { bf = am.GetBaseField(inst, info); } catch { continue; }
+            if (bf == null) continue;
+            if (typeId != null && TypeId(bf).ToString() != typeId) continue;
+            if (name != null && !Matches(bf, className, name)) continue;
+            outp.Add($"=== {className} {AssetName(bf)} references ===");
+            CollectPtrs(bf, "", outp, 0);
+            return;
         }
         outp.Add("# no asset matched");
     }
