@@ -11,7 +11,7 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { basename, isAbsolute, join, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { checkModInstallDir, platformKey, readModRepoConfig } from "../lib/game-paths";
 import { isCodeIdentifier, readModIdentity } from "../lib/mod-identity";
 
@@ -384,13 +384,18 @@ export default function (pi: ExtensionAPI) {
       let files = 0;
       try {
         files = copyModProducts(modDir, staging);
-        // 产物若在 bin/ 下（默认），copyModProducts 会跳过 bin → 这里把它放到安装副本根
-        // （游戏只从 mod 文件夹根加载 <name>.dll）。已在根时 copyModProducts 已复制，不重复。
+        // 产物若在 bin/ 下（默认），copyModProducts 会跳过 bin → 这里把它连同**同目录的运行时依赖**
+        // （如 0Harmony.dll）一起放到安装副本根：游戏从 mod 文件夹根解析依赖，漏了它们 mod 会加载失败。
+        // 已在根时 copyModProducts 已复制，不重复。
         const stagedDll = join(staging, `${identity.name}.dll`);
         if (!existsSync(stagedDll)) {
           mkdirSync(staging, { recursive: true });
-          cpSync(dllPath, stagedDll);
-          files += 1;
+          const outDir = dirname(dllPath);
+          for (const entry of readdirSync(outDir, { withFileTypes: true })) {
+            if (!entry.isFile() || !entry.name.toLowerCase().endsWith(".dll")) continue;
+            cpSync(join(outDir, entry.name), join(staging, entry.name));
+            files += 1;
+          }
         }
         // `.pi-mod.json` 的来龙去脉（避免后来人误判它的用途）：
         // · 最初的设计用意：一份**安装指南**，放在 mod 自己的工作区目录里（your_mods/<mod>/.pi-mod.json），
