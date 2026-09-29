@@ -10,20 +10,21 @@
 ```bash
 dotnet run --project tools/api-probe -- \
   --managed "<games>/.../Managed" --action <search|members|decompile|il|strings> \
-  [--dll TeamSoda.Duckov.Core] [--target <type-or-substring>] [--member <method>] [--limit N]
+  [--dll TeamSoda.Duckov.Core] [--target <type-or-substring>] [--member <method>] [--limit N] [--offset N]
 ```
 
 | action | 作用 |
 |---|---|
-| `search` | 按名字（子串，忽略大小写）找**类型/成员** |
+| `search` | 按名字（子串，忽略大小写）找**类型/成员**（每次最多 500 条，`--offset` 翻页）|
 | `members` | 某类型的**全部成员（含 private）+ 基类** |
 | `decompile` | 反编译**类型**（或 `--member` 指定方法/字段）为 **C#** |
 | `il` | 反编译类型/方法的 **IL** |
-| `strings` | 扫程序集里的**字符串字面量** |
+| `strings` | 扫程序集里的**字符串字面量**（每次最多 500 条，`--offset` 翻页）|
 
 - `--dll`：默认 `TeamSoda.Duckov.Core`；可逗号分隔多个，或 `*`（Managed 下全部）。
 - `--target`：类型名（`Duckov.BlackMarkets.BlackMarket` 或短名 `BlackMarket`）。
 - `--member`：方法/字段名（配合 `decompile`/`il`）。
+- `--offset`：跳过前 N 条，给 `search`/`strings` 翻页用（截断行会提示下一页的 `--offset`）。
 
 ## 依赖（vendored，免联网）
 

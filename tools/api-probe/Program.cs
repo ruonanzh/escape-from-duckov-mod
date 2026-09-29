@@ -39,9 +39,10 @@ static class ApiProbe
         var target = Get(opt, "target");
         var member = Get(opt, "member");
         int limit = int.TryParse(Get(opt, "limit"), out var ln) ? ln : 2000;
+        int offset = int.TryParse(Get(opt, "offset"), out var ofs) ? Math.Max(0, ofs) : 0;
         if (managed == null || action == null)
         {
-            Console.Error.WriteLine("usage: api-probe --managed <dir> --action <search|members|decompile|il|strings> [--dll <name[,name]|*>] [--target <t>] [--member <m>] [--limit N]");
+            Console.Error.WriteLine("usage: api-probe --managed <dir> --action <search|members|decompile|il|strings> [--dll <name[,name]|*>] [--target <t>] [--member <m>] [--limit N] [--offset N]");
             return 2;
         }
         var dlls = ResolveDlls(managed, dllArg);
@@ -52,7 +53,7 @@ static class ApiProbe
         {
             try
             {
-                var lines = RunOne(dll, managed, action, target, member);
+                var lines = RunOne(dll, managed, action, target, member, offset);
                 outLines.AddRange(lines);
             }
             catch (Exception ex) { outLines.Add($"## {Path.GetFileName(dll)}\n// ERROR: {ex.Message}"); }
@@ -92,7 +93,7 @@ static class ApiProbe
         return list;
     }
 
-    static List<string> RunOne(string dll, string managed, string action, string target, string member)
+    static List<string> RunOne(string dll, string managed, string action, string target, string member, int offset)
     {
         var pe = new PEFile(dll);
         var resolver = new UniversalAssemblyResolver(dll, false, pe.Metadata.DetectTargetFrameworkId());
@@ -100,11 +101,11 @@ static class ApiProbe
         var dc = new CSharpDecompiler(pe, resolver, new DecompilerSettings());
         return action switch
         {
-            "search" => Search(dll, dc, target),
+            "search" => Search(dll, dc, target, offset),
             "members" => Members(dll, dc, target),
             "decompile" => Decompile(dll, dc, target, member),
             "il" => Il(dll, pe, dc, target, member),
-            "strings" => Strings(dll, target),
+            "strings" => Strings(dll, target, offset),
             _ => new List<string> { $"// unknown action '{action}'" },
         };
     }
@@ -176,7 +177,7 @@ static class ApiProbe
         return direct;
     }
 
-    static List<string> Search(string dll, CSharpDecompiler dc, string target)
+    static List<string> Search(string dll, CSharpDecompiler dc, string target, int offset)
     {
         var t = target ?? "";
         var hits = new List<string>();
@@ -188,9 +189,13 @@ static class ApiProbe
                     hits.Add($"  {KindName(m.SymbolKind)} {type.FullName}.{m.Name}");
         }
         if (hits.Count == 0) return new List<string>();
-        if (hits.Count > 500) { hits = hits.Take(500).ToList(); hits.Add("... (more matches truncated)"); }
-        var outp = new List<string> { $"## {Path.GetFileName(dll)} - search '{target}'" };
-        outp.AddRange(hits);
+        const int cap = 500;
+        var page = hits.Skip(offset).Take(cap).ToList();
+        var outp = new List<string> { $"## {Path.GetFileName(dll)} - search '{target}'  ({hits.Count} match(es))" };
+        outp.AddRange(page);
+        int last = offset + page.Count;
+        if (last < hits.Count)
+            outp.Add($"... (showing {offset + 1}-{last} of {hits.Count}; refine --target, or use --offset {last} for the next page)");
         return outp;
     }
 
@@ -238,7 +243,7 @@ static class ApiProbe
         return outp;
     }
 
-    static List<string> Strings(string dll, string target)
+    static List<string> Strings(string dll, string target, int offset)
     {
         var bytes = File.ReadAllBytes(dll);
         var hits = new List<string>();
@@ -259,8 +264,13 @@ static class ApiProbe
         }
         flush();
         if (hits.Count == 0) return new List<string>();
-        var outp = new List<string> { $"## {Path.GetFileName(dll)} - strings '{target}'" };
-        outp.AddRange(hits);
+        const int cap = 500;
+        var page = hits.Skip(offset).Take(cap).ToList();
+        var outp = new List<string> { $"## {Path.GetFileName(dll)} - strings '{target}'  ({hits.Count} string(s))" };
+        outp.AddRange(page);
+        int last = offset + page.Count;
+        if (last < hits.Count)
+            outp.Add($"... (showing {offset + 1}-{last} of {hits.Count}; refine --target, or use --offset {last} for the next page)");
         return outp;
     }
 }

@@ -33,6 +33,7 @@ export default function (pi: ExtensionAPI) {
       "Use inspect_game_api when docs/api does not answer it: private members, the real implementation/behavior, or to confirm the current game version.",
       "It is read-only (it reads the DLL files, it does not run the game code). start with action=search to find the type, then members/decompile/il on it.",
       "Prefer docs/api and docs/data first; reach for inspect_game_api when they are insufficient or possibly stale.",
+      "search and strings cap at 500 rows per call. Narrow the target, or page with offset (500, 1000, ...) - paging is the fallback, not the default.",
     ],
     parameters: Type.Object({
       action: Type.Union(
@@ -45,7 +46,7 @@ export default function (pi: ExtensionAPI) {
         ],
         {
           description:
-            "search: find types/members by name. members: list a type's members (incl. private). decompile: type/member to C#. il: type/method to IL. strings: string literals.",
+            "search: find types/members by name (caps at 500). members: list a type's members (incl. private). decompile: type/member to C#. il: type/method to IL. strings: string literals (caps at 500).",
         },
       ),
       target: Type.Optional(
@@ -64,6 +65,7 @@ export default function (pi: ExtensionAPI) {
         }),
       ),
       limit: Type.Optional(Type.Number({ description: "Max output lines (default 2000)." })),
+      offset: Type.Optional(Type.Number({ description: "Skip the first N matches, for paging a large search/strings (default 0)." })),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       const cwd = ctx.cwd;
@@ -119,6 +121,7 @@ export default function (pi: ExtensionAPI) {
       if (params.member) args.push("--member", params.member);
       if (params.dll) args.push("--dll", params.dll);
       args.push("--limit", String(params.limit ?? 2000));
+      if (params.offset !== undefined) args.push("--offset", String(params.offset));
       let out: string;
       try {
         out = execFileSync(dotnet, args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
