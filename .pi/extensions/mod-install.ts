@@ -444,7 +444,7 @@ export default function (pi: ExtensionAPI) {
       }
       if (mismatched) {
         notes.push(
-          `\nNOTE: the installed folder is named ${modName} (the your_mods directory name), while the mod declares name ${identity.name} - that difference is fine: the game loads <name>.dll by the declared name, not by the folder name. Keep info.ini, the csproj and the dll name consistent with each other.`,
+          `\nNOTE: the installed folder is named ${modName} (the your_mods directory name), while the mod declares name ${identity.name} - that difference is fine: the game loads <name>.dll by the declared name, not by the folder name.`,
         );
       }
       if (duplicateDir) {
@@ -455,7 +455,7 @@ export default function (pi: ExtensionAPI) {
       const extraNotes = notes.join("");
       const note = renamed
         ? `\nNOTE: ${identity.name} was already taken by ${occupiedBy ? `another mod (${occupiedBy})` : "content this tool did not install"}, ` +
-          `so it went to ${basename(installDir)} instead; that directory was left untouched.` +
+          `so it was installed as ${basename(installDir)} instead; the existing folder was left untouched.` +
           `\nNEXT: tell the player it installs as ${basename(installDir)} (its in-game name is still ${identity.name}), then let them launch the game.`
         : `\nNEXT: ask the player to launch the game and confirm the mod loads; restart the game if it was already running.`;
 

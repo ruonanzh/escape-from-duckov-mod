@@ -165,7 +165,7 @@ export default function (pi: ExtensionAPI) {
       const ok = failed.length === 0;
       if (!ok) {
         lines.push(
-          `NOTE: nothing was changed - this tool only verifies (read-only) and never writes state or creates directories. State lives only in this workspace's ${statePath(cwd)}; to record the paths, run try_set_game_dir (no arguments); only ask the player if discovery fails.`,
+          `NOTE: nothing was changed (this tool is read-only). State lives only in this workspace's ${statePath(cwd)}; to record the paths, run try_set_game_dir (no arguments); only ask the player if discovery fails.`,
         );
       }
 
