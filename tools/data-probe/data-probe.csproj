@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>data-probe</AssemblyName>
+    <NoWarn>MSB3277</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="AssetsTools.NET"><HintPath>lib/AssetsTools.NET.dll</HintPath></Reference>
+    <Reference Include="AssetsTools.NET.MonoCecil"><HintPath>lib/AssetsTools.NET.MonoCecil.dll</HintPath></Reference>
+    <Reference Include="Mono.Cecil"><HintPath>lib/Mono.Cecil.dll</HintPath></Reference>
+    <Reference Include="Mono.Cecil.Rocks"><HintPath>lib/Mono.Cecil.Rocks.dll</HintPath></Reference>
+    <None Include="lib/classdata.tpk">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+</Project>
