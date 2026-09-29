@@ -222,7 +222,7 @@ static class DataProbe
         if (last < total)
             outp.Add($"... (showing {offset + 1}-{last} of {total}; narrow with --name/--pathid or search --pattern, or use --offset {last} for the next page)");
         if (lines.Count > 0 && named == 0)
-            outp.Add($"... (these {cls} objects have no name; locate one with dump --class {cls} --pathid <pathID>)");
+            outp.Add($"... (the {cls} objects shown have no name; locate one with dump --class {cls} --pathid <pathID>)");
     }
 
     static void Search(AssetsManager am, List<AssetsFileInstance> insts, string pattern, string cls, int offset, List<string> outp)

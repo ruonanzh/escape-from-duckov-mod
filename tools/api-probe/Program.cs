@@ -24,6 +24,16 @@ static class ApiProbe
         "TeamSoda.MiniLocalizor",
     };
 
+    // 白名单全落空时的退路：排除引擎/.NET 框架（它们占 Managed 的大多数），而不是把几百个 DLL 全扫一遍。
+    static readonly string[] FrameworkDllPrefixes =
+    {
+        "UnityEngine", "Unity.", "UnityEditor", "System", "mscorlib", "netstandard",
+        "Microsoft.", "Mono.", "nunit", "JetBrains", "Bee.", "PlayerConnection",
+        "Newtonsoft", "com.unity",
+    };
+    static bool IsFrameworkDll(string file) =>
+        FrameworkDllPrefixes.Any(p => Path.GetFileName(file).StartsWith(p, StringComparison.OrdinalIgnoreCase));
+
     static int Main(string[] args)
     {
         var opt = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -80,7 +90,10 @@ static class ApiProbe
                 .Where(File.Exists)
                 .ToList();
             if (owned.Count > 0) return owned;
-            return Directory.GetFiles(managed, "*.dll").OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList();
+            return Directory.GetFiles(managed, "*.dll")
+                .Where(p => !IsFrameworkDll(p))
+                .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
         var list = new List<string>();
         foreach (var raw in dllArg.Split(','))
