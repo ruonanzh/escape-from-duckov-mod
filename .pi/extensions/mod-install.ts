@@ -172,7 +172,7 @@ export default function (pi: ExtensionAPI) {
     name: "install_mod",
     label: "Install Mod",
     description:
-      "Copy a mod's runtime products from your_mods/<ModName>/ into the game's Mods directory (target discovered by check_runtime). Re-installing the same mod updates it in place. If the target directory is taken by another mod it installs as <ModName>_pimod instead of overwriting it. Does not compile, does not install SDKs, does not touch mod sources. It records where the mod was installed in the workspace (your_mods/<ModName>/.pi-mod.json), so re-installing updates that copy in place.",
+      "Copy a mod's runtime products from your_mods/<ModName>/ into the game's Mods directory, using the mod-install directory that try_set_game_dir / set_game_dir recorded (install_mod does not locate the game itself). Re-installing the same mod updates it in place. If the target directory is taken by another mod it installs as <ModName>_pimod instead of overwriting it. Does not compile, does not install SDKs, does not touch mod sources. It records where the mod was installed in the workspace (your_mods/<ModName>/.pi-mod.json), so re-installing updates that copy in place.",
     promptSnippet:
       "Install (or update) this mod into the game after validate_mod passes",
     promptGuidelines: [
