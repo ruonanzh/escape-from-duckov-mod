@@ -18,7 +18,7 @@ export default function (pi: ExtensionAPI) {
     async execute(_toolCallId, _params, _signal, _onUpdate, _ctx) {
       const dotnet = probeDotnet();
       if (dotnet.found && (dotnet.major ?? 0) >= 8) {
-        return { content: [{ type: "text", text: `SKIP: dotnet SDK ${dotnet.version} already present; no installation performed. Game location has not been checked here.` }], details: { ok: true } };
+        return { content: [{ type: "text", text: `SKIP: dotnet SDK ${dotnet.version} already present; no installation performed.` }], details: { ok: true } };
       }
 
       const lines = ["INSTRUCTIONS PROVIDED: No installation has been performed.", "Install .NET SDK 8.0 - user-level install (no admin/UAC, recommended):"];
