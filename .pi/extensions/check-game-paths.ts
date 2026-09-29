@@ -20,6 +20,7 @@ import {
   readModRepoConfig,
   readState,
   resolveUserPath,
+  statePath,
   workshopSupported,
   type ModRepoConfig,
   type PathVerdict,
@@ -35,7 +36,7 @@ export default function (pi: ExtensionAPI) {
     promptGuidelines: [
       "Use check_game_paths when the player gives you a path, or to confirm a remembered one: it verifies without scanning Steam and without writing state.",
       "check_game_paths never writes .gamer-agent.local.json - verifying and recording are separate tools.",
-      "Do not create or install anything as a result of a failed check_game_paths: report the FAIL text and its NEXT line to the player.",
+      "A failed check_game_paths changes nothing (read-only): follow its NEXT line to fix it (e.g. run try_set_game_dir to record the paths); it never creates or installs anything itself.",
     ],
     parameters: Type.Object({
       gameDir: Type.Optional(
@@ -103,7 +104,7 @@ export default function (pi: ExtensionAPI) {
             content: [
               {
                 type: "text",
-                text: "FAIL: nothing to check - no paths were given and none are remembered in .gamer-agent.local.json.\nNEXT: run try_set_game_dir with no arguments to discover the game, or pass gameDir explicitly. See the 'setup-workspace' skill if discovery fails.",
+                text: `FAIL: nothing to check - no paths were given and none are remembered in this workspace's state file (${statePath(cwd)}).\nNEXT: run try_set_game_dir with no arguments to discover the game, or pass gameDir explicitly. See the 'setup-workspace' skill if discovery fails.`,
               },
             ],
             details: { ok: false, reason: "NOTHING_TO_CHECK" },
@@ -164,7 +165,7 @@ export default function (pi: ExtensionAPI) {
       const ok = failed.length === 0;
       if (!ok) {
         lines.push(
-          "NOTE: nothing was changed - this tool only verifies (read-only) and never writes state or creates directories. To record the paths, run try_set_game_dir (no arguments); only ask the player if discovery fails.",
+          `NOTE: nothing was changed - this tool only verifies (read-only) and never writes state or creates directories. State lives only in this workspace's ${statePath(cwd)}; to record the paths, run try_set_game_dir (no arguments); only ask the player if discovery fails.`,
         );
       }
 
