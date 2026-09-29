@@ -4,6 +4,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { managedDirFor, platformKey, readModRepoConfig, readState } from "../lib/game-paths";
+import { probeUpToDate } from "../lib/probe";
 
 /**
  * inspect_game_api —— **只读**检查游戏托管 DLL（`docs/api` 不够时的升级手段）。
@@ -26,7 +27,7 @@ export default function (pi: ExtensionAPI) {
     name: "inspect_game_api",
     label: "Inspect Game API",
     description:
-      "Read the game's managed DLLs (read-only, no code execution) when docs/api is not enough: find types/members, see private members, decompile to C#, dump IL, or scan string literals. Actions: search (find types/members by name), members (all members incl. private + base types), decompile (type or member to C#), il (type or method to IL), strings (string literals). Uses the game directory recorded by try_set_game_dir; it does not modify anything.",
+      "Read the game's managed DLLs when docs/api is not enough: find types/members, see private members, decompile to C#, dump IL, or scan string literals. Actions: search / members / decompile / il / strings. To read them it builds its own vendored C# probe under tools/ (build output is gitignored); it never changes the game, the mod, or workspace sources.",
     promptSnippet: "Inspect game managed DLLs (members/C#/IL) when docs/api is not enough",
     promptGuidelines: [
       "Use inspect_game_api when docs/api does not answer it: private members, the real implementation/behavior, or to confirm the current game version.",
@@ -96,20 +97,22 @@ export default function (pi: ExtensionAPI) {
       const dotnet = (state.runtime?.dotnet as string | undefined) ?? "dotnet";
       const probeDir = join(cwd, "tools", "api-probe");
       const probeDll = join(probeDir, "bin", "Release", "net8.0", "api-probe.dll");
-      try {
-        execFileSync(dotnet, ["build", probeDir, "-c", "Release", "-v", "q", "-nologo"], {
-          stdio: ["ignore", "ignore", "ignore"],
-        });
-      } catch (error) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `FAIL: could not build the api-probe tool (${probeDir}).\n${String(error).slice(0, 400)}`,
-            },
-          ],
-          details: { ok: false, reason: "PROBE_BUILD_FAILED" },
-        };
+      if (!probeUpToDate(probeDir, probeDll)) {
+        try {
+          execFileSync(dotnet, ["build", probeDir, "-c", "Release", "-v", "q", "-nologo"], {
+            stdio: ["ignore", "ignore", "ignore"],
+          });
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `FAIL: could not build the inspection probe (${probeDir}).\nNEXT: make sure the .NET SDK is installed (run check_runtime), then retry.\n${String(error).slice(0, 300)}`,
+              },
+            ],
+            details: { ok: false, reason: "PROBE_BUILD_FAILED" },
+          };
+        }
       }
       const args = [probeDll, "--managed", managed, "--action", params.action];
       if (params.target) args.push("--target", params.target);

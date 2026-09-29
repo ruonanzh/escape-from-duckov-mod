@@ -4,6 +4,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { managedDirFor, platformKey, readModRepoConfig, readState } from "../lib/game-paths";
+import { probeUpToDate } from "../lib/probe";
 
 /**
  * inspect_game_data —— **只读**读取 Unity3D 游戏的内容数据（`tools/data-probe` 的薄封装）。
@@ -22,7 +23,7 @@ export default function (pi: ExtensionAPI) {
     name: "inspect_game_data",
     label: "Inspect Game Data",
     description:
-      "Read the Unity3D game's content data (read-only): the serialized prefab / ScriptableObject / MonoBehaviour objects and their field values - item stats, quest conditions, enemy presets, and so on. Actions: classes (list asset classes), search (find assets by name), list (assets of a class), dump (an asset's fields and values; --follow resolves references), refs (what an object references). It reads the game's data files only; it never modifies anything.",
+      "Read the Unity3D game's content data: the serialized prefab / ScriptableObject / MonoBehaviour objects and their field values - item stats, quest conditions, enemy presets, and so on. Actions: classes / search / list / dump / refs (dump with follow resolves references). To read them it builds its own vendored C# probe under tools/ (build output is gitignored); it never changes the game, the mod, or workspace sources.",
     promptSnippet: "Read game content data (prefab/ScriptableObject field values)",
     promptGuidelines: [
       "Use inspect_game_data to read the current value of game content (item stats, prices, quest conditions, enemy presets, ...) from the game's data files.",
@@ -86,20 +87,22 @@ export default function (pi: ExtensionAPI) {
       const dotnet = (state.runtime?.dotnet as string | undefined) ?? "dotnet";
       const probeDir = join(cwd, "tools", "data-probe");
       const probeDll = join(probeDir, "bin", "Release", "net8.0", "data-probe.dll");
-      try {
-        execFileSync(dotnet, ["build", probeDir, "-c", "Release", "-v", "q", "-nologo"], {
-          stdio: ["ignore", "ignore", "ignore"],
-        });
-      } catch (error) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `FAIL: could not build the data-probe tool (${probeDir}).\n${String(error).slice(0, 400)}`,
-            },
-          ],
-          details: { ok: false, reason: "PROBE_BUILD_FAILED" },
-        };
+      if (!probeUpToDate(probeDir, probeDll)) {
+        try {
+          execFileSync(dotnet, ["build", probeDir, "-c", "Release", "-v", "q", "-nologo"], {
+            stdio: ["ignore", "ignore", "ignore"],
+          });
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `FAIL: could not build the inspection probe (${probeDir}).\nNEXT: make sure the .NET SDK is installed (run check_runtime), then retry.\n${String(error).slice(0, 300)}`,
+              },
+            ],
+            details: { ok: false, reason: "PROBE_BUILD_FAILED" },
+          };
+        }
       }
       const args = [probeDll, "--managed", managed, "--data", data, "--action", params.action];
       if (params.class) args.push("--class", params.class);
