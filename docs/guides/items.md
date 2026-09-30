@@ -84,13 +84,25 @@ action=export, class=Item, match=["tags.list[].#name=Weapon"], field=["displayNa
 
 > 枪械还有细分子类 tag：`GunType_AR` / `GunType_SMG` / `GunType_SHT` / `GunType_SNP` / `GunType_Rifle` / `GunType_BR` / `GunType_PST` …（`match="tags.list[].#name=GunType_AR"`）。
 
-> ⚠️ **“全部武器”不是 158（实测踩过）**：`Weapon`(158) 与 `MeleeWeapon`(48) 有 **34** 重叠；另有 **14 个只挂 `MeleeWeapon`、没有 `Weapon`** —— `Item_HammerL`(大锤) / `Item_Wrench`(扳手) / `Item_Shovel`(铁铲) / `Item_GolfClub` / `Item_GoldDumbbell` / `Item_SaltedFish` / `Item_GiantSwordFish` …（仓库里算工具/日用，但能当近战用）。**并集 = 172**。
-> `match` **只有 AND**（多条 = 同时满足），所以并集要**两次调用再按 typeID 合并去重**：
-> ```
-> action=export, class=Item, match=["tags.list[].#name=Weapon"],     field=["typeID","displayName",...], out="/tmp/w1.tsv"
-> action=export, class=Item, match=["tags.list[].#name=MeleeWeapon"], field=["typeID","displayName",...], out="/tmp/w2.tsv"
-> # 然后按第 2 列 typeID 去重合并（bash/python）→ 172
-> ```
+> ⚠️ **`Weapon` / `Gun` / `MeleeWeapon` 三个 tag 不是一回事（实测踩过）**：
+>
+> | tag | n | 含义 | 与其他 tag 的关系 |
+> |---|---|---|---|
+> | `Weapon` | 158 | **正式武器** | = `Gun`(124) + 正经近战(34)；**不含**下面那 14 件工具 |
+> | `Gun` | 124 | **枪械** | **100% 属于 `Weapon`**；与 `MeleeWeapon` **零重叠** |
+> | `MeleeWeapon` | 48 | **能当近战用的**（含非武器）| = 正经近战 34（⊂`Weapon`）+ **14 件工具/日用**（**不在 `Weapon` 里**）|
+>
+> 那 14 件是：`Item_HammerL`(大锤) / `Item_HammerS` / `Item_Hammer_Tagilla`(Superfors DB) / `Item_Wrench`(扳手) / `Item_Wrench02` / `Item_Wrench03` / `Item_Shovel`(铁铲) / `Item_GolfClub`(高尔夫杆) / `Item_GoldDumbbell`(金哑铃) / `Item_SaltedFish`(咸鱼) / `Item_GiantSwordFish`(大剑鱼) —— 仓库里算工具/日用，但能当近战用。
+>
+> **常用选法**：
+> - “**全部武器**（172）= `Weapon` ∪ `MeleeWeapon`” —— **没有单命令**（`match` 只有 AND），两次调用再按 `typeID` 去重：
+>   ```
+>   action=export, class=Item, match=["tags.list[].#name=Weapon"],      field=["typeID","displayName","value","quality","stats.list[].key","stats.list[].baseValue"], out="/tmp/w1.tsv"
+>   action=export, class=Item, match=["tags.list[].#name=MeleeWeapon"], field=["typeID","displayName","value","quality","stats.list[].key","stats.list[].baseValue"], out="/tmp/w2.tsv"
+>   # 合并 /tmp/w1.tsv + /tmp/w2.tsv，按第 2 列（typeID）去重 → 172
+>   ```
+> - “只要**枪**” → `Gun`（124）；“只要**正经近战**” → `Weapon ∩ MeleeWeapon`（34，即两个 match 一起给）；
+>   “一切能当**近战**用的（含工具）” → `MeleeWeapon`（48）。
 
 ## 数值（stats）—— 平行数组
 
