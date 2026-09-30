@@ -4,6 +4,7 @@ import { Type } from "typebox";
 import { readFileSync, existsSync, statSync, readdirSync } from "node:fs";
 import { join, basename, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
+import { runAsync } from "../lib/proc";
 import os from "node:os";
 
 function parseIni(text: string) {
@@ -106,17 +107,17 @@ export default function (pi: ExtensionAPI) {
         );
       } else if (csproj && staticOk) {
         try {
-          execFileSync(dotnet, ["build", csproj, "-c", "Release"], {
+          await runAsync(dotnet, ["build", csproj, "-c", "Release"], {
             cwd: modDir,
             env: { ...process.env, DUCKOV_DIR: state.gameDir },
-            encoding: "utf8",
-            stdio: ["ignore", "pipe", "pipe"],
+            timeoutMs: 300_000,
           });
           compilation = "passed";
         } catch (e) {
           compilation = "failed";
+          const err = e as { stderr?: string; stdout?: string; message?: string };
           errors.push(
-            `dotnet build failed: ${String(e.stderr || e.stdout || e.message).slice(0, 600)}`,
+            `dotnet build failed: ${String(err.stderr || err.stdout || err.message).slice(0, 600)}`,
           );
         }
       }

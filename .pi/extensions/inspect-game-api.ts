@@ -1,6 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
-import { execFileSync } from "node:child_process";
+import { runAsync } from "../lib/proc";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { managedDirFor, platformKey, readModRepoConfig, readState } from "../lib/game-paths";
@@ -101,9 +101,7 @@ export default function (pi: ExtensionAPI) {
       const probeDll = join(probeDir, "bin", "Release", "net8.0", "api-probe.dll");
       if (!probeUpToDate(probeDir, probeDll)) {
         try {
-          execFileSync(dotnet, ["build", probeDir, "-c", "Release", "-v", "q", "-nologo"], {
-            stdio: ["ignore", "ignore", "ignore"],
-          });
+          await runAsync(dotnet, ["build", probeDir, "-c", "Release", "-v", "q", "-nologo"]);
         } catch (error) {
           return {
             content: [
@@ -124,7 +122,7 @@ export default function (pi: ExtensionAPI) {
       if (params.offset !== undefined) args.push("--offset", String(params.offset));
       let out: string;
       try {
-        out = execFileSync(dotnet, args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+        out = (await runAsync(dotnet, args)).stdout;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         return {
