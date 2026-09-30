@@ -31,6 +31,7 @@ export default function (pi: ExtensionAPI) {
       "It reads serialized Unity objects (prefab / ScriptableObject / MonoBehaviour, and scene files). Start with action=classes or action=search, then action=dump (add follow=true to resolve references such as an item's stats).",
       "Prefer narrow queries over wide enumeration: do not list a whole large class (list/search cap at 500 per call - especially built-in types like GameObject/Transform in a scene, where most entries have no name). Use action=search with a pattern, or action=dump with a concrete class + name/typeid/pathid, to reach a target directly. To page through a large class that has no names, pass offset (500, 1000, ...) - use this only when you truly must enumerate, not as the default.",
       "A scene is a file named levelN in the game's data dir: pass file=levelN to inspect one. Read a scene only to learn what exists at runtime (which objects and scripts it contains, their transforms) so the mod's C# can find or patch them - you do not edit scenes.",
+      "To read a whole class of values at once (e.g. every weapon's stats, every quest's requirement), use action=export instead of many dump calls: match filters rows (value>=100, displayName~UAK, m_GameObject.m_Component[].component.#class=ItemSetting_Gun) and field picks columns (paths may traverse references and arrays, e.g. stats.list[].key / stats.list[].baseValue).",
     ],
     parameters: Type.Object({
       action: Type.Union(
@@ -40,10 +41,11 @@ export default function (pi: ExtensionAPI) {
           Type.Literal("list"),
           Type.Literal("dump"),
           Type.Literal("refs"),
+          Type.Literal("export"),
         ],
         {
           description:
-            "classes: list asset class names + counts. search: find assets by name (caps at 500). list: assets of one class (caps at 500). dump: an asset's fields/values. refs: what an object references.",
+            "classes: list asset class names + counts. search: find assets by name (caps at 500). list: assets of one class (caps at 500). dump: an asset's fields/values. refs: what an object references. export: one table row per asset of a class, with match filters + field paths - use it to pull a whole class's values in ONE call.",
         },
       ),
       class: Type.Optional(Type.String({ description: "Asset class name, e.g. Item / Quest / CharacterRandomPreset." })),
@@ -56,6 +58,19 @@ export default function (pi: ExtensionAPI) {
       follow: Type.Optional(Type.Boolean({ description: "For dump: also resolve referenced objects (e.g. item stats)." })),
       limit: Type.Optional(Type.Number({ description: "Max output lines (default 2000)." })),
       offset: Type.Optional(Type.Number({ description: "Skip the first N matches, for paging a large list/search (default 0)." })),
+      match: Type.Optional(
+        Type.Array(Type.String(), {
+          description:
+            'For export: row filters, e.g. "value>=100", "displayName~UAK", or "m_GameObject.m_Component[].component.#class=ItemSetting_Gun". Repeatable (AND).',
+        }),
+      ),
+      field: Type.Optional(
+        Type.Array(Type.String(), {
+          description:
+            'For export: column paths, e.g. ["displayName","value","stats.list[].key","stats.list[].baseValue"]. A path may traverse PPtrs and arrays (a[] / a[i]) and use #class / #name.',
+        }),
+      ),
+      rows: Type.Optional(Type.Number({ description: "For export: max rows (default 500)." })),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       const cwd = ctx.cwd;
@@ -126,6 +141,9 @@ export default function (pi: ExtensionAPI) {
       if (params.follow) args.push("--follow");
       args.push("--limit", String(params.limit ?? 2000));
       if (params.offset !== undefined) args.push("--offset", String(params.offset));
+      if (params.match) for (const m of params.match) args.push("--match", m);
+      if (params.field) for (const f of params.field) args.push("--field", f);
+      if (params.rows !== undefined) args.push("--rows", String(params.rows));
       let out: string;
       try {
         out = (await runAsync(dotnet, args)).stdout;
