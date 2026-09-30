@@ -131,7 +131,7 @@ field=["id","displayName","maxLayers","exclusiveTag","totalLifeTime","hide"]
 | 对话 | `Dialogue*`（`docs/data/Dialogues.csv` 有文本）| |
 | 本地化 | `LocalizationDatabase`(1) | |
 
-## 制作 / 配方 Crafting — `CraftingFormulaCollection`（1 个资产，`list[]`）
+## 制作 / 配方 Crafting — `CraftingFormulaCollection`（1 个资产，`list[]`）—— **269 条配方**
 
 每条配方：`id` · `result.id`（产物 `typeID`）`result.amount` · `cost.money` · `cost.items[].id` `cost.items[].amount`（**材料**）· `tags[]`（如 `WorkBenchAdvanced` = 工作台等级）· `requirePerk` · `unlockByDefault` · `hideInIndex`
 
