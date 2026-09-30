@@ -62,7 +62,8 @@ join 示例（bash + python，可直接改）：
 ```bash
 python3 - <<'PY'
 import csv
-LOC = "<gameDir>/Duckov.app/Contents/Resources/Data/StreamingAssets/Localization/ChineseSimplified.csv"  # Windows 改路径
+LOC = "<gameDir>/Duckov.app/Contents/Resources/Data/StreamingAssets/Localization/ChineseSimplified.csv"  # macOS
+# Windows 改用：<gameDir>/Duckov_Data/StreamingAssets/Localization/ChineseSimplified.csv
 loc = {}
 with open(LOC, encoding='utf-8-sig') as f:
     for row in csv.DictReader(f):

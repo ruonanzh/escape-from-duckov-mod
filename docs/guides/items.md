@@ -70,14 +70,14 @@ action=export, class=Item, match=["tags.list[].#name=Weapon"], field=["displayNa
 | └ 头盔 | `=Helmat` | 56 |
 | └ 面具 / 耳机 / 背包 | `=FaceMask` / `=Headset` / `=Backpack` | 13 / 2 / 12 |
 | **配件（枪械部件）** | `tags.list[].#name=Accessory` | 263 |
-| └ 枪口/弹匣/枪托/瞄具/握把 | `=Muzzle` / `=Magazine` / `=Stock` / `=Scope` / `=Grip` | 66 / 53 / 51 / 31 / 23 |
+| └ 枪口/弹匣/枪托/瞄具/握把 | `=Muzzle` / `=Magazine` / `=Stock` / `=Scope` / `=Grip` | 67 / 53 / 51 / 31 / 23 |
 | **图腾** | `tags.list[].#name=Totem` | 69 |
 | **钥匙** | `tags.list[].#name=Key`（另有 `=SpecialKey`）| 68 |
 | **药品（总）** | `tags.list[].#name=Medic` | 36 |
 | └ 治疗 / 注射 | `=Healing` / `=Injector` | 9 / 19 |
 | **食物 / 饮料** | `tags.list[].#name=Food` / `=Drink` | 32 / 8 |
-| **弹药** | `tags.list[].#name=Bullet` | 141（含 `Cartridge`）|
-| **蓝图 / 配方** | `tags.list[].#name=Formula`（`Formula_Blueprint` / `Formula_Cook` …）| 215（`ItemSetting_Formula`）|
+| **弹药** | `tags.list[].#name=Bullet` | 145（另有 `Cartridge` 6）|
+| **蓝图 / 配方** | `tags.list[].#name=Formula`（`Formula_Blueprint` 178 / `Formula_Printer` 29 …）| 215 |
 | **材料 / 种子 / 作物 / 工具 / 宝石** | `=Material` / `=Seed` / `=Crop` / `=Tool` / `=Gem` | 8 / 32 / 30 / 47 / 4 |
 | **任务物品** | `tags.list[].#name=Quest` | 71 |
 
@@ -113,6 +113,8 @@ for k, v in zip(keys, vals):
 
 `Tag` 资产一**134 个**，但只有 **121 个真的挂在物品上**，且含义混三类：**品类**（这是什么）、**子类型**（品类细分）、**行为标记**（可修理/展示/锁定…）。
 选物品时**从 A / B 里挑**；C 类当过滤条件可以，当“品类”会奇怪。数字是实测（多少件物品挂了这个 tag）。
+
+> ⚠️ **本表只用于“选对 tag 名”；数字会随版本变，精确值一律现查**：`action=export, class=Tag`（列出全部 tag）+ 计数（`match=["tags.list[].#name=X"]` 的返回行数）。表内数字与正文「常用分类对照」不一致时，**以现查为准**。
 
 ### A. 主要品类（挑“要哪类物品”用这些）
 
