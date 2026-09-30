@@ -13,10 +13,11 @@ action=export, class=Item, file=resources.assets            # 全部 1581 件
 |---|---|
 | `typeID` | 物品 ID（`ItemAssetsCollection.InstantiateAsync(typeID)` 用它生成实例）|
 | `displayName` | **本地化 key**（不是中文！见 `00-overview.md` 的 join 段）|
-| `value` | 售价 |
+| `value` | 单价（**单位价值**；见下方⚠️）|
 | `quality` | 品质（0–5）|
 | `weight` | 重量 |
 | `maxStackCount` | 堆叠上限 |
+| `variables` | → `entries[]`（`key` / `dataType` / `data` / `display`）；**`data` 是原始字节** |
 | `tags` | → `TagCollection`；**分类看这里** |
 | `stats` | → `StatCollection`；**数值在这里**（见下）|
 | `slots` / `modifiers` / `variables` / `constants` / `effects` | 插槽 / 修改器 / 变量 / 常量 / 效果 |
@@ -26,6 +27,22 @@ action=export, class=Item, file=resources.assets            # 全部 1581 件
 ```
 action=dump, class=Item, typeid=260, depth=3          # 或 name="Item_S_UAK45_Lv_2"
 ```
+
+### ⚠️ `value` 是**单位**价值；「每包价值」要乘 `variables.Count`
+
+有些物品在游戏/wiki 里显示的价是**一整包**的（实测：绷带 `Count=3`、子弹 `Count=30`）：
+
+```
+action=export, class=Item, match=["typeID=10"],
+field=["displayName","value","maxStackCount","variables.entries[].key","variables.entries[].data"]
+# → Item_Bandage  80  3  Count  "03 00 00 00"     （字节 = 小端 int32 = 3）
+#   单价 80 × Count 3 = 240（wiki 上显示的就是 240）
+```
+
+- `variables.entries[]` 的 **`data` 是原始字节**（如 `03 00 00 00` = 小端 int32 → 3）；`dataType=2` 表示 int。
+- 常见的 key：`Count`（一件等于几件）、`Durability`（耐久）。
+
+> 本页的数量与分类**已与官方 wiki 逐条比对**（1564 件共有物品）：`tags` **100% 一致**，`quality`/`weight`/`displayNameKey` **零差异**；唯一差异就是 `value`（wiki 显示每包总量 = `value × Count`）。
 
 ## 分类 = Tag（官方分类法）
 

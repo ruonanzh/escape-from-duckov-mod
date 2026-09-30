@@ -460,12 +460,13 @@ static class DataProbe
         try { child = key.Length == 0 ? node : node[key]; } catch { }
         if (child == null) return;
         var arr = ArrayNode(child);
-        if (arr != null)
+        if (arr != null && arr.Children.Count > 0)
         {
             if (idx >= 0) { if (idx < arr.Children.Count) WalkPath(am, inst, arr.Children[idx], segs, i + 1, outp, depth + 1); return; }
             foreach (var el in arr.Children) WalkPath(am, inst, el, segs, i + 1, outp, depth + 1);
             return;
         }
+        // arr != null 但 0 个子元素 = **原生数组**（如 byte[] 的 `data`）→ 当叶子处理（下面的 LeafString 会给出它的字节串）
         WalkPath(am, inst, child, segs, i + 1, outp, depth + 1);
     }
 
@@ -494,6 +495,9 @@ static class DataProbe
         {
             if (f.Children.Count == 0) return f.AsString;
             if (IsPtr(f)) { var pid = f["m_PathID"].AsLong; return pid == 0 ? "(null)" : $"pathID {pid}"; }
+            // 原生数组（byte[] / int[]）：单个 `Array` 子节点且它是叶子 → 直接给它的字节/数字串（如 "03 00 00 00"）
+            if (f.Children.Count == 1 && f.Children[0].FieldName == "Array" && f.Children[0].Children.Count == 0)
+                return f.Children[0].AsString;
         }
         catch { }
         return null;
