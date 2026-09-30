@@ -181,6 +181,21 @@ field=["tags.entries[].value.#name","tags.entries[].weight","activeChance","inve
 | 某场景里有什么？ | `class=GameObject, file=levelN` |
 | 某个中文名对应哪个 key？ | 本地化 CSV（`00-overview.md`）|
 
+## 与官方 wiki 的口径差异（实测）
+
+这些数据**已逐条对照过** `escapefromduckov.net`。以下差异是**我们读原始字段、wiki 做了二次加工**，不是我们错：
+
+| 字段 | 我们（原始数据）| wiki（加工后）|
+|---|---|---|
+| `Quest.questGiverID` | **数字 id**（1/2/3…）| NPC 名（`Jeff`/`Alex`…）|
+| `CharacterRandomPreset.team` | **数字**（0/1/3…）| 名（`scav`/`usec`/`lab`…）|
+| `Buff.hide=1` / 隐藏项 | **照实列出**（Buff 115）| **过滤掉**（只显 89）|
+| `CharacterRandomPreset.isBoss` | **原始字段**（61 个为 1）| 有 12 个标了 false（与数据不符）|
+
+**内部/测试项**（正常工作产物，但一般不想展示）：`DummyEnemyCharacterRandomPresetLv N`、无 `m_Name` 的 `Item`（如 `Formula_Blueprint` 模板）。要排除就在结果里按名字过滤。
+
+> 结论：**以游戏数据为准**；wiki 适合当“中文名/可读视图”参考，不代表原始字段值。
+
 ## 通用提示
 
 - **本指南没写到的概念**，按 `00-overview.md` 的「这份指南没写到怎么办」四步走（`classes` → `export rows=1` 拿 pathID → `dump depth=1` 看字段 → `export` 取；要实现用 `inspect_game_api`）。
