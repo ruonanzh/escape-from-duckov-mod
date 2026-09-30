@@ -1,6 +1,6 @@
 ---
 name: mod-creator
-description: Escape From Duckov 的 C# mod 制作与修改：目录结构、info.ini 字段、csproj 要点、ModBehaviour 入口类、以及用 validate_mod 编译校验；含“游戏数据先读 docs/guides/（免探索）”“数据在会话里离线取、不让玩家开游戏生成”“配置文件优先 INI + 逐项注释”三条铁律。当玩家要新建/修改/解释一个 mod 怎么写、排查编译或校验错误时读取。
+description: Escape From Duckov 的 C# mod 制作与修改：目录结构、info.ini 字段、csproj 要点、ModBehaviour 入口类、内容数据查询（`docs/guides/`）、配置文件写法、以及用 validate_mod 编译校验。当玩家要新建/修改/解释一个 mod 怎么写、要查游戏内数据、或排查编译/校验错误时读取。
 ---
 
 # 做 mod（Escape From Duckov）
@@ -24,13 +24,14 @@ description: Escape From Duckov 的 C# mod 制作与修改：目录结构、info
 
 > 以前为回答「武器数值在哪」探索了几十步；现在按上面 **1–2 次工具调用**就能拿到。数值会随版本变 —— **现查，不要抄进代码**。
 
-### 铁律：数据在**会话里离线取**，不要让玩家开游戏去生成
+## 铁律：数据在**会话里离线取**，不要让玩家开游戏去生成
 
-- 需要游戏内数据（数值/列表/条件）→ **用 `inspect_game_data`（内容值）或 `inspect_game_api`（代码/类型/API）在会话里取**。
+- 需要游戏内数据（数值/列表/条件）→ **优先用 `inspect_game_data` 在会话里取**（本地读游戏数据文件），**而不是“运行游戏、由 mod 把数据导出来”**。
+- 需要**代码/类型/实现**（找改哪个字段、patch 哪个方法）时才用 `inspect_game_api`。
 - **不要**把“让玩家启动一次游戏、由 mod 把数据写出来”当方案：数据现在就能拿到，应当**随 mod 直接交给玩家**（开箱即有内容，不必先去跑一遍游戏）。
 - 同理：不要要求玩家“先开游戏看一下 X 再告诉你” —— `docs/guides/` + 两个 inspect 工具已经能回答。
 
-### 配置文件：优先 INI，且要能直接看懂
+## 配置文件：优先 INI，且要能直接看懂
 
 做带配置的 mod（如“改武器数值”）时：
 
