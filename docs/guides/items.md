@@ -92,6 +92,80 @@ for k, v in zip(keys, vals):
     print(f"{k} = {v}")
 ```
 
+## 附录：全部 Tag（134 个）—— **别当成 134 个品类**
+
+`Tag` 资产一**134 个**，但只有 **121 个真的挂在物品上**，且含义混三类：**品类**（这是什么）、**子类型**（品类细分）、**行为标记**（可修理/展示/锁定…）。
+选物品时**从 A / B 里挑**；C 类当过滤条件可以，当“品类”会奇怪。数字是实测（多少件物品挂了这个 tag）。
+
+### A. 主要品类（挑“要哪类物品”用这些）
+
+| Tag | n | 说明（看名字/实例）|
+|---|---|---|
+| `Accessory` | 263 | 枪械配件（总）|
+| `Formula` | 215 | 配方 / 蓝图（总）|
+| `Weapon` | 158 | 武器（总）|
+| `Bullet` | 145 | 弹药 |
+| `Equipment` | 130 | 装备（总）|
+| `Gun` | 124 | 枪械 |
+| `Quest` | 71 | 任务物品 |
+| `Totem` | 69 | 图腾 |
+| `Key` | 68 | 钥匙 |
+| `Muzzle` | 67 | 枪口 |
+| `Helmat` | 56 | 头盔（原文拼写如此）|
+| `Magazine` | 53 | 弹匣 |
+| `Stock` | 51 | 枪托 |
+| `Armor` | 49 | 护甲 |
+| `MeleeWeapon` | 48 | 近战武器 |
+| `Tool` | 47 | 工具 |
+| `Element` | 47 | 元素相关（子弹：毒/燃烧/电）|
+| `Medic` | 36 | 药品（总）|
+| `Food` | 32 | 食物 |
+| `Seed` | 32 | 种子 |
+| `Scope` | 31 | 瞄具 |
+| `Crop` | 30 | 作物 |
+| `Grip` | 23 | 握把 |
+| `Injector` | 19 | 注射剂 |
+| `FaceMask` | 13 | 面具 |
+| `Backpack` | 12 | 背包 |
+| `Explosive` | 12 | 爆炸物 |
+| `Bait` | 12 | 鱼饵 |
+| `Healing` | 9 | 治疗品 |
+| `Drink` | 8 | 饮料 |
+| `Material` | 8 | 材料 |
+| `Continer` | 7 | 容器（原文拼写如此）|
+| `Cartridge` | 6 | 卡带 / 弹壳 |
+| `Gem` | 4 | 宝石 |
+| `Pelt` | 3 | 兽皮 |
+| `Headset` | 2 | 耳机 |
+| `Cash` | 1 | 现金 |
+
+### B. 子类型（在品类上再细分）
+
+| 组 | Tag（n）|
+|---|---|
+| 枪枝细分 | `GunType_AR`(67) `GunType_SMG`(54) `GunType_SHT`(50) `GunType_SNP`(47) `GunType_PST`(26) `GunType_BR`(12) `GunType_ARR`(5) `GunType_MAG`(3) `GunType_Rocket`(1) `GunType_PWS`(1)（未用：`GunType_Rifle/Shot/Sniper`）|
+| 配方细分 | `Formula_Blueprint`(178) `Formula_Printer`(29) `Formula_Medic`(7) `Formula_Normal`(1)（未用：`Formula_Cook`）|
+| 鱼 / 钓鱼 | `Fish`(33) `Fish_Special`(14) `Fish_OnlyNight`(10) `Fish_OnlyDay`(8) `Fish_OnlyRainDay`(6) `Fish_OnlySunDay`(5) `Fish_OnlyStorm`(5)（未用：`Fish_Other`）|
+| 配件专属 | `Acc_*`（每个 1–2 件：`Acc_Aug` / `Acc_M14` / `Acc_UZI` …）|
+| 被动 / 特殊件 | `PassiveProp`(51) `SpecialAcc`(22) `SpecialKey`(20) `TecEquip`(15 科技件) `Western`(55 西式枪械) `SnowLand`(12 雪地版) |
+| 其它细分 | `Matryoshka_1`(5) `Gem_Armor_Igny`(1) `Gem_Armor_Fleeze`(1) |
+
+### C. 行为 / 标记（**不是品类**；当过滤条件用）
+
+`Special`(269 含义宽——家具/植物/枪都有) · `Repairable`(221 可修理) · `ShowCase`(109 展示) ·
+`DontDropOnDeadInSlot`(107) · `DestroyInBase`(69) · `DestroyOnLootBox`(50) · `LockInDemo`(44 试玩锁定) ·
+`Luxury`(40 贵重) · `Daily`(34 日用) · `DecorateEquipment`(27) · `MiniGame`(14) · `Collection`(14 收藏) ·
+`Computer`(13) · `Information`(7) · `ColorCard`(6) · `Base_WallPaper`(6) · `NotNested`(5) ·
+`AdvancedDebuffMode`(4) · `JLab`(4) · `Shit`(4) · `ComputerParts_GPU`(3) · `Base_Deco`(3) ·
+`SnowBall`(2) · `Monitor`(2) · `Sticky`(1) · `NotForSell`(1) · `Character`(1) · `FcController`(1) · `GamingConsole`(1) ·
+`SoulCube`(1) · `WaterBall`(1) · `Earthworm`(1)
+
+### D. 物品上**没用到**的 13 个
+
+`DogTag` `Fish_Other` `Formula_Cook` `GunType_Rifle` `GunType_Shot` `GunType_Sniper` `Matryoshka_2` `Matryoshka_3` `Matryoshka_4` `Matryoshka_5` `Misc` `NotSellable` `Weapon_LV1`
+
+> 这 13 个可能在**其它类**（非 `Item`）或未使用的旧 tag 上。要确认全量就现查：`action=export, class=Tag`。
+
 ## 物品相关 API（改物品时看这些）
 
 `ItemStatsSystem`：`ItemAssetsCollection.InstantiateAsync(typeID)` 生成实例；`Item.GetStat(key)` / `GetStatValue(key)` 读写数值；`ItemUtilities.SendToPlayer(...)` 发给玩家。
