@@ -24,6 +24,9 @@ static class DataProbe
 {
     static int Main(string[] args)
     {
+        // Windows：.NET 默认按控制台代码页（GBK/CP437）写 stdout，而调用方按 UTF-8 解码 → 资产里的非 ASCII 字段会乱码。
+        // 统一成 UTF-8（无 console 时 setter 可能抛，忽略）。
+        try { Console.OutputEncoding = System.Text.Encoding.UTF8; } catch { }
         var o = ParseArgs(args);
         var managed = Opt(o, "managed");
         var data = Opt(o, "data");

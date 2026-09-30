@@ -36,6 +36,8 @@ static class ApiProbe
 
     static int Main(string[] args)
     {
+        // Windows：.NET 默认按控制台代码页（GBK/CP437）写 stdout，而调用方按 UTF-8 解码 → 非 ASCII 会乱码。
+        try { Console.OutputEncoding = System.Text.Encoding.UTF8; } catch { }
         var opt = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         for (int i = 0; i < args.Length; i++)
         {
