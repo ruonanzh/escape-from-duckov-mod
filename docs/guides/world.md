@@ -31,10 +31,13 @@ field=["id","displayName","requireLevel","requiredItemID","requiredItemCount","r
 action=export, class=SceneInfoCollection,
 field=["entries[].id","entries[].displayName"], file="resources.assets"
 
-# 某个场景里有哪些对象（场景用 file=levelN）
-action=classes, file=levelN                     # 例：level0 = 主菜单
-action=export, class=GameObject, file=level0, match=["m_Name~Door"]
+# 场景里有哪些对象（场景用 file=levelN；level0 = 主菜单，实测 111 个 Button、1011 个 GameObject）
+action=classes, file=level0
+action=export, class=GameObject, file=level0, match=["m_Name~Button"],
+field=["m_Name","m_Component[].component.#class"]          # 第二列 = 这个对象身上挂了哪些组件（类名）
 ```
+
+> `field=["m_Component[].component.#class"]` 是**场景类问题的常用招式**：一次看出每个对象挂了什么脚本（如 `Transform;SteamManager;SteamWorkshopManager`）。
 
 ## 生物 / 敌人 Creatures
 
@@ -63,18 +66,19 @@ field=["nameKey","lootBoxPrefab","team","showName"]
 action=export, class=Perk,
 field=["displayName","quality","defaultUnlocked","requirement"]
 
-# 技能树（分组的根）
-action=export, class=PerkTree, field=["displayName","perks"]
+# 技能树（分组的根）；`perks` 指向的是**升级项对象**，加 `.#name` 才能看到名字（否则只有 pathID）
+action=export, class=PerkTree, field=["perks.#name"], file="resources.assets"
 ```
 
 相关：`PerkTree`(10) / `PerkTreeIDList`(2) / `ModifierDescriptionCollection`(752，属性/修改器文案)。
 
 ## 建筑 Buildings — `Building`（29）
 
-字段：`id`（如 `PetHouse`）`dimensions` `graphicsContainer` `functionContainer` `unlockAchievement`
+字段：`id`（如 `PetHouse`）`dimensions`（**结构体，要写到 `.x`/`.y`**）`graphicsContainer` `functionContainer` `unlockAchievement`
 
 ```
-action=export, class=Building, field=["id","dimensions","unlockAchievement"]
+action=export, class=Building, field=["id","dimensions.x","dimensions.y","unlockAchievement"]
+# -> PetHouse 2 2 0 ; Merchant_Equipment 7 4 0 ...
 ```
 
 > 注意：`Building` 资产的 `m_Name` 是空的 —— **要看 `id` 字段**，不是 `name`。
@@ -89,7 +93,24 @@ field=["merchantID","sellFactor","refreshAfterTimeSpan","DisplayNameKey"]
 ```
 
 相关：`StockShopDatabase`(1) / `StockShopItemEntry`(1) / `StockShopView`(1)。
-**商品清单**在 `StockShopDatabase` / 各 StockShop 的库存引用里 —— 用 `dump` + `follow` 或 `refs` 跟着看。
+
+**商品清单在 `StockShopDatabase.merchantProfiles[].entries[]`**（每个 entry：`typeID` `maxStock` `forceUnlock` `priceFactor` `possibility`）—— 一次拿到**每个商人卖什么、备货多少**：
+
+```
+action=export, class=StockShopDatabase, file="resources.assets",
+field=["merchantProfiles[].merchantID",
+       "merchantProfiles[].entries[].typeID",
+       "merchantProfiles[].entries[].maxStock",
+       "merchantProfiles[].entries[].priceFactor"]
+# merchantID 与 entries 的字段各自平行（同一层内同序）
+# ⚠️ 但**跨商人会被拍平**：entries 的所有条目连成一条数组，看不出哪段属于哪个商人
+```
+
+> ⚠️ **要保留“哪个商人卖什么”的边界**，改用它（保留嵌套）：
+> `action=dump, class=StockShopDatabase, pathid=76730, depth=8`（每个 profile 一块：`merchantID` + `entries[]`）；
+> 或拿 `entries[].typeID` 的全量清单，再按 typeID 去 `items.md` 查名字。
+
+> `typeID` 对应 `Item.typeID` —— 要名字就拿着 typeID 去 `items.md` 的本地化 join 里查。
 
 ## 增益 / Buff — `Buff`（115）
 
@@ -112,6 +133,7 @@ field=["id","displayName","maxLayers","exclusiveTag","totalLifeTime","hide"]
 
 ## 通用提示
 
+- **本指南没写到的概念**，按 `00-overview.md` 的「这份指南没写到怎么办」四步走（`classes` → `export rows=1` 拿 pathID → `dump depth=1` 看字段 → `export` 取；要实现用 `inspect_game_api`）。
 - **不确定类名** → 先 `action=classes`（960 个类）grep 关键词；再 `action=search, pattern=...`。
 - **要数值/条件**（不是文案）→ 都在 `resources.assets` 的这类对象字段里，用 `export`。
 - **要文案**（中/英）→ join `Data/StreamingAssets/Localization/*.csv`。

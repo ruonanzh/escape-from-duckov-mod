@@ -89,6 +89,11 @@ PY
 
 **路径语法**（`field` / `match` 共用）：`a.b` 字段 · `a[]` / `a[i]` 展开数组 / 取下标 · `#class` / `#name` 取「解析后对象」的类名/名字 · **PPtr 自动跟随**。
 
+两条**实测定下的读取规则**：
+
+- **结构体要写到叶子**：`dimensions` → **空列**；要 `dimensions.x` / `dimensions.y`（同理 `m_LocalPosition.x`）。
+- **PPtr 字段默认只给 `pathID N`**；想要对象的**名字/类名**就加 `.#name` / `.#class`（例：`perks.#name`、`m_Component[].component.#class`）。
+
 **运算符**：`=` · `!=` · `~`（子串，忽略大小写） · `>` `>=` `<` `<=`。
 
 ## 常见坑
@@ -97,4 +102,24 @@ PY
 - `list` / `search` 每次最多 **500** 条（用 `offset` 翻页）；`export` 默认 500 行，**给了 `out` 则不限**。
 - 大结果**不要直接进上下文**：`out=<file>` → 只回预览，再用 bash/python 处理那个文件。
 - 场景（`levelN`）只有显式 `file=levelN` 才读；默认不扫。
+- 结构体字段写全路径（`a.b.x`），写 `a` 会得到空列。
+- **嵌套数组会拍平**：`a[].b[].c` 输出的是**一条**平行数组，**不保留 `a` 的分组边界**（例：`StockShopDatabase` 的 merchant→entries）。要保留嵌套用 `dump`（带 `depth`）。
 - **别把查到的数值抄进代码**（会随版本变）——用这里的命令现查。
+
+## 文本从哪来：本地化用**游戏自带**的，`docs/data/` 是旧快照
+
+- 优先：`<Data>/StreamingAssets/Localization/{ChineseSimplified,ChineseTraditional,English,Japanese,...}.csv`（**实时、多语言、是超集**；含 `key,value,version,sheet`，sheet 就是 `Items`/`Quests`/`Buffs`/…）。
+- `docs/data/*.csv`（repo 里那份）是**维护者导出的快照**：同名 sheet 但**条目少得多**（例：Items 892 vs 本地化 2944），且可能落后于玩家版本 → **能用游戏本体就用本体**；仅当不想开游戏时当参考。
+- `docs/data/resources.csv`（`type,name` 资产清单）≈ 用 `classes` / `export --class X` **现查**，比快照准。
+
+## 这份指南没写到怎么办（**别停在这里**）
+
+本指南只覆盖“最高频的那几类”。**没写到的概念，照样有路**：
+
+1. **不知道类名** → `action=classes`（960 个类）grep 关键词；或 `action=search, pattern=关键词`（名/类/typeID 子串）。
+2. **知道类名、不知道字段** → 拿一个对象 `action=export, class=<C>, rows=1`（看首行的 `pathID`）→ 再 `action=dump, class=<C>, pathid=<pid>, depth=1` 看它的字段名；然后用 `export` 按路径取。
+3. **要看实现/字段含义/怎么改** → `inspect_game_api`（`search` → `members` → `decompile`）；公开签名快照在 `docs/api/`。
+4. **要文案** → 本地化 CSV（上节）或 `docs/data/*.csv`（快照）。
+5. **场景里的对象/坐标** → `file=levelN` + `class=GameObject`（见 `world.md` 的 Maps 段）。
+
+> 找到了新的固定套路（某类对象的判别方式 + 可复制命令）→ **请补进本目录对应的 `.md`**，下一个 agent 就不用再探索了。

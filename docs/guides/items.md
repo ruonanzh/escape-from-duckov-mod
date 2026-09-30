@@ -81,8 +81,8 @@ field=["displayName","value","quality","stats.list[].key","stats.list[].baseValu
 out="/tmp/guns.tsv", file="resources.assets"
 ```
 
-> `match` 里的 `m_GameObject.m_Component[].component.#class=ItemSetting_Gun` 是「这个物品的 GameObject 上挂着 `ItemSetting_Gun` 组件」——**组件的类名**是判定武器子类型的另一种方式（与 tag 等价，tag 更简单，优先用 tag）。
-> 近战换 `ItemSetting_MeleeWeapon`（45）；其他组件：`ItemSetting_Accessory`(263) / `ItemSetting_Bullet`(145) / `ItemSetting_Formula`(215) / `ItemSetting_Skill`(19) / `ItemSetting_NightVision`(3)。
+> `match` 里的 `m_GameObject.m_Component[].component.#class=ItemSetting_Gun` 是「这个物品的 GameObject 上挂着 `ItemSetting_Gun` 组件」——**组件的类名**也能判子类型。但它与 tag **口径略有差异**（实测：组件 `ItemSetting_MeleeWeapon`=45 vs tag `MeleeWeapon`=48；有的设置在子物体上），**能不用 tag 就不用组件**，用组件时心里有数。
+> 其他组件：`ItemSetting_Accessory`(263) / `ItemSetting_Bullet`(145) / `ItemSetting_Formula`(215) / `ItemSetting_Skill`(19) / `ItemSetting_NightVision`(3)。
 
 把平行数组转成 `属性=值`（bash + python 片段）：
 
