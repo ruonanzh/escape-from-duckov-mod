@@ -62,7 +62,8 @@ action=export, class=Item, match=["tags.list[].#name=Weapon"], field=["displayNa
 
 | 概念 | Tag / 写法 | 数量 |
 |---|---|---|
-| **武器** | `tags.list[].#name=Weapon` | 158 |
+| **武器（要“全部武器”看这行）** | `Weapon` **∪** `MeleeWeapon`（无单条命令，见下）| **172** |
+| └ 主标签 | `tags.list[].#name=Weapon` | 158 |
 | └ 枪械 | `tags.list[].#name=Gun` | 124 |
 | └ 近战 | `tags.list[].#name=MeleeWeapon` | 48 |
 | **装备（总）** | `tags.list[].#name=Equipment` | 130 |
@@ -82,6 +83,14 @@ action=export, class=Item, match=["tags.list[].#name=Weapon"], field=["displayNa
 | **任务物品** | `tags.list[].#name=Quest` | 71 |
 
 > 枪械还有细分子类 tag：`GunType_AR` / `GunType_SMG` / `GunType_SHT` / `GunType_SNP` / `GunType_Rifle` / `GunType_BR` / `GunType_PST` …（`match="tags.list[].#name=GunType_AR"`）。
+
+> ⚠️ **“全部武器”不是 158（实测踩过）**：`Weapon`(158) 与 `MeleeWeapon`(48) 有 **34** 重叠；另有 **14 个只挂 `MeleeWeapon`、没有 `Weapon`** —— `Item_HammerL`(大锤) / `Item_Wrench`(扳手) / `Item_Shovel`(铁铲) / `Item_GolfClub` / `Item_GoldDumbbell` / `Item_SaltedFish` / `Item_GiantSwordFish` …（仓库里算工具/日用，但能当近战用）。**并集 = 172**。
+> `match` **只有 AND**（多条 = 同时满足），所以并集要**两次调用再按 typeID 合并去重**：
+> ```
+> action=export, class=Item, match=["tags.list[].#name=Weapon"],     field=["typeID","displayName",...], out="/tmp/w1.tsv"
+> action=export, class=Item, match=["tags.list[].#name=MeleeWeapon"], field=["typeID","displayName",...], out="/tmp/w2.tsv"
+> # 然后按第 2 列 typeID 去重合并（bash/python）→ 172
+> ```
 
 ## 数值（stats）—— 平行数组
 
@@ -122,7 +131,7 @@ for k, v in zip(keys, vals):
 |---|---|---|
 | `Accessory` | 263 | 枪械配件（总）|
 | `Formula` | 215 | 配方 / 蓝图（总）|
-| `Weapon` | 158 | 武器（总）|
+| `Weapon` | 158 | 武器（**注意：不包含只有 `MeleeWeapon` 的 14 件工具/日用，见上文警告**）|
 | `Bullet` | 145 | 弹药 |
 | `Equipment` | 130 | 装备（总）|
 | `Gun` | 124 | 枪械 |
