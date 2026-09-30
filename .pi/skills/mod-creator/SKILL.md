@@ -51,17 +51,10 @@ description: Escape From Duckov 的 C# mod 制作与修改：目录结构、info
 
 ## 使用方式与条件分支
 
-- **动手前：先把需求对齐（尤其“做什么 / 产物长什么样”）**：不要一上来就写代码。先一段话说清 **你的理解 + 方案（含你推荐的选项）+ 关键取舍**，然后**只问少数几个影响可行性/兼容性/产物形态的问题**。例：
-  - 要改的是哪一类对象、只改一部分还是全部？
-  - 配置是**随 mod 附一份现成文件**（玩家人手改）还是**运行时生成**？后者会要求玩家先开一次游戏。
-  - 是否需要多平台（macOS + Windows）/ 多语言？
-  其余细节用**合理默认**并说明（“我按 X 处理，要改再说”）；玩家回“随便/都行”就按你的推荐走。
+- **动手前：先确认需求再动手**：先跟玩家对齐“这个 mod 是什么”（改什么、覆盖范围、产物/配置形态），给出**一份 mod 内容描述**；玩家确认后再开始写代码。
 - **咨询/可行性**：按目标检索 `docs/api/`、`docs/data/` 与 `docs/mod-api.md`，确认 API/数据依据；只是讨论时不必建目录、也不必准备环境。数据层版本见 `mod-repo.json` 的 `game.version`，不臆测最新补丁行为。`docs/api/` 只是维护者反射 dump 的**公开**签名；要**私有成员 / 实现行为 / 当前版本**时，用 `inspect_game_api` 读托管 DLL（见「参考」）。
 - **实际制作/修改**：写入仅限当前 session 绑定目录。无绑定且准备写入时才调 `create_mod_folder`，选择合法 C# 标识符（通常 PascalCase）；有绑定就复用，目录缺失先说明阻塞，不另建第二个绑定。
-- **规范与实现**：`reference/example_mod/` 只是**结构骨架**（csproj / info.ini / ModBehaviour 的写法与命名）—— **照抄它的结构**即可，**它不是实现来源**（里面只有一个空壳 log），别把它当作“可复用的功能代码”。
-  - **实现前先看 `your_mods/` 里已有的同类 mod**（玩家自己的 / 之前做的）—— 能复用就复用，别从零写。
-  - 实现依据来自 `docs/guides/`（数据与命令）、`docs/api/`（公开签名）；不够时用 `inspect_game_api` 反编译游戏 DLL。
-  - 保持 info.ini 名称、AssemblyName、RootNamespace 和 DLL 名一致（validate_mod 校验）。
+- **规范与实现**：`reference/example_mod/` 只作**骨架参考**（csproj / info.ini / ModBehaviour 的写法与命名）；保持 info.ini 名称、AssemblyName、RootNamespace 与 DLL 名一致（validate_mod 校验）。
 - **产物落点**：编译产物放哪都行 —— `install_mod` 会自动找到 `<name>.dll`（mod 根**或 `bin/` 下**）并把它放到游戏 mod 目录**根**（游戏只从根加载 `<name>.dll`）。所以用默认的 `bin/` 即可，不必手动整理。⚠️ **不要**把 csproj 的 `OutputPath` 指到项目根：SDK 默认排除会把项目根下的 `*.cs` 全排掉 → 产出**空壳 dll**（游戏里能看到、勾不上）；确需那就必须同时设 `EnableDefaultCompileItems=false` + 显式 `Compile`。
 - **失败处理**：按错误定位修复；同类失败重复出现时先解决前置条件，不无限"直到 PASS"。
 
