@@ -109,6 +109,7 @@ PY
 ## 文本从哪来：本地化用**游戏自带**的，`docs/data/` 是旧快照
 
 - 优先：`<Data>/StreamingAssets/Localization/{ChineseSimplified,ChineseTraditional,English,Japanese,...}.csv`（**实时、多语言、是超集**；含 `key,value,version,sheet`，sheet 就是 `Items`/`Quests`/`Buffs`/…）。
+  - ⚠️ **同一个 key 可能在多个 sheet 里，且中文常常不在 `Items` 而在 `Default`**（实测：`Item_ButcherKnife` 在 `English.csv` 属 sheet=`Default`、在 `ChineseSimplified.csv` 属 sheet=`Items`）→ **按 `key` 建索引就行**（上面的片段就是），**不要**“先去哪个 sheet 找”。
 - `docs/data/*.csv`（repo 里那份）是**维护者导出的快照**：同名 sheet 但**条目少得多**（例：Items 892 vs 本地化 2944），且可能落后于玩家版本 → **能用游戏本体就用本体**；仅当不想开游戏时当参考。
 - `docs/data/resources.csv`（`type,name` 资产清单）≈ 用 `classes` / `export --class X` **现查**，比快照准。
 

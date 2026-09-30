@@ -131,6 +131,56 @@ field=["id","displayName","maxLayers","exclusiveTag","totalLifeTime","hide"]
 | 对话 | `Dialogue*`（`docs/data/Dialogues.csv` 有文本）| |
 | 本地化 | `LocalizationDatabase`(1) | |
 
+## 制作 / 配方 Crafting — `CraftingFormulaCollection`（1 个资产，`list[]`）
+
+每条配方：`id` · `result.id`（产物 `typeID`）`result.amount` · `cost.money` · `cost.items[].id` `cost.items[].amount`（**材料**）· `tags[]`（如 `WorkBenchAdvanced` = 工作台等级）· `requirePerk` · `unlockByDefault` · `hideInIndex`
+
+```
+action=export, class=CraftingFormulaCollection, file="resources.assets",
+field=["list[].id","list[].result.id","list[].result.amount","list[].cost.money",
+       "list[].cost.items[].id","list[].cost.items[].amount","list[].tags[]"]
+```
+
+> ⚠️ 两个数组嵌套（`list` → `cost.items`）会**拍平**：`cost.items[].id` 是**所有配方材料连成一条**，看不出哪几样属于哪条配方。要看单条配方：
+> `action=dump, class=CraftingFormulaCollection, pathid=76575, depth=9`（保留嵌套），或用 `--offset` 一条条看。
+> `result.id` / `cost.items[].id` 都是 `Item.typeID` —— 去 `items.md` 查名字。
+
+## 掉落 / 战利品 Loot
+
+**掉落不是固定物品单，而是「按 tag 池加权随机」**：
+
+`CharacterRandomPreset.lootBoxPrefab`（PPtr）→ 一个 `InteractableLootbox`（同一个 GameObject 上还有 `LootBoxLoader`），里面：
+
+| 字段 | 含义 |
+|---|---|
+| `tags.entries[].value.#name` | **掉落的物品 tag 池**（每个 tag 带 `weight` / 百分比）|
+| `tags.entries[].weight` | 权重 |
+| `excludeTags` | 排除的 tag |
+| `activeChance` | 这个箱子激活的概率 |
+| `randomCount.x` / `.y` | 随机数量范围 |
+| `inventorySize` | 容量 |
+
+```
+# 全部掉落箱的 tag 池 + 权重（实测：Medic;Drink;Injector + 10;1;2）
+action=export, class=LootBoxLoader, file="resources.assets",
+field=["tags.entries[].value.#name","tags.entries[].weight","activeChance","inventorySize"]
+```
+
+> **「某敌人掉什么」的完整链路**：`CharacterRandomPreset`（用 `nameKey`/`isBoss` 定位）→ `lootBoxPrefab` 的 pathID → `action=dump, class=LootBoxLoader, pathid=<那个 gameObject 上的 loader>`；或先用上面的 export 把**全部**掉落箱列出来对照。
+> 要“哪些物品属于某个 tag 池” → 用 `items.md` 的 `match="tags.list[].#name=<X>"`。
+
+## 跨类 join 速查（问题 → 一条命令）
+
+| 我想知道 | 命令要点 |
+|---|---|
+| 某任务要交什么？ | `class=Quest` → `requiredItemID` `requiredItemCount`（+ `requireSceneID`）|
+| 某配方的材料？ | `class=CraftingFormulaCollection`（单条用 `dump`，见上）|
+| 某商人卖什么？ | `class=StockShopDatabase` → `merchantProfiles[].entries[].typeID` |
+| 某敌人/BOSS 掉什么？ | `class=CharacterRandomPreset` → `lootBoxPrefab` → `class=LootBoxLoader` |
+| 某物品的数值？ | `docs/guides/items.md`（`stats.list[].key/baseValue`）|
+| 某场景里有什么？ | `class=GameObject, file=levelN` |
+| 某个中文名对应哪个 key？ | 本地化 CSV（`00-overview.md`）|
+
 ## 通用提示
 
 - **本指南没写到的概念**，按 `00-overview.md` 的「这份指南没写到怎么办」四步走（`classes` → `export rows=1` 拿 pathID → `dump depth=1` 看字段 → `export` 取；要实现用 `inspect_game_api`）。
