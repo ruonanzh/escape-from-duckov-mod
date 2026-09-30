@@ -23,7 +23,7 @@ export default function (pi: ExtensionAPI) {
     name: "inspect_game_data",
     label: "Inspect Game Data",
     description:
-      "Read the Unity3D game's content data (read-only): the serialized objects in its data files - prefabs, ScriptableObjects, MonoBehaviours, and scene files (levelN) - with their field values: item stats, quest conditions, enemy presets, a scene's GameObjects and transforms, and so on. Actions: classes / search / list / dump / refs (dump with follow resolves references). It only reads: it never changes the game, the mod, or any scene - to change behaviour or values you patch the game from the mod's C# (see inspect_game_api). It builds its own vendored C# probe under tools/ (build output is gitignored).",
+      "Read the Unity3D game's content data: the serialized objects in its data files - prefabs, ScriptableObjects, MonoBehaviours, and scene files (levelN) - with their field values (item stats, quest conditions, enemy presets, a scene's GameObjects and transforms, and so on). Actions: classes / search / list / dump / refs / export (dump with follow resolves references; export makes one table row per asset of a class). Read-only for the game, the mod and any scene - it never changes them: the only things it writes are its own probe build output under tools/ (gitignored) and, for a large export, the table file you name via out. To change behaviour or values you patch the game from the mod's C# (see inspect_game_api).",
     promptSnippet: "Read game content data (prefab/ScriptableObject field values)",
     promptGuidelines: [
       "Use inspect_game_data to read the current value of game content (item stats, prices, quest conditions, enemy presets, ...) from the game's data files.",

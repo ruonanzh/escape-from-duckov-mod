@@ -50,6 +50,9 @@ dotnet run --project tools/data-probe -- \
 
 `--match` 运算符：`=` `!=` `~`（子串，忽略大小写）`>` `>=` `<` `<=`；可重复（AND；数组路径=任一元素命中）。
 
+> ⚠️ `!=` 的语义：**值列表为空（字段缺失）也视为不等** → `a!=x` 会匹配到“根本没有 a”的对象。Unity 会序列化类型的所有字段，所以“缺失”实际很少见；但写过滤时心里有数。
+> ⚠️ `--out` 会**由工具直接写文件**（不经过 write/edit 工具，也**不校验路径**）—— 与 mod-guard 现状一致（它只拦 write/edit，bash 本就能写任意路径）。
+
 ```bash
 # 一次拿全 124 把枪的数值（“是武器”靠 m_GameObject 组件里有没有 ItemSetting_Gun 判定）
 data-probe ... --action export --class Item \
