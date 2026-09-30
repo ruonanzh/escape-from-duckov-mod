@@ -32,6 +32,7 @@ static class DataProbe
         int limit = int.TryParse(Opt(o, "limit"), out var ln) ? ln : 2000;
         int depth = int.TryParse(Opt(o, "depth"), out var dp) ? dp : 3;
         int offset = int.TryParse(Opt(o, "offset"), out var ofs) ? Math.Max(0, ofs) : 0;
+        int rows = int.TryParse(Opt(o, "rows"), out var rw) ? Math.Max(1, rw) : 500;
 
         var classData = FindClassData();
         if (classData == null) { Console.Error.WriteLine("data-probe: classdata.tpk not found next to the tool (lib/classdata.tpk)."); return 1; }
@@ -57,6 +58,7 @@ static class DataProbe
             case "search": Search(am, insts, Opt(o, "pattern"), Opt(o, "class"), offset, outLines); break;
             case "dump": DumpAsset(am, insts, o, depth, outLines); break;
             case "refs": Refs(am, insts, o, outLines); break;
+            case "export": Export(am, insts, Opt(o, "class"), AllOpts(args, "match"), AllOpts(args, "field"), rows, offset, outLines); break;
             default: Console.Error.WriteLine($"data-probe: unknown action '{action}'"); return 2;
         }
 
@@ -82,6 +84,16 @@ static class DataProbe
     }
     static string Opt(Dictionary<string, string> o, string k) => o.TryGetValue(k, out var v) ? v : null;
 
+    /// 同一个选项可重复出现（`--match` / `--field`）：把全部取值按出现顺序收回来。
+    static List<string> AllOpts(string[] args, string k)
+    {
+        var list = new List<string>();
+        for (int i = 0; i + 1 < args.Length; i++)
+            if (string.Equals(args[i], "--" + k, StringComparison.OrdinalIgnoreCase) && !args[i + 1].StartsWith("--"))
+                list.Add(args[i + 1]);
+        return list;
+    }
+
     static void Usage() => Console.Error.WriteLine(
         "usage: data-probe --managed <Managed dir> --data <Data dir> --action <classes|search|list|dump|refs>\n" +
         "  classes                         list asset class names + counts\n" +
@@ -89,6 +101,10 @@ static class DataProbe
         "  search  --pattern <p> [--class C]  find assets by name\n" +
         "  dump    --class <C> (--name <n>|--typeid <t>|--pathid <p>) [--depth d] [--follow]\n" +
         "  refs    --class <C> (--name <n>|--typeid <t>|--pathid <p>)   what it references\n" +
+        "  export  --class <C> [--match <path><op><value>]... [--field <path>]... [--rows N] [--offset N]\n" +
+        "          one table row per matched asset; path may traverse PPtrs and arrays:\n" +
+        "          'a.b' field, 'a[]'/'a[i]' expand/index an array, '#class'/'#name' = resolved object's class/name\n" +
+        "          match ops: = != ~ (substring) > >= < <=   -   columns are TAB-separated, arrays joined with ';'\n" +
         "  common: [--file <x.assets|levelN>] [--limit N] [--offset N]\n" +
         "  note:  --file levelN reads a scene (level files are serialized like .assets)");
 
@@ -315,6 +331,150 @@ static class DataProbe
         outp.Add($"{pad}{f.FieldName}{val}");
         if (depth >= maxDepth) return;
         foreach (var c in f.Children) DumpField(am, inst, c, depth + 1, maxDepth, follow, outp);
+    }
+
+    // ── export（批量表：一类对象 × 过滤 × 字段路径）───────────────────────────
+    static void Export(AssetsManager am, List<AssetsFileInstance> insts, string cls, List<string> matches,
+        List<string> fields, int rows, int offset, List<string> outp)
+    {
+        if (cls == null) { outp.Add("# export: --class required"); return; }
+        var body = new List<string>();
+        int total = 0, shown = 0;
+        foreach (var (inst, info) in AllInfos(insts))
+        {
+            if (!string.Equals(ClassNameOf(am, inst, info), cls, StringComparison.Ordinal)) continue;
+            AssetTypeValueField bf;
+            try { bf = am.GetBaseField(inst, info); } catch { continue; }
+            if (bf == null) continue;
+            var ok = true;
+            foreach (var m in matches) if (!MatchPath(am, inst, bf, m)) { ok = false; break; }
+            if (!ok) continue;
+            total++;
+            if (total <= offset || shown >= rows) continue;
+            var cells = new List<string> { AssetName(bf) ?? "", TypeId(bf).ToString(), info.PathId.ToString() };
+            foreach (var f in fields) cells.Add(string.Join(";", EvalPath(am, inst, bf, f)));
+            body.Add(string.Join("\t", cells));
+            shown++;
+        }
+        outp.Add($"# {cls}: {total} row(s), {fields.Count} field(s)");
+        outp.Add("# " + string.Join("\t", new List<string> { "name", "typeID", "pathID" }.Concat(fields)));
+        outp.AddRange(body);
+        if (offset + shown < total)
+            outp.Add($"... (showing {offset + 1}-{offset + shown} of {total}; narrow with --match, or use --offset {offset + shown} for the next page)");
+    }
+
+    /// --match <path><op><value>，op ∈ = != ~ > >= < <=（~ = 子串，忽略大小写）
+    static bool MatchPath(AssetsManager am, AssetsFileInstance inst, AssetTypeValueField bf, string expr)
+    {
+        foreach (var op in new[] { "!=", ">=", "<=", "~", "=", ">", "<" })
+        {
+            var idx = expr.IndexOf(op, StringComparison.Ordinal);
+            if (idx <= 0) continue;
+            var path = expr.Substring(0, idx).Trim();
+            var want = expr.Substring(idx + op.Length).Trim();
+            var vals = EvalPath(am, inst, bf, path);
+            if (op == "!=") return !vals.Any(v => Eq(v, want));
+            return vals.Any(v => op switch
+            {
+                "~" => v.IndexOf(want, StringComparison.OrdinalIgnoreCase) >= 0,
+                ">=" => Cmp(v, want) >= 0,
+                "<=" => Cmp(v, want) <= 0,
+                ">" => Cmp(v, want) > 0,
+                "<" => Cmp(v, want) < 0,
+                _ => Eq(v, want),
+            });
+        }
+        return false;
+    }
+
+    static bool Eq(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
+
+    static int Cmp(string a, string b)
+    {
+        if (double.TryParse(a, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var x)
+            && double.TryParse(b, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var y))
+            return x.CompareTo(y);
+        return string.Compare(a, b, StringComparison.OrdinalIgnoreCase);
+    }
+
+    static List<string> EvalPath(AssetsManager am, AssetsFileInstance inst, AssetTypeValueField root, string path)
+    {
+        var res = new List<string>();
+        WalkPath(am, inst, root, path.Split('.'), 0, res, 0);
+        return res;
+    }
+
+    /// 路径段：`a` 字段 · `a[]` 展开数组 · `a[i]` 取下标 · `#class`/`#name` 取“解析后对象”的类名/名字（PPtr 自动跟随）
+    static void WalkPath(AssetsManager am, AssetsFileInstance inst, AssetTypeValueField node, string[] segs, int i, List<string> outp, int depth)
+    {
+        if (node == null || depth > 16) return;
+        if (i >= segs.Length) { var v = LeafString(node); if (v != null) outp.Add(v); return; }
+        var seg = segs[i];
+        if (seg == "#class" || seg == "#name")
+        {
+            if (!IsPtr(node)) return;
+            try
+            {
+                var ext = am.GetExtAsset(inst, node);
+                if (seg == "#name") { if (ext.baseField != null) outp.Add(AssetName(ext.baseField) ?? ""); return; }
+                if (ext.info != null) outp.Add(ClassNameOf(am, ext.file ?? inst, ext.info));
+                else if (ext.baseField != null) outp.Add(ClassName(am, ext.file ?? inst, ext.baseField) ?? "");
+            }
+            catch { }
+            return;
+        }
+        SplitIndex(seg, out var key, out var idx);
+        if (IsPtr(node))
+        {
+            try
+            {
+                var ext = am.GetExtAsset(inst, node);
+                if (ext.baseField != null) WalkPath(am, ext.file ?? inst, ext.baseField, segs, i, outp, depth + 1);
+            }
+            catch { }
+            return;
+        }
+        AssetTypeValueField child = null;
+        try { child = key.Length == 0 ? node : node[key]; } catch { }
+        if (child == null) return;
+        var arr = ArrayNode(child);
+        if (arr != null)
+        {
+            if (idx >= 0) { if (idx < arr.Children.Count) WalkPath(am, inst, arr.Children[idx], segs, i + 1, outp, depth + 1); return; }
+            foreach (var el in arr.Children) WalkPath(am, inst, el, segs, i + 1, outp, depth + 1);
+            return;
+        }
+        WalkPath(am, inst, child, segs, i + 1, outp, depth + 1);
+    }
+
+    static void SplitIndex(string seg, out string key, out int idx)
+    {
+        idx = -1; key = seg;
+        if (key.EndsWith("[]")) { key = key.Substring(0, key.Length - 2); return; }
+        if (!key.EndsWith("]")) return;
+        var lb = key.LastIndexOf('[');
+        if (lb < 0) return;
+        if (int.TryParse(key.Substring(lb + 1, key.Length - lb - 2), out var v)) { idx = v; key = key.Substring(0, lb); }
+    }
+
+    static AssetTypeValueField ArrayNode(AssetTypeValueField f)
+    {
+        try { if (f.Children.Count == 1 && f.Children[0].FieldName == "Array") return f.Children[0]; } catch { }
+        return null;
+    }
+
+    static bool IsPtr(AssetTypeValueField f)
+        => f.Children.Count == 2 && f.Children[0].FieldName == "m_FileID" && f.Children[1].FieldName == "m_PathID";
+
+    static string LeafString(AssetTypeValueField f)
+    {
+        try
+        {
+            if (f.Children.Count == 0) return f.AsString;
+            if (IsPtr(f)) { var pid = f["m_PathID"].AsLong; return pid == 0 ? "(null)" : $"pathID {pid}"; }
+        }
+        catch { }
+        return null;
     }
 
     static void Refs(AssetsManager am, List<AssetsFileInstance> insts, Dictionary<string, string> o, List<string> outp)
