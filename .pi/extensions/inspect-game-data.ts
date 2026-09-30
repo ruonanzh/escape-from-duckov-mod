@@ -31,7 +31,7 @@ export default function (pi: ExtensionAPI) {
       "It reads serialized Unity objects (prefab / ScriptableObject / MonoBehaviour, and scene files). Start with action=classes or action=search, then action=dump (add follow=true to resolve references such as an item's stats).",
       "Prefer narrow queries over wide enumeration: do not list a whole large class (list/search cap at 500 per call - especially built-in types like GameObject/Transform in a scene, where most entries have no name). Use action=search with a pattern, or action=dump with a concrete class + name/typeid/pathid, to reach a target directly. To page through a large class that has no names, pass offset (500, 1000, ...) - use this only when you truly must enumerate, not as the default.",
       "A scene is a file named levelN in the game's data dir: pass file=levelN to inspect one. Read a scene only to learn what exists at runtime (which objects and scripts it contains, their transforms) so the mod's C# can find or patch them - you do not edit scenes.",
-      "To read a whole class of values at once (e.g. every weapon's stats, every quest's requirement), use action=export instead of many dump calls: match filters rows (value>=100, displayName~UAK, m_GameObject.m_Component[].component.#class=ItemSetting_Gun) and field picks columns (paths may traverse references and arrays, e.g. stats.list[].key / stats.list[].baseValue).",
+      "To read a whole class of values at once (e.g. every weapon's stats, every quest's requirement), use action=export instead of many dump calls: match filters rows (value>=100, displayName~UAK, m_GameObject.m_Component[].component.#class=ItemSetting_Gun) and field picks columns (paths may traverse references and arrays, e.g. stats.list[].key / stats.list[].baseValue). For a LARGE export pass out=<file> - the table goes to the file and you only get a preview, keeping the context small; then read/transform the file with bash.",
     ],
     parameters: Type.Object({
       action: Type.Union(
@@ -70,7 +70,13 @@ export default function (pi: ExtensionAPI) {
             'For export: column paths, e.g. ["displayName","value","stats.list[].key","stats.list[].baseValue"]. A path may traverse PPtrs and arrays (a[] / a[i]) and use #class / #name.',
         }),
       ),
-      rows: Type.Optional(Type.Number({ description: "For export: max rows (default 500)." })),
+      rows: Type.Optional(Type.Number({ description: "For export: max rows (default 500; unlimited when out is set)." })),
+      out: Type.Optional(
+        Type.String({
+          description:
+            "For export: write the full table to this file (e.g. /tmp/weapons.tsv) and return only a preview - use this for large exports so the data does not flood the context; then process the file with bash/tools.",
+        }),
+      ),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       const cwd = ctx.cwd;
@@ -144,6 +150,7 @@ export default function (pi: ExtensionAPI) {
       if (params.match) for (const m of params.match) args.push("--match", m);
       if (params.field) for (const f of params.field) args.push("--field", f);
       if (params.rows !== undefined) args.push("--rows", String(params.rows));
+      if (params.out) args.push("--out", params.out);
       let out: string;
       try {
         out = (await runAsync(dotnet, args)).stdout;

@@ -30,7 +30,7 @@ dotnet run --project tools/data-probe -- \
 | `search` | `--pattern <p>` `[--class C]` | 按名称/类/typeID 找资产（**每次最多 500 条**，用 `--offset` 翻页）|
 | `dump` | `--class <C>` ＋ (`--name`\|`--typeid`\|`--pathid`) `[--depth d] [--follow]` | dump 该资产的**字段 + 值**；`--follow` **跟随引用**（如 `Item.stats` → `StatCollection` 里的 `Damage`）|
 | `refs` | 同 `dump` 的定位 | 列出该资产**引用了哪些对象**（PPtr）|
-| `export` | `--class <C>` `[--match <expr>]…` `[--field <path>]…` `[--rows N]` | **批量表**：一类对象 × 过滤 × 字段路径 → 每行一个资产（TAB 分列；数组用 `;` 连）|
+| `export` | `--class <C>` `[--match <expr>]…` `[--field <path>]…` `[--rows N]` `[--out <file>]` | **批量表**：一类对象 × 过滤 × 字段路径 → 每行一个资产（TAB 分列；数组用 `;` 连）。`--out` 写文件、只回预览 |
 
 公共：`--file <x.assets|levelN>`（限定单个数据文件；**`levelN` = 场景文件**，格式与 `.assets` 相同）、`--limit N`（截断，默认 2000 行）、`--depth d`（dump 深度，默认 3）、`--offset N`（跳过前 N 条，给 `list`/`search` 翻页用）。
 
@@ -60,6 +60,8 @@ data-probe ... --action export --class Item \
 ```
 
 同类可换任意类型：`--class Quest --match "requireLevel>=1"`、`--class CharacterRandomPreset --match "isBoss=1"`。
+
+**大批量 → 用 `--out <file>` 落盘**：表写进文件，stdout 只回**前 3 行 + 文件路径**（数据不进模型上下文；`--rows` 默认也不再限制）。之后用 bash/python 处理那个文件。实测 124 把枪：工具回 **3 KB** 预览，文件 **115 KB**。
 
 ## 例
 

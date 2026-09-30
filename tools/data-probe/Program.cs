@@ -58,7 +58,14 @@ static class DataProbe
             case "search": Search(am, insts, Opt(o, "pattern"), Opt(o, "class"), offset, outLines); break;
             case "dump": DumpAsset(am, insts, o, depth, outLines); break;
             case "refs": Refs(am, insts, o, outLines); break;
-            case "export": Export(am, insts, Opt(o, "class"), AllOpts(args, "match"), AllOpts(args, "field"), rows, offset, outLines); break;
+            case "export":
+            {
+                var outPath = Opt(o, "out");
+                // 写文件时默认不再限制行数（不进模型上下文，不存在刷屏问题）
+                var rowCap = Opt(o, "rows") != null || outPath == null ? rows : 1000000;
+                Export(am, insts, Opt(o, "class"), AllOpts(args, "match"), AllOpts(args, "field"), rowCap, offset, outPath, outLines);
+                break;
+            }
             default: Console.Error.WriteLine($"data-probe: unknown action '{action}'"); return 2;
         }
 
@@ -101,8 +108,8 @@ static class DataProbe
         "  search  --pattern <p> [--class C]  find assets by name\n" +
         "  dump    --class <C> (--name <n>|--typeid <t>|--pathid <p>) [--depth d] [--follow]\n" +
         "  refs    --class <C> (--name <n>|--typeid <t>|--pathid <p>)   what it references\n" +
-        "  export  --class <C> [--match <path><op><value>]... [--field <path>]... [--rows N] [--offset N]\n" +
-        "          one table row per matched asset; path may traverse PPtrs and arrays:\n" +
+        "  export  --class <C> [--match <path><op><value>]... [--field <path>]... [--rows N] [--offset N] [--out <file>]\n" +
+        "          one table row per matched asset; --out writes the full table to a file (stdout then gets a preview only)\n" +
         "          'a.b' field, 'a[]'/'a[i]' expand/index an array, '#class'/'#name' = resolved object's class/name\n" +
         "          match ops: = != ~ (substring) > >= < <=   -   columns are TAB-separated, arrays joined with ';'\n" +
         "  common: [--file <x.assets|levelN>] [--limit N] [--offset N]\n" +
@@ -335,7 +342,7 @@ static class DataProbe
 
     // ── export（批量表：一类对象 × 过滤 × 字段路径）───────────────────────────
     static void Export(AssetsManager am, List<AssetsFileInstance> insts, string cls, List<string> matches,
-        List<string> fields, int rows, int offset, List<string> outp)
+        List<string> fields, int rows, int offset, string outPath, List<string> outp)
     {
         if (cls == null) { outp.Add("# export: --class required"); return; }
         var body = new List<string>();
@@ -356,11 +363,23 @@ static class DataProbe
             body.Add(string.Join("\t", cells));
             shown++;
         }
+        var header = string.Join("\t", new List<string> { "name", "typeID", "pathID" }.Concat(fields));
+        var next = $"... (showing {offset + 1}-{offset + shown} of {total}; narrow with --match, or use --offset {offset + shown} for the next page)";
+        if (outPath != null)
+        {
+            try { File.WriteAllText(outPath, string.Join("\n", body) + "\n"); }
+            catch (Exception e) { outp.Add($"# export: could not write {outPath}: {e.Message}"); return; }
+            outp.Add($"# {cls}: {total} row(s), {fields.Count} field(s) -> wrote {shown} to {outPath}");
+            outp.Add("# " + header);
+            outp.AddRange(body.Take(3));
+            if (shown > 3) outp.Add($"... (+{shown - 3} more rows in the file)");
+            if (offset + shown < total) outp.Add(next);
+            return;
+        }
         outp.Add($"# {cls}: {total} row(s), {fields.Count} field(s)");
-        outp.Add("# " + string.Join("\t", new List<string> { "name", "typeID", "pathID" }.Concat(fields)));
+        outp.Add("# " + header);
         outp.AddRange(body);
-        if (offset + shown < total)
-            outp.Add($"... (showing {offset + 1}-{offset + shown} of {total}; narrow with --match, or use --offset {offset + shown} for the next page)");
+        if (offset + shown < total) outp.Add(next);
     }
 
     /// --match <path><op><value>，op ∈ = != ~ > >= < <=（~ = 子串，忽略大小写）
