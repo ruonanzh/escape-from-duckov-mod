@@ -1,6 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
-import { runAsync } from "../lib/proc";
+import { runAsync, serialize } from "../lib/proc";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { managedDirFor, platformKey, readModRepoConfig, readState } from "../lib/game-paths";
@@ -90,20 +90,30 @@ export default function (pi: ExtensionAPI) {
       const dotnet = (state.runtime?.dotnet as string | undefined) ?? "dotnet";
       const probeDir = join(cwd, "tools", "data-probe");
       const probeDll = join(probeDir, "bin", "Release", "net8.0", "data-probe.dll");
-      if (!probeUpToDate(probeDir, probeDll)) {
-        try {
-          await runAsync(dotnet, ["build", probeDir, "-c", "Release", "-v", "q", "-nologo"]);
-        } catch (error) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `FAIL: could not build the inspection probe (${probeDir}).\nNEXT: make sure the .NET SDK is installed (run check_runtime), then retry.\n${String(error).slice(0, 300)}`,
-              },
-            ],
-            details: { ok: false, reason: "PROBE_BUILD_FAILED" },
-          };
-        }
+      let buildWarning = "";
+      try {
+        // 串行化：同一回合多个并行 tool call 会同时构建同一个工程。
+        await serialize(probeDir, async () => {
+          if (probeUpToDate(probeDir, probeDll)) return;
+          try {
+            await runAsync(dotnet, ["build", probeDir, "-c", "Release", "-v", "q", "-nologo"]);
+          } catch (error) {
+            const e = error as { stderr?: string; stdout?: string; message?: string };
+            const detail = (e.stderr || e.stdout || e.message || String(error)).trim().slice(0, 400);
+            if (!existsSync(probeDll)) throw new Error(detail);
+            buildWarning = `WARN: could not rebuild the inspection probe; using the existing build.\n${detail.slice(0, 200)}\n`;
+          }
+        });
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `FAIL: could not build the inspection probe (${probeDir}).\nNEXT: make sure the .NET SDK is installed (run check_runtime), then retry.\n${String(error).slice(0, 400)}`,
+            },
+          ],
+          details: { ok: false, reason: "PROBE_BUILD_FAILED" },
+        };
       }
       const args = [probeDll, "--managed", managed, "--data", data, "--action", params.action];
       if (params.class) args.push("--class", params.class);
@@ -127,7 +137,7 @@ export default function (pi: ExtensionAPI) {
         };
       }
       return {
-        content: [{ type: "text", text: out.trim() || "(no output)" }],
+        content: [{ type: "text", text: (buildWarning + (out.trim() || "(no output)")).trim() }],
         details: { ok: true, action: params.action, dataDir: data },
       };
     },

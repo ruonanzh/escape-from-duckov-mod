@@ -50,3 +50,22 @@ export function runAsync(file: string, args: string[], options: RunOptions = {})
     );
   });
 }
+
+/**
+ * 把同一个 key 上的任务串行化（前一个结束——无论成败——再跑下一个）。
+ *
+ * 用途：同一回合可能有**多个并行 tool call**，它们会同时去构建**同一个探针工程**；
+ * 并发 `dotnet build` 会有锁/还原冲突的风险。串行化后第二个调用会等第一个建完，
+ * 再在锁内重新判断 `probeUpToDate` → 直接跳过。
+ */
+const chains = new Map<string, Promise<unknown>>();
+
+export function serialize<T>(key: string, task: () => Promise<T>): Promise<T> {
+  const prev = chains.get(key) ?? Promise.resolve();
+  const next = prev.catch(() => undefined).then(task);
+  chains.set(
+    key,
+    next.catch(() => undefined),
+  );
+  return next;
+}
