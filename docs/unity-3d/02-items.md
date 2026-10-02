@@ -44,7 +44,3 @@ action=dump    class=Item  match="typeID=<id>"  depth=2    # 从物品反查 ite
 - 世界/地面模型走 `Item.itemGraphic`（`ItemGraphicInfo`）那棵树；
 - 挂饰/附加件挂 `ItemGraphicInfo.sockets`。
 
-## 待办
-
-- [ ] 每个子类（背包 / 消耗品 / 装饰 / 家具）各留一份真实 dump 摘录
-- [ ] `groundPoint` 的用法（物品落地时怎么对齐）确认一次

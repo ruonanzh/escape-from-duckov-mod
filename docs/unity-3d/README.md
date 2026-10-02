@@ -12,7 +12,7 @@
 **为什么 ① 可行**：游戏里的"模型"就是 prefab 上的 `MeshFilter` / `MeshRenderer`；`Mesh` 本身是**内存对象**（`vertices` / `triangles` / `uv` / `normals`），运行时可以直接构造。
 「几何」= 一堆数字，可参数化表达（例：枪管 = 圆柱 (半径, 长度, 分段数)）。
 
-## 怎么用（agent）
+## 怎么用
 
 1. 判断类别（武器 / 物品 / 附件 / 角色 / 建筑…）→ 打开对应 `NN-*.md`；
 2. **照着真实样例的组件结构**，用参数化模板生成 mesh（几何用代码拼，不要手抄顶点）；
@@ -47,7 +47,6 @@ GameObject  IG_Acc_Muzzle_PST_DIS_1        ← 模型 prefab 根
 | [`00-shared.md`](00-shared.md) | 几何来源、坐标/单位约定、通用挂载 | — |
 | [`01-weapons.md`](01-weapons.md) | 枪械 / 近战 / **配件**（瞄具、握把、枪口） | ✅ 适合 |
 | [`02-items.md`](02-items.md) | 背包 / 消耗品 / 装饰 / 家具类物品模型 | ✅ 适合 |
-| [`03-characters.md`](03-characters.md) | 角色模型（`0_CharacterModel_Custom_*`）：YSM + 我们的运行时库（已实机验证）| ✅ 按骨骼名挂载（跟随游戏动画）|
+| [`03-characters.md`](03-characters.md) | 角色模型（`0_CharacterModel_Custom_*`）：YSM 文本模型挂到游戏骨骼 | ✅ 按骨骼名挂载 |
 | [`04-buildings.md`](04-buildings.md) | 建筑 / 场景物件（`Pfb_BLD_*`） | ✅ 适合（静态几何）|
 
-> ⚠️ 本目录是**参考与配方**：真实样例是 dump 出来的事实；参数化模板属骨架，**首次实机验证前不要当成"已验证可用"**。

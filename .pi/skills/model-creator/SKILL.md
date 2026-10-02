@@ -1,6 +1,6 @@
 ---
 name: model-creator
-description: 给 Escape From Duckov 做 3D 模型：代码参数化生成的几何来源（盒/圆柱/圆锥/旋转体/拉伸）、模型 prefab 骨架、坐标与材质约定、按类别的真实样例句（武器/物品/建筑）、挂载点（`ItemGraphicInfo` / `ItemAgentUtilities` / sockets）与验收方式，以及角色/宠物/NPC 的 YSM 文本模型（骨骼树 + 方块，运行时按骨骼名挂到游戏骨骼，跟随游戏动画）。当玩家要「改模型 / 换外观 / 加个新造型 / 做个 3D 样子 / 换角色模型」，或要理解游戏里的模型是怎么拼出来时读取。
+description: 给 Escape From Duckov 做 3D 模型：代码参数化生成的几何来源（盒/圆柱/圆锥/旋转体/拉伸）、模型 prefab 骨架、坐标与材质约定、按类别的真实样例句（武器/物品/建筑）、挂载点（`ItemGraphicInfo` / `ItemAgentUtilities` / sockets）与怎么确认做好了，以及角色/宠物/NPC 的 YSM 文本模型（骨骼树 + 方块，运行时按骨骼名挂到游戏骨骼，跟随游戏动画）。当玩家要「改模型 / 换外观 / 加个新造型 / 做个 3D 样子 / 换角色模型」，或要理解游戏里的模型是怎么拼出来时读取。
 ---
 
 # 做 3D 模型（Escape From Duckov）
@@ -32,7 +32,7 @@ action=dump    class=Item  match="typeID=<id>"  depth=2   # 物品 → itemGraph
 action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers[].#class"]  rows=20
 ```
 
-通用骨架（实测）：`GameObject` + `Transform` + `CharacterSubVisuals`（`renderers` / `mainModel`）+ 物品模型再加 `ItemGraphicInfo`（`groundPoint` / `sockets`）。
+通用骨架：`GameObject` + `Transform` + `CharacterSubVisuals`（`renderers` / `mainModel`）+ 物品模型再加 `ItemGraphicInfo`（`groundPoint` / `sockets`）。
 
 ## 几何怎么生成
 
@@ -64,7 +64,7 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
 | 手持实体 | `ItemStatsSystem.ItemAgentUtilities.GetPrefab(key)` → `CreateAgent(prefab, agentType)` → `BindNewAgent(agent, agentType)` |
 | 配件/挂饰 | 挂到 `ItemGraphicInfo.sockets` 里的 socket `Transform` |
 
-## 验收
+## 怎么确认做好了
 
 1. `validate_mod` 编译通过 → `install_mod` 装进游戏；
 2. **进游戏看**：模型出现、位置/朝向正确、材质不粉紫、手持/地面显示正常；

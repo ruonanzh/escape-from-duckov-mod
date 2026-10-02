@@ -12,9 +12,9 @@ search --class GameObject --pattern "Bld"   → 2 match(es)
 
 命名规律：`Pfb_BLD_<名字>`。`Pfb_BLD_ATM` 根节点只有 **`Transform` + `MeshFilter` + `MeshRenderer`**（碰撞体在子物体上）。
 
-## 碰撞与占位（已核实，不靠猜）
+## 碰撞与占位
 
-`Duckov.Buildings.Building`（`inspect_game_api decompile` 抄出，未编辑）：
+`Duckov.Buildings.Building`（用 `inspect_game_api` decompile 读出的原文）：
 
 ```csharp
 internal void SetupPreview()
@@ -64,6 +64,3 @@ action=search  class=GameObject  pattern="Building"          # 相关对象（�
 - **碰撞体**：随模型一起给（盒体为主；不规则形状用 `MeshCollider`）。
 - 多部件用 **submesh 分材质**（墙/窗/门不同色），材质仍用「克隆游戏现有 URP 材质改色」的做法。
 
-## 待办
-
-- [ ] `Pfb_BLD_ATM` 的完整 dump 摘录（子树层级 + 碰撞体 + 大致尺寸与 `dimensions`）

@@ -1,6 +1,6 @@
 # 01 · 武器（枪械 / 近战 / 配件）
 
-## 真实样例（`inspect_game_data` dump，未编辑）
+## 样例（用 `inspect_game_data` 从游戏里读出的原文）
 
 ### A. 一个真实物品模型 prefab 的完整结构
 
@@ -50,7 +50,7 @@ action=dump    pathid=<那个 ItemGraphicInfo 的 id>  follow=true  # 拿到 m_G
 action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers[].#class"]  rows=50
 ```
 
-## 参数化生成要点（骨架，首次实机验证前不要当成已验证）
+## 参数化生成要点
 
 - **枪管/消音器**：圆柱（半径 0.01–0.03 m，长 0.1–0.4 m，分段 12–24），沿 +Z。
 - **枪身/枪托**：盒体（0.05×0.1×0.3 m 量级）+ 倒角（用多条不同尺寸盒体叠加代替倒角）。
@@ -67,8 +67,3 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
 | 手持显示 | `ItemAgentUtilities.GetPrefab/CreateAgent/BindNewAgent` |
 | 配件 | 挂到 `ItemGraphicInfo.sockets` 的 socket Transform |
 
-## 待办
-
-- [ ] 用真实武器（非配件）补一个样例（枪身本体，而非 `IG_Acc_*`）
-- [ ] 把「基本体生成器」写成可复用 C#（盒/圆柱/圆锥/旋转体）并在游戏内验证一次
-- [ ] `sockets` 的命名规律（哪些 socket 名可挂）整理到本页
