@@ -10,8 +10,9 @@
   "minecraft:geometry": [{
     "bones": [
       {"name": "Root", "pivot": [0, 0, 0]},
-      {"name": "Pelvis", "parent": "Root", "pivot": [0, 12, 0], "cubes": [{"origin": [-4, 12, -2], "size": [8, 12, 4], "uv": [0, 0]}]},
-      {"name": "Head", "parent": "Spine.004", "pivot": [0, 24, 0], "cubes": [{"origin": [-4, 24, -4], "size": [8, 8, 8], "uv": [25, 0]}]}
+      {"name": "Pelvis", "parent": "Root", "pivot": [0, 2.42, 0], "cubes": [{"origin": [-4, 2.42, -3], "size": [8, 6, 6], "uv": [0, 0]}]},
+      {"name": "Spine.004", "parent": "Pelvis", "pivot": [0, 9.53, 0]},
+      {"name": "Head", "parent": "Spine.004", "pivot": [0, 12.73, -0.26], "cubes": [{"origin": [-4, 12.5, -4.26], "size": [8, 8, 8], "uv": [24, 0]}]}
     ],
     "description": {"identifier": "geometry.duck.custom", "texture_width": 128, "texture_height": 128}
   }]

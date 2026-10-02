@@ -88,7 +88,7 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
 坐标与单位约定见 [`00-shared.md`](00-shared.md)，格式见 [`05-model-format.md`](05-model-format.md)。
 
 ### 紧凑手枪（`pistol_compact`）
-**218 顶点 / 132 三角面** · 包围盒 **0.030 × 0.159 × 0.203 m** · 贴图 512²（自动密度 1024 px/m）
+**288 顶点 / 132 三角面** · 包围盒 **0.03 × 0.159 × 0.203 m** · 贴图 512²（自动密度 1024 px/m）
 
 ```json
 {
@@ -112,7 +112,7 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
 ```
 
 ### 紧凑冲锋枪（`smg_compact`）
-**170 顶点 / 108 三角面** · 包围盒 **0.060 × 0.241 × 0.570 m** · 贴图 512²（自动密度 678 px/m）
+**240 顶点 / 108 三角面** · 包围盒 **0.06 × 0.241 × 0.57 m** · 贴图 512²（自动密度 678 px/m）
 
 ```json
 {
@@ -134,7 +134,7 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
 ```
 
 ### 突击步枪（`rifle_assault`）
-**246 顶点 / 192 三角面** · 包围盒 **0.055 × 0.308 × 0.965 m** · 贴图 512²（自动密度 526 px/m）
+**456 顶点 / 192 三角面** · 包围盒 **0.055 × 0.308 × 0.965 m** · 贴图 512²（自动密度 526 px/m）
 
 ```json
 {
@@ -157,7 +157,7 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
 ```
 
 ### 消音器（`suppressor`）
-**116 顶点 / 112 三角面** · 包围盒 **0.038 × 0.038 × 0.195 m** · 贴图 512²（自动密度 1024 px/m）
+**280 顶点 / 112 三角面** · 包围盒 **0.038 × 0.038 × 0.195 m** · 贴图 512²（自动密度 1024 px/m）
 
 ```json
 {
@@ -175,7 +175,7 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
 ```
 
 ### 铁锤（`hammer_melee`）
-**108 顶点 / 92 三角面** · 包围盒 **0.100 × 0.375 × 0.260 m** · 贴图 512²（自动密度 713 px/m）
+**224 顶点 / 92 三角面** · 包围盒 **0.1 × 0.375 × 0.26 m** · 贴图 512²（自动密度 713 px/m）
 
 ```json
 {
