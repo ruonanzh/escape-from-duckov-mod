@@ -68,7 +68,7 @@ action=search  class=GameObject  pattern="Building"          # 相关对象（�
 ## 例子（照着写）
 
 ### 墙（`wall`）
-**72 顶点 / 36 三角面** · 包围盒 **3.060 × 2.680 × 0.240 m**
+**72 顶点 / 36 三角面** · 包围盒 **3.060 × 2.680 × 0.240 m** · 贴图 512²（自动密度 77 px/m）
 
 ```json
 {
@@ -76,61 +76,18 @@ action=search  class=GameObject  pattern="Building"          # 相关对象（�
   "category": "buildings/structure",
   "summary": "墙：墙体 + 上下压条（3 m 长）",
   "parts": [
-    {
-      "role": "body",
-      "shape": "box",
-      "size": [
-        3.0,
-        2.6,
-        0.2
-      ],
-      "at": [
-        0,
-        1.3,
-        0.0
-      ]
-    },
-    {
-      "role": "trim_top",
-      "shape": "box",
-      "size": [
-        3.06,
-        0.08,
-        0.24
-      ],
-      "at": [
-        0,
-        2.64,
-        0.0
-      ]
-    },
-    {
-      "role": "trim_bottom",
-      "shape": "box",
-      "size": [
-        3.06,
-        0.1,
-        0.24
-      ],
-      "at": [
-        0,
-        0.05,
-        0.0
-      ]
-    }
+    { "role": "body", "shape": "box", "size": [3.0, 2.6, 0.2], "at": [0, 1.3, 0.0] },
+    { "role": "trim_top", "shape": "box", "size": [3.06, 0.08, 0.24], "at": [0, 2.64, 0.0] },
+    { "role": "trim_bottom", "shape": "box", "size": [3.06, 0.1, 0.24], "at": [0, 0.05, 0.0] }
   ],
-  "material": {
-    "mode": "clone",
-    "pick": "body"
-  },
-  "attach": {
-    "kind": "building"
-  }
+  "material": {"mode": "clone", "pick": "body"},
+  "texture": { "size": [512, 512], "source": "generated", "fills": { "body": "#1E2124", "trim_top": "#A8A8A2", "trim_bottom": "#8E8E88" } },
+  "attach": {"kind": "building"}
 }
 ```
 
 ### 地板（`floor`）
-**120 顶点 / 60 三角面** · 包围盒 **3.060 × 0.120 × 3.060 m**
+**120 顶点 / 60 三角面** · 包围盒 **3.060 × 0.120 × 3.060 m** · 贴图 512²（自动密度 42 px/m）
 
 ```json
 {
@@ -138,63 +95,18 @@ action=search  class=GameObject  pattern="Building"          # 相关对象（�
   "category": "buildings/structure",
   "summary": "地板：面板 + 四边包边（mirror 两轴，只写两条）",
   "parts": [
-    {
-      "role": "panel",
-      "shape": "box",
-      "size": [
-        3.0,
-        0.12,
-        3.0
-      ],
-      "at": [
-        0,
-        -0.06,
-        0.0
-      ]
-    },
-    {
-      "role": "edge",
-      "shape": "box",
-      "size": [
-        3.06,
-        0.06,
-        0.06
-      ],
-      "at": [
-        0,
-        -0.03,
-        1.5
-      ],
-      "mirror": "z"
-    },
-    {
-      "role": "edge_side",
-      "shape": "box",
-      "size": [
-        0.06,
-        0.06,
-        3.06
-      ],
-      "at": [
-        1.5,
-        -0.03,
-        0.0
-      ],
-      "mirror": "x"
-    }
+    { "role": "panel", "shape": "box", "size": [3.0, 0.12, 3.0], "at": [0, -0.06, 0.0] },
+    { "role": "edge", "shape": "box", "size": [3.06, 0.06, 0.06], "at": [0, -0.03, 1.5], "mirror": "z" },
+    { "role": "edge_side", "shape": "box", "size": [0.06, 0.06, 3.06], "at": [1.5, -0.03, 0.0], "mirror": "x" }
   ],
-  "material": {
-    "mode": "clone",
-    "pick": "body"
-  },
-  "attach": {
-    "kind": "building"
-  }
+  "material": {"mode": "clone", "pick": "body"},
+  "texture": { "size": [512, 512], "source": "generated", "fills": { "panel": "#8A8A86", "edge": "#9A9A96", "edge_side": "#9A9A96" } },
+  "attach": {"kind": "building"}
 }
 ```
 
 ### 柱子（`pillar`）
-**98 顶点 / 72 三角面** · 包围盒 **0.400 × 2.900 × 0.400 m**
+**98 顶点 / 72 三角面** · 包围盒 **0.400 × 2.900 × 0.400 m** · 贴图 512²（自动密度 143 px/m）
 
 ```json
 {
@@ -202,59 +114,18 @@ action=search  class=GameObject  pattern="Building"          # 相关对象（�
   "category": "buildings/structure",
   "summary": "柱子：柱身 + 柱础 + 柱帽",
   "parts": [
-    {
-      "role": "shaft",
-      "shape": "cylinder",
-      "r": 0.15,
-      "h": 2.8,
-      "segments": 12,
-      "at": [
-        0,
-        1.4,
-        0.0
-      ]
-    },
-    {
-      "role": "base",
-      "shape": "box",
-      "size": [
-        0.4,
-        0.12,
-        0.4
-      ],
-      "at": [
-        0,
-        0.06,
-        0.0
-      ]
-    },
-    {
-      "role": "cap",
-      "shape": "box",
-      "size": [
-        0.36,
-        0.1,
-        0.36
-      ],
-      "at": [
-        0,
-        2.85,
-        0.0
-      ]
-    }
+    { "role": "shaft", "shape": "cylinder", "r": 0.15, "h": 2.8, "segments": 12, "at": [0, 1.4, 0.0] },
+    { "role": "base", "shape": "box", "size": [0.4, 0.12, 0.4], "at": [0, 0.06, 0.0] },
+    { "role": "cap", "shape": "box", "size": [0.36, 0.1, 0.36], "at": [0, 2.85, 0.0] }
   ],
-  "material": {
-    "mode": "clone",
-    "pick": "body"
-  },
-  "attach": {
-    "kind": "building"
-  }
+  "material": {"mode": "clone", "pick": "body"},
+  "texture": { "size": [512, 512], "source": "generated", "fills": { "shaft": "#A5A5A0", "base": "#7E8288", "cap": "#B0B0AA" } },
+  "attach": {"kind": "building"}
 }
 ```
 
 ### 自助机器（`vending_machine`）
-**96 顶点 / 48 三角面** · 包围盒 **1.240 × 2.200 × 1.065 m**
+**96 顶点 / 48 三角面** · 包围盒 **1.240 × 2.200 × 1.065 m** · 贴图 512²（自动密度 84 px/m）
 
 ```json
 {
@@ -262,69 +133,13 @@ action=search  class=GameObject  pattern="Building"          # 相关对象（�
   "category": "buildings/interactable",
   "summary": "自助机器：柜体 + 面板屏 + 顶部灯箱 + 底座（可交互物件同 ATM/售货机）",
   "parts": [
-    {
-      "role": "body",
-      "shape": "box",
-      "size": [
-        1.2,
-        1.8,
-        1.0
-      ],
-      "at": [
-        0,
-        0.9,
-        0.0
-      ]
-    },
-    {
-      "role": "panel",
-      "shape": "box",
-      "size": [
-        1.0,
-        0.6,
-        0.05
-      ],
-      "at": [
-        0,
-        1.35,
-        -0.52
-      ]
-    },
-    {
-      "role": "sign",
-      "shape": "box",
-      "size": [
-        1.24,
-        0.4,
-        1.04
-      ],
-      "at": [
-        0,
-        2.0,
-        0.0
-      ]
-    },
-    {
-      "role": "base",
-      "shape": "box",
-      "size": [
-        1.24,
-        0.1,
-        1.04
-      ],
-      "at": [
-        0,
-        0.05,
-        0.0
-      ]
-    }
+    { "role": "body", "shape": "box", "size": [1.2, 1.8, 1.0], "at": [0, 0.9, 0.0] },
+    { "role": "panel", "shape": "box", "size": [1.0, 0.6, 0.05], "at": [0, 1.35, -0.52] },
+    { "role": "sign", "shape": "box", "size": [1.24, 0.4, 1.04], "at": [0, 2.0, 0.0] },
+    { "role": "base", "shape": "box", "size": [1.24, 0.1, 1.04], "at": [0, 0.05, 0.0] }
   ],
-  "material": {
-    "mode": "clone",
-    "pick": "body"
-  },
-  "attach": {
-    "kind": "building"
-  }
+  "material": {"mode": "clone", "pick": "body"},
+  "texture": { "size": [512, 512], "source": "generated", "fills": { "body": "#1E2124", "panel": "#8A8A86", "sign": "#C8D0D8", "base": "#7E8288" } },
+  "attach": {"kind": "building"}
 }
 ```

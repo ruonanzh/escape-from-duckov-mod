@@ -5,17 +5,17 @@
 角色模型 = **骨骼树 + 方块**，用 **YSM 格式**（源自 Minecraft Bedrock 几何），纯 JSON 文本：
 
 ```json
-{"format_version": "1.12.0",
- "minecraft:geometry": [{
-   "bones": [
-     {"name": "Root", "pivot": [0, 0, 0]},
-     {"name": "Pelvis", "parent": "Root", "pivot": [0, 12, 0],
-      "cubes": [{"origin": [-4, 12, -2], "size": [8, 12, 4], "uv": [16, 16]}]},
-     {"name": "Head", "parent": "Spine.004", "pivot": [0, 24, 0],
-      "cubes": [{"origin": [-4, 24, -4], "size": [8, 8, 8], "uv": [0, 0]}]}
-   ],
-   "description": {"identifier": "geometry.duck.custom", "texture_width": 64, "texture_height": 64}
- }]}
+{
+  "format_version": "1.12.0",
+  "minecraft:geometry": [{
+    "bones": [
+      {"name": "Root", "pivot": [0, 0, 0]},
+      {"name": "Pelvis", "parent": "Root", "pivot": [0, 12, 0], "cubes": [{"origin": [-4, 12, -2], "size": [8, 12, 4], "uv": [0, 0]}]},
+      {"name": "Head", "parent": "Spine.004", "pivot": [0, 24, 0], "cubes": [{"origin": [-4, 24, -4], "size": [8, 8, 8], "uv": [25, 0]}]}
+    ],
+    "description": {"identifier": "geometry.duck.custom", "texture_width": 128, "texture_height": 128}
+  }]
+}
 ```
 
 | 字段 | 作用 |
@@ -103,7 +103,7 @@ action=dump    class=GameObject          name="0_CharacterModel_Custom_Killa"  f
 
 ### NPC 鸭子骨架（`npc_duck`）
 
-对应游戏里的 `DuckBody` 系列（24 根骨骼）· **23 个骨骼 / 552 顶点 / 276 三角面**
+**23 个骨骼 / 552 顶点 / 276 三角面** · 贴图 128²（UV 已按 box-UV 排布）
 
 ```json
 {
@@ -111,37 +111,37 @@ action=dump    class=GameObject          name="0_CharacterModel_Custom_Killa"  f
   "minecraft:geometry": [{
     "bones": [
       {"name": "Root", "pivot": [0.0, 0.0, 0.0], "cubes": [{"origin": [-0.6, 0.0, -0.6], "size": [1.21, 2.42, 1.21], "uv": [0, 0]}]},
-      {"name": "Pelvis", "parent": "Root", "pivot": [0.0, 2.42, 0.0], "cubes": [{"origin": [-0.6, 2.42, -0.6], "size": [1.2, 2.28, 1.2], "uv": [0, 0]}]},
-      {"name": "Spine.001", "parent": "Pelvis", "pivot": [0.0, 4.7, 0.0], "cubes": [{"origin": [-0.6, 4.7, -0.6], "size": [1.2, 1.29, 1.2], "uv": [0, 0]}]},
-      {"name": "Spine.002", "parent": "Spine.001", "pivot": [0.0, 5.99, 0.0], "cubes": [{"origin": [-0.6, 5.99, -0.6], "size": [1.2, 1.77, 1.2], "uv": [0, 0]}]},
-      {"name": "Spine.003", "parent": "Spine.002", "pivot": [0.0, 7.76, 0.0], "cubes": [{"origin": [-0.6, 7.76, -0.6], "size": [1.2, 1.77, 1.2], "uv": [0, 0]}]},
-      {"name": "Spine.004", "parent": "Spine.003", "pivot": [0.0, 9.53, 0.0], "cubes": [{"origin": [-0.8, 9.53, -0.93], "size": [1.6, 3.2, 1.6], "uv": [0, 0]}]},
-      {"name": "Head", "parent": "Spine.004", "pivot": [0.0, 12.73, -0.26], "cubes": [{"origin": [-1.0, 11.73, -1.26], "size": [2.0, 2.0, 2.0], "uv": [0, 0]}]},
-      {"name": "UpperArm.L", "parent": "Spine.004", "pivot": [-4.31, 9.42, 0.29], "cubes": [{"origin": [-5.01, 9.42, -0.41], "size": [1.22, 2.45, 1.22], "uv": [0, 0]}]},
-      {"name": "Elbow.L", "parent": "UpperArm.L", "pivot": [-4.49, 11.87, 0.11], "cubes": [{"origin": [-5.05, 11.87, -0.49], "size": [1.2, 1.96, 1.2], "uv": [0, 0]}]},
-      {"name": "ForeArm.L", "parent": "Elbow.L", "pivot": [-4.42, 13.83, 0.1], "cubes": [{"origin": [-5.02, 13.83, -0.5], "size": [1.2, 0.58, 1.2], "uv": [0, 0]}]},
-      {"name": "Hand.L", "parent": "ForeArm.L", "pivot": [-4.42, 14.41, 0.1], "cubes": [{"origin": [-5.42, 13.81, -0.5], "size": [1.2, 0.72, 0.72], "uv": [0, 0]}]},
-      {"name": "Hand.Soket.L", "parent": "Hand.L", "pivot": [-4.42, 14.41, 0.1], "cubes": [{"origin": [-5.42, 13.41, -0.9], "size": [1.2, 1.2, 1.2], "uv": [0, 0]}]},
-      {"name": "UpperArm.R", "parent": "Spine.004", "pivot": [4.31, 9.42, 0.29], "cubes": [{"origin": [3.79, 9.42, -0.41], "size": [1.22, 2.45, 1.22], "uv": [0, 0]}]},
-      {"name": "Elbow.R", "parent": "UpperArm.R", "pivot": [4.49, 11.87, 0.11], "cubes": [{"origin": [3.85, 11.87, -0.49], "size": [1.2, 1.96, 1.2], "uv": [0, 0]}]},
-      {"name": "ForeArm.R", "parent": "Elbow.R", "pivot": [4.42, 13.83, 0.1], "cubes": [{"origin": [3.82, 13.83, -0.5], "size": [1.2, 0.58, 1.2], "uv": [0, 0]}]},
-      {"name": "Hand.R", "parent": "ForeArm.R", "pivot": [4.42, 14.41, 0.1], "cubes": [{"origin": [3.42, 13.81, -0.5], "size": [1.2, 0.72, 0.72], "uv": [0, 0]}]},
-      {"name": "Hand.Soket.R", "parent": "Hand.R", "pivot": [4.42, 14.41, 0.1], "cubes": [{"origin": [3.42, 13.41, -0.9], "size": [1.2, 1.2, 1.2], "uv": [0, 0]}]},
-      {"name": "Thigh.R", "parent": "Pelvis", "pivot": [2.59, 3.24, -0.62], "cubes": [{"origin": [1.25, 3.24, -1.9], "size": [1.2, 2.4, 1.2], "uv": [0, 0]}]},
-      {"name": "Foot.R", "parent": "Thigh.R", "pivot": [1.11, 5.64, -1.98], "cubes": [{"origin": [0.11, 4.64, -2.98], "size": [1.2, 1.2, 1.2], "uv": [0, 0]}]},
-      {"name": "Thigh.L", "parent": "Pelvis", "pivot": [-2.59, 3.24, -0.62], "cubes": [{"origin": [-2.45, 3.24, -1.9], "size": [1.2, 2.4, 1.2], "uv": [0, 0]}]},
-      {"name": "Foot.L", "parent": "Thigh.L", "pivot": [-1.11, 5.64, -1.98], "cubes": [{"origin": [-2.11, 4.64, -2.98], "size": [1.2, 1.2, 1.2], "uv": [0, 0]}]},
-      {"name": "Tail", "parent": "Pelvis", "pivot": [-0.0, 4.56, -0.84], "cubes": [{"origin": [-0.73, 4.56, -1.56], "size": [1.45, 2.9, 1.45], "uv": [0, 0]}]},
-      {"name": "Tail.001", "parent": "Tail", "pivot": [-0.0, 7.46, -0.84], "cubes": [{"origin": [-1.0, 6.46, -1.84], "size": [1.2, 1.2, 1.2], "uv": [0, 0]}]}
+      {"name": "Pelvis", "parent": "Root", "pivot": [0.0, 2.42, 0.0], "cubes": [{"origin": [-0.6, 2.42, -0.6], "size": [1.2, 2.28, 1.2], "uv": [5, 0]}]},
+      {"name": "Spine.001", "parent": "Pelvis", "pivot": [0.0, 4.7, 0.0], "cubes": [{"origin": [-0.6, 4.7, -0.6], "size": [1.2, 1.29, 1.2], "uv": [10, 0]}]},
+      {"name": "Spine.002", "parent": "Spine.001", "pivot": [0.0, 5.99, 0.0], "cubes": [{"origin": [-0.6, 5.99, -0.6], "size": [1.2, 1.77, 1.2], "uv": [15, 0]}]},
+      {"name": "Spine.003", "parent": "Spine.002", "pivot": [0.0, 7.76, 0.0], "cubes": [{"origin": [-0.6, 7.76, -0.6], "size": [1.2, 1.77, 1.2], "uv": [20, 0]}]},
+      {"name": "Spine.004", "parent": "Spine.003", "pivot": [0.0, 9.53, 0.0], "cubes": [{"origin": [-0.8, 9.53, -0.93], "size": [1.6, 3.2, 1.6], "uv": [25, 0]}]},
+      {"name": "Head", "parent": "Spine.004", "pivot": [0.0, 12.73, -0.26], "cubes": [{"origin": [-1.0, 11.73, -1.26], "size": [2.0, 2.0, 2.0], "uv": [34, 0]}]},
+      {"name": "UpperArm.L", "parent": "Spine.004", "pivot": [-4.31, 9.42, 0.29], "cubes": [{"origin": [-5.01, 9.42, -0.41], "size": [1.22, 2.45, 1.22], "uv": [43, 0]}]},
+      {"name": "Elbow.L", "parent": "UpperArm.L", "pivot": [-4.49, 11.87, 0.11], "cubes": [{"origin": [-5.05, 11.87, -0.49], "size": [1.2, 1.96, 1.2], "uv": [48, 0]}]},
+      {"name": "ForeArm.L", "parent": "Elbow.L", "pivot": [-4.42, 13.83, 0.1], "cubes": [{"origin": [-5.02, 13.83, -0.5], "size": [1.2, 0.58, 1.2], "uv": [53, 0]}]},
+      {"name": "Hand.L", "parent": "ForeArm.L", "pivot": [-4.42, 14.41, 0.1], "cubes": [{"origin": [-5.42, 13.81, -0.5], "size": [1.2, 0.72, 0.72], "uv": [58, 0]}]},
+      {"name": "Hand.Soket.L", "parent": "Hand.L", "pivot": [-4.42, 14.41, 0.1], "cubes": [{"origin": [-5.42, 13.41, -0.9], "size": [1.2, 1.2, 1.2], "uv": [63, 0]}]},
+      {"name": "UpperArm.R", "parent": "Spine.004", "pivot": [4.31, 9.42, 0.29], "cubes": [{"origin": [3.79, 9.42, -0.41], "size": [1.22, 2.45, 1.22], "uv": [68, 0]}]},
+      {"name": "Elbow.R", "parent": "UpperArm.R", "pivot": [4.49, 11.87, 0.11], "cubes": [{"origin": [3.85, 11.87, -0.49], "size": [1.2, 1.96, 1.2], "uv": [73, 0]}]},
+      {"name": "ForeArm.R", "parent": "Elbow.R", "pivot": [4.42, 13.83, 0.1], "cubes": [{"origin": [3.82, 13.83, -0.5], "size": [1.2, 0.58, 1.2], "uv": [78, 0]}]},
+      {"name": "Hand.R", "parent": "ForeArm.R", "pivot": [4.42, 14.41, 0.1], "cubes": [{"origin": [3.42, 13.81, -0.5], "size": [1.2, 0.72, 0.72], "uv": [83, 0]}]},
+      {"name": "Hand.Soket.R", "parent": "Hand.R", "pivot": [4.42, 14.41, 0.1], "cubes": [{"origin": [3.42, 13.41, -0.9], "size": [1.2, 1.2, 1.2], "uv": [88, 0]}]},
+      {"name": "Thigh.R", "parent": "Pelvis", "pivot": [2.59, 3.24, -0.62], "cubes": [{"origin": [1.25, 3.24, -1.9], "size": [1.2, 2.4, 1.2], "uv": [93, 0]}]},
+      {"name": "Foot.R", "parent": "Thigh.R", "pivot": [1.11, 5.64, -1.98], "cubes": [{"origin": [0.11, 4.64, -2.98], "size": [1.2, 1.2, 1.2], "uv": [98, 0]}]},
+      {"name": "Thigh.L", "parent": "Pelvis", "pivot": [-2.59, 3.24, -0.62], "cubes": [{"origin": [-2.45, 3.24, -1.9], "size": [1.2, 2.4, 1.2], "uv": [103, 0]}]},
+      {"name": "Foot.L", "parent": "Thigh.L", "pivot": [-1.11, 5.64, -1.98], "cubes": [{"origin": [-2.11, 4.64, -2.98], "size": [1.2, 1.2, 1.2], "uv": [108, 0]}]},
+      {"name": "Tail", "parent": "Pelvis", "pivot": [-0.0, 4.56, -0.84], "cubes": [{"origin": [-0.73, 4.56, -1.56], "size": [1.45, 2.9, 1.45], "uv": [113, 0]}]},
+      {"name": "Tail.001", "parent": "Tail", "pivot": [-0.0, 7.46, -0.84], "cubes": [{"origin": [-1.0, 6.46, -1.84], "size": [1.2, 1.2, 1.2], "uv": [118, 0]}]}
     ],
-    "description": {"identifier": "geometry.duck.npc_duck", "texture_width": 64, "texture_height": 64}
+    "description": {"identifier": "geometry.duck.npc_duck", "texture_width": 128, "texture_height": 128}
   }]
 }
 ```
 
 ### 玩家鸭子骨架（`player_duck`）
 
-对应 `Player_Duck_Head` 系列（37 根骨骼）· **21 个骨骼 / 504 顶点 / 252 三角面**（手指等细节骨骼按需补）
+**21 个骨骼 / 504 顶点 / 252 三角面**（手指等细节骨骼按需补） · 贴图 128²（UV 已按 box-UV 排布）
 
 ```json
 {
@@ -149,28 +149,28 @@ action=dump    class=GameObject          name="0_CharacterModel_Custom_Killa"  f
   "minecraft:geometry": [{
     "bones": [
       {"name": "Root", "pivot": [0.0, 0.0, 0.0], "cubes": [{"origin": [-0.6, 0.0, -0.6], "size": [1.2, 1.42, 1.2], "uv": [0, 0]}]},
-      {"name": "Hip", "parent": "Root", "pivot": [0.0, 1.42, 0.0], "cubes": [{"origin": [-0.6, 1.42, -0.6], "size": [1.2, 1.6, 1.2], "uv": [0, 0]}]},
-      {"name": "Spine.001", "parent": "Hip", "pivot": [0.0, 3.02, 0.0], "cubes": [{"origin": [-0.6, 3.02, -0.6], "size": [1.2, 2.22, 1.2], "uv": [0, 0]}]},
-      {"name": "Spine.002", "parent": "Spine.001", "pivot": [0.0, 5.24, 0.0], "cubes": [{"origin": [-0.61, 5.24, -0.61], "size": [1.23, 2.46, 1.23], "uv": [0, 0]}]},
-      {"name": "Spine.003", "parent": "Spine.002", "pivot": [0.0, 7.7, 0.0], "cubes": [{"origin": [-0.92, 7.7, -1.07], "size": [1.84, 3.68, 1.84], "uv": [0, 0]}]},
-      {"name": "Head", "parent": "Spine.003", "pivot": [-0.0, 11.38, -0.3], "cubes": [{"origin": [-1.0, 10.38, -1.3], "size": [2.0, 2.0, 2.0], "uv": [0, 0]}]},
-      {"name": "Arm.Root.R", "parent": "Spine.003", "pivot": [1.84, 9.24, 0.24], "cubes": [{"origin": [1.24, 9.24, -0.36], "size": [1.2, 1.93, 1.2], "uv": [0, 0]}]},
-      {"name": "Arm.Upper.R", "parent": "Arm.Root.R", "pivot": [1.84, 11.17, 0.24], "cubes": [{"origin": [1.24, 11.17, -0.36], "size": [1.21, 2.42, 1.21], "uv": [0, 0]}]},
-      {"name": "Arm.Fore.R", "parent": "Arm.Upper.R", "pivot": [1.84, 13.59, 0.24], "cubes": [{"origin": [1.24, 13.59, -0.36], "size": [1.2, 1.7, 1.2], "uv": [0, 0]}]},
-      {"name": "Hand.R", "parent": "Arm.Fore.R", "pivot": [1.84, 15.29, 0.24], "cubes": [{"origin": [0.84, 14.29, -0.76], "size": [1.2, 1.2, 1.2], "uv": [0, 0]}]},
-      {"name": "Arm.Root.L", "parent": "Spine.003", "pivot": [-1.84, 9.24, 0.24], "cubes": [{"origin": [-2.44, 9.24, -0.36], "size": [1.2, 1.93, 1.2], "uv": [0, 0]}]},
-      {"name": "Arm.Upper.L", "parent": "Arm.Root.L", "pivot": [-1.84, 11.17, 0.24], "cubes": [{"origin": [-2.45, 11.17, -0.36], "size": [1.21, 2.42, 1.21], "uv": [0, 0]}]},
-      {"name": "Arm.Fore.L", "parent": "Arm.Upper.L", "pivot": [-1.84, 13.59, 0.24], "cubes": [{"origin": [-2.44, 13.59, -0.36], "size": [1.2, 1.7, 1.2], "uv": [0, 0]}]},
-      {"name": "Hand.L", "parent": "Arm.Fore.L", "pivot": [-1.84, 15.29, 0.24], "cubes": [{"origin": [-2.84, 14.29, -0.76], "size": [1.2, 1.2, 1.2], "uv": [0, 0]}]},
-      {"name": "Leg.Upper.R", "parent": "Hip", "pivot": [1.84, 3.23, -0.91], "cubes": [{"origin": [1.24, 3.23, -1.51], "size": [1.2, 1.91, 1.2], "uv": [0, 0]}]},
-      {"name": "Leg.Lower.R", "parent": "Leg.Upper.R", "pivot": [1.84, 5.14, -0.91], "cubes": [{"origin": [1.24, 5.14, -1.51], "size": [1.2, 1.27, 1.2], "uv": [0, 0]}]},
-      {"name": "Foot.R.001", "parent": "Leg.Lower.R", "pivot": [1.84, 6.41, -0.91], "cubes": [{"origin": [0.84, 5.41, -1.91], "size": [1.2, 1.2, 1.2], "uv": [0, 0]}]},
-      {"name": "Leg.Upper.L", "parent": "Hip", "pivot": [-1.84, 3.23, -0.91], "cubes": [{"origin": [-2.44, 3.23, -1.51], "size": [1.2, 1.91, 1.2], "uv": [0, 0]}]},
-      {"name": "Leg.Lower.L", "parent": "Leg.Upper.L", "pivot": [-1.84, 5.14, -0.91], "cubes": [{"origin": [-2.44, 5.14, -1.51], "size": [1.2, 1.27, 1.2], "uv": [0, 0]}]},
-      {"name": "Foot.L.001", "parent": "Leg.Lower.L", "pivot": [-1.84, 6.41, -0.91], "cubes": [{"origin": [-2.84, 5.41, -1.91], "size": [1.2, 1.2, 1.2], "uv": [0, 0]}]},
-      {"name": "Tail.001", "parent": "Hip", "pivot": [-0.0, 4.73, -3.84], "cubes": [{"origin": [-1.0, 3.73, -4.84], "size": [1.2, 1.2, 1.2], "uv": [0, 0]}]}
+      {"name": "Hip", "parent": "Root", "pivot": [0.0, 1.42, 0.0], "cubes": [{"origin": [-0.6, 1.42, -0.6], "size": [1.2, 1.6, 1.2], "uv": [5, 0]}]},
+      {"name": "Spine.001", "parent": "Hip", "pivot": [0.0, 3.02, 0.0], "cubes": [{"origin": [-0.6, 3.02, -0.6], "size": [1.2, 2.22, 1.2], "uv": [10, 0]}]},
+      {"name": "Spine.002", "parent": "Spine.001", "pivot": [0.0, 5.24, 0.0], "cubes": [{"origin": [-0.61, 5.24, -0.61], "size": [1.23, 2.46, 1.23], "uv": [15, 0]}]},
+      {"name": "Spine.003", "parent": "Spine.002", "pivot": [0.0, 7.7, 0.0], "cubes": [{"origin": [-0.92, 7.7, -1.07], "size": [1.84, 3.68, 1.84], "uv": [20, 0]}]},
+      {"name": "Head", "parent": "Spine.003", "pivot": [-0.0, 11.38, -0.3], "cubes": [{"origin": [-1.0, 10.38, -1.3], "size": [2.0, 2.0, 2.0], "uv": [29, 0]}]},
+      {"name": "Arm.Root.R", "parent": "Spine.003", "pivot": [1.84, 9.24, 0.24], "cubes": [{"origin": [1.24, 9.24, -0.36], "size": [1.2, 1.93, 1.2], "uv": [38, 0]}]},
+      {"name": "Arm.Upper.R", "parent": "Arm.Root.R", "pivot": [1.84, 11.17, 0.24], "cubes": [{"origin": [1.24, 11.17, -0.36], "size": [1.21, 2.42, 1.21], "uv": [43, 0]}]},
+      {"name": "Arm.Fore.R", "parent": "Arm.Upper.R", "pivot": [1.84, 13.59, 0.24], "cubes": [{"origin": [1.24, 13.59, -0.36], "size": [1.2, 1.7, 1.2], "uv": [48, 0]}]},
+      {"name": "Hand.R", "parent": "Arm.Fore.R", "pivot": [1.84, 15.29, 0.24], "cubes": [{"origin": [0.84, 14.29, -0.76], "size": [1.2, 1.2, 1.2], "uv": [53, 0]}]},
+      {"name": "Arm.Root.L", "parent": "Spine.003", "pivot": [-1.84, 9.24, 0.24], "cubes": [{"origin": [-2.44, 9.24, -0.36], "size": [1.2, 1.93, 1.2], "uv": [58, 0]}]},
+      {"name": "Arm.Upper.L", "parent": "Arm.Root.L", "pivot": [-1.84, 11.17, 0.24], "cubes": [{"origin": [-2.45, 11.17, -0.36], "size": [1.21, 2.42, 1.21], "uv": [63, 0]}]},
+      {"name": "Arm.Fore.L", "parent": "Arm.Upper.L", "pivot": [-1.84, 13.59, 0.24], "cubes": [{"origin": [-2.44, 13.59, -0.36], "size": [1.2, 1.7, 1.2], "uv": [68, 0]}]},
+      {"name": "Hand.L", "parent": "Arm.Fore.L", "pivot": [-1.84, 15.29, 0.24], "cubes": [{"origin": [-2.84, 14.29, -0.76], "size": [1.2, 1.2, 1.2], "uv": [73, 0]}]},
+      {"name": "Leg.Upper.R", "parent": "Hip", "pivot": [1.84, 3.23, -0.91], "cubes": [{"origin": [1.24, 3.23, -1.51], "size": [1.2, 1.91, 1.2], "uv": [78, 0]}]},
+      {"name": "Leg.Lower.R", "parent": "Leg.Upper.R", "pivot": [1.84, 5.14, -0.91], "cubes": [{"origin": [1.24, 5.14, -1.51], "size": [1.2, 1.27, 1.2], "uv": [83, 0]}]},
+      {"name": "Foot.R.001", "parent": "Leg.Lower.R", "pivot": [1.84, 6.41, -0.91], "cubes": [{"origin": [0.84, 5.41, -1.91], "size": [1.2, 1.2, 1.2], "uv": [88, 0]}]},
+      {"name": "Leg.Upper.L", "parent": "Hip", "pivot": [-1.84, 3.23, -0.91], "cubes": [{"origin": [-2.44, 3.23, -1.51], "size": [1.2, 1.91, 1.2], "uv": [93, 0]}]},
+      {"name": "Leg.Lower.L", "parent": "Leg.Upper.L", "pivot": [-1.84, 5.14, -0.91], "cubes": [{"origin": [-2.44, 5.14, -1.51], "size": [1.2, 1.27, 1.2], "uv": [98, 0]}]},
+      {"name": "Foot.L.001", "parent": "Leg.Lower.L", "pivot": [-1.84, 6.41, -0.91], "cubes": [{"origin": [-2.84, 5.41, -1.91], "size": [1.2, 1.2, 1.2], "uv": [103, 0]}]},
+      {"name": "Tail.001", "parent": "Hip", "pivot": [-0.0, 4.73, -3.84], "cubes": [{"origin": [-1.0, 3.73, -4.84], "size": [1.2, 1.2, 1.2], "uv": [108, 0]}]}
     ],
-    "description": {"identifier": "geometry.duck.player_duck", "texture_width": 64, "texture_height": 64}
+    "description": {"identifier": "geometry.duck.player_duck", "texture_width": 128, "texture_height": 128}
   }]
 }
 ```

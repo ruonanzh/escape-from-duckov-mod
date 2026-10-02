@@ -88,7 +88,7 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
 坐标与单位约定见 [`00-shared.md`](00-shared.md)，格式见 [`05-model-format.md`](05-model-format.md)。
 
 ### 紧凑手枪（`pistol_compact`）
-**218 顶点 / 132 三角面** · 包围盒 **0.030 × 0.159 × 0.203 m**
+**218 顶点 / 132 三角面** · 包围盒 **0.030 × 0.159 × 0.203 m** · 贴图 512²（自动密度 1024 px/m）
 
 ```json
 {
@@ -96,144 +96,23 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
   "category": "weapons/pistol",
   "summary": "紧凑手枪：滑套 + 枪管 + 枪身 + 握把 + 扳机护圈 + 弹匣底 + 前后准星",
   "parts": [
-    {
-      "role": "slide",
-      "shape": "box",
-      "size": [
-        0.03,
-        0.032,
-        0.17
-      ],
-      "at": [
-        0,
-        0.03,
-        0.005
-      ]
-    },
-    {
-      "role": "barrel",
-      "shape": "cylinder",
-      "r": 0.008,
-      "h": 0.075,
-      "segments": 12,
-      "at": [
-        0,
-        0.03,
-        0.085
-      ],
-      "rot": [
-        90,
-        0,
-        0
-      ]
-    },
-    {
-      "role": "frame",
-      "shape": "box",
-      "size": [
-        0.028,
-        0.022,
-        0.135
-      ],
-      "at": [
-        0,
-        0.006,
-        0.0
-      ]
-    },
-    {
-      "role": "grip",
-      "shape": "box",
-      "size": [
-        0.026,
-        0.095,
-        0.038
-      ],
-      "at": [
-        0,
-        -0.048,
-        -0.045
-      ],
-      "rot": [
-        -12,
-        0,
-        0
-      ]
-    },
-    {
-      "role": "guard",
-      "shape": "box",
-      "size": [
-        0.008,
-        0.02,
-        0.032
-      ],
-      "at": [
-        0,
-        -0.02,
-        -0.022
-      ]
-    },
-    {
-      "role": "magazine",
-      "shape": "box",
-      "size": [
-        0.028,
-        0.01,
-        0.042
-      ],
-      "at": [
-        0,
-        -0.098,
-        -0.054
-      ],
-      "rot": [
-        -12,
-        0,
-        0
-      ]
-    },
-    {
-      "role": "sight_front",
-      "shape": "box",
-      "size": [
-        0.004,
-        0.006,
-        0.006
-      ],
-      "at": [
-        0,
-        0.049,
-        0.078
-      ]
-    },
-    {
-      "role": "sight_rear",
-      "shape": "box",
-      "size": [
-        0.02,
-        0.006,
-        0.008
-      ],
-      "at": [
-        0,
-        0.049,
-        -0.055
-      ]
-    }
+    { "role": "slide", "shape": "box", "size": [0.03, 0.032, 0.17], "at": [0, 0.03, 0.005] },
+    { "role": "barrel", "shape": "cylinder", "r": 0.008, "h": 0.075, "segments": 12, "at": [0, 0.03, 0.085], "rot": [90, 0, 0] },
+    { "role": "frame", "shape": "box", "size": [0.028, 0.022, 0.135], "at": [0, 0.006, 0.0] },
+    { "role": "grip", "shape": "box", "size": [0.026, 0.095, 0.038], "at": [0, -0.048, -0.045], "rot": [-12, 0, 0] },
+    { "role": "guard", "shape": "box", "size": [0.008, 0.02, 0.032], "at": [0, -0.02, -0.022] },
+    { "role": "magazine", "shape": "box", "size": [0.028, 0.01, 0.042], "at": [0, -0.098, -0.054], "rot": [-12, 0, 0] },
+    { "role": "sight_front", "shape": "box", "size": [0.004, 0.006, 0.006], "at": [0, 0.049, 0.078] },
+    { "role": "sight_rear", "shape": "box", "size": [0.02, 0.006, 0.008], "at": [0, 0.049, -0.055] }
   ],
-  "material": {
-    "mode": "clone",
-    "pick": "body"
-  },
-  "attach": {
-    "kind": "item_graphic"
-  }
+  "material": {"mode": "clone", "pick": "body"},
+  "texture": { "size": [512, 512], "source": "generated", "fills": { "slide": "#3A3F44", "barrel": "#22262A", "frame": "#33383D", "grip": "#4A4038", "guard": "#2C3136", "magazine": "#2E3236", "sight_front": "#1E2124", "sight_rear": "#1E2124" } },
+  "attach": {"kind": "item_graphic"}
 }
 ```
 
 ### 紧凑冲锋枪（`smg_compact`）
-**170 顶点 / 108 三角面** · 包围盒 **0.060 × 0.241 × 0.570 m**
+**170 顶点 / 108 三角面** · 包围盒 **0.060 × 0.241 × 0.570 m** · 贴图 512²（自动密度 678 px/m）
 
 ```json
 {
@@ -241,116 +120,21 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
   "category": "weapons/smg",
   "summary": "紧凑冲锋枪：机匣 + 枪管 + 折叠托 + 握把 + 弹匣 + 照门",
   "parts": [
-    {
-      "role": "receiver",
-      "shape": "box",
-      "size": [
-        0.06,
-        0.09,
-        0.3
-      ],
-      "at": [
-        0,
-        0.02,
-        0.0
-      ]
-    },
-    {
-      "role": "barrel",
-      "shape": "cylinder",
-      "r": 0.01,
-      "h": 0.14,
-      "segments": 12,
-      "at": [
-        0,
-        0.035,
-        0.2
-      ],
-      "rot": [
-        90,
-        0,
-        0
-      ]
-    },
-    {
-      "role": "stock",
-      "shape": "box",
-      "size": [
-        0.04,
-        0.06,
-        0.16
-      ],
-      "at": [
-        0,
-        0.0,
-        -0.22
-      ]
-    },
-    {
-      "role": "grip",
-      "shape": "box",
-      "size": [
-        0.03,
-        0.1,
-        0.04
-      ],
-      "at": [
-        0,
-        -0.07,
-        -0.05
-      ],
-      "rot": [
-        -10,
-        0,
-        0
-      ]
-    },
-    {
-      "role": "magazine",
-      "shape": "box",
-      "size": [
-        0.025,
-        0.14,
-        0.04
-      ],
-      "at": [
-        0,
-        -0.09,
-        0.06
-      ],
-      "rot": [
-        -6,
-        0,
-        0
-      ]
-    },
-    {
-      "role": "sight_rear",
-      "shape": "box",
-      "size": [
-        0.03,
-        0.008,
-        0.01
-      ],
-      "at": [
-        0,
-        0.075,
-        -0.06
-      ]
-    }
+    { "role": "receiver", "shape": "box", "size": [0.06, 0.09, 0.3], "at": [0, 0.02, 0.0] },
+    { "role": "barrel", "shape": "cylinder", "r": 0.01, "h": 0.14, "segments": 12, "at": [0, 0.035, 0.2], "rot": [90, 0, 0] },
+    { "role": "stock", "shape": "box", "size": [0.04, 0.06, 0.16], "at": [0, 0.0, -0.22] },
+    { "role": "grip", "shape": "box", "size": [0.03, 0.1, 0.04], "at": [0, -0.07, -0.05], "rot": [-10, 0, 0] },
+    { "role": "magazine", "shape": "box", "size": [0.025, 0.14, 0.04], "at": [0, -0.09, 0.06], "rot": [-6, 0, 0] },
+    { "role": "sight_rear", "shape": "box", "size": [0.03, 0.008, 0.01], "at": [0, 0.075, -0.06] }
   ],
-  "material": {
-    "mode": "clone",
-    "pick": "body"
-  },
-  "attach": {
-    "kind": "item_graphic"
-  }
+  "material": {"mode": "clone", "pick": "body"},
+  "texture": { "size": [512, 512], "source": "generated", "fills": { "receiver": "#3A3F44", "barrel": "#22262A", "stock": "#3E3833", "grip": "#4A4038", "magazine": "#2E3236", "sight_rear": "#1E2124" } },
+  "attach": {"kind": "item_graphic"}
 }
 ```
 
 ### 突击步枪（`rifle_assault`）
-**246 顶点 / 192 三角面** · 包围盒 **0.055 × 0.308 × 0.965 m**
+**246 顶点 / 192 三角面** · 包围盒 **0.055 × 0.308 × 0.965 m** · 贴图 512²（自动密度 526 px/m）
 
 ```json
 {
@@ -358,136 +142,22 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
   "category": "weapons/rifle",
   "summary": "突击步枪：机匣 + 长枪管 + 消焰器 + 枪托 + 握把 + 弹匣 + 光学瞄具",
   "parts": [
-    {
-      "role": "receiver",
-      "shape": "box",
-      "size": [
-        0.055,
-        0.08,
-        0.36
-      ],
-      "at": [
-        0,
-        0.02,
-        0.0
-      ]
-    },
-    {
-      "role": "barrel",
-      "shape": "cylinder",
-      "r": 0.009,
-      "h": 0.34,
-      "segments": 12,
-      "at": [
-        0,
-        0.03,
-        0.35
-      ],
-      "rot": [
-        90,
-        0,
-        0
-      ]
-    },
-    {
-      "role": "muzzle",
-      "shape": "cylinder",
-      "r": 0.019,
-      "h": 0.09,
-      "segments": 12,
-      "at": [
-        0,
-        0.03,
-        0.56
-      ],
-      "rot": [
-        90,
-        0,
-        0
-      ]
-    },
-    {
-      "role": "stock",
-      "shape": "box",
-      "size": [
-        0.045,
-        0.07,
-        0.2
-      ],
-      "at": [
-        0,
-        0.0,
-        -0.26
-      ]
-    },
-    {
-      "role": "grip",
-      "shape": "box",
-      "size": [
-        0.03,
-        0.1,
-        0.045
-      ],
-      "at": [
-        0,
-        -0.075,
-        -0.06
-      ],
-      "rot": [
-        -10,
-        0,
-        0
-      ]
-    },
-    {
-      "role": "magazine",
-      "shape": "box",
-      "size": [
-        0.03,
-        0.16,
-        0.05
-      ],
-      "at": [
-        0,
-        -0.1,
-        0.05
-      ],
-      "rot": [
-        -8,
-        0,
-        0
-      ]
-    },
-    {
-      "role": "scope",
-      "shape": "cylinder",
-      "r": 0.02,
-      "h": 0.22,
-      "segments": 12,
-      "at": [
-        0,
-        0.105,
-        -0.02
-      ],
-      "rot": [
-        90,
-        0,
-        0
-      ]
-    }
+    { "role": "receiver", "shape": "box", "size": [0.055, 0.08, 0.36], "at": [0, 0.02, 0.0] },
+    { "role": "barrel", "shape": "cylinder", "r": 0.009, "h": 0.34, "segments": 12, "at": [0, 0.03, 0.35], "rot": [90, 0, 0] },
+    { "role": "muzzle", "shape": "cylinder", "r": 0.019, "h": 0.09, "segments": 12, "at": [0, 0.03, 0.56], "rot": [90, 0, 0] },
+    { "role": "stock", "shape": "box", "size": [0.045, 0.07, 0.2], "at": [0, 0.0, -0.26] },
+    { "role": "grip", "shape": "box", "size": [0.03, 0.1, 0.045], "at": [0, -0.075, -0.06], "rot": [-10, 0, 0] },
+    { "role": "magazine", "shape": "box", "size": [0.03, 0.16, 0.05], "at": [0, -0.1, 0.05], "rot": [-8, 0, 0] },
+    { "role": "scope", "shape": "cylinder", "r": 0.02, "h": 0.22, "segments": 12, "at": [0, 0.105, -0.02], "rot": [90, 0, 0] }
   ],
-  "material": {
-    "mode": "clone",
-    "pick": "body"
-  },
-  "attach": {
-    "kind": "item_graphic"
-  }
+  "material": {"mode": "clone", "pick": "body"},
+  "texture": { "size": [512, 512], "source": "generated", "fills": { "receiver": "#3A3F44", "barrel": "#22262A", "muzzle": "#1E2124", "stock": "#3E3833", "grip": "#4A4038", "magazine": "#2E3236", "scope": "#1A1D20" } },
+  "attach": {"kind": "item_graphic"}
 }
 ```
 
 ### 消音器（`suppressor`）
-**116 顶点 / 112 三角面** · 包围盒 **0.038 × 0.038 × 0.195 m**
+**116 顶点 / 112 三角面** · 包围盒 **0.038 × 0.038 × 0.195 m** · 贴图 512²（自动密度 1024 px/m）
 
 ```json
 {
@@ -495,54 +165,17 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
   "category": "accessories/muzzle",
   "summary": "消音器：筒身 + 两端接环",
   "parts": [
-    {
-      "role": "body",
-      "shape": "cylinder",
-      "r": 0.019,
-      "h": 0.18,
-      "segments": 16,
-      "at": [
-        0,
-        0,
-        0.09
-      ],
-      "rot": [
-        90,
-        0,
-        0
-      ]
-    },
-    {
-      "role": "thread",
-      "shape": "cylinder",
-      "r": 0.011,
-      "h": 0.03,
-      "segments": 12,
-      "at": [
-        0,
-        0,
-        0.0
-      ],
-      "rot": [
-        90,
-        0,
-        0
-      ]
-    }
+    { "role": "body", "shape": "cylinder", "r": 0.019, "h": 0.18, "segments": 16, "at": [0, 0, 0.09], "rot": [90, 0, 0] },
+    { "role": "thread", "shape": "cylinder", "r": 0.011, "h": 0.03, "segments": 12, "at": [0, 0, 0.0], "rot": [90, 0, 0] }
   ],
-  "material": {
-    "mode": "clone",
-    "pick": "body"
-  },
-  "attach": {
-    "kind": "socket",
-    "name": "MuzzleSocket"
-  }
+  "material": {"mode": "clone", "pick": "body"},
+  "texture": { "size": [512, 512], "source": "generated", "fills": { "body": "#1E2124", "thread": "#565B61" } },
+  "attach": {"kind": "socket", "name": "MuzzleSocket"}
 }
 ```
 
 ### 铁锤（`hammer_melee`）
-**108 顶点 / 92 三角面** · 包围盒 **0.100 × 0.375 × 0.260 m**
+**108 顶点 / 92 三角面** · 包围盒 **0.100 × 0.375 × 0.260 m** · 贴图 512²（自动密度 713 px/m）
 
 ```json
 {
@@ -550,51 +183,12 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
   "category": "weapons/melee",
   "summary": "铁锤：锤头 + 木柄 + 柄尾",
   "parts": [
-    {
-      "role": "head",
-      "shape": "box",
-      "size": [
-        0.1,
-        0.1,
-        0.26
-      ],
-      "at": [
-        0,
-        0.32,
-        0.0
-      ]
-    },
-    {
-      "role": "handle",
-      "shape": "cylinder",
-      "r": 0.016,
-      "h": 0.3,
-      "segments": 10,
-      "at": [
-        0,
-        0.15,
-        0.0
-      ]
-    },
-    {
-      "role": "butt",
-      "shape": "cylinder",
-      "r": 0.02,
-      "h": 0.03,
-      "segments": 10,
-      "at": [
-        0,
-        0.01,
-        0.0
-      ]
-    }
+    { "role": "head", "shape": "box", "size": [0.1, 0.1, 0.26], "at": [0, 0.32, 0.0] },
+    { "role": "handle", "shape": "cylinder", "r": 0.016, "h": 0.3, "segments": 10, "at": [0, 0.15, 0.0] },
+    { "role": "butt", "shape": "cylinder", "r": 0.02, "h": 0.03, "segments": 10, "at": [0, 0.01, 0.0] }
   ],
-  "material": {
-    "mode": "clone",
-    "pick": "body"
-  },
-  "attach": {
-    "kind": "item_graphic"
-  }
+  "material": {"mode": "clone", "pick": "body"},
+  "texture": { "size": [512, 512], "source": "generated", "fills": { "head": "#6E7276", "handle": "#8A6A3F", "butt": "#6B5330" } },
+  "attach": {"kind": "item_graphic"}
 }
 ```
