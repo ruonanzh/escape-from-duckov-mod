@@ -52,6 +52,38 @@ search --class GameObject --pattern "CharacterModel"
   ```
   `LocatorMappings` 用**模型内的真实定位器名**（缺失时保留原角色挂点）；`LocatorOffsets` 可给各挂点配 `Position` / `Rotation`。
 
+## 游戏里的骨骼家族（映射基础，实测）
+
+导出命令（拿真实骨骼名）：
+
+```
+action=export  class=SkinnedMeshRenderer \
+  --field "m_GameObject.#name" --field "m_Bones[].m_GameObject.#name" --out /tmp/smr.tsv
+```
+
+实测：**72 个蒙皮网格 → 20 种不同骨骼集合**，但主力只有几个家族（按网格数排）：
+
+| 家族 | 网格数 | 骨骼数 | 骨骼命名（节选） | 代表 |
+|---|---|---|---|---|
+| **NPC 鸭子** | **28** | 24 | `Root;Pelvis;Spine.001–004;Head;UpperArm.L;Elbow.L;ForeArm.L;Hand.L;Hand.Soket.L;Thigh.R/L;Foot;Tail` | `DuckBody` |
+| **玩家鸭子** | **14** | **37** | `Root;Hip;Spine.001–003;Head;HairTip;Arm.Root/Uper/Fore.R;Hand.R;Finger.*;Leg.Upper/Lower/Foot;Tail.001/002` | `Player_Duck_Head` |
+| **蜘蛛 / 机械腿** | 7 | 20 | `Root;Bottom;Body;Gun;Leg_1…3_F/B_L/R;Leg_Target_*` | `Leg_3_B_L` |
+| 兽类（狼/兔/鸟）| 4+ | 9–12 | `root;body;ear.L/R;tail.01/02;leg.F/B.L/R;(wing.L/R)` | `Mesh_LOD1` |
+| 载具 / 马 | 2 | 19 | `dian;Spine;L_qian_tui;…;Head;Tail01` | `Vehicle_Horse` |
+| 无人机 | 1 | 7 | `Root;Body;Head;Arm_XP/XN/YP/YN` | `Drone` |
+| 怪物（自动命名）| 3 | 2–21 | `Bone001…`（无人体语义）| `Monster_T2` |
+| Mixamo 骨架（个别模型）| 1 | 52 | `mixamorig:*` | `Tagilla` |
+| 武器上的蒙皮网格 | 4 | 4–6 | `Root;Arrow;Spring…` | `WPN_AHBow` |
+
+**结论：不用为 59 个模型各建一套映射** —— 按**骨架家族**建 **6 套左右**就覆盖绝大多数（NPC 鸭子 / 玩家鸭子 / 蜘蛛·机械 / 兽类 / 载具 / 无人机）；怪物与 Mixamo 那几套可后置。
+
+### 两条命名策略（重要）
+
+| 情形 | 做法 |
+|---|---|
+| **我们自己生成的模型** | YSM 里的 `bones[].name` **直接用游戏那一家族的骨骼名**（如 `Spine.002` / `Arm.Upper.R`）→ **按名字 1:1 挂载，无需映射表** |
+| **导入社区现成 YSM 模型** | 它的骨骼名是作者自己的（`root`/`body`/`leftArm`…）→ 需要**映射表**（YSM 名 → 游戏骨骼名），缺失时保留原挂点 |
+
 ## 做什么 / 怎么做
 
 | 做什么 | 怎么做 |
@@ -75,5 +107,6 @@ action=dump    class=GameObject          name="0_CharacterModel_Custom_Killa"  f
 
 ## 待办
 
-- [ ] 找一份真实 `.ysm` / `ysm.json` 样例，把字段写成可复制的模板
-- [ ] 确认游戏侧 `locators` 与侧车 `LocatorMappings` 的对应关系
+- [ ] 找一份真实 `.ysm` / `ysm.json` 样例（社区模型）把字段写成可复制模板
+- [ ] 确认游戏侧 `locators`（如 `Hand.Soket.L`）与侧车 `LocatorMappings` 的对应关系
+- [ ] 实机验证：把自建几何挂到游戏骨骼上，看是否跟随动画（可用日志验：定时打骨骼世界坐标）
