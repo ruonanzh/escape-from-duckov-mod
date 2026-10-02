@@ -42,6 +42,8 @@ GameObject  IG_Acc_Muzzle_PST_DIS_1        ← 模型 prefab 根
 
 ## 类别索引
 
+每篇末尾都有**该类的「例子（照着写）」**。
+
 | 文件 | 覆盖 | 模型是否可参数化 |
 |---|---|---|
 | [`00-shared.md`](00-shared.md) | 几何来源、坐标/单位约定、通用挂载 | — |
@@ -50,5 +52,4 @@ GameObject  IG_Acc_Muzzle_PST_DIS_1        ← 模型 prefab 根
 | [`03-characters.md`](03-characters.md) | 角色模型（`0_CharacterModel_Custom_*`）：YSM 文本模型挂到游戏骨骼 | ✅ 按骨骼名挂载 |
 | [`04-buildings.md`](04-buildings.md) | 建筑 / 场景物件（`Pfb_BLD_*`） | ✅ 适合（静态几何）|
 | [`05-model-format.md`](05-model-format.md) | **模型格式**：零件清单 JSON（字段、约定、面数量级）| — |
-| [`few-shots/`](few-shots/README.md) | **照着写的例子**（按类别：武器 / 物品 / 建筑 / 角色）| — |
 

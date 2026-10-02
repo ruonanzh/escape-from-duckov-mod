@@ -3,22 +3,22 @@
 做**物品 / 武器 / 配件 / 建筑**的模型时，写这种 JSON：一份**零件清单**，运行时由库生成 mesh 并挂上去。
 模型文件放 mod 目录，玩家可自己改参数。角色用 YSM（见 [`03-characters.md`](03-characters.md)）。
 
-## 一份完整的模型文件
+## 长什么样（骨架）
 
 ```json
 {
-  "name": "compact_pistol",
-  "category": "weapons/pistol",
-  "summary": "紧凑手枪：滑套 + 枪管 + 枪身 + 握把 + 弹匣",
+  "name": "parts_skeleton",
+  "category": "weapons/other",
+  "summary": "骨架：字段怎么摆",
   "parts": [
-    { "role": "slide",   "shape": "box",      "size": [0.030, 0.032, 0.170], "at": [0, 0.030, 0.010] },
-    { "role": "barrel",  "shape": "cylinder", "r": 0.008, "h": 0.075, "segments": 12, "at": [0, 0.030, 0.090], "rot": [90, 0, 0] },
-    { "role": "frame",   "shape": "box",      "size": [0.028, 0.020, 0.130], "at": [0, 0.008, 0.000] }
+    { "role": "body", "shape": "box", "size": [0.030, 0.032, 0.170], "at": [0, 0.030, 0.005] }
   ],
   "material": { "mode": "clone", "pick": "body" },
   "attach": { "kind": "item_graphic" }
 }
 ```
+
+**完整例子在各类别文档里**：[`01-weapons.md`](01-weapons.md) · [`02-items.md`](02-items.md) · [`03-characters.md`](03-characters.md)（YSM）· [`04-buildings.md`](04-buildings.md)。
 
 ## 字段
 
