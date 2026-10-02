@@ -27,7 +27,7 @@
 | 字段 | 必填 | 说明 |
 |---|---|---|
 | `name` | ✅ | 模型名（与文件名一致，小写下划线）|
-| `category` | ✅ | `weapons/*` · `items/*` · `buildings/*`（决定挂载方式与被查的样例）|
+| `category` | ✅ | `weapons/*`（`Weapon`/`Gun`）· `melee/*`（`MeleeWeapon`）· `accessories/*`（`Accessory`：muzzle/scope/grip/stock/magazine）· `items/*` · `buildings/*` —— 与游戏的 `Item.tags` 分类一致 |
 | `summary` | | 一句话：这是什么、由哪些部分组成 |
 | `parts[]` | ✅ | 零件清单（见下）|
 | `material` | | `{"mode":"clone","pick":"body"}` = 克隆游戏里同类的现有材质（URP 自定义 shader 必须克隆）|

@@ -1,5 +1,20 @@
 # 01 · 武器（枪械 / 近战 / 配件）
 
+## 游戏怎么分类（`Item.tags`，实测）
+
+| 类 | 标签 | 数量 | 说明 |
+|---|---|---|---|
+| 枪械 | `Gun` | 124 | 100% 属于 `Weapon` |
+| 正式武器 | `Weapon` | **158** | = `Gun` 124 + 正经近战 34（**不含**配件与工具）|
+| 近战 | `MeleeWeapon` | 48 | 含 14 件工具（它们**没有** `Weapon` 标签）|
+| **配件** | **`Accessory`** + 子类：`Muzzle` 67 · `Stock` 51 · `Magazine` 53 · `Scope` 31 · `Grip` 23，再加适配枪型的 `GunType_*`（如 `GunType_SMG`）| — | **是物品，不是武器** —— 标签里**没有** `Weapon` |
+| 子弹 | `Bullet` | 145 | 独立类目 |
+
+**配件怎么装到枪上**：配件物品带 `ItemSetting_Accessory` 组件；枪上有 **slot**（`ItemStatsSystem.Items.Slot`，用 `key` 标识、`requireTags`/`excludeTags` 筛能装什么），插进去后由 `AccessoryBase.socketName` 决定挂到**枪模型上的 socket**。
+
+**配件的模型**：就是它自己的 `itemGraphic`（命名规律 `IG_Acc_<类型>_<名字>`，例：消音器 `Item_Muzzle_PST_DIS_1` → `IG_Acc_Muzzle_PST_DIS_1`）。
+（`ItemSetting_Accessory.accessoryPfb` 这个字段在 262 个资产里**全是 null** —— 不是模型来源。）
+
 ## 样例（用 `inspect_game_data` 从游戏里读出的原文）
 
 ### A. 一个真实物品模型 prefab 的完整结构
@@ -477,7 +492,7 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
 ```json
 {
   "name": "suppressor",
-  "category": "weapons/muzzle",
+  "category": "accessories/muzzle",
   "summary": "消音器：筒身 + 两端接环",
   "parts": [
     {
