@@ -1,6 +1,6 @@
 ---
 name: model-creator
-description: 用代码参数化生成 3D 模型并挂到 Escape From Duckov 的物品/建筑/配件上（不依赖 Unity、不打包 AssetBundle）：模型 prefab 骨架、几何来源（盒/圆柱/圆锥/旋转体/拉伸）、坐标与材质约定、按类别的真实样例句（武器/物品/角色/建筑）、挂载点（`ItemGraphicInfo` / `ItemAgentUtilities` / sockets）与验收方式。当玩家要「改模型 / 换外观 / 加个新造型 / 做个 3D 样子」，或要理解游戏里的模型是怎么拼出来时读取。
+description: 给 Escape From Duckov 做 3D 模型：代码参数化生成（不依赖 Unity、不打包 AssetBundle）的几何来源（盒/圆柱/圆锥/旋转体/拉伸）、模型 prefab 骨架、坐标与材质约定、按类别的真实样例句（武器/物品/建筑）、挂载点（`ItemGraphicInfo` / `ItemAgentUtilities` / sockets），以及可直接复用的社区框架（角色/宠物/NPC 走 DCM + YSM 文本模型；物品数据走 `item.yaml` 框架）。当玩家要「改模型 / 换外观 / 加个新造型 / 做个 3D 样子 / 换角色模型」或要理解模型怎么拼出来时读取。
 ---
 
 # 做 3D 模型（Escape From Duckov）
@@ -81,7 +81,7 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
 
 ## 参考
 
-- 详细资料与真实样例：`docs/unity-3d/`（入口 `README.md`）。
+- 详细资料与真实样例：`docs/unity-3d/`（入口 `README.md`；社区生态见 `05-community.md`）。
 - mod 的整体流程（csproj / info.ini / ModBehaviour / 校验）：`mod-creator`。
 - 查游戏数据（数值/场景）：`mod-creator` 的「获取游戏数据」一节。
 - 装进游戏：`mod-installer`。
