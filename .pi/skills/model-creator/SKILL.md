@@ -1,6 +1,6 @@
 ---
 name: model-creator
-description: 给 Escape From Duckov 做 3D 模型：代码参数化生成的几何来源（盒/圆柱/圆锥/旋转体/拉伸）、模型 prefab 骨架、坐标与材质约定、按类别的真实样例句（武器/物品/建筑）、挂载点（`ItemGraphicInfo` / `ItemAgentUtilities` / sockets）与验收方式，以及角色/宠物/NPC 可直接复用的社区框架（DCM + YSM 文本模型）。当玩家要「改模型 / 换外观 / 加个新造型 / 做个 3D 样子 / 换角色模型」，或要理解游戏里的模型是怎么拼出来时读取。
+description: 给 Escape From Duckov 做 3D 模型：代码参数化生成的几何来源（盒/圆柱/圆锥/旋转体/拉伸）、模型 prefab 骨架、坐标与材质约定、按类别的真实样例句（武器/物品/建筑）、挂载点（`ItemGraphicInfo` / `ItemAgentUtilities` / sockets）与验收方式，以及角色/宠物/NPC 的 YSM 文本模型（骨骼树 + 方块，运行时按骨骼名挂到游戏骨骼，跟随游戏动画）。当玩家要「改模型 / 换外观 / 加个新造型 / 做个 3D 样子 / 换角色模型」，或要理解游戏里的模型是怎么拼出来时读取。
 ---
 
 # 做 3D 模型（Escape From Duckov）
@@ -10,12 +10,12 @@ description: 给 Escape From Duckov 做 3D 模型：代码参数化生成的几�
 | # | 做什么 | 做法 | 需要 |
 |---|---|---|---|
 | **①** | **物品 / 武器 / 配件 / 建筑 / 收藏品**的外观 | **代码参数化生成**（本技能主线）：C# 运行时拼 `Mesh`，换到游戏现成对象上 | dotnet |
-| **②** | **角色 / 宠物 / NPC** 的外观 | **复用社区框架 DCM + YSM**：产 `ysm.json`（**文本几何**）放进 `ModConfigs/DuckovCustomModel/Models`，配侧车 `<名>.ysm.duckov.json` | DCM + HarmonyLib 前置 |
+| **②** | **角色 / 宠物 / NPC** 的外观 | **YSM 文本几何 + 我们自己的运行时库**：产 `ysm.json`（骨骼树 + 方块），运行时按骨骼名挂到游戏骨骼上（跟随游戏动画）| 无 |
 
 **① 为什么可行**：游戏里的"模型"就是 prefab 上的 `MeshFilter` / `MeshRenderer`；`Mesh` 是**内存对象**
 （`vertices` / `triangles` / `uv` / `normals`），运行时直接构造即可 —— 不需要 Unity、不需要 AssetBundle。
 
-**② 的细节**（YSM 字段、放置路径、目标类型 `built-in:Character` / `Pet` / `AICharacter_*`、侧车配置）见 `docs/unity-3d/03-characters.md`。
+**② 的细节**（YSM 字段、骨骼家族与映射、层与材质的实机结论）见 `docs/unity-3d/03-characters.md`。
 
 ## 动手前先查真实样例（照着写，不猜结构）
 
