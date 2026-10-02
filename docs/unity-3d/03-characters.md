@@ -84,6 +84,10 @@ action=export  class=SkinnedMeshRenderer \
 | **挂饰 / 附件**（帽子、背包挂件、武器挂件）| 挂到对应 socket（`HelmatSocket` / `BackpackSocket` / `LeftHandSocket`…），与游戏自己挂 `IG_*` 的方式一致 |
 | **换贴图 / 换材质（改色）** | 改 YSM 引用的贴图，或克隆原材质后改色 |
 
+## 可运行的参考实现
+
+`reference/bone_probe/`：找骨骼 → 建几何 → 挂上去（含层与材质处理）的可编译示例，运行后在角色手上显示一个跟随动作的方块。
+
 ## 从游戏里抄真实结构
 
 ```
