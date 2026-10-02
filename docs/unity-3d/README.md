@@ -49,4 +49,6 @@ GameObject  IG_Acc_Muzzle_PST_DIS_1        ← 模型 prefab 根
 | [`02-items.md`](02-items.md) | 背包 / 消耗品 / 装饰 / 家具类物品模型 | ✅ 适合 |
 | [`03-characters.md`](03-characters.md) | 角色模型（`0_CharacterModel_Custom_*`）：YSM 文本模型挂到游戏骨骼 | ✅ 按骨骼名挂载 |
 | [`04-buildings.md`](04-buildings.md) | 建筑 / 场景物件（`Pfb_BLD_*`） | ✅ 适合（静态几何）|
+| [`05-model-format.md`](05-model-format.md) | **模型格式**：零件清单 JSON（字段、约定、面数量级）| — |
+| [`few-shots/`](few-shots/README.md) | **照着写的例子**（按类别：武器 / 物品 / 建筑 / 角色）| — |
 
