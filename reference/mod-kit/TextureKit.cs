@@ -73,6 +73,58 @@ namespace ModelKit
             return bmp;
         }
 
+        /// <summary>给 YSM 模型生成一张"皮肤"位图：每个 cube 的展开矩形按骨骼名分配颜色，
+        /// 并画出 6 个面的分隔线 —— UV 有错时一眼就能看出来（颜色会串到别的部位）。</summary>
+        public static Bitmap PaintYsm(YsmModel model, int size = 0)
+        {
+            int w = size > 0 ? size : model.TextureWidth;
+            int h = size > 0 ? size : model.TextureHeight;
+            var bmp = new Bitmap(w, h);
+            bmp.Fill(0, 0, w, h, 34, 36, 40);
+
+            foreach (var bone in model.Bones)
+            {
+                var c = ColorFor(bone.Name);
+                foreach (var cube in bone.Cubes)
+                {
+                    int pw = Math.Max(1, (int)Math.Round(cube.Size[0]));
+                    int ph = Math.Max(1, (int)Math.Round(cube.Size[1]));
+                    int pd = Math.Max(1, (int)Math.Round(cube.Size[2]));
+                    var rect = new AtlasRect { Role = bone.Name, X = cube.Uv[0], Y = cube.Uv[1],
+                                               W = 2 * pd + 2 * pw, H = pd + ph, PxW = pw, PxH = ph, PxD = pd };
+                    bmp.Fill(rect.X, rect.Y, rect.W, rect.H, c.r, c.g, c.b);
+                    byte eR = (byte)Math.Max(0, c.r - 45), eG = (byte)Math.Max(0, c.g - 45), eB = (byte)Math.Max(0, c.b - 45);
+                    foreach (var f in new[] { "top", "bottom", "right", "front", "left", "back" })
+                    {
+                        var fr = MeshKit.FaceRect(rect, f);
+                        bmp.Border(fr.X, fr.Y, fr.W, fr.H, eR, eG, eB);
+                    }
+                }
+            }
+            return bmp;
+        }
+
+        /// <summary>名字 → 颜色（稳定哈希，保证同一骨骼每次同色）。</summary>
+        public static (byte r, byte g, byte b) ColorFor(string name)
+        {
+            int hash = 17;
+            foreach (var ch in name ?? "") hash = hash * 31 + ch;
+            hash = Math.Abs(hash);
+            // 用 HSV：色相散开，明度/饱和固定，避免太暗看不清
+            float hue = (hash % 360) / 360f;
+            float sat = 0.45f + (hash / 360 % 30) / 100f;
+            float val = 0.75f;
+            float c = val * sat, x = c * (1 - Math.Abs((hue * 6) % 2 - 1)), m = val - c;
+            float r, g, b;
+            if (hue < 1f / 6) { r = c; g = x; b = 0; }
+            else if (hue < 2f / 6) { r = x; g = c; b = 0; }
+            else if (hue < 3f / 6) { r = 0; g = c; b = x; }
+            else if (hue < 4f / 6) { r = 0; g = x; b = c; }
+            else if (hue < 5f / 6) { r = x; g = 0; b = c; }
+            else { r = c; g = 0; b = x; }
+            return ((byte)((r + m) * 255), (byte)((g + m) * 255), (byte)((b + m) * 255));
+        }
+
         /// <summary>UV 模板：灰底 + 每个面矩形描边 + 零件按序不同灰度（给手绘用）。</summary>
         public static Bitmap Template(MeshData mesh)
         {

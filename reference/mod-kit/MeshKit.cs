@@ -182,6 +182,26 @@ namespace ModelKit
             return data;
         }
 
+        /// <summary>只生成一个零件（矩形由调用方指定）。给 YSM 用：cube 的 uv 已经写在模型里，
+        /// 不需要（也不能）走自动排布。</summary>
+        public static MeshData BuildPart(PartSpec part, AtlasRect rect, int atlasSize)
+        {
+            var data = new MeshData { AtlasSize = atlasSize, PixelsPerMeter = 1f, Atlas = new List<AtlasRect> { rect },
+                                      Emitted = new List<PartSpec> { part } };
+            EmitPart(data, part, rect, atlasSize);
+            data.SubMeshes.Add(new SubMesh { Role = part.Role, Start = 0, Count = data.Indices.Count });
+
+            var min = new Vec3(float.MaxValue, float.MaxValue, float.MaxValue);
+            var max = new Vec3(float.MinValue, float.MinValue, float.MinValue);
+            foreach (var q in data.Positions)
+            {
+                min = new Vec3(Math.Min(min.X, q.X), Math.Min(min.Y, q.Y), Math.Min(min.Z, q.Z));
+                max = new Vec3(Math.Max(max.X, q.X), Math.Max(max.Y, q.Y), Math.Max(max.Z, q.Z));
+            }
+            data.Min = min; data.Max = max;
+            return data;
+        }
+
         /// <summary>展开 `mirror`：复制一份并把指定轴取反（镜像会翻转绕序，AddQuad/AddTri 会按期望法线纠正）。</summary>
         public static List<PartSpec> ExpandMirrors(List<PartSpec> parts)
         {

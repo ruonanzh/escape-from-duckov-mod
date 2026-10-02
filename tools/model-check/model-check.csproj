@@ -9,4 +9,11 @@
     <LangVersion>latest</LangVersion>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
+  <!-- 几何/贴图核心与运行时库共用同一份源码（见 reference/mod-kit/README.md）-->
+  <ItemGroup>
+    <Compile Include="../../reference/mod-kit/MeshKit.cs" />
+    <Compile Include="../../reference/mod-kit/TextureKit.cs" />
+    <Compile Include="../../reference/mod-kit/Json.cs" />
+    <Compile Include="../../reference/mod-kit/ModelJson.cs" />
+  </ItemGroup>
 </Project>
