@@ -49,7 +49,27 @@ static class DataProbe
         var insts = new List<AssetsFileInstance>();
         foreach (var f in files)
         {
-            try { var i = am.LoadAssetsFile(f, true); am.LoadClassDatabaseFromPackage(i.file.Metadata.UnityVersion); insts.Add(i); }
+            try
+            {
+                if (LooksLikeBundle(f))
+                {
+                    // AssetBundle（mod 的包也走这里）：内存解包 → 逐个串行化文件；只读，不落临时文件
+                    var bun = am.LoadBundleFile(f, true);
+                    var dirs = bun.file.BlockAndDirInfo.DirectoryInfos;
+                    for (int i = 0; i < dirs.Length; i++)
+                    {
+                        var nm = dirs[i].Name;
+                        if (nm.EndsWith(".resource", StringComparison.OrdinalIgnoreCase) || nm.EndsWith(".resS", StringComparison.OrdinalIgnoreCase)) continue;
+                        var inst0 = am.LoadAssetsFileFromBundle(bun, i, true);
+                        am.LoadClassDatabaseFromPackage(inst0.file.Metadata.UnityVersion);
+                        insts.Add(inst0);
+                    }
+                }
+                else
+                {
+                    var i = am.LoadAssetsFile(f, true); am.LoadClassDatabaseFromPackage(i.file.Metadata.UnityVersion); insts.Add(i);
+                }
+            }
             catch (Exception e) { Console.Error.WriteLine($"data-probe: skip {Path.GetFileName(f)}: {e.Message}"); }
         }
 
@@ -132,7 +152,24 @@ static class DataProbe
     static List<string> ResolveFiles(string data, string file)
     {
         if (file != null) return new List<string> { Path.IsPathRooted(file) ? file : Path.Combine(data, file) };
-        return Directory.GetFiles(data, "*.assets").OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList();
+        var assets = Directory.GetFiles(data, "*.assets").OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList();
+        if (assets.Count > 0) return assets;
+        // 没有 .assets 时，把目录里看起来像 AssetBundle 的文件也接上（例如 mod 的包目录）
+        return Directory.GetFiles(data).Where(LooksLikeBundle).OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    /// <summary>按文件头判断是不是 Unity AssetBundle（UnityFS / UnityWeb / UnityRaw）。只读前 8 字节。</summary>
+    static bool LooksLikeBundle(string path)
+    {
+        try
+        {
+            using var fs = File.OpenRead(path);
+            var buf = new byte[8];
+            if (fs.Read(buf, 0, 8) < 8) return false;
+            var magic = System.Text.Encoding.ASCII.GetString(buf);
+            return magic.StartsWith("UnityFS") || magic.StartsWith("UnityWeb") || magic.StartsWith("UnityRaw");
+        }
+        catch { return false; }
     }
 
     // ── asset helpers ──────────────────────────────────────────────────────────

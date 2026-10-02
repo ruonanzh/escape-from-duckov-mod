@@ -32,7 +32,7 @@ dotnet run --project tools/data-probe -- \
 | `refs` | 同 `dump` 的定位 | 列出该资产**引用了哪些对象**（PPtr）|
 | `export` | `--class <C>` `[--match <expr>]…` `[--field <path>]…` `[--rows N]` `[--out <file>]` | **批量表**：一类对象 × 过滤 × 字段路径 → 每行一个资产（TAB 分列；数组用 `;` 连）。`--out` 写文件、只回预览 |
 
-公共：`--file <x.assets|levelN>`（限定单个数据文件；**`levelN` = 场景文件**，格式与 `.assets` 相同）、`--limit N`（截断，默认 2000 行）、`--depth d`（dump 深度，默认 3）、`--offset N`（跳过前 N 条，给 `list`/`search` 翻页用）。
+公共：`--file <x.assets|levelN|bundle>`（限定单个数据文件；**`levelN` = 场景文件**，格式与 `.assets` 相同；**也可以直接给 AssetBundle**（例如 mod 的包）—— 内存解包，只读、不落临时文件）、`--limit N`（截断，默认 2000 行）、`--depth d`（dump 深度，默认 3）、`--offset N`（跳过前 N 条，给 `list`/`search` 翻页用）。
 
 > `list` / `search` 每次最多 500 条；截断时会提示 `--offset <下一页>`——**优先用更窄的查询（`search --pattern` / `dump --name`），确实要枚举时才翻页**。
 
@@ -79,6 +79,11 @@ data-probe ... --action dump --class Item --name Item_S_UAK45_Lv_2 --follow
 #         key = Damage          baseValue = 9.2
 #         key = ShootSpeed      baseValue = 15.83
 #         key = Capacity        baseValue = 25
+
+# 读 mod 的 AssetBundle（看它打包了什么：mesh / material / texture）—— data 指向包所在目录
+#   data-probe ... --data "<mod>/bundles" --file mpxmodels --action classes
+
+action=list --class Texture2D   # 贴图与尺寸；list --class Mesh / Material 同理
 
 # 读场景：levelN 就是场景文件（主菜单、关卡等）
 data-probe ... --action classes --file level0           # 153 类 / 5516 对象
