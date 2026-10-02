@@ -1,26 +1,23 @@
 ---
 name: model-creator
-description: 给 Escape From Duckov 做 3D 模型（只管模型；数值/行为/特效等数据层不在这里）：代码参数化生成的几何来源（盒/圆柱/圆锥/旋转体/拉伸）、模型 prefab 骨架、坐标与材质约定、按类别的真实样例句（武器/物品/建筑）、挂载点（`ItemGraphicInfo` / `ItemAgentUtilities` / sockets），以及角色/宠物/NPC 可直接复用的社区框架（DCM + YSM 文本模型）。当玩家要「改模型 / 换外观 / 加个新造型 / 做个 3D 样子 / 换角色模型」或要理解模型怎么拼出来时读取。
+description: 给 Escape From Duckov 做 3D 模型：代码参数化生成的几何来源（盒/圆柱/圆锥/旋转体/拉伸）、模型 prefab 骨架、坐标与材质约定、按类别的真实样例句（武器/物品/建筑）、挂载点（`ItemGraphicInfo` / `ItemAgentUtilities` / sockets）与验收方式，以及角色/宠物/NPC 可直接复用的社区框架（DCM + YSM 文本模型）。当玩家要「改模型 / 换外观 / 加个新造型 / 做个 3D 样子 / 换角色模型」，或要理解游戏里的模型是怎么拼出来时读取。
 ---
 
 # 做 3D 模型（Escape From Duckov）
 
-**本技能只管“模型长什么样”**；数值/行为/特效这类**数据层**不在这里（那看 `mod-creator`）。
+## 两条做法
 
-## 模型怎么做：三条路
-
-| # | 玩家要的 | 路线 | 依赖 |
+| # | 做什么 | 做法 | 需要 |
 |---|---|---|---|
-| **①** | **物品 / 武器 / 配件 / 建筑 / 收藏品**的外观 | **代码参数化生成**（本技能主线）：C# 运行时拼 `Mesh`，换到游戏现成对象上 | 无（只用 dotnet）|
-| **②** | **角色 / 宠物 / NPC**的外观 | **复用社区框架 DCM + YSM**：产 `ysm.json`（**文本几何**）放进 `ModConfigs/DuckovCustomModel/Models` + 侧车配置 | 需 **DCM + HarmonyLib**（玩家没装先说清）|
-| **③** | **真实感 / 外部模型**（FBX/GLB、高质量网格）| **不做**：需要 Unity 打 AssetBundle（2022.3.62f2 + URP）| — |
+| **①** | **物品 / 武器 / 配件 / 建筑 / 收藏品**的外观 | **代码参数化生成**（本技能主线）：C# 运行时拼 `Mesh`，换到游戏现成对象上 | dotnet |
+| **②** | **角色 / 宠物 / NPC** 的外观 | **复用社区框架 DCM + YSM**：产 `ysm.json`（**文本几何**）放进 `ModConfigs/DuckovCustomModel/Models`，配侧车 `<名>.ysm.duckov.json` | DCM + HarmonyLib 前置 |
 
-**为什么 ① 可行**：游戏里的“模型”就是 prefab 上的 `MeshFilter` / `MeshRenderer`；`Mesh` 是**内存对象**
-（`vertices` / `triangles` / `uv` / `normals`），运行时可以直接构造 —— **不需要 Unity、不需要 AssetBundle**。
+**① 为什么可行**：游戏里的"模型"就是 prefab 上的 `MeshFilter` / `MeshRenderer`；`Mesh` 是**内存对象**
+（`vertices` / `triangles` / `uv` / `normals`），运行时直接构造即可 —— 不需要 Unity、不需要 AssetBundle。
 
-②③ 细节见 `docs/unity-3d/05-community.md`（DCM/YSM 的路径、目标类型、侧车配置样例）。
+**② 的细节**（放置路径、目标类型 `built-in:Character` / `Pet` / `AICharacter_*`、侧车配置字段、动作轮盘）见 `docs/unity-3d/05-community.md`。
 
-## 动手前先查真实样例（不要猜结构）
+## 动手前先查真实样例（照着写，不猜结构）
 
 按类别查 `docs/unity-3d/`：`README.md`（总览 + 提取命令）、`00-shared.md`（通用约定）、
 `01-weapons.md`、`02-items.md`、`03-characters.md`、`04-buildings.md`。
@@ -39,7 +36,7 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
 
 ## 几何怎么生成
 
-用参数拼基本体，再按变换组合（**不要手写顶点**）：
+几何一律**由代码按参数算出**：先用基本体拼，再按变换组合。
 
 | 基本体 | 参数 | 用途 |
 |---|---|---|
@@ -57,7 +54,7 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
 ## 材质
 
 游戏是 **URP**（`EPOURP.dll`）→ 材质 shader 必须匹配，否则**粉紫**。
-**不要从零建材质**：克隆同类物品已有的材质，再改颜色/贴图。无贴图时用纯色先跑通。
+做法：**克隆同类物品已有的材质**，再改颜色/贴图（省掉 shader 找不到的坑）；无贴图时先用纯色跑通。
 
 ## 挂载（把 mesh 装上去）
 
@@ -71,12 +68,9 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
 
 1. `validate_mod` 编译通过 → `install_mod` 装进游戏；
 2. **进游戏看**：模型出现、位置/朝向正确、材质不粉紫、手持/地面显示正常；
-3. 位置或比例不对时，回到坐标约定（居中/+Z）与 `groundPoint` / `sockets` 调整 —— 不要靠猜着挪。
+3. 位置或比例不对时，回到坐标约定（居中/+Z）与 `groundPoint` / `sockets` 调整。
 
 ## 参考
 
-- 详细资料与真实样例：`docs/unity-3d/`（入口 `README.md`；角色类复用见 `05-community.md`）。
-- 数值/行为/特效等**数据层**：`mod-creator`（及 `docs/guides/` 查数据）。
-- mod 的整体流程（csproj / info.ini / ModBehaviour / 校验）：`mod-creator`。
-- 查游戏数据（数值/场景）：`mod-creator` 的「获取游戏数据」一节。
-- 装进游戏：`mod-installer`。
+- 详细资料与真实样例：`docs/unity-3d/`（入口 `README.md`；角色类做法见 `05-community.md`）。
+- mod 的**整体流程**（csproj / info.ini / ModBehaviour / 校验 / 装进游戏）：`mod-creator`、`mod-installer`。
