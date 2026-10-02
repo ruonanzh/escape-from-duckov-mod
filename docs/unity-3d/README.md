@@ -50,5 +50,6 @@ GameObject  IG_Acc_Muzzle_PST_DIS_1        ← 模型 prefab 根
 | [`02-items.md`](02-items.md) | 背包 / 消耗品 / 装饰 / 家具类物品模型 | ✅ 适合 |
 | [`03-characters.md`](03-characters.md) | 角色模型（`0_CharacterModel_Custom_*`） | ⚠️ **骨骼/蒙皮 → 不做**；只做**挂饰/附件** |
 | [`04-buildings.md`](04-buildings.md) | 建筑 / 场景物件（`Pfb_BLD_*`） | ✅ 适合（静态几何）|
+| [`05-community.md`](05-community.md) | **社区生态**：DCM+YSM（角色类事实标准）、`item.yaml` 声明式框架、物品模型 mod 的 bundle 现实 | — |
 
 > ⚠️ 本目录是**参考与配方**：真实样例是 dump 出来的事实；参数化模板属骨架，**首次实机验证前不要当成"已验证可用"**。

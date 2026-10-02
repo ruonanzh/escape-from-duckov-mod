@@ -13,8 +13,18 @@ description: 用代码参数化生成 3D 模型并挂到 Escape From Duckov 的�
 所以本 repo 的做法是 **① 代码参数化生成**：C# 里拼几何 → 换到游戏现成对象上。**不需要 Unity、不需要 AssetBundle、不需要外部工具**。
 
 遇到这些**直接说清楚不做**（不要硬做、不要偷偷引入 Unity）：
-- **骨骼/蒙皮**（角色整套模型换法）→ 蒙皮+骨骼权重参数化做不到；角色只做**挂饰 / 改色**。
-- **导入 FBX/GLB 等外部模型**、**打包 AssetBundle** → 本轮不做。
+- **导入 FBX/GLB 等外部模型**、**自己打包 AssetBundle** → 本轮不做（要做也要用 Unity，不是这个技能的事）。
+- **角色模型**：**不要自己写**——角色/宠物/NPC 换模型走社区框架（下一节），参数化只用来做**挂饰**。
+
+## 动手前先看能不能复用（社区生态）
+
+详见 `docs/unity-3d/05-community.md`。三句话：
+
+| 玩家要的 | 社区现成 | 怎么办 |
+|---|---|---|
+| **角色 / 宠物 / NPC 换模型** | **DCM（Duckov Custom Model）+ YSM**（`ysm.json` = **文本 JSON 几何**，带动画），放进 `ModConfigs/DuckovCustomModel/Models`，**不需要 AssetBundle** | **复用**：产 YSM 文本模型 + 侧车 `<名>.ysm.duckov.json`；需 DCM + HarmonyLib 前置（玩家没装就先说清）|
+| **物品/武器的数据与行为**（数值/口径/开火方式/特效/贴图）| `item.yaml` / `recipe.yaml` 声明式框架（作者明确写了“不会改模型”）| 数据交给它或我们的 C#；**几何**才归这个技能 |
+| **物品/武器 模型** | 现成 mod 几乎都自带 AssetBundle（Unity 打）| 我们走 **① 参数化生成**；需要真实感模型才回落 bundle |
 
 ## 动手前先查真实样例（不要猜结构）
 
