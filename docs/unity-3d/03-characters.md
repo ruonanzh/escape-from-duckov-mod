@@ -1,8 +1,8 @@
 # 03 · 角色
 
-## ⚠️ 先说边界：角色**不做**参数化建模
+## 角色的做法：产 YSM 文本几何（交给 DCM 加载）
 
-角色模型是**骨骼 + 蒙皮**（`SkinnedMeshRenderer`），不是静态几何：
+游戏里的角色是**骨骼 + 蒙皮**（`SkinnedMeshRenderer`，资产里带 `m_BindPose` / `m_BoneNameHashes` / `m_BonesAABB`）：
 
 ```
 export --class SkinnedMeshRenderer --field "m_GameObject.#name" --rows 5
@@ -12,33 +12,42 @@ search --class GameObject --pattern "CharacterModel"
 → 147 match(es)；例：0_CharacterModel_Custom_Killa / _Tagilla / _Boss_Alex / _Enemy_SnowMan …
 ```
 
-`Mesh` 资产里与骨骼相关的字段（真实 dump）：
+我们的做法是产 **YSM 模型**（源自 Minecraft Bedrock 几何格式）：**骨骼树 + 方块**，纯 JSON 文本；蒙皮与动画由 DCM 运行库处理。
 
+```json
+{"format_version": "1.12.0",
+ "minecraft:geometry": [{
+   "bones": [
+     {"name": "root", "pivot": [0, 0, 0]},
+     {"name": "body", "parent": "waist", "pivot": [0, 24, 0],
+      "cubes": [{"origin": [-4, 12, -2], "size": [8, 12, 4], "uv": [16, 16]}]},
+     {"name": "head", "parent": "body", "pivot": [0, 24, 0],
+      "cubes": [{"origin": [-4, 24, -4], "size": [8, 8, 8], "uv": [0, 0]}]},
+     {"name": "rightItem", "parent": "rightArm", "pivot": [-6, 15, 1],
+      "locators": {"lead_hold": [-6, 15, 1]}}
+   ],
+   "description": {"identifier": "geometry.humanoid.custom", "texture_width": 64, "texture_height": 64}
+ }]}
 ```
-m_BindPose / m_BoneNameHashes / m_RootBoneNameHash / m_BonesAABB / m_SkinnedMeshRenderer 侧 m_Bones
-```
 
-→ **参数化生成一张蒙皮网格 + 绑定骨骼 + 权重**，工程上不成立（还要匹配游戏动画的骨骼命名）。
-
-## 那角色类能做什么
-
-| 可做 | 做法 |
+| 字段 | 作用 |
 |---|---|
-| **换整体模型**（玩家/NPC/宠物）| ✅ **走社区框架 DCM + YSM** —— 产 **YSM 文本模型**（`ysm.json`），放进 `ModConfigs/DuckovCustomModel/Models`，**不需要 AssetBundle**；需玩家先装 DCM + HarmonyLib。详见 [`05-community.md`](05-community.md) |
-| **挂饰 / 附件**（帽子、背包挂件、武器挂件） | 生成静态 mesh，挂到角色的 socket / 模型树的子节点 |
-| **换贴图 / 换材质（改色）** | 直接改 `Material`（克隆原材质后改色），不走几何 |
+| `bones[].name` / `parent` / `pivot` / `rotation` | 骨骼树与关节 —— **动画作用在这里** |
+| `bones[].cubes[]`：`origin` / `size` / `uv` / `inflate` | 方块几何 + 贴图 UV |
+| `bones[].locators` | **挂点**（手持物 / 饰品挂上去用） |
+| `description.texture_width` / `texture_height` | 贴图尺寸 |
 
-⚠️ 不要自己写角色渲染代码（蒙皮/骨骼/动画）；也不要为了换角色模型去打包 AssetBundle。
+放置路径、目标类型（`built-in:Character` / `Pet` / `AICharacter_*`）与侧车配置（`Scale` / `LocatorMappings` / `LocatorOffsets`）见 [`05-community.md`](05-community.md)。
 
-`CharacterSubVisuals` 的字段里已经有现成入口（真实 dump）：
+## 做什么 / 怎么做
 
-```
-renderers[]   particles[]   lights[]   sodaPointLights[]   mainModel
-```
+| 做什么 | 怎么做 |
+|---|---|
+| **换整体模型**（玩家 / NPC / 宠物）| 产 YSM 文本几何 → 放进 `ModConfigs/DuckovCustomModel/Models` + 侧车 `<名>.ysm.duckov.json`；需玩家先装 DCM + HarmonyLib |
+| **挂饰 / 附件**（帽子、背包挂件、武器挂件）| 在 YSM 里加一个 bone + cube，或用 `locators` 挂点 |
+| **换贴图 / 换材质（改色）** | 改 YSM 引用的贴图，或克隆原材质后改色 |
 
-`mainModel` 指向角色的主模型 —— **换整体模型时以它为锚点**。
-
-## 提取命令
+## 从游戏里抄真实结构（提取命令）
 
 ```
 action=search  class=GameObject          pattern="CharacterModel"
@@ -48,5 +57,5 @@ action=dump    class=GameObject          name="0_CharacterModel_Custom_Killa"  f
 
 ## 待办
 
-- [ ] 确认「挂饰」实际挂点（角色模型树里 socket 的命名 / `sockets` 字段）
-- [ ] YSM 模型的仓库/样例找一份（用于确定 `ysm.json` 的几何写法）
+- [ ] 找一份真实 `.ysm` / `ysm.json` 样例，把字段写成可复制的模板
+- [ ] 确认游戏侧 `locators` 与 DCM 侧车 `LocatorMappings` 的对应关系
