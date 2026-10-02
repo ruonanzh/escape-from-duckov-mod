@@ -10,7 +10,7 @@
 - `docs/unity-3d/`：**Unity 3D 资产参考**（改/加模型）—— 通用约定（坐标/材质/挂载）+ 按类别的**真实样例与参数化配方**（武器/物品/角色/建筑），全程不依赖 Unity；入口 `docs/unity-3d/README.md`。
 - `reference/example_mod/`：可编译样例；`libs/`：编译/分发依赖；产物规范见 `.pi/skills/mod-creator/SKILL.md`。
 - `mod-repo.json`：平台路径和依赖声明；`game.version` 记录数据层快照对应版本。 其中 `workshop.supported` 声明本游戏**有没有创意工坊**；`workshopDir` 只是只读参考（不参与安装），判定规则见 `.pi/skills/setup-workspace/SKILL.md`。
-- `.pi/skills/`：按职责分开的三份技能（**何时用 / 管什么写在各自的 description 里** —— Pi 会把它们常驻上下文，任务匹配时读对应那份）。本 repo 的步骤指导都在这些技能里，不在产品提示词里。
+- `.pi/skills/`：按职责分开的技能 —— `setup-workspace` / `mod-creator` / `mod-installer` / `model-creator`（**何时用 / 管什么写在各自的 description 里** —— Pi 会把它们常驻上下文，任务匹配时读对应那份）。本 repo 的步骤指导都在这些技能里，不在产品提示词里。
 - `.pi/extensions/`：环境检查、安装指引、mod 校验、装进游戏（`install_mod`）工具；以实际返回的执行状态为准。
 - `scripts/`：维护者刷新数据层的工具，玩家/agent 不运行；运行时准备与数据层维护是两件事。
 
