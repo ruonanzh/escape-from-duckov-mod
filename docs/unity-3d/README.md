@@ -7,7 +7,7 @@
 | # | 玩家要的 | 路线 | 依赖 |
 |---|---|---|---|
 | **①** | **物品 / 武器 / 配件 / 建筑 / 收藏品**的外观 | **代码参数化生成**（本目录主线）：C# 运行时拼 `Mesh` | 无 |
-| **②** | **角色 / 宠物 / NPC** 的外观 | **复用 DCM + YSM**（`ysm.json` 文本几何）——见 [`05-community.md`](05-community.md) | DCM + HarmonyLib |
+| **②** | **角色 / 宠物 / NPC** 的外观 | **复用 DCM + YSM**（`ysm.json` 文本几何）——见 [`03-characters.md`](03-characters.md) | DCM + HarmonyLib |
 
 **为什么 ① 可行**：游戏里的"模型"就是 prefab 上的 `MeshFilter` / `MeshRenderer`；`Mesh` 本身是**内存对象**（`vertices` / `triangles` / `uv` / `normals`），运行时可以直接构造。
 「几何」= 一堆数字，可参数化表达（例：枪管 = 圆柱 (半径, 长度, 分段数)）。
@@ -49,6 +49,5 @@ GameObject  IG_Acc_Muzzle_PST_DIS_1        ← 模型 prefab 根
 | [`02-items.md`](02-items.md) | 背包 / 消耗品 / 装饰 / 家具类物品模型 | ✅ 适合 |
 | [`03-characters.md`](03-characters.md) | 角色模型（`0_CharacterModel_Custom_*`） | ⚠️ 参数化不适合（骨骼/蒙皮）→ **走 DCM + YSM** |
 | [`04-buildings.md`](04-buildings.md) | 建筑 / 场景物件（`Pfb_BLD_*`） | ✅ 适合（静态几何）|
-| [`05-community.md`](05-community.md) | **角色/宠物/NPC 的社区方案**：DCM + YSM（文本几何、带动画、需前置），以及模型 mod 的 bundle 现实 | — |
 
 > ⚠️ 本目录是**参考与配方**：真实样例是 dump 出来的事实；参数化模板属骨架，**首次实机验证前不要当成"已验证可用"**。

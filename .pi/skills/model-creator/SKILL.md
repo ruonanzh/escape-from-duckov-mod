@@ -15,7 +15,7 @@ description: 给 Escape From Duckov 做 3D 模型：代码参数化生成的几�
 **① 为什么可行**：游戏里的"模型"就是 prefab 上的 `MeshFilter` / `MeshRenderer`；`Mesh` 是**内存对象**
 （`vertices` / `triangles` / `uv` / `normals`），运行时直接构造即可 —— 不需要 Unity、不需要 AssetBundle。
 
-**② 的细节**（放置路径、目标类型 `built-in:Character` / `Pet` / `AICharacter_*`、侧车配置字段、动作轮盘）见 `docs/unity-3d/05-community.md`。
+**② 的细节**（YSM 字段、放置路径、目标类型 `built-in:Character` / `Pet` / `AICharacter_*`、侧车配置）见 `docs/unity-3d/03-characters.md`。
 
 ## 动手前先查真实样例（照着写，不猜结构）
 
@@ -72,5 +72,5 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
 
 ## 参考
 
-- 详细资料与真实样例：`docs/unity-3d/`（入口 `README.md`；角色类做法见 `05-community.md`）。
+- 详细资料与真实样例：`docs/unity-3d/`（入口 `README.md`；角色类做法见 `03-characters.md`）。
 - mod 的**整体流程**（csproj / info.ini / ModBehaviour / 校验 / 装进游戏）：`mod-creator`、`mod-installer`。
