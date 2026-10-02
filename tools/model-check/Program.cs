@@ -26,6 +26,7 @@ namespace ModelCheck
             var files = new List<string>();
             var markdown = new List<string>();
             int sideOverride = 0;
+            string pngOut = null, templateOut = null;
             for (int i = 0; i < args.Length; i++)
             {
                 switch (args[i])
@@ -33,6 +34,8 @@ namespace ModelCheck
                     case "--file": files.Add(args[++i]); break;
                     case "--md": markdown.Add(args[++i]); break;
                     case "--side": sideOverride = int.Parse(args[++i]); break;
+                    case "--png": pngOut = args[++i]; break;
+                    case "--template": templateOut = args[++i]; break;
                     default:
                         Console.Error.WriteLine("usage: model-check [--file <json>]... [--md <markdown>]... [--side N]");
                         return 2;
@@ -44,7 +47,7 @@ namespace ModelCheck
             foreach (var f in files)
             {
                 var text = File.ReadAllText(f);
-                var r = CheckBlock(text, Path.GetFileName(f), sideOverride);
+                var r = CheckBlock(text, Path.GetFileName(f), sideOverride, pngOut, templateOut);
                 Console.Write(r.Report);
                 fails += r.Fails;
             }
@@ -55,7 +58,7 @@ namespace ModelCheck
                 foreach (Match m in Regex.Matches(text, @"```json\n(.*?)```", RegexOptions.Singleline))
                 {
                     idx++;
-                    var r = CheckBlock(m.Groups[1].Value, $"{Path.GetFileName(md)} #{idx}", sideOverride);
+                    var r = CheckBlock(m.Groups[1].Value, $"{Path.GetFileName(md)} #{idx}", sideOverride, pngOut, templateOut);
                     Console.Write(r.Report);
                     fails += r.Fails;
                 }
@@ -67,7 +70,7 @@ namespace ModelCheck
 
         sealed class Result { public StringBuilder Report = new StringBuilder(); public int Fails; }
 
-        static Result CheckBlock(string json, string label, int sideOverride)
+        static Result CheckBlock(string json, string label, int sideOverride, string pngOut = null, string templateOut = null)
         {
             var res = new Result();
             JsonDocument doc;
@@ -96,6 +99,23 @@ namespace ModelCheck
                 res.Report.AppendLine($"FAIL  {label}    {e.Message}");
                 res.Fails++;
                 return res;
+            }
+
+            if (pngOut != null)
+            {
+                var bmp = TextureKit.Paint(spec, mesh, faceEdges: true);
+                var path = System.IO.Directory.Exists(pngOut) || pngOut.EndsWith("/")
+                    ? System.IO.Path.Combine(pngOut, spec.Name + ".png") : pngOut;
+                PngWriter.Save(bmp, path);
+                res.Report.AppendLine($"INFO  {label}    贴图已写出 {path}（{bmp.W}×{bmp.H}，{new FileInfo(path).Length / 1024} KB）");
+            }
+            if (templateOut != null)
+            {
+                var bmp = TextureKit.Template(mesh);
+                var path = System.IO.Directory.Exists(templateOut) || templateOut.EndsWith("/")
+                    ? System.IO.Path.Combine(templateOut, spec.Name + "_uv.png") : templateOut;
+                PngWriter.Save(bmp, path);
+                res.Report.AppendLine($"INFO  {label}    UV 模板已写出 {path}（{bmp.W}×{bmp.H}）");
             }
 
             // ── 校验项 ──────────────────────────────────────────────────────────

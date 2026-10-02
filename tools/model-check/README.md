@@ -17,6 +17,12 @@ dotnet tools/model-check/bin/Release/model-check.dll \
 
 # 指定贴图边长（演示自动密度的变化）
 dotnet tools/model-check/bin/Release/model-check.dll --file my_gun.json --side 1024
+
+# 按 fills 生成贴图（路径给目录时写成 <目录>/<模型名>.png）
+dotnet tools/model-check/bin/Release/model-check.dll --md docs/unity-3d/01-weapons.md --png /tmp/tex/
+
+# 导出 UV 模板（给"手绘 / 外部图"照着涂；同样支持目录）
+dotnet tools/model-check/bin/Release/model-check.dll --md docs/unity-3d/02-items.md --template /tmp/tex/
 ```
 
 退出码：有 `FAIL` → `1`，否则 `0`（`WARN` 不算失败，可用于 CI）。
@@ -49,6 +55,14 @@ FAIL  03-characters.md #2    骨骼 'Arm.Uper.R' 的 parent 'Arm.Upper.R' 不存
 | 骨骼名唯一、`parent` 必须存在、**父子关系不成环** |
 | cube 的 `size` 三个数都 > 0、有 `uv`；`uv` 的展开矩形（`2d+2w` × `d+h`）不超出贴图 |
 | 骨骼名不在已知骨架里 → WARN（拼写错会导致**静默不挂载**；已内置玩家鸭子 / NPC 鸭子两套名单）|
+
+## 生成贴图 / UV 模板
+
+- `--png <路径|目录>`：按各零件的 `fills` 底色画出贴图（512² PNG，带面分隔线，便于看清 box-UV 布局）。
+- `--template <路径|目录>`：导出 UV 模板 —— 灰底 + 每个面矩形描边、前面（front）右下角一个橙点，
+  零件按序不同灰度。给"手绘整张图"那条路用。
+
+两件事都由 `TextureKit` 完成（同样不依赖 UnityEngine）：离线写 PNG，运行时由适配器塞进 `Texture2D`。
 
 ## 为什么可信：与运行时共用同一份几何核心
 
