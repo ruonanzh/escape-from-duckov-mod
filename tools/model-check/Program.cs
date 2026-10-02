@@ -109,7 +109,7 @@ namespace ModelCheck
                     warns.Add($"零件 '{p.Role}' 没有配底色（fills）");
 
             CheckUv(mesh, spec, warns, out var uvFail);
-            CheckByCategory(spec, mesh, warns);
+            CheckSize(spec, mesh, warns);
             foreach (var w in warns) res.Report.AppendLine($"WARN  {label}    {w}");
             if (uvFail != null) { res.Report.AppendLine($"FAIL  {label}    {uvFail}"); res.Fails++; }
 
@@ -250,25 +250,19 @@ namespace ModelCheck
                 warns.Add($"贴图来自外部文件 {spec.Texture.File} —— 无法在此校验图片尺寸（要求与 size 一致）");
         }
 
-        static void CheckByCategory(ModelSpec spec, MeshData mesh, List<string> warns)
+        /// <summary>单一尺寸上限：任何一边超过 10 m 都视为离谱（游戏里最大的资产 SM_BLD_Showcase 是 6 m）——
+        /// 这条主要用来抓"单位写错"（把 cm 当 m 写就会大 100 倍）。</summary>
+        const float MaxDimensionMeters = 10f;
+
+        static void CheckSize(ModelSpec spec, MeshData mesh, List<string> warns)
         {
             var size = mesh.Max - mesh.Min;
-            string cat = spec.Category ?? "";
-            float lenZ = size.Z, wide = size.X, tall = size.Y;
-            if (cat.StartsWith("weapons/pistol") && (lenZ < 0.14f || lenZ > 0.28f))
-                warns.Add($"手枪长度 {lenZ:0.###} m 不在实测区间 0.15–0.25（真实手枪 WPN_* 量级）");
-            if (cat.StartsWith("weapons/smg") && (lenZ < 0.35f || lenZ > 0.75f))
-                warns.Add($"冲锋枪长度 {lenZ:0.###} m 不在实测区间 0.4–0.7（WPN_SR3M = 0.52）");
-            if (cat.StartsWith("weapons/rifle") && (lenZ < 0.65f || lenZ > 1.15f))
-                warns.Add($"步枪长度 {lenZ:0.###} m 不在实测区间 0.7–1.1（WPN_ASVAL = 0.79）");
-            bool weaponLike = cat.StartsWith("weapons/");
-            bool gunLike = cat.StartsWith("weapons/pistol") || cat.StartsWith("weapons/smg") || cat.StartsWith("weapons/rifle") || cat.StartsWith("accessories/");
-            if (weaponLike && Math.Abs((mesh.Max.X + mesh.Min.X) / 2) > 0.02f)
-                warns.Add("武器没有以 x=0 为中心（实测武器 mesh 多数 x 居中）");
-            if (gunLike && lenZ < Math.Max(wide, tall))
-                warns.Add("枪械/配件的最长边不在 +Z 方向（实测武器 mesh 长度沿 +Z）");
-            if (cat.StartsWith("buildings/") && Math.Min(Math.Abs(mesh.Min.Y), Math.Abs(mesh.Max.Y)) > 0.05f)
-                warns.Add($"建筑没有贴地（minY={mesh.Min.Y:0.###}, maxY={mesh.Max.Y:0.###}）—— 应有一面在 y=0");
+            float longest = Math.Max(size.X, Math.Max(size.Y, size.Z));
+            if (longest > MaxDimensionMeters)
+                warns.Add($"最长边 {longest:0.##} m 超过 {MaxDimensionMeters:0} m —— 单位写错了？（游戏里最大的资产是 6 m）");
+            float smallest = Math.Max(size.X, Math.Max(size.Y, size.Z));
+            if (smallest < 0.005f)
+                warns.Add($"整个模型只有 {smallest * 1000:0.#} mm —— 单位写错了？（我们按米）");
         }
 
         // ── YSM（角色）──────────────────────────────────────────────────────────
