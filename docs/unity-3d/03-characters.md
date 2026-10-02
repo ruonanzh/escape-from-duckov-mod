@@ -24,9 +24,11 @@ m_BindPose / m_BoneNameHashes / m_RootBoneNameHash / m_BonesAABB / m_SkinnedMesh
 
 | 可做 | 做法 |
 |---|---|
+| **换整体模型**（玩家/NPC/宠物）| ✅ **走社区框架 DCM + YSM** —— 产 **YSM 文本模型**（`ysm.json`），放进 `ModConfigs/DuckovCustomModel/Models`，**不需要 AssetBundle**；需玩家先装 DCM + HarmonyLib。详见 [`05-community.md`](05-community.md) |
 | **挂饰 / 附件**（帽子、背包挂件、武器挂件） | 生成静态 mesh，挂到角色的 socket / 模型树的子节点 |
 | **换贴图 / 换材质（改色）** | 直接改 `Material`（克隆原材质后改色），不走几何 |
-| **换整体模型（外部模型）** | 只能走 AssetBundle（需要 Unity 打包），本轮不做 |
+
+⚠️ 不要自己写角色渲染代码（蒙皮/骨骼/动画）；也不要为了换角色模型去打包 AssetBundle。
 
 `CharacterSubVisuals` 的字段里已经有现成入口（真实 dump）：
 
@@ -47,4 +49,4 @@ action=dump    class=GameObject          name="0_CharacterModel_Custom_Killa"  f
 ## 待办
 
 - [ ] 确认「挂饰」实际挂点（角色模型树里 socket 的命名 / `sockets` 字段）
-- [ ] 明确写进 SKILL：**玩家要"换整套角色模型"时，直接说明本轮不支持**，别硬做
+- [ ] YSM 模型的仓库/样例找一份（用于确定 `ysm.json` 的几何写法）

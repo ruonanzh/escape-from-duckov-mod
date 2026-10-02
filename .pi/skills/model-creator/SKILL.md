@@ -1,30 +1,24 @@
 ---
 name: model-creator
-description: 给 Escape From Duckov 做 3D 模型：代码参数化生成（不依赖 Unity、不打包 AssetBundle）的几何来源（盒/圆柱/圆锥/旋转体/拉伸）、模型 prefab 骨架、坐标与材质约定、按类别的真实样例句（武器/物品/建筑）、挂载点（`ItemGraphicInfo` / `ItemAgentUtilities` / sockets），以及可直接复用的社区框架（角色/宠物/NPC 走 DCM + YSM 文本模型；物品数据走 `item.yaml` 框架）。当玩家要「改模型 / 换外观 / 加个新造型 / 做个 3D 样子 / 换角色模型」或要理解模型怎么拼出来时读取。
+description: 给 Escape From Duckov 做 3D 模型（只管模型；数值/行为/特效等数据层不在这里）：代码参数化生成的几何来源（盒/圆柱/圆锥/旋转体/拉伸）、模型 prefab 骨架、坐标与材质约定、按类别的真实样例句（武器/物品/建筑）、挂载点（`ItemGraphicInfo` / `ItemAgentUtilities` / sockets），以及角色/宠物/NPC 可直接复用的社区框架（DCM + YSM 文本模型）。当玩家要「改模型 / 换外观 / 加个新造型 / 做个 3D 样子 / 换角色模型」或要理解模型怎么拼出来时读取。
 ---
 
 # 做 3D 模型（Escape From Duckov）
 
-## 走哪条路（先明确，别默认要做 AssetBundle）
+**本技能只管“模型长什么样”**；数值/行为/特效这类**数据层**不在这里（那看 `mod-creator`）。
 
-游戏里的"模型"就是 prefab 上的 `MeshFilter` / `MeshRenderer`；`Mesh` 是**内存对象**
-（`vertices` / `triangles` / `uv` / `normals`），**运行时可以直接构造**。
+## 模型怎么做：三条路
 
-所以本 repo 的做法是 **① 代码参数化生成**：C# 里拼几何 → 换到游戏现成对象上。**不需要 Unity、不需要 AssetBundle、不需要外部工具**。
+| # | 玩家要的 | 路线 | 依赖 |
+|---|---|---|---|
+| **①** | **物品 / 武器 / 配件 / 建筑 / 收藏品**的外观 | **代码参数化生成**（本技能主线）：C# 运行时拼 `Mesh`，换到游戏现成对象上 | 无（只用 dotnet）|
+| **②** | **角色 / 宠物 / NPC**的外观 | **复用社区框架 DCM + YSM**：产 `ysm.json`（**文本几何**）放进 `ModConfigs/DuckovCustomModel/Models` + 侧车配置 | 需 **DCM + HarmonyLib**（玩家没装先说清）|
+| **③** | **真实感 / 外部模型**（FBX/GLB、高质量网格）| **不做**：需要 Unity 打 AssetBundle（2022.3.62f2 + URP）| — |
 
-遇到这些**直接说清楚不做**（不要硬做、不要偷偷引入 Unity）：
-- **导入 FBX/GLB 等外部模型**、**自己打包 AssetBundle** → 本轮不做（要做也要用 Unity，不是这个技能的事）。
-- **角色模型**：**不要自己写**——角色/宠物/NPC 换模型走社区框架（下一节），参数化只用来做**挂饰**。
+**为什么 ① 可行**：游戏里的“模型”就是 prefab 上的 `MeshFilter` / `MeshRenderer`；`Mesh` 是**内存对象**
+（`vertices` / `triangles` / `uv` / `normals`），运行时可以直接构造 —— **不需要 Unity、不需要 AssetBundle**。
 
-## 动手前先看能不能复用（社区生态）
-
-详见 `docs/unity-3d/05-community.md`。三句话：
-
-| 玩家要的 | 社区现成 | 怎么办 |
-|---|---|---|
-| **角色 / 宠物 / NPC 换模型** | **DCM（Duckov Custom Model）+ YSM**（`ysm.json` = **文本 JSON 几何**，带动画），放进 `ModConfigs/DuckovCustomModel/Models`，**不需要 AssetBundle** | **复用**：产 YSM 文本模型 + 侧车 `<名>.ysm.duckov.json`；需 DCM + HarmonyLib 前置（玩家没装就先说清）|
-| **物品/武器的数据与行为**（数值/口径/开火方式/特效/贴图）| `item.yaml` / `recipe.yaml` 声明式框架（作者明确写了“不会改模型”）| 数据交给它或我们的 C#；**几何**才归这个技能 |
-| **物品/武器 模型** | 现成 mod 几乎都自带 AssetBundle（Unity 打）| 我们走 **① 参数化生成**；需要真实感模型才回落 bundle |
+②③ 细节见 `docs/unity-3d/05-community.md`（DCM/YSM 的路径、目标类型、侧车配置样例）。
 
 ## 动手前先查真实样例（不要猜结构）
 
@@ -81,7 +75,8 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
 
 ## 参考
 
-- 详细资料与真实样例：`docs/unity-3d/`（入口 `README.md`；社区生态见 `05-community.md`）。
+- 详细资料与真实样例：`docs/unity-3d/`（入口 `README.md`；角色类复用见 `05-community.md`）。
+- 数值/行为/特效等**数据层**：`mod-creator`（及 `docs/guides/` 查数据）。
 - mod 的整体流程（csproj / info.ini / ModBehaviour / 校验）：`mod-creator`。
 - 查游戏数据（数值/场景）：`mod-creator` 的「获取游戏数据」一节。
 - 装进游戏：`mod-installer`。
