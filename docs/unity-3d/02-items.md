@@ -45,6 +45,22 @@ action=dump    class=Item  match="typeID=<id>"  depth=2    # 从物品反查 ite
 - 挂饰/附加件挂 `ItemGraphicInfo.sockets`。
 
 
+## 地面模型与身上模型：同一个
+
+物品**只有一个图形 prefab** —— 游戏把它挂到**不同父节点**，不是两套模型：
+
+| 场景 | 挂到哪 |
+|---|---|
+| 掉落 / 摆在地上 | 世界（由 `ItemGraphicInfo.groundPoint` 决定怎么贴合地面）|
+| 穿在身上 | 角色的 socket：`ArmorSocket`（护甲）· `HelmatSocket`（头盔）· `BackpackSocket`（背包）|
+| 拿在手上 | `ItemAgentUtilities` 绑到 `ItemAgent` |
+
+实测证据：`Item_ArmorLV5_2` → `itemGraphic` = `IG_Armor_Lv5-2`；运行时角色 `ArmorSocket` 下挂的就是 `IG_Armor_Storm_Lv5(Clone)`（同名 IG prefab）；放置入口是 `ItemGraphicInfo.CreateAGraphic(item, parent, snapGround, useSpriteIfNoGraphic)` —— 参数就是「**父节点**」。
+
+**例外（1580 件物品里 11 件）**：地面不用 3D 模型而用**贴图**（`Item.useSpriteForPickup = 1`），另有 `ItemGraphicInfo.spriteGraphicPfb` / `fallbackSprite` 兜底。
+
+→ 做模型时的含义：**一个物品做一份模型就够了**，地面 / 身上 / 手持都由游戏复用同一份；`attach` 只决定默认挂哪。
+
 ## 例子（照着写）
 
 ### 背包（`backpack`）
@@ -376,6 +392,191 @@ action=dump    class=Item  match="typeID=<id>"  depth=2    # 从物品反查 ite
   },
   "attach": {
     "kind": "item_graphic"
+  }
+}
+```
+
+### 防弹衣（`armor_vest`）
+**168 顶点 / 84 三角面** · 包围盒 **0.420 × 0.470 × 0.280 m（含 `mirror` 展开）**
+
+```json
+{
+  "name": "armor_vest",
+  "category": "items/armor",
+  "summary": "防弹衣：衣身 + 前插板 + 肩带（mirror）+ 腰带 + 弹匣袋（mirror）",
+  "parts": [
+    {
+      "role": "shell",
+      "shape": "box",
+      "size": [
+        0.34,
+        0.4,
+        0.22
+      ],
+      "at": [
+        0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "role": "plate",
+      "shape": "box",
+      "size": [
+        0.26,
+        0.26,
+        0.04
+      ],
+      "at": [
+        0,
+        0.02,
+        -0.12
+      ]
+    },
+    {
+      "role": "shoulder",
+      "shape": "box",
+      "size": [
+        0.1,
+        0.08,
+        0.18
+      ],
+      "at": [
+        0.16,
+        0.2,
+        0.0
+      ],
+      "mirror": "x"
+    },
+    {
+      "role": "belt",
+      "shape": "box",
+      "size": [
+        0.36,
+        0.06,
+        0.24
+      ],
+      "at": [
+        0,
+        -0.2,
+        0.0
+      ]
+    },
+    {
+      "role": "pouch",
+      "shape": "box",
+      "size": [
+        0.1,
+        0.1,
+        0.06
+      ],
+      "at": [
+        0.12,
+        -0.12,
+        -0.13
+      ],
+      "mirror": "x"
+    }
+  ],
+  "material": {
+    "mode": "clone",
+    "pick": "body"
+  },
+  "attach": {
+    "kind": "socket",
+    "name": "ArmorSocket"
+  }
+}
+```
+
+### 头盔（`helmet`）
+**144 顶点 / 72 三角面** · 包围盒 **0.300 × 0.245 × 0.340 m（含 `mirror` 展开）**
+
+```json
+{
+  "name": "helmet",
+  "category": "items/helmet",
+  "summary": "头盔：盔体 + 帽檐 + 面罩 + 耳罩（mirror）+ 顶部导轨",
+  "parts": [
+    {
+      "role": "dome",
+      "shape": "box",
+      "size": [
+        0.24,
+        0.2,
+        0.28
+      ],
+      "at": [
+        0,
+        0.06,
+        0.0
+      ]
+    },
+    {
+      "role": "brim",
+      "shape": "box",
+      "size": [
+        0.26,
+        0.04,
+        0.3
+      ],
+      "at": [
+        0,
+        -0.04,
+        0.02
+      ]
+    },
+    {
+      "role": "visor",
+      "shape": "box",
+      "size": [
+        0.22,
+        0.1,
+        0.06
+      ],
+      "at": [
+        0,
+        0.02,
+        -0.14
+      ]
+    },
+    {
+      "role": "earpiece",
+      "shape": "box",
+      "size": [
+        0.04,
+        0.1,
+        0.1
+      ],
+      "at": [
+        0.13,
+        0.02,
+        0.02
+      ],
+      "mirror": "x"
+    },
+    {
+      "role": "rail",
+      "shape": "box",
+      "size": [
+        0.06,
+        0.03,
+        0.16
+      ],
+      "at": [
+        0,
+        0.17,
+        0.0
+      ]
+    }
+  ],
+  "material": {
+    "mode": "clone",
+    "pick": "body"
+  },
+  "attach": {
+    "kind": "socket",
+    "name": "HelmatSocket"
   }
 }
 ```
