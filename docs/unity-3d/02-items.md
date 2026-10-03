@@ -42,7 +42,7 @@ action=dump    class=Item  match="typeID=<id>"  depth=2    # 从物品反查 ite
 ## 挂载点
 
 - 世界/地面模型走 `Item.itemGraphic`（`ItemGraphicInfo`）那棵树；
-- 挂饰/附加件挂 `ItemGraphicInfo.sockets`。
+- 挂饰/附加件挂 `ItemGraphicInfo.sockets`（**挂点全清单 + 命名变体**见 [`00-shared.md`](00-shared.md) 的「挂点」一节）。
 
 
 ## 地面模型与身上模型：同一个
@@ -62,6 +62,8 @@ action=dump    class=Item  match="typeID=<id>"  depth=2    # 从物品反查 ite
 → 做模型时的含义：**一个物品做一份模型就够了**，地面 / 身上 / 手持都由游戏复用同一份；`attach` 只决定默认挂哪。
 
 ## 运行时：怎么换物品模型（枪 / 背包 / 箱子…）
+
+> 「武器配件其实不是挂上去的」（`ShowIf_*` / `HideIf_*` 条件零件）与挂点清单见 [`00-shared.md`](00-shared.md) 的「挂点」一节。
 
 物品的模型有**两条独立路径**，位置不同、做法不同：
 

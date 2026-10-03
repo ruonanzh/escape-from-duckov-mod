@@ -35,7 +35,7 @@
 | **骨骼名** | YSM 里**直接用游戏骨骼名**（`Spine.002` / `UpperArm.R` / `Hand.R`…）→ 按名字 1:1 挂载；导入别人做的 YSM（骨骼名是 `root`/`body`/`leftArm` 那套）才需要映射表，缺失的骨骼保留原挂点 |
 | **层（Layer）** | 挂上去的物件要放在**角色渲染器所在层** —— 角色模型根节点在 `layer 0`，但**相机不渲染 `layer 0`**（`Main Camera` 的 `cullingMask` 渲染 `layer 9`，NPC 鸭子模型的角色渲染器在 `layer 9`，另有 `layer 15`）；放错层就整块看不见 |
 | **材质** | **克隆游戏现有材质**再改颜色/贴图：身体材质 `Skin`、shader `SodaCraft/SodaCharacter`（自定义 URP shader，自建材质找不到它 → 粉紫）|
-| **挂点（socket）** | `HelmatSocket`·`ArmorSocket`·`BackpackSocket`·`MeleeWeaponSocket`·`LeftHandSocket`·`RightHandSocket`·`FaceMaskSocket`·`HairSocket`·`MouthSocket`；`CharacterModel` 的 socket 字段是 `private`，用反射取 |
+| **挂点（socket）** | 全清单见 [`00-shared.md`](00-shared.md) 的「挂点」一节（`HelmatSocket`·`ArmorSocket`·`BackpackSocket`·`MeleeWeaponSocket`·`LeftHandSocket`·`RightHandSocket`·`FaceMaskSocket`·`HairSocket`·`MouthSocket`…）；`CharacterModel` 的 socket 字段是 `private`，用反射取 |
 | **替换原有外观** | `CharacterSubVisuals.SetRenderersHidden(true)` 隐藏原渲染器、`AddRenderer(renderer)` 登记自己的渲染器 |
 | **找骨骼的入口** | `CharacterMainControl.characterModel` → `CharacterModel.transform` 往下按名字遍历（`FindDeepChild` 式递归）|
 

@@ -15,6 +15,8 @@
 **配件的模型**：就是它自己的 `itemGraphic`（命名规律 `IG_Acc_<类型>_<名字>`，例：消音器 `Item_Muzzle_PST_DIS_1` → `IG_Acc_Muzzle_PST_DIS_1`）。
 （`ItemSetting_Accessory.accessoryPfb` 这个字段在 262 个资产里**全是 null** —— 不是模型来源。）
 
+**装在枪上的样子不是「挂 prefab」**：武器模型里自带**条件零件**（`ShowIf_<槽位>` / `HideIf_<槽位>`，实测 `ShowIf_Tec` 38 / `HideIf_Muzzle` 36 / `ShowIf_Scope` 34 …），由游戏按「装了哪些配件」开关 —— 详见 [`00-shared.md`](00-shared.md) 的「挂点」一节。
+
 ## 样例（用 `inspect_game_data` 从游戏里读出的原文）
 
 ### A. 一个真实物品模型 prefab 的完整结构
