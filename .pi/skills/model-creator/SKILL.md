@@ -83,6 +83,7 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
   注意别拿 `ShowIf_<槽位>`（占位模型）的 Transform 当挂点 —— 实测它们都在枪坐标系原点。
   配件**后端就落在挂点平面上**、朝枪口方向延伸（实测枪口件几何 z 0→0.247m，原点在尾端），
   所以挂点该摆在哪由"配件打算怎么接"决定；`ShowIf_<槽位>`（装上后才在枪上出现的那段）会跟着挂点一起动。
+  取值按**零件的面**（枪口=枪管前端、顶部=机匣顶面…），别拿整模型包围盒当边缘；`model-check --slots` 会给建议值。
 - **手里那把枪 = 四类零件**：`WPN_*`（枪身）+ `HideIf_*`（枪自带的默认件）= **旧枪几何，全关掉**；
   `ShowIf_*`（配件物品的模型）与 `MuzzleFlash`/`Particle`（特效）**保留**。
 - ⚠️ **别用 `CreateAgent` 去"替换"活实体**：它会销毁实体，游戏引用失效 → 武器**选不中/用不了**。
