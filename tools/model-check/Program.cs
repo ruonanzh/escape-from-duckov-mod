@@ -159,6 +159,11 @@ namespace ModelCheck
                     { fail = $"零件 '{r.Role}' 的展开矩形与 '{o.Role}' 重叠"; return; }
                 used.Add(r);
             }
+            if (Environment.GetEnvironmentVariable("MC_SUBMESHES") == "1")
+            {
+                foreach (var sm in mesh.SubMeshes)
+                    warns.Add($"  submesh '{sm.Role}': {sm.Count / 3} 三角面");
+            }
             foreach (var uv in mesh.Uvs)
                 if (uv.X < -1e-4f || uv.X > 1 + 1e-4f || uv.Y < -1e-4f || uv.Y > 1 + 1e-4f)
                 { fail = $"UV 越界：({uv.X:0.###},{uv.Y:0.###})"; return; }

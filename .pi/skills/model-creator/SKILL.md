@@ -64,6 +64,22 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
 | 手持实体 | `ItemStatsSystem.ItemAgentUtilities.GetPrefab(key)` → `CreateAgent(prefab, agentType)` → `BindNewAgent(agent, agentType)` |
 | 配件/挂饰 | 挂到 `ItemGraphicInfo.sockets` 里的 socket `Transform` |
 
+## 换物品模型（枪 / 背包 / 箱子…）
+
+物品有两处模型，位置不同、做法也不同：
+
+| 在哪 | 怎么换成我们的 |
+|---|---|
+| **拿在手上**（`Item.ActiveAgent`）| **只替换“枪身”那一个零件**：`WPN_*`（或最大的非配件零件）`enabled = false`，在**它的变换下**挂我们的 mesh｜**其余零件一律不碰** |
+| **掉落 / 展示**（`ItemGraphicInfo`）| **克隆 `item.ItemGraphic`** → 换掉克隆里的几何 → 反射写回私有字段 `Item.itemGraphic`（游戏之后实例化的就是我们的）|
+
+- **手里是“零件组合”**：配件槽位（`ShowIf_*` / `HideIf_*`）、弹匣、枪机都由**游戏**按状态开关 → 只能动枪身。
+- **不要重建实体**（如 `ItemAgentUtilities.CreateAgent`）：它会销毁旧实体，游戏还持有引用 → 武器**选不中 / 用不了**。
+- **克隆作模板时必须保持激活**：`SetActive(false)` 会让游戏实例化出来的**全都隐形**。
+- **对齐尺寸**：按原枪身包围盒等比缩放（0.2 m 的手枪要撑到 0.86 m 的 MP5 槽位）。
+- **材质**：克隆枪身材质，贴图塞进 `_MainTex`；**每帧**检查没换过的实例（开局 / 掉落 / 拾取 / 切枪都会重建）。
+- 可复用实现：`reference/mod-kit/ItemModelBinder.cs`；例子：`reference/item_swap/`（`config.json` 可切模型/目标，改完保存即生效）。
+
 ## 换角色模型时怎么找角色
 
 ```csharp

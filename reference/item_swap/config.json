@@ -1,0 +1,8 @@
+{
+  "model": "models/pistol_bright.json",
+  "match": "MP5_Normal",
+  "typeIDs": [
+    655
+  ],
+  "bindNew": false
+}

@@ -76,6 +76,8 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
 
 ## 挂载点
 
+> 运行时怎么换（手持 / 掉落两条路、注意事项）：见 [`02-items.md`](02-items.md) 的「运行时：怎么换物品模型」——枪与物品是同一套机制。
+
 | 目标 | 做法 |
 |---|---|
 | 世界/地面显示 | 换 `ItemGraphicInfo` 那棵树里 `MeshRenderer.sharedMesh` |

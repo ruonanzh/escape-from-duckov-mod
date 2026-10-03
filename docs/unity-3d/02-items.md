@@ -61,6 +61,62 @@ action=dump    class=Item  match="typeID=<id>"  depth=2    # 从物品反查 ite
 
 → 做模型时的含义：**一个物品做一份模型就够了**，地面 / 身上 / 手持都由游戏复用同一份；`attach` 只决定默认挂哪。
 
+## 运行时：怎么换物品模型（枪 / 背包 / 箱子…）
+
+物品的模型有**两条独立路径**，位置不同、做法不同：
+
+| 在哪 | 是什么 | 怎么换成我们的 |
+|---|---|---|
+| **拿在手上** | `Item.ActiveAgent`（`ItemAgent`）| 在实体上**只替换“枪身”那一个零件**：把它 `enabled = false`，在**它的变换下**挂我们的 mesh；**其余零件一律不碰** |
+| **掉落 / 展示** | `ItemGraphicInfo`（游戏用 `ItemGraphicInfo.CreateAGraphic(item.ItemGraphic, …)` 实例化）| **克隆 `item.ItemGraphic`** → 换掉克隆里的几何 → **反射写回**私有的 `Item.itemGraphic`（游戏之后实例化的就是我们的）|
+
+```csharp
+// ① 手持：就地换（不要重建实体）
+var active = item.ActiveAgent;
+var body = active.GetComponentsInChildren<MeshRenderer>(true)
+                 .First(r => r.gameObject.name.StartsWith("WPN_"));     // 枪身
+body.enabled = false;
+var go = new GameObject("ModelKit_mesh");
+go.transform.SetParent(body.transform, false);                          // 继承枪身的位置/旋转/缩放
+go.transform.localScale = Vector3.one * fit;                            // fit = 原枪身尺寸 / 我们模型尺寸
+go.AddComponent<MeshFilter>().sharedMesh = ourMesh;
+go.AddComponent<MeshRenderer>().sharedMaterial = 克隆枪身材质 + 我们的贴图(_MainTex);
+
+// ② 掉落 / 展示：换 prefab，让游戏去实例化
+var clone = Object.Instantiate(item.ItemGraphic);                       // 保留 sockets / groundPoint / 设置
+clone.gameObject.SetActive(true);                                       // ⚠️ 必须保持激活
+clone.transform.position = new Vector3(0f, -5000f, 0f);                 // 模板挪到世界外
+// 同样的方式把 clone 里的几何换成我们的
+typeof(Item).GetField("itemGraphic", BindingFlags.Instance | BindingFlags.NonPublic)
+            .SetValue(item, clone);
+```
+
+**要记住的几点**
+
+- **手里是“零件组合”，不是一个 mesh**：除枪身外还有配件槽位（`ShowIf_*` / `HideIf_*`）、弹匣、枪机…**这些由游戏按状态开关** → **只能动枪身**。
+- **不要重建实体**（例如 `ItemAgentUtilities.CreateAgent`）：它会销毁旧实体，而游戏（`ItemAgentHolder` 等）还持有引用 → 那件武器会**选不中 / 用不了**，直到你丢地上再捡起来。
+- **对齐尺寸**：物品 prefab 的比例与真实尺寸不一致（我们 0.2 m 的手枪要塞进 MP5 的 0.86 m 槽位）→ 按**原枪身包围盒**等比缩放。
+- **材质**：克隆**枪身**的材质，把我们的贴图塞进 `_MainTex`（武器 shader `SodaCraft/SodaLit` 的主贴图槽就是 `_MainTex`）；别从零建材质。
+- **每帧重申**：物品会被反复实例化（开局 / 掉落 / 拾取 / 切枪）→ 看到没换过的实例就换。
+- **给全新物品模型**：同 ② —— 反射写 `itemGraphic` 就是“给这个物品一份模型”。
+
+## 这些坑：哪些是游戏事实、哪些是做法不对
+
+| 坑 | 性质 |
+|---|---|
+| 克隆出的模板一旦 `SetActive(false)`，游戏实例化出来的**全是隐形的** | **游戏事实**：Unity `Instantiate` 会继承激活状态 |
+| 用 `CreateAgent` 换实体 → 武器**选不中 / 用不了** | **游戏事实**：游戏持有旧实体的引用 |
+| 物品里混着几米大的特效零件（实测包围盒 **8 m**）| **游戏事实**：算尺寸只能按枪身 |
+| 物品 prefab 的比例和真实尺寸不一致 | **游戏事实**：要按原模型对齐 |
+| “关掉全部渲染器” → 配件 / 弹匣消失 / 只有几个配件 | **做法不对**：手里是零件组合，除枪身外都由游戏管 |
+| “把 mesh 塞进第一个渲染器” → 只见一个小黑管 | **做法不对**：要按语义取**枪身**（`WPN_*` 或最大的非配件零件）|
+| “改 layer 当隐藏”被游戏改回去 | **游戏事实**（角色那条踩过）；物品这边直接用 `enabled = false` |
+
+## 可运行的例子
+
+`reference/item_swap/`（配置见 `config.json`：`model` / `match` / `typeIDs` / `bindNew`，改完保存即生效）。
+库实现：`reference/mod-kit/ItemModelBinder.cs`。
+
 ## 例子（照着写）
 
 ### 背包（`backpack`）
