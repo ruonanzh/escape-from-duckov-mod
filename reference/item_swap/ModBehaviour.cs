@@ -41,6 +41,7 @@ namespace ItemSwap
         bool _pendingGive;            // 注册已完成、还没发给玩家（等进关卡）
         string _pendingGiveMode = "drop";
         int  _pendingGiveTypeID;      // 要发的新物品 typeID
+        int  _newItemTypeID;          // 已注册的新物品 typeID（用于诊断）
         int  _pendingGiveTries;
 
         void Start()
@@ -70,6 +71,14 @@ namespace ItemSwap
                 _lastHeld = item.name;
                 bool hit = Matches(item);
                 Log($"手里的物品：'{item.name}'（typeID={item.TypeID}）→ 过滤 {(_match.Length > 0 ? "match=" + _match : "无")}{(_typeIds.Count > 0 ? " typeIDs=" + string.Join(",", _typeIds) : "")}：{(hit ? "命中 ✓ 会换" : "不命中 —— 不换")}");
+                // 新增物品的图形是我们注册时换好的 → 也 dump 一次它的渲染器，确认手里到底显示了什么
+                if (item.TypeID == _pendingGiveTypeID || item.TypeID == _newItemTypeID)
+                {
+                    var g = item.ItemGraphic;
+                    Log($"新物品手持诊断：ItemGraphic={(g != null ? g.gameObject.name : "null")} " +
+                        $"子渲染器={(g != null ? g.GetComponentsInChildren<Renderer>(true).Length : 0)}");
+                    Diagnose(item);
+                }
                 Flush();
             }
             if (!Matches(item)) return;
@@ -166,6 +175,7 @@ namespace ItemSwap
                 var back = ItemStatsSystem.ItemAssetsCollection.GetPrefab(typeID);
                 Log($"自检：GetPrefab({typeID})={(back != null)}  图形={(back != null && back.ItemGraphic != null)}  可手持={(back != null && back.HasHandHeldAgent)}");
 
+                _newItemTypeID = typeID;
                 if (giveMode != "false" && giveMode.Length > 0) { _pendingGive = true; _pendingGiveTypeID = typeID; _pendingGiveMode = giveMode; _pendingGiveTries = 0; }
                 _newItemDone = true;
             }

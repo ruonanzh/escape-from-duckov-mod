@@ -144,12 +144,12 @@
     ],
     "source": "generated",
     "fills": {
-      "receiver": "#3A3F44",
-      "barrel": "#22262A",
-      "stock": "#3E3833",
-      "grip": "#4A4038",
-      "magazine": "#2E3236",
-      "sight_rear": "#1E2124"
+      "receiver": "#6B7480",
+      "barrel": "#9AA6B2",
+      "stock": "#7A5A3C",
+      "grip": "#8A6A48",
+      "magazine": "#4C5560",
+      "sight_rear": "#C8D0D8"
     }
   },
   "attach": {
