@@ -169,6 +169,9 @@ namespace ModelKit
         /// <summary>每个槽位的"原位置 -> 新位置"与两边包围盒，供核对。</summary>
         public string SlotDebug { get; private set; } = "";
 
+        /// <summary>锚点与我们的 mesh 的世界变换（位置/旋转/缩放），供离线核对。</summary>
+        public string AnchorsDebug { get; private set; } = "";
+
         /// <summary>属于**旧模型**、要替换掉的零件：枪身（`WPN_*`）+ 原枪自带的默认件（`HideIf_*`）。
         /// `ShowIf_*`（配件本身的模型）与特效（`MuzzleFlash` / `Particle`）留给游戏管，不能动。</summary>
         static bool IsOldModelPart(Renderer r)
@@ -235,6 +238,11 @@ namespace ModelKit
             mr.sharedMaterial = UnityAdapter.CloneWithTexture(anchor != null ? anchor.sharedMaterial : null, _texture);
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
 
+            AnchorsDebug = "锚点 '" + (anchor != null ? anchor.name : "根") + "' 世界位置=" + Fmt(anchor != null ? anchor.transform.position : root.position)
+                + " 旋转=" + (anchor != null ? anchor.transform.rotation.eulerAngles.ToString("0.#") : "-")
+                + " 缩放=" + Fmt(anchor != null ? anchor.transform.lossyScale : root.lossyScale)
+                + "；我们的 mesh 世界位置=" + Fmt(go.transform.position) + " 旋转=" + go.transform.rotation.eulerAngles.ToString("0.#")
+                + " 缩放=" + Fmt(go.transform.lossyScale) + "；mesh 局部盒 min=" + Fmt(_mesh.bounds.min) + " max=" + Fmt(_mesh.bounds.max);
             PlaceSlots(root, go, mr, anchor);
         }
 
@@ -258,8 +266,10 @@ namespace ModelKit
                 foreach (var k in _spec.Slots.Keys) if (!sockets.ContainsKey(k)) sockets[k] = null;
             if (sockets.Count == 0) { SlotReport = "(prefab 无 Sockets 槽位、模型也未声明)"; return; }
 
-            Bounds body = anchor != null ? anchor.bounds : ourRenderer.bounds;   // 原枪身的世界包围盒
-            Bounds mine = ourRenderer.bounds;                                    // 我们 mesh 的世界包围盒
+            // ⚠️ 用**锚点局部坐标系**里的盒子（不是世界轴 AABB）—— 手里的枪是斜的，世界 AABB 会被转歪（实测踩过）
+            var frame = anchor != null ? anchor.transform : meshGo.transform;
+            Bounds body = anchor != null ? anchor.localBounds : ourRenderer.localBounds;   // 原枪身（局部）
+            Bounds mine = _mesh.bounds;                                                    // 我们 mesh（模型坐标）
 
             foreach (var kv in sockets)
             {
@@ -279,8 +289,10 @@ namespace ModelKit
                 }
                 if (socket == null) { SlotReport += slot + "(无挂点);"; continue; }
 
-                Vector3 from = socket.position;                                        // 原挂点位置
-                Vector3 auto = MapBox(from, body, mine);
+                Vector3 from = socket.position;                                         // 原挂点（世界）
+                Vector3 fromLocal = frame.InverseTransformPoint(from);                  // 同上，锚点局部系
+                Vector3 autoLocal = MapBox(fromLocal, body, mine);
+                Vector3 auto = frame.TransformPoint(autoLocal);
                 Vector3 target = declared ? meshGo.transform.TransformPoint(new Vector3(v[0], v[1], v[2])) : auto;
                 Vector3 delta = target - from;
                 socket.position += delta;                                   // ← 挂点移动：配件就落在这
@@ -315,6 +327,34 @@ namespace ModelKit
             }
             if (!any) b = new Bounds(t.position, Vector3.zero);
             return b;
+        }
+
+        /// <summary>诊断：每个挂点 + 挂在上面的配件（它的图形）几何，全部换算到**挂点局部坐标**打印。
+        /// 缝隙就写在数字里：配件几何的 min.z 不在 0 附近 = 离枪有距离。</summary>
+        public string DescribeSlots(Transform root)
+        {
+            var sb = new System.Text.StringBuilder();
+            var socketsRoot = FindByName(root, "Sockets");
+            if (socketsRoot == null) return "(没有 Sockets 容器)";
+            for (int i = 0; i < socketsRoot.childCount; i++)
+            {
+                var s = socketsRoot.GetChild(i);
+                sb.Append(s.name).Append(": 世界=").Append(Fmt(s.position))
+                  .Append(" 缩放=").Append(Fmt(s.lossyScale));
+                bool any = false;
+                foreach (Transform c in s)
+                {
+                    var b = BoundsOf(c);
+                    if (b.size.sqrMagnitude <= 0f) continue;
+                    any = true;
+                    sb.Append(" | 装着 '").Append(c.name).Append("' 几何(挂点局部) min=")
+                      .Append(Fmt(s.InverseTransformPoint(b.min))).Append(" max=")
+                      .Append(Fmt(s.InverseTransformPoint(b.max)));
+                }
+                if (!any) sb.Append(" | (没装东西)");
+                sb.Append(" || ");
+            }
+            return sb.ToString();
         }
 
         static string Fmt(Vector3 v) => "(" + v.x.ToString("0.###") + "," + v.y.ToString("0.###") + "," + v.z.ToString("0.###") + ")";

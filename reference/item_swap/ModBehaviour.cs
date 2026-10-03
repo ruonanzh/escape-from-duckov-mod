@@ -77,6 +77,7 @@ namespace ItemSwap
                     Log($"已换：模板={pt}｜图形={g}｜清实体缓存={cc}｜就地改活实体={h}" +
                         $"｜锚点={_binder.AnchoredAt} 材质={_binder.MaterialInfo} 枪身渲染器关掉 {_binder.HiddenRenderers} 个（保留配件槽位 {_binder.KeptConditional} 个）" +
                         $"｜场上的我们的图形 {ModelKit.ItemModelBinder.CountOurGraphics()} 个");
+                    Log("锚点：" + _binder.AnchorsDebug);
                     Log("槽位：" + _binder.SlotReport);
                     if (_binder.SlotDebug.Length > 0) Log("槽位坐标：" + _binder.SlotDebug);
                 }
@@ -136,6 +137,7 @@ namespace ItemSwap
             DumpOurs();
             var active = item != null ? item.ActiveAgent : null;
             if (active == null) { Log("── 诊断：没有 ActiveAgent"); Flush(); return; }
+            if (_binder != null) Log("挂点诊断：" + _binder.DescribeSlots(active.transform));
 
             var path = TPath(active.transform);
             bool ours = active.gameObject.name.StartsWith("ModelKit_");
