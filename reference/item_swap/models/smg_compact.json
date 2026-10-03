@@ -50,6 +50,20 @@
       ]
     },
     {
+      "role": "handguard",
+      "shape": "box",
+      "size": [
+        0.055,
+        0.07,
+        0.145
+      ],
+      "at": [
+        0,
+        0.035,
+        0.1725
+      ]
+    },
+    {
       "role": "barrel",
       "shape": "cylinder",
       "r": 0.01,
@@ -149,7 +163,8 @@
       "stock": "#3E3833",
       "grip": "#4A4038",
       "magazine": "#2E3236",
-      "sight_rear": "#1E2124"
+      "sight_rear": "#1E2124",
+      "handguard": "#2B3034"
     }
   },
   "attach": {
