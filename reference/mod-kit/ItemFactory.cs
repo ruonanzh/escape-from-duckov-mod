@@ -52,8 +52,9 @@ namespace ModelKit
         }
 
         /// <summary>按 tag 判断是不是枪：`Gun` 标签（实测 123 件枪**全部**有它，且没有一个带 `Accessory`/`MeleeWeapon`）。
-        /// ⚠️ 别用 `GunType_*` 判 —— 配件（弹匣/瞄具/枪口）也带 `GunType_*`。</summary>
-        public static bool LooksLikeGun(ItemStatsSystem.Item item)
+        /// ⚠️ 别用 `GunType_*` 判 —— 配件（弹匣/瞄具/枪口）也带 `GunType_*`。
+        /// 只给本类内部用（决定要不要打 `IsGun`）；要看结果就读物品上的标记 `item.GetBool("IsGun", false)`。</summary>
+        static bool LooksLikeGun(ItemStatsSystem.Item item)
         {
             var tags = item != null ? item.Tags : null;
             if (tags == null) return false;

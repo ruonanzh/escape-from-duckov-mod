@@ -164,7 +164,7 @@ namespace ItemSwap
                 var item = ItemFactory.CloneAsNewItem(cloneFrom, typeID, name);
                 if (item == null) { Log("新增物品：ItemFactory.CloneAsNewItem 返回 null"); _newItemDone = true; return; }
                 Log($"新增物品：克隆自 {cloneFrom}（{src.DisplayName}）→ typeID={item.TypeID} 名字={item.DisplayName} " +
-                    $"图标={(item.Icon != null ? "有" : "无")} IsGun={ItemFactory.LooksLikeGun(src)} 常驻=True");
+                    $"图标={(item.Icon != null ? "有" : "无")} IsGun={item.GetBool("IsGun", false)} 常驻=True");
 
                 var g = _binder.BuildGraphicClone(cloneFrom);
                 _newGraphic = g;
