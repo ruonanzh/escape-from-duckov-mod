@@ -136,13 +136,14 @@ namespace ModelKit
             return true;
         }
 
-        /// <summary>游戏自己按状态管的零件：配件槽位（ShowIf_*/HideIf_*）、弹匣/枪机/枪口特效等。
-        /// 命名上没有统一前缀，所以用"排除枪身"的方式：枪身是 WPN_* 或最大的非 ShowIf/HideIf 零件。</summary>
-        static bool IsGameManagedPart(Renderer r)
+        /// <summary>属于**旧模型**、要替换掉的零件：枪身（`WPN_*`）+ 原枪自带的默认件（`HideIf_*`）。
+        /// `ShowIf_*`（配件本身的模型）与特效（`MuzzleFlash` / `Particle`）留给游戏管，不能动。</summary>
+        static bool IsOldModelPart(Renderer r)
         {
             var n = r.gameObject.name;
-            return n.StartsWith("ShowIf_") || n.StartsWith("HideIf_")
-                || n.StartsWith("MuzzleFlash") || n.StartsWith("Particle");
+            if (n.StartsWith("ShowIf_") || n.StartsWith("MuzzleFlash") || n.StartsWith("Particle")) return false;
+            if (n.StartsWith("WPN_") || n.StartsWith("HideIf_")) return true;
+            return false;   // 其余不认识的零件保守起见也不动
         }
 
         /// <summary>把 root 下的几何换成我们的：关掉枪身渲染器（保留配件槽位），我们的 mesh 挂在最大枪身零件的位置上。</summary>
@@ -154,7 +155,7 @@ namespace ModelKit
             foreach (var r in root.GetComponentsInChildren<Renderer>(true))
             {
                 if (!(r is MeshRenderer || r is SkinnedMeshRenderer)) continue;
-                if (IsGameManagedPart(r)) continue;                                  // 配件槽位/状态零件不参与
+                if (r.gameObject.name.StartsWith("ShowIf_") || r.gameObject.name.StartsWith("HideIf_")) continue;
                 if (r.gameObject.name.StartsWith("WPN_")) { anchor = r; best = r.bounds.size.magnitude; break; }
                 float sz = r.bounds.size.magnitude;
                 if (sz > best && sz < 5f) { best = sz; anchor = r; }
@@ -163,8 +164,9 @@ namespace ModelKit
             int hidden = 0, kept = 0;
             foreach (var r in root.GetComponentsInChildren<Renderer>(true))
             {
-                bool body = ReplaceBodyOnly ? ReferenceEquals(r, anchor)
-                                            : !IsGameManagedPart(r);                 // 非"只换枪身"时才关其他零件
+                // "属于旧模型"的零件 = 枪身（WPN_*）+ 原枪自带的默认件（HideIf_*：枪口/枪托/镜座/握把）
+                // 配件本身的模型（ShowIf_*）与特效留给游戏管。
+                bool body = IsOldModelPart(r);
                 if (!body) { kept++; continue; }
                 if (r.enabled) { r.enabled = false; hidden++; }
             }
