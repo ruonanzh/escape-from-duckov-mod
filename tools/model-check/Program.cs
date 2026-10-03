@@ -137,7 +137,7 @@ namespace ModelCheck
             var tag = res.Fails > 0 ? "FAIL" : (warns.Count > 0 ? "WARN" : "PASS");
             res.Report.AppendLine(
                 $"{tag}  {label,-22} category={spec.Category,-18} parts={mesh.Emitted.Count,2}  verts={mesh.VertexCount,5}  tris={mesh.TriangleCount,5}  " +
-                $"bbox={size.X:0.###}×{size.Y:0.###}×{size.Z:0.###}m  centerX={center.X:0.###}  atlas={mesh.AtlasSize}²  density={mesh.PixelsPerMeter} px/m ({1000f / mesh.PixelsPerMeter:0.##} mm/px)");
+                $"bbox={size.X:0.###}×{size.Y:0.###}×{size.Z:0.###}m  min=({mesh.Min.X:0.###},{mesh.Min.Y:0.###},{mesh.Min.Z:0.###}) max=({mesh.Max.X:0.###},{mesh.Max.Y:0.###},{mesh.Max.Z:0.###})  centerX={center.X:0.###}  atlas={mesh.AtlasSize}²  density={mesh.PixelsPerMeter} px/m ({1000f / mesh.PixelsPerMeter:0.##} mm/px)");
             return res;
         }
 

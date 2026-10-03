@@ -77,6 +77,8 @@ namespace ItemSwap
                     Log($"已换：模板={pt}｜图形={g}｜清实体缓存={cc}｜就地改活实体={h}" +
                         $"｜锚点={_binder.AnchoredAt} 材质={_binder.MaterialInfo} 枪身渲染器关掉 {_binder.HiddenRenderers} 个（保留配件槽位 {_binder.KeptConditional} 个）" +
                         $"｜场上的我们的图形 {ModelKit.ItemModelBinder.CountOurGraphics()} 个");
+                    Log("槽位：" + _binder.SlotReport);
+                    if (_binder.SlotDebug.Length > 0) Log("槽位坐标：" + _binder.SlotDebug);
                 }
                 catch (System.Exception e) { Log("换模型异常: " + e); }
                 Flush();
