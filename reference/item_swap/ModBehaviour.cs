@@ -38,6 +38,9 @@ namespace ItemSwap
         JsonValue _newCfg;            // config.json 的 "newItem" 块
         bool _newItemDone;
         int  _newItemRetry;           // 物品库没就绪时的重试计数（只打前几次日志）
+        bool _pendingGive;            // 注册已完成、还没发给玩家（等进关卡）
+        int  _pendingGiveTypeID;      // 要发的新物品 typeID
+        int  _pendingGiveTries;
 
         void Start()
         {
@@ -52,6 +55,7 @@ namespace ItemSwap
             ReloadIfChanged();
             if (_binder == null) return;
             if (!_newItemDone) TryRegisterNewItem();
+            if (_pendingGive) TryGiveNewItem();
 
             var player = GameApi.FindMainCharacter();
             if (player == null) return;
@@ -153,15 +157,33 @@ namespace ItemSwap
                 if (!ok) { Log("新增物品：AddDynamicEntry 返回 false（typeID 冲突？）"); Object.Destroy(go); _newItemDone = true; return; }
                 Log($"已注册新物品：{name}  typeID={typeID}");
 
-                if (give)
-                {
-                    var inst = ItemStatsSystem.ItemAssetsCollection.InstantiateSync(typeID);
-                    bool got = inst != null && GameApi.GiveItemToPlayer(inst);
-                    Log($"新物品发给玩家：实例={(inst != null)} 拿到={got}");
-                }
+                // 自检：新物品在库里能拿到、且图形指针是我们挂上去的
+                var back = ItemStatsSystem.ItemAssetsCollection.GetPrefab(typeID);
+                Log($"自检：GetPrefab({typeID})={(back != null)}  图形={(back != null && back.ItemGraphic != null)}  可手持={(back != null && back.HasHandHeldAgent)}");
+
+                if (give) { _pendingGive = true; _pendingGiveTypeID = typeID; _pendingGiveTries = 0; }
                 _newItemDone = true;
             }
             catch (System.Exception e) { Log("新增物品异常：" + e); _newItemDone = true; }
+            Flush();
+        }
+
+        /// <summary>把新物品发给玩家：注册发生在**进关卡之前**，那时还没有玩家 → 每帧重试到玩家出现。
+        /// `PickupItem` 成功=进背包/插槽；失败=掉在脚下（所以拿到 false 时看看地上）。</summary>
+        void TryGiveNewItem()
+        {
+            if (GameApi.FindMainCharacter() == null)
+            {
+                _pendingGiveTries++;
+                if (_pendingGiveTries <= 3 || _pendingGiveTries % 600 == 0)
+                    Log($"发新物品：玩家还没进关卡，等待中（第 {_pendingGiveTries} 帧）");
+                Flush();
+                return;
+            }
+            var inst = ItemStatsSystem.ItemAssetsCollection.InstantiateSync(_pendingGiveTypeID);
+            bool got = inst != null && GameApi.GiveItemToPlayer(inst);
+            Log($"新物品发给玩家：实例={(inst != null)} 拿到={got}（拿到 false 时看脚下有没有掉出来）");
+            _pendingGive = false;
             Flush();
         }
 
