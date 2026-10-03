@@ -50,34 +50,6 @@
       ]
     },
     {
-      "role": "handguard",
-      "shape": "box",
-      "size": [
-        0.06,
-        0.084,
-        0.17
-      ],
-      "at": [
-        0,
-        0.035,
-        0.185
-      ]
-    },
-    {
-      "role": "muzzle_collar",
-      "shape": "box",
-      "size": [
-        0.084,
-        0.084,
-        0.03
-      ],
-      "at": [
-        0,
-        0.035,
-        0.255
-      ]
-    },
-    {
       "role": "barrel",
       "shape": "cylinder",
       "r": 0.01,
@@ -177,9 +149,7 @@
       "stock": "#3E3833",
       "grip": "#4A4038",
       "magazine": "#2E3236",
-      "sight_rear": "#1E2124",
-      "handguard": "#2B3034",
-      "muzzle_collar": "#26292D"
+      "sight_rear": "#1E2124"
     }
   },
   "attach": {
