@@ -51,8 +51,8 @@ description: Escape From Duckov 的 C# mod 制作与修改：目录结构、info
 
 ## 新增物品（数据层）
 
-克隆一个现有物品再注册成新物品（社区 mod 实测可行）：
-
+克隆一个现有物品再注册成新物品（社区 mod 实测可行）。**优先用库里的 `ItemFactory.CloneAsNewItem(源typeID, 新typeID, 显示名)`**
+（内置：`DontDestroyOnLoad`、名字走本地化、`useSpriteForPickup=false`、枪自动打 `IsGun`）；手写版本：
 - 克隆：`Instantiate(ItemAssetsCollection.GetPrefab(源typeID).gameObject)`（记得 `DontDestroyOnLoad`）
   → `GetComponent<Item>()` → `SetTypeID(新typeID)`。
 - 名字：`LocalizationManager.SetOverrideText(key, 文本)` + `DisplayNameRaw = key`

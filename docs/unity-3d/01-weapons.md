@@ -260,7 +260,10 @@ models/*.json（零件清单）
   binder.WriteGraphicTo(newItem, g);                              // 写到新物品的 itemGraphic
   ```
   （`BuildGraphicClone` 也能直接吃一个 `ItemGraphicInfo`；失败会让物品在游戏里退化成"纸片"。）
-- 数据层照社区做法（实测跑通，`reference/item_swap` 的 `newItem` 配置块）：
+- 数据层用库里的 **`ItemFactory.CloneAsNewItem(源typeID, 新typeID, 显示名)`** —— 它把"四条每次都要做对的事"
+  内置了（① `DontDestroyOnLoad` ② 名字走"键+本地化表" ③ `useSpriteForPickup=false` ④ 枪自动打 `IsGun` 标记，
+  按源物品的 `Gun` 标签判断）。然后 `WriteGraphicTo` 写图形、`AddDynamicEntry` 注册。
+  照社区原始做法（实测跑通，`reference/item_swap` 的 `newItem` 配置块）：
   克隆源物品 `Instantiate(GetPrefab(源).gameObject)` → `SetTypeID(新)` → 名字（见下）→ `useSpriteForPickup=false`
   → **写图形**（上面两行）→ `AddDynamicEntry(新物品)`。
 - ⚠️ **名字必须是"键 + 本地化表"**：`DisplayNameRaw` 塞字面量会被显示成 `*字面量*`（缺键标记）——

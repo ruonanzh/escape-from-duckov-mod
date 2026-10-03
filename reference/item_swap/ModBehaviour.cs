@@ -159,34 +159,24 @@ namespace ItemSwap
 
             try
             {
-                var go = Object.Instantiate(src.gameObject);
-                go.name = "Item_" + name;
-                Object.DontDestroyOnLoad(go);
-                var item = go.GetComponent<ItemStatsSystem.Item>();
-                if (item == null) { Log("新增物品：克隆体上没有 Item 组件"); Object.Destroy(go); _newItemDone = true; return; }
-
-                item.SetTypeID(typeID);
-                // 名字：游戏是"键 + 本地化表"——直接塞字面量会被显示成 *字面量*（缺键标记）
-                string nameKey = "Item_ModelKit_" + typeID;
-                try { SodaCraft.Localizations.LocalizationManager.SetOverrideText(nameKey, name); }
-                catch (System.Exception ex) { Log("设置本地化文本失败：" + ex.Message); }
-                item.DisplayNameRaw = nameKey;
-                item.useSpriteForPickup = false;                 // 让地面/手里都用 3D 图形
-                item.SetBool("IsGun", true, true);               // ⭐ 游戏造手持实体的判据：CreateHandheldAgent 会
-                                                                 //    用 item.ItemGraphic 现造（不设它 → 通用 agent = "地上的姿势"）
-                Log($"新增物品：克隆自 {cloneFrom}（{src.DisplayName}）→ typeID={item.TypeID} 名字={item.DisplayName} 图标={(item.Icon != null ? "有" : "无")}");
+                // 数据层：库里的 ItemFactory 内置了"四条每次都必须做对的事"
+                // （DontDestroyOnLoad / 名字走本地化 / useSpriteForPickup=false / 枪自动打 IsGun）
+                var item = ItemFactory.CloneAsNewItem(cloneFrom, typeID, name);
+                if (item == null) { Log("新增物品：ItemFactory.CloneAsNewItem 返回 null"); _newItemDone = true; return; }
+                Log($"新增物品：克隆自 {cloneFrom}（{src.DisplayName}）→ typeID={item.TypeID} 名字={item.DisplayName} " +
+                    $"图标={(item.Icon != null ? "有" : "无")} IsGun={ItemFactory.LooksLikeGun(src)} 常驻=True");
 
                 var g = _binder.BuildGraphicClone(cloneFrom);
                 _newGraphic = g;
                 _newItemTemplate = item;
-                if (g == null) { Log("新增物品：BuildGraphicClone 返回 null（源物品没有 itemGraphic？）"); Object.Destroy(go); _newItemDone = true; return; }
-                if (!_binder.WriteGraphicTo(item, g)) { Log("新增物品：反射写 itemGraphic 失败（游戏里会退化成纸片）"); Object.Destroy(go); _newItemDone = true; return; }
+                if (g == null) { Log("新增物品：BuildGraphicClone 返回 null（源物品没有 itemGraphic？）"); _newItemDone = true; return; }
+                if (!_binder.WriteGraphicTo(item, g)) { Log("新增物品：反射写 itemGraphic 失败（游戏里会退化成纸片）"); _newItemDone = true; return; }
                 Log($"新增物品：图形已挂上（{g.gameObject.name}，渲染器 {g.GetComponentsInChildren<Renderer>(true).Length} 个）");
 
                 bool ok;
                 try { ok = ItemStatsSystem.ItemAssetsCollection.AddDynamicEntry(item); }
-                catch (System.Exception e) { Log("新增物品：AddDynamicEntry 异常 " + e.Message); Object.Destroy(go); _newItemDone = true; return; }
-                if (!ok) { Log("新增物品：AddDynamicEntry 返回 false（typeID 冲突？）"); Object.Destroy(go); _newItemDone = true; return; }
+                catch (System.Exception e) { Log("新增物品：AddDynamicEntry 异常 " + e.Message); _newItemDone = true; return; }
+                if (!ok) { Log("新增物品：AddDynamicEntry 返回 false（typeID 冲突？）"); _newItemDone = true; return; }
                 Log($"已注册新物品：{name}  typeID={typeID}");
 
                 // 自检：新物品在库里能拿到、且图形指针是我们挂上去的
