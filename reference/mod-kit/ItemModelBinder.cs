@@ -344,17 +344,40 @@ namespace ModelKit
                 bool any = false;
                 foreach (Transform c in s)
                 {
-                    var b = BoundsOf(c);
-                    if (b.size.sqrMagnitude <= 0f) continue;
+                    Bounds b; if (!LocalBoundsIn(s, c, out b)) continue;
                     any = true;
                     sb.Append(" | 装着 '").Append(c.name).Append("' 几何(挂点局部) min=")
-                      .Append(Fmt(s.InverseTransformPoint(b.min))).Append(" max=")
-                      .Append(Fmt(s.InverseTransformPoint(b.max)));
+                      .Append(Fmt(b.min)).Append(" max=").Append(Fmt(b.max));
                 }
                 if (!any) sb.Append(" | (没装东西)");
                 sb.Append(" || ");
             }
             return sb.ToString();
+        }
+
+        /// <summary>把 c 的渲染器几何精确换算到 frame 坐标系里的包围盒。
+        /// ⚠️ 不能拿渲染器的**世界轴 AABB** 去 TransformPoint —— 枪是斜的，世界 AABB 被放大（实测踩过：
+        /// 枪口件真长 0.247m，却量出"往枪身包了 3cm"）。这里用 localBounds × 矩阵。</summary>
+        static bool LocalBoundsIn(Transform frame, Transform c, out Bounds result)
+        {
+            result = new Bounds();
+            bool any = false;
+            foreach (var r in c.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!(r is MeshRenderer || r is SkinnedMeshRenderer)) continue;
+                var lb = r.localBounds;
+                var m = frame.worldToLocalMatrix * r.localToWorldMatrix;
+                for (int i = 0; i < 8; i++)
+                {
+                    var corner = new Vector3(
+                        (i & 1) == 0 ? lb.min.x : lb.max.x,
+                        (i & 2) == 0 ? lb.min.y : lb.max.y,
+                        (i & 4) == 0 ? lb.min.z : lb.max.z);
+                    var p = m.MultiplyPoint3x4(corner);
+                    if (!any) { result = new Bounds(p, Vector3.zero); any = true; } else result.Encapsulate(p);
+                }
+            }
+            return any;
         }
 
         static string Fmt(Vector3 v) => "(" + v.x.ToString("0.###") + "," + v.y.ToString("0.###") + "," + v.z.ToString("0.###") + ")";
