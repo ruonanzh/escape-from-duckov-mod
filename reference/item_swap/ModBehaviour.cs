@@ -172,6 +172,8 @@ namespace ItemSwap
                 catch (System.Exception ex) { Log("设置本地化文本失败：" + ex.Message); }
                 item.DisplayNameRaw = nameKey;
                 item.useSpriteForPickup = false;                 // 让地面/手里都用 3D 图形
+                item.SetBool("IsGun", true, true);               // ⭐ 游戏造手持实体的判据：CreateHandheldAgent 会
+                                                                 //    用 item.ItemGraphic 现造（不设它 → 通用 agent = "地上的姿势"）
                 Log($"新增物品：克隆自 {cloneFrom}（{src.DisplayName}）→ typeID={item.TypeID} 名字={item.DisplayName} 图标={(item.Icon != null ? "有" : "无")}");
 
                 var g = _binder.BuildGraphicClone(cloneFrom);
