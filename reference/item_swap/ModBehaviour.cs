@@ -79,20 +79,23 @@ namespace ItemSwap
                     var g = item.ItemGraphic;
                     Log($"新物品手持诊断：ItemGraphic={(g != null ? g.gameObject.name : "null")} " +
                         $"子渲染器={(g != null ? g.GetComponentsInChildren<Renderer>(true).Length : 0)}");
-                    foreach (var mr in item.GetComponentsInChildren<MeshRenderer>(true))
-                        if (mr.gameObject.name.StartsWith("ModelKit_") && mr.gameObject.name.EndsWith("_mesh"))
-                        {
-                            var m = mr.GetComponent<MeshFilter>()?.sharedMesh;
-                            var sb = new StringBuilder();
-                            for (int i = 0; i < (m != null ? m.subMeshCount : 0); i++) sb.Append(m.GetTriangles(i).Length / 3).Append(" ");
-                            Log($"  mesh 诊断：{mr.gameObject.name} 子网格={m?.subMeshCount} 各子网格三角数=[{sb}] " +
-                                $"材质数={mr.sharedMaterials.Length} 顶点={m?.vertexCount} 启用={mr.enabled}");
-                        }
                     Diagnose(item);
                 }
                 Flush();
             }
             if (!Matches(item)) return;
+
+            foreach (var mr in item.GetComponentsInChildren<MeshRenderer>(true))
+                if (mr.gameObject.name.StartsWith("ModelKit_") && mr.gameObject.name.EndsWith("_mesh"))
+                {
+                    var m = mr.GetComponent<MeshFilter>()?.sharedMesh;
+                    var sb = new StringBuilder();
+                    for (int i = 0; i < (m != null ? m.subMeshCount : 0); i++) sb.Append(m.GetTriangles(i).Length / 3).Append(" ");
+                    Log($"  mesh 诊断：{mr.gameObject.name} 子网格={m?.subMeshCount} 各子网格三角数=[{sb}] " +
+                        $"材质槽={mr.sharedMaterials.Length} 材质={(mr.sharedMaterial != null ? mr.sharedMaterial.name : "null")} " +
+                        $"贴图={(mr.sharedMaterial != null && mr.sharedMaterial.mainTexture != null ? mr.sharedMaterial.mainTexture.name : "无")} " +
+                        $"顶点={m?.vertexCount} 启用={mr.enabled} 层={mr.gameObject.layer}");
+                }
 
             _diagAcc += Time.deltaTime;
             if (_diagTicks < 2 && _diagAcc > 3f) { _diagAcc = 0; _diagTicks++; Diagnose(item); }

@@ -98,6 +98,8 @@ namespace ModelKit
             clone.gameObject.name = "ModelKit_" + _spec.Name;
             clone.gameObject.SetActive(true);                        // ⚠️ 不能停用（见文件头）
             clone.transform.position = new Vector3(0f, -5000f, 0f);  // 模板藏到世界外
+            Object.DontDestroyOnLoad(clone.gameObject);              // ⚠️ 必须在：否则换场景（菜单→关卡）时被销毁
+                                                                     //    → 物品的 itemGraphic 变成"已销毁"引用（= null）
 
             PrepareGeometry(clone.transform);
             return WriteGraphic(item, clone);
@@ -128,6 +130,7 @@ namespace ModelKit
             clone.gameObject.name = "ModelKit_" + _spec.Name;
             clone.gameObject.SetActive(true);                        // ⚠️ 不能停用（见文件头）
             clone.transform.position = new Vector3(0f, -5000f, 0f);  // 模板藏到世界外
+            Object.DontDestroyOnLoad(clone.gameObject);              // ⚠️ 同 BindGraphic：跨场景必须存活
             PrepareGeometry(clone.transform);
             return clone;
         }
@@ -269,8 +272,13 @@ namespace ModelKit
             var mf = go.AddComponent<MeshFilter>();
             mf.sharedMesh = _mesh;
             var mr = go.AddComponent<MeshRenderer>();
-            mr.sharedMaterial = UnityAdapter.CloneWithTexture(anchor != null ? anchor.sharedMaterial : null, _texture);
-            MaterialInfo += "｜双面=" + (UnityAdapter.MakeDoubleSided(mr.sharedMaterial) ? "是" : "否(无 _Cull 属性)");
+            var oneMat = UnityAdapter.CloneWithTexture(anchor != null ? anchor.sharedMaterial : null, _texture);
+            int subCount = Mathf.Max(1, _mesh.subMeshCount);
+            var mats = new Material[subCount];                 // 每个 submesh 一个材质槽（别让 Unity 去猜）
+            for (int i = 0; i < subCount; i++) mats[i] = oneMat;
+            mr.sharedMaterials = mats;
+            MaterialInfo += $"｜子网格={subCount} 材质槽={mats.Length} shader={(oneMat != null && oneMat.shader != null ? oneMat.shader.name : "?")}"
+                           + "｜双面=" + (UnityAdapter.MakeDoubleSided(oneMat) ? "是" : "否");
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
 
             AnchorsDebug = "锚点 '" + (anchor != null ? anchor.name : "根") + "' 世界位置=" + Fmt(anchor != null ? anchor.transform.position : root.position)
