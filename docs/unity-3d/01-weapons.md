@@ -55,7 +55,7 @@
   m_Component
     [ref] Transform            (pathID 36989)  m_LocalPosition = (0,0,0)  m_LocalScale = (1,1,1)  m_Children = []
     [ref] CharacterSubVisuals  (pathID 84491)  renderers[] / particles[] / lights[] / mainModel
-    [ref] ItemGraphicInfo      (pathID 77253)  groundPoint -> pathID 46681   sockets[]   fallbackSprite = null
+    [ref] ItemGraphicInfo      (pathID 77253)  groundPoint -> pathID 46681   sockets[]
   m_Name = IG_Acc_Muzzle_PST_DIS_1
 ```
 

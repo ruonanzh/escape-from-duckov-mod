@@ -2,6 +2,8 @@
 
 与武器**同一套骨架**（`GameObject + Transform + CharacterSubVisuals + ItemGraphicInfo`），差别只在造型与数量级。
 
+**范围**：本文只讲**有 3D 图形的物品**（即有 `itemGraphic` 的那些）；做模型 = 换掉这份图形里的几何与贴图。
+
 ## 真实样例
 
 ```
@@ -55,25 +57,7 @@ action=dump    class=Item  match="typeID=<id>"  depth=2    # 从物品反查 ite
 | 穿在身上 | 角色的 socket：`ArmorSocket`（护甲）· `HelmatSocket`（头盔）· `BackpackSocket`（背包）|
 | 拿在手上 | `ItemAgentUtilities` 绑到 `ItemAgent` |
 
-实测证据：`Item_ArmorLV5_2` → `itemGraphic` = `IG_Armor_Lv5-2`；运行时角色 `ArmorSocket` 下挂的就是 `IG_Armor_Storm_Lv5(Clone)`（同名 IG prefab）；放置入口是 `ItemGraphicInfo.CreateAGraphic(item, parent, snapGround, useSpriteIfNoGraphic)` —— 参数就是「**父节点**」。
-
-### 那 11 件 `useSpriteForPickup = 1` 的物品：**玩法里见不到，做模型不用管**
-
-1581 件物品里有 **11 件** 这个字段为 1，但它们**在正常玩法里丢不到地上，只有一张 UI 图标**：
-
-| 类别 | 物品 | 为什么丢不到地上 |
-|---|---|---|
-| 基地墙纸（6）| `Item_BaseWallPaper_Rock` / `_NewYear` / `_White` / `_Island` / `_Test` / `_Warehouse` | **基地建造**用的物品（游戏里有 `BaseWallPaper` / `BaseWallPaperSlot`，在基地界面按槽位换），不进背包 |
-| 基地装饰（3）| `Item_BaseDeco_Snow` / `_Halloween` / `_Test` | 同上（基地装饰）|
-| 电池（2）| `Item_BatteryPP3`（11）· `Item_BatteryR6`（8）| 实测：也只有 UI 图标，不会出现在场景里 |
-
-代码里确实有这么一条路（供参考，**实际不会触发**）：掉在地上的可拾取物在 `InteractablePickup.CreateGraphic()` 里按该字段二选一 ——
-为 1 就克隆通用贴图 prefab `ItemGraphicInfo.spriteGraphicPfb` 并把 `Item.Icon` 当 sprite（一张图）；为 0 才克隆物品自己的 `itemGraphic`（3D）。
-而 `CreateGraphic()` 只在物品**没有自己的 pickup 显示 prefab** 时才被调用
-（`ItemExtensions.CreatePickupAgent` 取不到 `GetPrefab("Pickup")` 才用通用 `PickupAgentPrefab`）。
-另有 `ItemGraphicInfo.CreateAGraphic` 里的一处兜底：物品**根本没有** `itemGraphic` 时，也用 `spriteGraphicPfb` + `Icon` 显示图标。
-
-**结论**：做模型时**不用管这个字段**；换 `itemGraphic` 里的几何即可（这些物品本来就没有可换的地面 3D 外观）。
+实测证据：`Item_ArmorLV5_2` → `itemGraphic` = `IG_Armor_Lv5-2`；运行时角色 `ArmorSocket` 下挂的就是 `IG_Armor_Storm_Lv5(Clone)`（同名 IG prefab）；放置入口是 `ItemGraphicInfo.CreateAGraphic(item, parent, snapGround)` —— 参数就是「**父节点**」。
 
 → 做模型时的含义：**一个物品做一份模型就够了**，地面 / 身上 / 手持都由游戏复用同一份；`attach` 只决定默认挂哪。
 

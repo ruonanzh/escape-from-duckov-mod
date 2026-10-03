@@ -66,6 +66,8 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
 
 ## 换物品模型（枪 / 背包 / 箱子…）
 
+**能换的物品**：游戏里绝大多数物品都有 3D 图形（`itemGraphic`）—— 换的就是这份图形里的几何。
+
 **一句话：用 JSON 在运行时算出「几何」，替换掉原版 prefab 里的几何；prefab 的其余一切照抄原版**（sockets / 配件槽位 `ShowIf_*` / 特效 `MuzzleFlash` / 组件 / 动画都照抄 → 一上来就能跟手、能装配件）。
 
 两条必须分开处理：
