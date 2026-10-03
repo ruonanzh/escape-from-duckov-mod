@@ -269,6 +269,37 @@ models/*.json（零件清单）
   **等进关卡后再做**（`PickupItem` 失败时游戏会把物品掉在脚下，别以为没成功）。
 - 新物品还要有**获得途径**（工作台配方 / 掉落 / 直接发放），否则只能在代码里造出来。
 
+## ⭐ 我们造的运行时对象必须常驻（`DontDestroyOnLoad`）
+
+**这一条是我们这条路线的"必要代价"，不照做就会出诡异现象**（实测：物品第一次拿到没有模型/只有图标）。
+
+我们走的是"**运行时用 JSON 算几何**"（不依赖 Unity、不打包 AssetBundle）→ 我们自己 `Instantiate` 出来的东西
+（图形克隆、新物品模板、手持实体）都是**场景对象**：
+
+```
+场景对象归属于"当前场景"
+→ 从主菜单进关卡时场景卸载 → 对象被销毁
+→ 物品的 itemGraphic 变成"已销毁引用"（Unity 里 `== null` 判 true）
+→ 游戏回退：地上/手里显示图标贴图（看着像"黑方块"或"原版图"）
+```
+
+**所以凡是我们运行时创建、又会被跨场景引用的对象，创建后立刻 `DontDestroyOnLoad`：**
+
+```csharp
+Object.DontDestroyOnLoad(clone.gameObject);   // ① 图形克隆（写进 itemGraphic 的那份）
+Object.DontDestroyOnLoad(itemGo);             // ② 新物品模板（克隆源物品得到的那个）
+Object.DontDestroyOnLoad(agentGo);            // ③ 手持实体（BuildAgent 造出来的）
+```
+
+两条相关注意：
+
+- **常驻对象也要保持激活**：Unity 的 `Instantiate` **会继承模板的激活状态** → 模板 `SetActive(false)` 会让所有实例隐形（实测踩过）。
+- **别用 `MultiSceneCore.MoveToActiveWithScene` 来"保活模板"**：它是给"每关的活对象"用的（对象挂在按场景分组的容器下，
+  **激活状态跟着该场景的加载状态走**）→ 模板会在别的关卡里变 inactive → 实例同样隐形。
+
+> 对照：官方路线（Unity 里做 prefab + AssetBundle）里这些全是**资产** → 资产不属于任何场景 → 天然不会被销毁，
+> 所以官方文档从不需要提这件事 ✓（他们的 Loader README 也承认"玩家第一次获得物品可能不会有模型和效果"是同类问题）。
+
 ## 例子（照着写）
 
 坐标与单位约定见 [`00-shared.md`](00-shared.md)，格式见 [`05-model-format.md`](05-model-format.md)。
