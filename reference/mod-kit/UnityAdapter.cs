@@ -87,6 +87,16 @@ namespace ModelKit
             return mat;
         }
 
+        /// <summary>把材质改成**双面渲染**（`_Cull = 0` / `Cull Off`）—— 用于诊断"模型看不见是不是背面剔除"。
+        /// 返回是否改成功（不同 shader 属性名不同：URP 用 `_Cull`，内置/标准用 `_Cull`；找不到就返回 false）。</summary>
+        public static bool MakeDoubleSided(Material mat)
+        {
+            if (mat == null) return false;
+            if (mat.HasProperty("_Cull")) { mat.SetFloat("_Cull", 0f); return true; }
+            if (mat.HasProperty("_CullMode")) { mat.SetFloat("_CullMode", 0f); return true; }
+            return false;
+        }
+
         /// <summary>建一个带 MeshFilter/MeshRenderer 的 GameObject（层与材质源渲染器一致 —— 否则可能被相机剔除）。</summary>
         public static GameObject CreateMeshObject(string name, Mesh mesh, Material mat, Transform parent, int layer, bool localSpace = true)
         {

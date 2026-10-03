@@ -270,6 +270,7 @@ namespace ModelKit
             mf.sharedMesh = _mesh;
             var mr = go.AddComponent<MeshRenderer>();
             mr.sharedMaterial = UnityAdapter.CloneWithTexture(anchor != null ? anchor.sharedMaterial : null, _texture);
+            MaterialInfo += "｜双面=" + (UnityAdapter.MakeDoubleSided(mr.sharedMaterial) ? "是" : "否(无 _Cull 属性)");
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
 
             AnchorsDebug = "锚点 '" + (anchor != null ? anchor.name : "根") + "' 世界位置=" + Fmt(anchor != null ? anchor.transform.position : root.position)

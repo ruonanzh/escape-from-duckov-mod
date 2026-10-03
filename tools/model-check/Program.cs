@@ -29,6 +29,7 @@ namespace ModelCheck
             var markdown = new List<string>();
             int sideOverride = 0;
             bool wantSlots = false;
+            string objOut = null;
             string pngOut = null, templateOut = null;
 
             for (int i = 0; i < args.Length; i++)
@@ -39,10 +40,11 @@ namespace ModelCheck
                     case "--md": markdown.Add(args[++i]); break;
                     case "--side": sideOverride = int.Parse(args[++i]); break;
                     case "--slots": wantSlots = true; break;
+                    case "--obj": objOut = args[++i]; break;
                     case "--png": pngOut = args[++i]; break;
                     case "--template": templateOut = args[++i]; break;
                     default:
-                        Console.Error.WriteLine("usage: model-check [--file <json>]... [--md <markdown>]... [--side N] [--png <path|dir>] [--template <path|dir>] [--slots]");
+                        Console.Error.WriteLine("usage: model-check [--file <json>]... [--md <markdown>]... [--side N] [--png <path|dir>] [--template <path|dir>] [--slots] [--obj <file.obj>]");
                         return 2;
                 }
             }
@@ -51,7 +53,7 @@ namespace ModelCheck
             int fails = 0;
             foreach (var f in files)
             {
-                var r = CheckBlock(File.ReadAllText(f), Path.GetFileName(f), sideOverride, pngOut, templateOut, wantSlots);
+                var r = CheckBlock(File.ReadAllText(f), Path.GetFileName(f), sideOverride, pngOut, templateOut, wantSlots, objOut);
                 Console.Write(r.Report);
                 fails += r.Fails;
             }
@@ -61,7 +63,7 @@ namespace ModelCheck
                 foreach (Match m in Regex.Matches(File.ReadAllText(md), @"```json\n(.*?)```", RegexOptions.Singleline))
                 {
                     idx++;
-                    var r = CheckBlock(m.Groups[1].Value, $"{Path.GetFileName(md)} #{idx}", sideOverride, pngOut, templateOut, wantSlots);
+                    var r = CheckBlock(m.Groups[1].Value, $"{Path.GetFileName(md)} #{idx}", sideOverride, pngOut, templateOut, wantSlots, objOut);
                     Console.Write(r.Report);
                     fails += r.Fails;
                 }
@@ -73,7 +75,7 @@ namespace ModelCheck
 
         sealed class Result { public StringBuilder Report = new StringBuilder(); public int Fails; }
 
-        static Result CheckBlock(string json, string label, int sideOverride, string pngOut, string templateOut, bool wantSlots)
+        static Result CheckBlock(string json, string label, int sideOverride, string pngOut, string templateOut, bool wantSlots, string objOut)
         {
             var res = new Result();
             JsonValue root;
@@ -140,6 +142,7 @@ namespace ModelCheck
             res.Report.AppendLine(
                 $"{tag}  {label,-22} category={spec.Category,-18} parts={mesh.Emitted.Count,2}  verts={mesh.VertexCount,5}  tris={mesh.TriangleCount,5}  " +
                 $"bbox={size.X:0.###}×{size.Y:0.###}×{size.Z:0.###}m  min=({mesh.Min.X:0.###},{mesh.Min.Y:0.###},{mesh.Min.Z:0.###}) max=({mesh.Max.X:0.###},{mesh.Max.Y:0.###},{mesh.Max.Z:0.###})  centerX={center.X:0.###}  atlas={mesh.AtlasSize}²  density={mesh.PixelsPerMeter} px/m ({1000f / mesh.PixelsPerMeter:0.##} mm/px)");
+            if (objOut != null) { WriteObj(objOut, mesh); res.Report.AppendLine($"已导出 OBJ：{objOut}"); }
             if (wantSlots) res.Report.AppendLine(SlotHints(spec, mesh));
             return res;
         }
@@ -156,6 +159,27 @@ namespace ModelCheck
             }
             if (lines.Count == 0) return "槽位建议：零件 role 里没有 barrel/receiver/stock → 用 slots 手写";
             return "槽位建议（按零件语义算的，可直接抄进 slots）：\n{\n" + string.Join("\n", lines) + "\n}";
+        }
+
+        /// <summary>把生成的 mesh 导成 OBJ（每个 submesh 一个 group）—— 给离线可视化/自查用。</summary>
+        static void WriteObj(string path, ModelKit.MeshData d)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("# model-check export");
+            foreach (var p in d.Positions)
+                sb.AppendLine($"v {p.X.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture)} {p.Y.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture)} {p.Z.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture)}");
+            foreach (var n in d.Normals)
+                sb.AppendLine($"vn {n.X.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture)} {n.Y.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture)} {n.Z.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture)}");
+            foreach (var sm in d.SubMeshes)
+            {
+                sb.AppendLine("g " + sm.Role);
+                for (int k = sm.Start; k + 2 < sm.Start + sm.Count; k += 3)
+                {
+                    int a = d.Indices[k] + 1, b = d.Indices[k + 1] + 1, c = d.Indices[k + 2] + 1;
+                    sb.AppendLine($"f {a}//{a} {b}//{b} {c}//{c}");
+                }
+            }
+            System.IO.File.WriteAllText(path, sb.ToString());
         }
 
         static string WriteTarget(string pathOrDir, string filename)
