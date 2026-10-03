@@ -39,6 +39,7 @@ namespace ItemSwap
         bool _newItemDone;
         int  _newItemRetry;           // 物品库没就绪时的重试计数（只打前几次日志）
         bool _pendingGive;            // 注册已完成、还没发给玩家（等进关卡）
+        string _pendingGiveMode = "drop";
         int  _pendingGiveTypeID;      // 要发的新物品 typeID
         int  _pendingGiveTries;
 
@@ -120,7 +121,7 @@ namespace ItemSwap
             int cloneFrom = _newCfg["cloneFrom"]?.AsInt(0) ?? 0;
             int typeID    = _newCfg["typeID"]?.AsInt(0) ?? 0;
             string name   = _newCfg["displayName"]?.AsString("NewItem") ?? "NewItem";
-            bool give     = _newCfg["give"] == null || _newCfg["give"].Bool;
+            string giveMode = _newCfg["give"]?.AsString("drop") ?? "drop";   // drop | pickup | false
 
             if (cloneFrom <= 0 || typeID <= 0) { Log("新增物品：cloneFrom/typeID 必须 > 0"); _newItemDone = true; return; }
 
@@ -142,7 +143,11 @@ namespace ItemSwap
                 if (item == null) { Log("新增物品：克隆体上没有 Item 组件"); Object.Destroy(go); _newItemDone = true; return; }
 
                 item.SetTypeID(typeID);
-                item.DisplayNameRaw = name;
+                // 名字：游戏是"键 + 本地化表"——直接塞字面量会被显示成 *字面量*（缺键标记）
+                string nameKey = "Item_ModelKit_" + typeID;
+                try { SodaCraft.Localizations.LocalizationManager.SetOverrideText(nameKey, name); }
+                catch (System.Exception ex) { Log("设置本地化文本失败：" + ex.Message); }
+                item.DisplayNameRaw = nameKey;
                 item.useSpriteForPickup = false;                 // 让地面/手里都用 3D 图形
                 Log($"新增物品：克隆自 {cloneFrom}（{src.DisplayName}）→ typeID={item.TypeID} 名字={item.DisplayName} 图标={(item.Icon != null ? "有" : "无")}");
 
@@ -161,7 +166,7 @@ namespace ItemSwap
                 var back = ItemStatsSystem.ItemAssetsCollection.GetPrefab(typeID);
                 Log($"自检：GetPrefab({typeID})={(back != null)}  图形={(back != null && back.ItemGraphic != null)}  可手持={(back != null && back.HasHandHeldAgent)}");
 
-                if (give) { _pendingGive = true; _pendingGiveTypeID = typeID; _pendingGiveTries = 0; }
+                if (giveMode != "false" && giveMode.Length > 0) { _pendingGive = true; _pendingGiveTypeID = typeID; _pendingGiveMode = giveMode; _pendingGiveTries = 0; }
                 _newItemDone = true;
             }
             catch (System.Exception e) { Log("新增物品异常：" + e); _newItemDone = true; }
@@ -180,9 +185,20 @@ namespace ItemSwap
                 Flush();
                 return;
             }
+            var player = GameApi.FindMainCharacter();
             var inst = ItemStatsSystem.ItemAssetsCollection.InstantiateSync(_pendingGiveTypeID);
-            bool got = inst != null && GameApi.GiveItemToPlayer(inst);
-            Log($"新物品发给玩家：实例={(inst != null)} 拿到={got}（拿到 false 时看脚下有没有掉出来）");
+            if (inst == null) { Log("发新物品：InstantiateSync 返回 null"); _pendingGive = false; Flush(); return; }
+            if (_pendingGiveMode == "pickup")
+            {
+                bool got = GameApi.GiveItemToPlayer(inst);
+                Log($"新物品：已尝试放进背包/插槽 → {got}（false 时会被掉在脚下）");
+            }
+            else
+            {
+                var agent = ItemExtensions.Drop(inst, player.transform.position, true,
+                                                player.transform.forward, 45f);   // 掉在脚边（顺便验证地面模型）
+                Log($"新物品：已掉在脚边 → agent={(agent != null ? agent.name : "null")} 位置={(agent != null ? agent.transform.position.ToString("0.##") : "-")}");
+            }
             _pendingGive = false;
             Flush();
         }

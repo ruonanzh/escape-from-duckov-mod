@@ -31,6 +31,9 @@
     <Reference Include="$(ManagedDir)/ItemStatsSystem.dll">
       <Private>false</Private>
     </Reference>
+    <Reference Include="$(ManagedDir)/SodaLocalization.dll">
+      <Private>false</Private>
+    </Reference>
     <Reference Include="$(ManagedDir)/Unity*">
       <Private>false</Private>
     </Reference>
