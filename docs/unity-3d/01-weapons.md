@@ -65,17 +65,17 @@
 
 ```
 search --class GameObject --pattern "IG_"     → 374 match(es)
-  IG_Acc_Grip_ALL_REC_2 / IG_Backpack_LV1 / IG_BaseDeco_Snow / …
+  IG_Acc_Grip_ALL_REC_2 / IG_Acc_Muzzle_PST_DIS_1 / IG_Acc_Sight_ALL_REC_1 / …
 ```
 
-命名规律：`IG_<类别>_<名字>`（`Acc` 配件、`Backpack` 背包、`BaseDeco` 基地装饰…）。
+命名规律：`IG_Acc_<类型>_<名字>`（`Acc` = 配件；另有 `Backpack` / `BaseDeco` 等其它类别，见各自文档）。
 
 ### C. 渲染器在哪（批量导）
 
 ```
 export --class CharacterSubVisuals \
   --field "m_GameObject.#name" --field "renderers[].#class" --rows 6
-→ 433 行；例：IG_Backpack_LV5 / Crown …  renderers[].#class = MeshRenderer
+→ 433 行；例：IG_Acc_Muzzle_PST_DIS_1 / IG_Acc_Grip_ALL_REC_2 …  renderers[].#class = MeshRenderer
 ```
 
 即：**模型的实际渲染器是 `CharacterSubVisuals.renderers` 里的 `MeshRenderer`**（数组，元素为 PPtr）。
@@ -155,8 +155,7 @@ models/*.json（零件清单）
   | 样本 | 世界缩放 = 1 | 非 1 |
   |---|---|---|
   | 原游戏枪身 `WPN_*`（99）| 67（68%）| **32（32%）**：`WPN_M14` 1.039（本地=1，**父级带缩放**）· `WPN_Minotaur` 1.225 · `WPN_ASVAL_Lightsaber` 15.5 |
-  | 原游戏物品图形 `IG_*`（371）| 369（99%）| 2（0.85）|
-  | 工坊 mod 的包（优香MPX 26 / 三角洲合集 200）| **100%** | 0 |
+  | 工坊武器 mod 的包（优香MPX 26）| **100%** | 0 |
 
   → mesh 要挂在**原枪身零件**的变换下，并把 `localScale` 取 `1 / 该零件 lossyScale`，让它在**世界尺度上是真实尺寸**。
   （挂在根节点而不补缩放，会被父链带偏 —— 实测表现是**缩小到看不见**。）
