@@ -213,6 +213,9 @@ namespace ItemSwap
             if (inst == null) { Log("发新物品：InstantiateSync 返回 null"); _pendingGive = false; Flush(); return; }
             Log($"发新物品：实例 typeID={inst.TypeID} name={inst.name} 模板同一对象={ReferenceEquals(inst, _newItemTemplate)} " +
                 $"图形=({(inst.ItemGraphic != null ? inst.ItemGraphic.gameObject.name : "null")}) 我们要的图形=({(_newGraphic != null ? _newGraphic.gameObject.name : "null")})");
+            // 手持实体：新增物品没有它 → 拿在手里是"世界姿势"
+            bool hand = GameApi.EnsureHandheldAgent(inst, _newGraphic != null ? _newGraphic.gameObject : null);
+            Log($"发新物品：手持实体={hand}");
             if (inst.ItemGraphic == null && _newGraphic != null)
             {
                 bool w = _binder.WriteGraphicTo(inst, _newGraphic);

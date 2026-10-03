@@ -35,6 +35,53 @@ namespace ModelKit
 
         public static CharacterModel GetModel(CharacterMainControl c) => c != null ? c.characterModel : null;
 
+        /// <summary>给**新增物品**补"手持实体"（社区 mod 优香MPX 的做法）：用我们的图形 prefab 造一个
+        /// `ItemAgent_Gun`，注入 `item.AgentUtilities` 的私有 `agents` 列表（key = `Handheld`），并清
+        /// `hashedAgentsCache`。**没有它：拿在手里显示的是"世界图形"（地上的姿势）**。
+        /// 已有手持实体（克隆源带来的）就沿用。</summary>
+        public static bool EnsureHandheldAgent(ItemStatsSystem.Item item, GameObject graphicPrefab)
+        {
+            if (item == null || graphicPrefab == null || item.AgentUtilities == null) return false;
+            try
+            {
+                if (item.HasHandHeldAgent) return true;
+                var agent = ItemAgent_Gun.BuildAgent(graphicPrefab);
+                if (agent == null) return false;
+                agent.gameObject.name = "ModelKit_Hand_" + graphicPrefab.name;
+                agent.gameObject.SetActive(false);
+                Object.DontDestroyOnLoad(agent.gameObject);
+                return SetAgentPrefab(item.AgentUtilities, "Handheld", agent);
+            }
+            catch { return false; }
+        }
+
+        /// <summary>往 `ItemAgentUtilities.agents` 里写一项（私有字段 + 嵌套类型 `AgentKeyPair`，都靠反射）。</summary>
+        static bool SetAgentPrefab(ItemStatsSystem.ItemAgentUtilities au, string key, ItemStatsSystem.ItemAgent prefab)
+        {
+            try
+            {
+                var t = typeof(ItemStatsSystem.ItemAgentUtilities);
+                var fAgents = t.GetField("agents", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                if (fAgents == null) return false;
+                if (!(fAgents.GetValue(au) is System.Collections.IList list)) return false;
+                var tPair = t.GetNestedType("AgentKeyPair", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                if (tPair == null) return false;
+                var fKey = tPair.GetField("key");
+                var fPrefab = tPair.GetField("agentPrefab");
+                if (fKey == null || fPrefab == null) return false;
+
+                object slot = null;
+                foreach (var e in list) if (e != null && (string)fKey.GetValue(e) == key) { slot = e; break; }
+                if (slot == null) { slot = System.Activator.CreateInstance(tPair); fKey.SetValue(slot, key); list.Add(slot); }
+                fPrefab.SetValue(slot, prefab);
+
+                var fCache = t.GetField("hashedAgentsCache", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                fCache?.SetValue(au, null);
+                return true;
+            }
+            catch { return false; }
+        }
+
         /// <summary>把一件物品塞给玩家（作新增物品的演示/自测用）：`PickupItem` 失败就退到 `inventory.AddItem`。
         /// ⚠️ `CharacterMainControl.itemControl` 是**私有字段**（`CharacterItemControl`），只能反射拿。</summary>
         public static bool GiveItemToPlayer(ItemStatsSystem.Item item)
