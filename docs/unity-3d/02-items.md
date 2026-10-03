@@ -44,7 +44,11 @@ action=dump    class=Item  match="typeID=<id>"  depth=2    # 从物品反查 ite
 ## 挂载点
 
 - 世界/地面模型走 `Item.itemGraphic`（`ItemGraphicInfo`）那棵树；
-- 挂饰/附加件：挂到 `ItemGraphicInfo.sockets` 里的 socket（运行时还可 `DuckovItemAgent.GetSocket(name, createNew)` / `AddSocket(transform)`）；注意游戏里 `Socket` 与 `Soket` 两种拼法都有。
+- **子物品/挂饰**（容器里的东西、挂载件）：`ItemGraphicInfo.sockets` 是一张"槽位名 → 三项"的表：
+  `socketPoint`（挂点 Transform）· `showIfPluged`（装上后显示的占位件）· `hideIfPluged`（装上后隐藏的原装件）。
+  游戏装进东西时的做法（反编译 `ItemGraphicInfo`）：按 `slot.Key` 查表 → `CreateAGraphic(子物品, socketPoint, …)`
+  —— 即**子物品的图形被挂到 `socketPoint` 下**（局部位置/旋转归零、缩放 1）。**挂点在哪，子物品就出现在哪。**
+  （运行时也可 `DuckovItemAgent.GetSocket(name, createNew)` / `AddSocket(transform)`；注意游戏里 `Socket` 与 `Soket` 两种拼法都有。）
 
 
 ## 地面模型与身上模型：同一个

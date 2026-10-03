@@ -77,6 +77,10 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
 | 游戏**会自己重建**的实例（掉落 / 捡起 / 切枪 / 新生成）| **改物品模板** `ItemAssetsCollection.GetPrefab(typeID)` 的 `Item.itemGraphic`（反射写私有字段；社区顺序：先试可写属性再退字段）+ **清实体缓存** `hashedAgentsCache` |
 | **已经拿在手里**（游戏不会重建）的那个实例 | **就地换几何**：关掉旧枪渲染器，在**原枪身零件的变换下**挂我们的 mesh（只改渲染器，**不销毁任何东西**）|
 
+- **配件装在哪**：武器 prefab 里的 `Sockets/<槽位>`（`Scope`/`Tec`/`Muzzle`/`Stock`/`Grip`）就是挂点 ——
+  装上的配件会被游戏挂到这个 Transform 下，所以**把挂点摆到新模型对应位置**即可。模型文件可写
+  `slots` 声明槽位位置（米、模型坐标系；`null` = 没有这个挂点）；不写则按原枪的相对位置自动摆。
+  注意别拿 `ShowIf_<槽位>`（占位模型）的 Transform 当挂点 —— 实测它们都在枪坐标系原点。
 - **手里那把枪 = 四类零件**：`WPN_*`（枪身）+ `HideIf_*`（枪自带的默认件）= **旧枪几何，全关掉**；
   `ShowIf_*`（配件物品的模型）与 `MuzzleFlash`/`Particle`（特效）**保留**。
 - ⚠️ **别用 `CreateAgent` 去"替换"活实体**：它会销毁实体，游戏引用失效 → 武器**选不中/用不了**。
