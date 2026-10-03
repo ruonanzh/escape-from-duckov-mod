@@ -625,7 +625,7 @@
     }
    ],
    "description": {
-    "identifier": "geometry.duck.npc_duck",
+    "identifier": "geometry.duck.pelvis",
     "texture_width": 128,
     "texture_height": 128
    }

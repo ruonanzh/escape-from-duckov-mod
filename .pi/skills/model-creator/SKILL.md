@@ -89,8 +89,12 @@ foreach (var r in model.GetComponentsInChildren<Renderer>(true))
 - **必须用 `IsMainCharacter` 挑玩家**：主菜单里一个角色都没有；关卡里一次能找到十几个（玩家 + NPC + 宠物），`FindObjectsOfType` 的第一个常是 NPC。
 - **角色模型会被游戏重建**（进关卡、换装备）→ 每秒检查“模型根是否变了 / 方块是否还在”，变了就重新挂。
 - **别用“改层”当隐藏**：游戏刷新会把层改回 `Character`（实测踩过）；`enabled = false` 才拦得住。
+- **卡 T-pose**：Unity `Animator` 默认 `CullUpdateTransforms` —— 本体渲染器一被禁用就停更骨骼 → 把 Animator 设成 `AlwaysAnimate`。
+- **白模**：找不到材质源时（有的模型没有蒙皮网格）取任意有材质的渲染器；都没有才是白模。
 - **装备规则**：挂在名字含 `Socket` 的挂点下 = 装备/武器（背包、头盔、手里的枪）→ 保持 `enabled = true`，否则背包和枪会一起消失。
-- 可复用实现：`reference/mod-kit/GameApi.cs`（`FindMainCharacter` / `FindCharacter` / `FindCharacterByModel` / `HideCharacterSkin`）。
+- **模板骨架要跟目标角色对上**：玩家在关卡里用 `Pelvis`/`UpperArm` 那套；boss Jeff 用 `Hip`/`Arm.Root` 那套 —— 选错会**静默不挂**（用 `inspect_game_data` dump 目标模型的骨骼名确认）。
+- 可复用实现：`reference/mod-kit/CharacterModelReplacer.cs`（`ReplaceBody` 开关 = 替换 / 只增加；`Attach` + 每帧 `Tick`）+ `GameApi.cs`（找玩家 / 找 NPC）。
+- 例子：`reference/cube_person/`（读 mod 目录的 `config.json`，可切玩家/NPC，改完保存即生效）。
 
 ## 怎么确认做好了
 

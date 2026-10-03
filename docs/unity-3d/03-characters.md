@@ -52,21 +52,60 @@ Character(Clone)/ModelRoot/0_CharacterModel_Custom_Template(Clone)/CustomFaceIns
      IG_Backpack_LV5(Clone)→BackpackSocket、MeleeWeaponAgent_Knife_04_Karambit(Clone)→MeleeWeaponSocket
 ```
 
-## 运行时：找角色、挂上去、隐藏原外观
+## 运行时：怎么用（库 API）
 
-| 要做的事 | 正确做法 |
+逻辑都在 `reference/mod-kit/`，mod 里只剩"挑谁 + 每帧调一次"：
+
+```csharp
+var ysm = ModelLoader.LoadYsm(Path.Combine(ModelLoader.ModDir(), "models/duck_hip.json"));
+
+var replacer = new CharacterModelReplacer(ysm)
+{
+    ReplaceBody   = true,    // true = 替换（关掉角色本体）｜ false = 只增加（挂件/饰品，不动本体）
+    KeepEquipment = true,    // 保留装备/武器（挂在 *Socket* 下的东西）
+};
+
+replacer.Attach(who);        // 找骨骼 → 建几何 → 挂上（玩家或任意 NPC）
+replacer.Tick();             // 每帧：替换本体 / 保留装备 / 模型被重建就重挂
+```
+
+挑选目标：
+
+| 目标 | 怎么写 |
 |---|---|
-| 找**玩家** | `FindObjectsOfType<CharacterMainControl>()` 后用 **`IsMainCharacter`** 挑（主菜单为空；关卡里能找到十几个，第一个可能是 NPC）|
-| 找**特定 NPC** | 按 GameObject 名或**模型名**筛：`c.characterModel.name.StartsWith("0_CharacterModel_Custom_")` |
-| 等模型就绪 | 进关卡前 `characterModel` 是 `null` → 每秒重试 |
-| 挂几何 | 按 `bones[].name` 找到同名骨骼（`model.transform` 下递归），把方块挂上去 |
-| **模型被重建** | 进关卡 / 换装备会重建模型 → 检查“模型根变了或方块被销毁”就**重新挂** |
-| **替换**原外观 | 把“角色本体”的渲染器 `enabled = false` 直接关掉。⚠️ **改 layer 没用**：游戏刷新会把层改回 `Character`（实测踩过）；`enabled` 是硬的，游戏不会动它 |
-| 保留装备/武器 | 挂在名字含 **`Socket`** 的挂点下就是装备（`MeleeWeaponSocket` / `HelmatSocket` / `ArmorSocket` / `BackpackSocket` / `Hand.Soket.L`…）→ 这些保持 `enabled = true`，否则背包和枪会一起消失 |
-| 每帧重申 | `LateUpdate` 里重压一次（幂等、便宜） |
-| 层（备用信息）| 可见层 `Character` = 9、隐藏层 `SpecialCamera` = 31 |
+| **玩家** | `GameApi.FindMainCharacter()` —— 内部用 **`IsMainCharacter`** 判（`FindObjectsOfType` 的第一个可能是 NPC；主菜单里一个都没有）|
+| **特定 NPC** | `FindObjectsOfType<CharacterMainControl>()` 里取 `!IsMainCharacter`，再按**模型名**筛（`c.characterModel.name.IndexOf("Jeff")`）；对象名同理 |
 
-> 可复用实现：`reference/mod-kit/GameApi.cs`（`FindMainCharacter` / `FindCharacter` / `FindCharacterByModel` / `HideCharacterSkin`）。
+先用 `inspect_game_data` 确认目标用哪套骨架（dump 它的 Transform 子树看骨骼名），**再选对应模板**（见下节）。
+
+## 运行时的坑（都踩过）
+
+| 现象 | 原因 | 正确做法 |
+|---|---|---|
+| 挂上一半骨骼就没了 | 模板骨架与目标角色**不是同一套命名** | 按目标角色实际骨架选模板（玩家 = `Pelvis`/`UpperArm` 那套；boss Jeff = `Hip`/`Arm.Root` 那套）。选错会**静默不挂** |
+| 方块挂上了但看不见 | 挂到了**别的角色**（第一个 `CharacterMainControl` 常常是 NPC） | 用 `IsMainCharacter` 挑玩家 |
+| 原版角色又出现 | 用"改 layer"当隐藏 —— 游戏刷新会把层改回 `Character` | **`enabled = false`** 才能拦住（`gameObject.layer` 只作备用） |
+| 背包/枪一起消失 | 装备判定看名字前缀（枪叫 `Knife04`，不是 `IG_*`） | 判定改成"**挂在名字含 `Socket`/`Soket` 的挂点下**"（`MeleeWeaponSocket`/`HelmatSocket`/`ArmorSocket`/`BackpackSocket`/`Hand.Soket.L`…）|
+| 角色卡在 **T-pose** | Unity `Animator` 默认 `CullUpdateTransforms`：**下面渲染器全被禁用就停止更新骨骼** | 挂载时把角色的 Animator 设成 **`AlwaysAnimate`** |
+| 变成**白模** | 找不到材质源（有的模型没有蒙皮网格，或有别的渲染器） | 材质源回退：优先蒙皮材质，否则取**任意一个有材质的渲染器**；都没有才用兜底材质 |
+| 挂上去一会儿又没了 | 游戏**重建角色模型**（进关卡 / 换装备 / NPC 对象池） | 每帧 `Tick()` 检测（模型根变了 / 方块被销毁）→ **重挂** |
+
+## 玩法不受影响（边界）
+
+我们只换**外观**：血量、碰撞体、AI、阵营、掉落**一点没动** —— 所以被替换的 NPC 照样能被打、也会打你。要改这些是**数据/逻辑层**的事（`mod-creator`），不是模型能力。
+
+## 可运行的例子
+
+`reference/cube_person/`：把 `models/duck_hip.json`（或 `duck_pelvis.json`）挂到目标角色上。
+mod 目录里的 `config.json` 决定目标，**改完保存即生效**（不用重编译）：
+
+```
+{ "model": "models/duck_hip.json", "target": "npc", "match": "Jeff", "replaceBody": true }
+```
+
+- `target`：`player` ｜ `npc`；`match`：NPC 的模型名/对象名片段
+- `replaceBody`：`true` 替换 ｜ `false` 只增加
+- 日志：`/tmp/cube_person.log`（挂了几个方块、缺哪些骨骼、本体关了几个、装备保留几个、材质源）
 
 ## 骨骼家族（映射基础）
 
@@ -81,7 +120,7 @@ action=export  class=SkinnedMeshRenderer \
 
 | 家族 | 网格数 | 骨骼数 | 骨骼命名（节选） | 代表 |
 |---|---|---|---|---|
-| **NPC 鸭子** | **28** | 24 | `Root;Pelvis;Spine.001–004;Head;UpperArm.L;Elbow.L;ForeArm.L;Hand.L;Hand.Soket.L;Thigh.R/L;Foot;Tail` | `DuckBody` |
+| 鸭子 B：`Pelvis`/`UpperArm`（**玩家**在用）| **28** | 24 | `Root;Pelvis;Spine.001–004;Head;UpperArm.L;Elbow.L;ForeArm.L;Hand.L;Hand.Soket.L;Thigh.R/L;Foot;Tail` | `DuckBody` |
 | **玩家鸭子** | **14** | **37** | `Root;Hip;Spine.001–003;Head;HairTip;Arm.Root/Uper/Fore.R;Hand.R;Finger.*;Leg.Upper/Lower/Foot;Tail.001/002` | `Player_Duck_Head` |
 | **蜘蛛 / 机械腿** | 7 | 20 | `Root;Bottom;Body;Gun;Leg_1…3_F/B_L/R;Leg_Target_*` | `Leg_3_B_L` |
 | 兽类（狼/兔/鸟）| 4+ | 9–12 | `root;body;ear.L/R;tail.01/02;leg.F/B.L/R;(wing.L/R)` | `Mesh_LOD1` |
@@ -118,7 +157,7 @@ action=dump    class=GameObject          name="0_CharacterModel_Custom_Killa"  f
 两份骨架模板：**骨骼名与 `pivot` 取自游戏真实骨架**（单位是像素，**16 px = 1 m**；`pivot` 是模型空间绝对坐标，与 Bedrock/YSM 一致）。
 方块尺寸是最简近似 —— 做具体角色时按需拆分与细化。
 
-### NPC 鸭子骨架（`npc_duck`）
+### 鸭子骨架 B：`Pelvis` / `UpperArm` 命名（`duck_pelvis`，24 骨）
 
 **23 个骨骼 / 552 顶点 / 276 三角面** · 贴图 128²（UV 已按 box-UV 排布）
 
@@ -151,12 +190,12 @@ action=dump    class=GameObject          name="0_CharacterModel_Custom_Killa"  f
       {"name": "Tail", "parent": "Pelvis", "pivot": [0, 1.9, -2.2], "cubes": [{"origin": [-1.3, 0.7, -4.2], "size": [2.6, 2.6, 2.6], "uv": [52, 17]}]},
       {"name": "Tail.001", "parent": "Tail", "pivot": [0, 2.1, -3.6], "cubes": [{"origin": [-1.3, 0.8, -4.9], "size": [2.6, 2.6, 2.6], "uv": [65, 17]}]}
     ],
-    "description": {"identifier": "geometry.duck.npc_duck", "texture_width": 128, "texture_height": 128}
+    "description": {"identifier": "geometry.duck.pelvis", "texture_width": 128, "texture_height": 128}
   }]
 }
 ```
 
-### 玩家鸭子骨架（`player_duck`）
+### 鸭子骨架 A：`Hip` / `Arm.Root` 命名（`duck_hip`，37 骨）
 
 **21 个骨骼 / 504 顶点 / 252 三角面**（手指等细节骨骼按需补） · 贴图 128²（UV 已按 box-UV 排布）
 
@@ -187,7 +226,7 @@ action=dump    class=GameObject          name="0_CharacterModel_Custom_Killa"  f
       {"name": "Foot.L.001", "parent": "Leg.Lower.L", "pivot": [-1.84, 6.41, -0.91], "cubes": [{"origin": [-2.84, 5.41, -1.91], "size": [1.2, 1.2, 1.2], "uv": [103, 0]}]},
       {"name": "Tail.001", "parent": "Hip", "pivot": [-0.0, 4.73, -3.84], "cubes": [{"origin": [-1.0, 3.73, -4.84], "size": [1.2, 1.2, 1.2], "uv": [108, 0]}]}
     ],
-    "description": {"identifier": "geometry.duck.player_duck", "texture_width": 128, "texture_height": 128}
+    "description": {"identifier": "geometry.duck.hip", "texture_width": 128, "texture_height": 128}
   }]
 }
 ```
