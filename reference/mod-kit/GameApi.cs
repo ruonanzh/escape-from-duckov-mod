@@ -35,6 +35,31 @@ namespace ModelKit
 
         public static CharacterModel GetModel(CharacterMainControl c) => c != null ? c.characterModel : null;
 
+        /// <summary>把一件物品塞给玩家（作新增物品的演示/自测用）：`PickupItem` 失败就退到 `inventory.AddItem`。
+        /// ⚠️ `CharacterMainControl.itemControl` 是**私有字段**（`CharacterItemControl`），只能反射拿。</summary>
+        public static bool GiveItemToPlayer(ItemStatsSystem.Item item)
+        {
+            var player = FindMainCharacter();
+            if (player == null || item == null) return false;
+            try
+            {
+                var f = typeof(CharacterMainControl).GetField("itemControl",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
+                var ic = f != null ? f.GetValue(player) : null;
+                if (ic == null) return false;
+                var m = ic.GetType().GetMethod("PickupItem",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                if (m != null)
+                {
+                    var r = m.Invoke(ic, new object[] { item });
+                    if (r is bool ok && ok) return true;
+                }
+                var inv = ic.GetType().GetProperty("inventory")?.GetValue(ic) as ItemStatsSystem.Inventory;
+                return inv != null && inv.AddItem(item);
+            }
+            catch { return false; }
+        }
+
         /// <summary>角色模型根（骨骼都挂在这个 Transform 下）。</summary>
         public static Transform ModelRoot(CharacterMainControl c)
         {

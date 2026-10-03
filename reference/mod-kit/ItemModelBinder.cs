@@ -116,6 +116,38 @@ namespace ModelKit
             catch { return false; }
         }
 
+        /// <summary>⭐ 给**新增物品**造图形：复制"源物品"的 `itemGraphic` prefab → 换成我们的几何 → 返回它。
+        /// 拿到的这个 `ItemGraphicInfo` 就是新物品的 `itemGraphic`（`Item.itemGraphic` 是数据层与模型层
+        /// **唯一的连接点**；工坊 mod 也是这么接的）。
+        /// ⚠️ 只造图形，不注册物品 —— 新物品（新 typeID / 名字 / 数值 / `AddDynamicEntry`）属**数据层**。</summary>
+        public ItemGraphicInfo BuildGraphicClone(ItemGraphicInfo template)
+        {
+            if (template == null) return null;
+            EnsureBuilt();
+            var clone = Object.Instantiate(template);
+            clone.gameObject.name = "ModelKit_" + _spec.Name;
+            clone.gameObject.SetActive(true);                        // ⚠️ 不能停用（见文件头）
+            clone.transform.position = new Vector3(0f, -5000f, 0f);  // 模板藏到世界外
+            PrepareGeometry(clone.transform);
+            return clone;
+        }
+
+        /// <summary>同上，但源取自某个现有物品（`ItemAssetsCollection.GetPrefab(typeID)`）的图形。</summary>
+        public ItemGraphicInfo BuildGraphicClone(int sourceTypeID)
+        {
+            try
+            {
+                var src = ItemStatsSystem.ItemAssetsCollection.GetPrefab(sourceTypeID);
+                return src != null ? BuildGraphicClone(src.ItemGraphic) : null;
+            }
+            catch { return null; }
+        }
+
+        /// <summary>把（`BuildGraphicClone` 造出来的）图形写到任意 Item 上 —— 新增物品的最后一步。
+        /// 失败返回 false（游戏里会退化成"纸片"）。</summary>
+        public bool WriteGraphicTo(ItemStatsSystem.Item item, ItemGraphicInfo graphic)
+            => item != null && graphic != null && WriteGraphic(item, graphic);
+
         /// <summary>清掉物品的"实体缓存"（社区做法 `ClearAgentCache`）：让游戏下次创建实体时重新读
         /// `item.ItemGraphic`（= 我们的图形）。**不要自己去销毁/替换活着的实体** —— 游戏还持有引用，
         /// 那样会让武器"选不中/用不了"（实测踩过）。</summary>

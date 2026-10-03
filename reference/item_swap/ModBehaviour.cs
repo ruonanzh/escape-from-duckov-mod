@@ -34,6 +34,11 @@ namespace ItemSwap
         readonly HashSet<int> _boundNew = new HashSet<int>();
         bool _loggedFirst;
 
+        // ── "新增物品"（数据层演示；模型由库里 BuildGraphicClone 提供）──
+        JsonValue _newCfg;            // config.json 的 "newItem" 块
+        bool _newItemDone;
+        int  _newItemRetry;           // 物品库没就绪时的重试计数（只打前几次日志）
+
         void Start()
         {
             _configPath = Path.Combine(ModelLoader.ModDir(), "config.json");
@@ -46,6 +51,7 @@ namespace ItemSwap
         {
             ReloadIfChanged();
             if (_binder == null) return;
+            if (!_newItemDone) TryRegisterNewItem();
 
             var player = GameApi.FindMainCharacter();
             if (player == null) return;
@@ -103,6 +109,62 @@ namespace ItemSwap
             return item.name.IndexOf(_match, System.StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
+        /// <summary>新增物品（**数据层**：新 typeID/名字/数值/注册）+ 模型层（`BuildGraphicClone` 提供 itemGraphic）。
+        /// 步骤照社区 mod（优香MPX）的 `RegisterNewItem`：克隆源物品 → 改身份 → 写图形 → 注册 → 发给玩家。</summary>
+        void TryRegisterNewItem()
+        {
+            int cloneFrom = _newCfg["cloneFrom"]?.AsInt(0) ?? 0;
+            int typeID    = _newCfg["typeID"]?.AsInt(0) ?? 0;
+            string name   = _newCfg["displayName"]?.AsString("NewItem") ?? "NewItem";
+            bool give     = _newCfg["give"] == null || _newCfg["give"].Bool;
+
+            if (cloneFrom <= 0 || typeID <= 0) { Log("新增物品：cloneFrom/typeID 必须 > 0"); _newItemDone = true; return; }
+
+            ItemStatsSystem.Item src = null;
+            try { src = ItemStatsSystem.ItemAssetsCollection.GetPrefab(cloneFrom); } catch { }
+            if (src == null)
+            {
+                _newItemRetry++;
+                if (_newItemRetry <= 3 || _newItemRetry % 600 == 0) Log($"新增物品：源物品 {cloneFrom} 还没就绪，重试中（第 {_newItemRetry} 次）");
+                return;
+            }
+
+            try
+            {
+                var go = Object.Instantiate(src.gameObject);
+                go.name = "Item_" + name;
+                Object.DontDestroyOnLoad(go);
+                var item = go.GetComponent<ItemStatsSystem.Item>();
+                if (item == null) { Log("新增物品：克隆体上没有 Item 组件"); Object.Destroy(go); _newItemDone = true; return; }
+
+                item.SetTypeID(typeID);
+                item.DisplayNameRaw = name;
+                item.useSpriteForPickup = false;                 // 让地面/手里都用 3D 图形
+                Log($"新增物品：克隆自 {cloneFrom}（{src.DisplayName}）→ typeID={item.TypeID} 名字={item.DisplayName} 图标={(item.Icon != null ? "有" : "无")}");
+
+                var g = _binder.BuildGraphicClone(cloneFrom);
+                if (g == null) { Log("新增物品：BuildGraphicClone 返回 null（源物品没有 itemGraphic？）"); Object.Destroy(go); _newItemDone = true; return; }
+                if (!_binder.WriteGraphicTo(item, g)) { Log("新增物品：反射写 itemGraphic 失败（游戏里会退化成纸片）"); Object.Destroy(go); _newItemDone = true; return; }
+                Log($"新增物品：图形已挂上（{g.gameObject.name}，渲染器 {g.GetComponentsInChildren<Renderer>(true).Length} 个）");
+
+                bool ok;
+                try { ok = ItemStatsSystem.ItemAssetsCollection.AddDynamicEntry(item); }
+                catch (System.Exception e) { Log("新增物品：AddDynamicEntry 异常 " + e.Message); Object.Destroy(go); _newItemDone = true; return; }
+                if (!ok) { Log("新增物品：AddDynamicEntry 返回 false（typeID 冲突？）"); Object.Destroy(go); _newItemDone = true; return; }
+                Log($"已注册新物品：{name}  typeID={typeID}");
+
+                if (give)
+                {
+                    var inst = ItemStatsSystem.ItemAssetsCollection.InstantiateSync(typeID);
+                    bool got = inst != null && GameApi.GiveItemToPlayer(inst);
+                    Log($"新物品发给玩家：实例={(inst != null)} 拿到={got}");
+                }
+                _newItemDone = true;
+            }
+            catch (System.Exception e) { Log("新增物品异常：" + e); _newItemDone = true; }
+            Flush();
+        }
+
         void ReloadIfChanged(bool force = false)
         {
             try
@@ -115,6 +177,9 @@ namespace ItemSwap
                 _configStamp = stamp; _modelStamp = mstamp;
 
                 _cfg = File.Exists(_configPath) ? Json.Parse(File.ReadAllText(_configPath)) : null;
+                _newCfg = _cfg?["newItem"];
+                if (_newCfg == null || _newCfg.Kind == JsonKind.Null) _newItemDone = true;   // 没配 = 不做
+                else { _newItemDone = false; _newItemRetry = 0; }
                 string mf = _cfg?["model"]?.AsString("models/pistol_compact.json") ?? "models/pistol_compact.json";
                 _bindNew = _cfg?["bindNew"] != null && _cfg["bindNew"].Bool;
                 _match = _cfg?["match"]?.AsString("") ?? "";
