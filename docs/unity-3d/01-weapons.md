@@ -127,14 +127,20 @@ models/*.json（零件清单）
    ↓ 写回 Item.itemGraphic（模板级）→ 游戏以后实例化的就是这份“换了几何的原枪 prefab”
 ```
 
-### 两条必须分开处理的情况
+**本质 = 借一份游戏原有的 prefab**：**克隆 -> 只换主体零件（枪身）的几何 + 贴图 -> 其余照抄**
+（sockets、配件槽位、`MuzzleFlash`、`ItemAgent_Gun` 组件、动画）。**不从零造 prefab。**
 
-| 情况 | 做法 |
-|---|---|
-| 游戏**会自己重建**的实例（掉落 / 捡起 / 切枪 / 新生成）| ① **改物品模板** `ItemAssetsCollection.GetPrefab(typeID)` 的 `Item.itemGraphic` + ④ **清实体缓存** `hashedAgentsCache` → 游戏重建时就用我们的 |
-| **已经拿在手里**（游戏不会重建）的那个 | ③ **就地换几何**：关掉旧枪渲染器，在**原枪身零件的变换下**挂我们的 mesh（只改渲染器，**不销毁任何东西**）|
+要有两份，都得换：
 
-⚠️ `Item.ItemGraphic` 只有 getter → 反射写私有字段 `itemGraphic`（社区顺序：先试可写属性 `ItemGraphic`，再退字段）。
+| 哪份 prefab | 管什么 | 我们怎么换 |
+|---|---|---|
+| **物品图形** `Item.itemGraphic`（`ItemGraphicInfo`）| 掉落 / 展示 / 图标 | 克隆 `ItemAssetsCollection.GetPrefab(typeID)` 里的这份 -> 换几何 -> 反射写回（**模板级**）+ 清实体缓存 `hashedAgentsCache` |
+| **手持实体** `ItemAgent`（`item.ActiveAgent`）| 拿在手里那把 | 实测 `ActiveAgent = IG_Gun_Mp5(Clone)(ItemAgent_Gun)`，**由图形 prefab 派生**；已经拿在手里的游戏**不会重建** -> **就地换几何**（关旧枪渲染器、挂我们的 mesh，**只改渲染器，不销毁任何东西**）|
+
+⚠️ `Item.ItemGraphic` 只有 getter -> 反射写私有字段 `itemGraphic`（社区顺序：先试可写属性 `ItemGraphic`，再退字段）。
+
+⚠️ **只换主体零件（`WPN_*` / 最大的非配件零件）那一个**，其余零件一概不碰 —— 枪上其它零件由游戏按状态开关，
+我们碰了会出现「第一次看不到配件、切换一次才全显示」（实测踩过两次）。
 
 ### 枪的几何 = 四类零件
 
