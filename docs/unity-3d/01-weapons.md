@@ -177,6 +177,9 @@ Object.DontDestroyOnLoad(itemGo);             // ② 新物品模板
 Object.DontDestroyOnLoad(agentGo);            // ③ 手持实体
 ```
 
+- **判断标准是"有没有宿主"，不是"是不是我们造的"**：挂在游戏对象树下的（`SetParent` 到骨骼 / 原几何零件，
+  例如角色的 YSM 方块）**不用**常驻 —— 它跟着宿主生灭；只被字段引用的（**图形克隆 / 物品模板 / 手持实体**）
+  没有宿主 → **必须**常驻。
 - 常驻对象还要**保持激活**（Unity `Instantiate` 会继承模板激活状态 → 模板 `SetActive(false)` 会让实例全隐形）。
 - 别用 `MultiSceneCore.MoveToActiveWithScene` 保活模板（它的激活状态跟着场景走 → 别的关卡里模板变 inactive）。
 - 对照：官方路线（Unity prefab + AssetBundle）里这些都是**资产**，天然不被销毁，所以官方文档不用提这件事。

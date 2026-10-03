@@ -70,6 +70,13 @@ Character(Clone)/ModelRoot/0_CharacterModel_Custom_Template(Clone)/CustomFaceIns
 - **我们生成的挂件**：把物体 `SetParent` 到对应 socket；运行时取挂点用 `ItemGraphicInfo.sockets`、`DuckovItemAgent.GetSocket(name, createNew)` / `AddSocket(transform)`；YSM 模型自带 `bones[].locators`。
 - ⚠️ 命名有变体：`Socket` 与 **`Soket`**（`Hand.Soket.L`）两种都要试。
 
+### 我们的部件是挂在骨骼下的（所以不需要"常驻"）
+
+YSM 方块由 `ModelLoader.BuildYsmObjects` 逐个 `SetParent` 到**角色的骨骼 Transform** 下 → 它们**有宿主**
+（角色），会跟着角色生灭；换场景后由每帧的 `Tick` 重新挂 ✓
+（对照：物品侧的**图形克隆 / 物品模板 / 手持实体**只被字段引用、没有宿主 → 那些**必须 `DontDestroyOnLoad`**，
+见 [`01-weapons.md`](01-weapons.md) 的「我们造的运行时对象必须常驻」）。
+
 ## 运行时：怎么用（库 API）
 
 逻辑都在 `reference/mod-kit/`，mod 里只剩"挑谁 + 每帧调一次"：
