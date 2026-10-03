@@ -66,7 +66,8 @@ namespace ModelKit
             {
                 Name = root["name"]?.AsString("") ?? "",
                 Category = root["category"]?.AsString("") ?? "",
-                Summary = root["summary"]?.AsString("") ?? ""
+                Summary = root["summary"]?.AsString("") ?? "",
+                PivotOffset = F3(root["pivotOffset"], new float[] { 0, 0, 0 })
             };
 
             var parts = root["parts"];

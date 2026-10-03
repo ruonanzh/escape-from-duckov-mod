@@ -73,7 +73,7 @@ namespace ItemSwap
                     bool g = _binder.BindGraphic(item);
                     bool h = _binder.ReplaceHeld(item);
                     Log($"已换：模板(prefab)={pt}｜图形(实例)={g}｜手持实体={h}" +
-                        $"｜锚点={_binder.AnchoredAt} 材质={_binder.MaterialInfo} 枪身渲染器关掉 {_binder.HiddenRenderers} 个（保留配件槽位 {_binder.KeptConditional} 个）｜贴合缩放 {_binder.FitScale:0.##}" +
+                        $"｜锚点={_binder.AnchoredAt} 材质={_binder.MaterialInfo} 枪身渲染器关掉 {_binder.HiddenRenderers} 个（保留配件槽位 {_binder.KeptConditional} 个）" +
                         $"｜场上的我们的图形 {ModelKit.ItemModelBinder.CountOurGraphics()} 个");
                 }
                 catch (System.Exception e) { Log("换模型异常: " + e); }
@@ -116,7 +116,7 @@ namespace ItemSwap
                 _spec = ModelLoader.LoadPartsSpec(Path.Combine(ModelLoader.ModDir(), mf));
                 _binder = new ItemModelBinder(_spec);
                 _boundNew.Clear();
-                Log($"配置：模型={mf}（{_spec.Parts.Count} 零件）bindNew={_bindNew}｜建成 mesh {_binder.Mesh.vertexCount} 顶点");
+                Log($"配置：模型={mf}（{_spec.Parts.Count} 零件）bindNew={_bindNew} pivot={_spec.PivotOffset[0]},{_spec.PivotOffset[1]},{_spec.PivotOffset[2]}｜mesh {_binder.Mesh.vertexCount} 顶点");
             }
             catch (System.Exception e) { Log("配置/模型载入失败: " + e.Message); _binder = null; }
         }

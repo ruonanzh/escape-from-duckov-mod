@@ -1,5 +1,5 @@
 {
-  "model": "models/pistol_bright.json",
+  "model": "models/smg_compact.json",
   "match": "MP5_Normal",
   "typeIDs": [
     655

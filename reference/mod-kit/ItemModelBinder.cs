@@ -71,7 +71,7 @@ namespace ModelKit
         public string AnchoredAt { get; private set; } = "";
         public string MaterialInfo { get; private set; } = "";
         public bool HeldReplaced { get; private set; }
-        public float FitScale { get; private set; } = 1f;
+        public float OurWorldSize { get; private set; }
         public int KeptConditional { get; private set; }
         public string PartsDebug { get; private set; } = "";
 
@@ -178,32 +178,15 @@ namespace ModelKit
             MaterialInfo = anchor != null && anchor.sharedMaterial != null
                 ? $"{anchor.sharedMaterial.name}/{anchor.sharedMaterial.shader.name}" : "无（兜底材质）";
 
-            var parent = anchor != null ? anchor.transform : root;
-
-            // 自动贴合原尺寸：把我们的模型缩放到与原模型量级相当（否则 0.2m 手枪塞进 0.8m 的槽位会显得很小）
-            float fit = 1f;
-            if (anchor != null && _mesh.bounds.size.magnitude > 1e-6f)
-            {
-                float orig = 0f;
-                foreach (var r in root.GetComponentsInChildren<Renderer>(true))
-                    if ((r is MeshRenderer || r is SkinnedMeshRenderer) && r.bounds.size.magnitude > orig && r.bounds.size.magnitude < 5f)
-                        orig = r.bounds.size.magnitude;
-                if (orig > 0.005f)
-                {
-                    // 原尺寸是"世界"量级；我们的 mesh 会随父级缩放，先换算到父级局部
-                    float parentScale = parent.lossyScale.magnitude / Mathf.Sqrt(3f);
-                    if (parentScale > 1e-6f)
-                        fit = Mathf.Clamp(orig / (_mesh.bounds.size.magnitude * parentScale), 0.05f, 20f);
-                }
-            }
-            FitScale = fit;
-
+            // **按真实尺寸放（scale = 1，永不缩放）**：原游戏物品图形 99.5% 是 scale=1、社区 mod 包 100% 是 1；
+            // 尺寸由模型自己定义（枪 0.5–0.9 m…），原点由模型文件声明（pivotOffset）——运行时不做任何缩放/对齐。
             var go = new GameObject("ModelKit_" + _spec.Name + "_mesh");
             go.layer = root.gameObject.layer;
-            go.transform.SetParent(parent, false);
+            go.transform.SetParent(root, false);
             go.transform.localPosition = Vector3.zero;
             go.transform.localRotation = Quaternion.identity;
-            go.transform.localScale = Vector3.one * fit;
+            go.transform.localScale = Vector3.one;
+            OurWorldSize = _mesh.bounds.size.magnitude * (root.lossyScale.magnitude / Mathf.Sqrt(3f));
 
             var mf = go.AddComponent<MeshFilter>();
             mf.sharedMesh = _mesh;

@@ -98,6 +98,9 @@ namespace ModelKit
         public string Name = "";
         public string Category = "";
         public string Summary = "";
+        /// <summary>模型原点相对几何中心的偏移（米）：声明"游戏放置点"在哪（武器 = 握把）。
+        /// 由模型文件声明、构建时一次性平移，**运行时不缩放**。</summary>
+        public float[] PivotOffset = { 0, 0, 0 };
         public List<PartSpec> Parts = new List<PartSpec>();
         public TextureSpec Texture = new TextureSpec();
     }
@@ -170,6 +173,11 @@ namespace ModelKit
                         EmitPart(data, parts[i], rects[i], atlas);
                 data.SubMeshes.Add(new SubMesh { Role = role, Start = start, Count = data.Indices.Count - start });
             }
+
+            // 原点平移：把声明的 pivotOffset 从所有顶点里减掉（于是"握把"落在原点）
+            if (model.PivotOffset != null && (model.PivotOffset[0] != 0 || model.PivotOffset[1] != 0 || model.PivotOffset[2] != 0))
+                for (int i = 0; i < data.Positions.Count; i++)
+                    data.Positions[i] = data.Positions[i] - new Vec3(model.PivotOffset[0], model.PivotOffset[1], model.PivotOffset[2]);
 
             var min = new Vec3(float.MaxValue, float.MaxValue, float.MaxValue);
             var max = new Vec3(float.MinValue, float.MinValue, float.MinValue);

@@ -100,6 +100,7 @@ typeof(Item).GetField("itemGraphic", BindingFlags.Instance | BindingFlags.NonPub
 - **对齐尺寸**：物品 prefab 的比例与真实尺寸不一致（我们 0.2 m 的手枪要塞进 MP5 的 0.86 m 槽位）→ 按**原枪身包围盒**等比缩放。
 - **材质**：克隆**枪身**的材质，把我们的贴图塞进 `_MainTex`（武器 shader `SodaCraft/SodaLit` 的主贴图槽就是 `_MainTex`）；别从零建材质。
 - **每帧重申**：物品会被反复实例化（开局 / 掉落 / 拾取 / 切枪）→ 看到没换过的实例就换。
+- **不缩放**：把模型按真实尺寸做好（`scale` 恒为 1），原点用模型文件里的 `pivotOffset` 声明（武器 = 握把）——**运行时不做任何缩放/对齐**。
 - **优先写“物品模板”**（`ItemAssetsCollection.GetPrefab(typeID)`）：以后每次实例化都对（开局就生效）；
   活实例再补一次，兜住“改之前就已经生成”的那些。
 - **给全新物品模型**：同 ② —— 反射写 `itemGraphic` 就是“给这个物品一份模型”。

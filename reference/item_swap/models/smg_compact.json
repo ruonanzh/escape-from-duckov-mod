@@ -1,0 +1,131 @@
+{
+  "name": "smg_compact",
+  "category": "weapons/smg",
+  "summary": "紧凑冲锋枪：机匣 + 枪管 + 折叠托 + 握把 + 弹匣 + 照门",
+  "pivotOffset": [
+    0,
+    0.07,
+    0.05
+  ],
+  "parts": [
+    {
+      "role": "receiver",
+      "shape": "box",
+      "size": [
+        0.06,
+        0.09,
+        0.3
+      ],
+      "at": [
+        0,
+        0.02,
+        0.0
+      ]
+    },
+    {
+      "role": "barrel",
+      "shape": "cylinder",
+      "r": 0.01,
+      "h": 0.14,
+      "segments": 12,
+      "at": [
+        0,
+        0.035,
+        0.2
+      ],
+      "rot": [
+        90,
+        0,
+        0
+      ]
+    },
+    {
+      "role": "stock",
+      "shape": "box",
+      "size": [
+        0.04,
+        0.06,
+        0.16
+      ],
+      "at": [
+        0,
+        0.0,
+        -0.22
+      ]
+    },
+    {
+      "role": "grip",
+      "shape": "box",
+      "size": [
+        0.03,
+        0.1,
+        0.04
+      ],
+      "at": [
+        0,
+        -0.07,
+        -0.05
+      ],
+      "rot": [
+        -10,
+        0,
+        0
+      ]
+    },
+    {
+      "role": "magazine",
+      "shape": "box",
+      "size": [
+        0.025,
+        0.14,
+        0.04
+      ],
+      "at": [
+        0,
+        -0.09,
+        0.06
+      ],
+      "rot": [
+        -6,
+        0,
+        0
+      ]
+    },
+    {
+      "role": "sight_rear",
+      "shape": "box",
+      "size": [
+        0.03,
+        0.008,
+        0.01
+      ],
+      "at": [
+        0,
+        0.075,
+        -0.06
+      ]
+    }
+  ],
+  "material": {
+    "mode": "clone",
+    "pick": "body"
+  },
+  "texture": {
+    "size": [
+      512,
+      512
+    ],
+    "source": "generated",
+    "fills": {
+      "receiver": "#3A3F44",
+      "barrel": "#22262A",
+      "stock": "#3E3833",
+      "grip": "#4A4038",
+      "magazine": "#2E3236",
+      "sight_rear": "#1E2124"
+    }
+  },
+  "attach": {
+    "kind": "item_graphic"
+  }
+}
