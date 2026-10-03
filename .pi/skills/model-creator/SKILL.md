@@ -75,7 +75,7 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
 
 - **尺寸 = 真实米制、`scale` 恒为 1**（实测原游戏物品图形 99.5%、社区 mod 包 100% 都是 1）→ 按真实尺寸建模，**不要用缩放去凑原模型**；原点（武器的握把）用模型文件里的 `pivotOffset` 声明。
 - **优先写“物品模板”** `ItemAssetsCollection.GetPrefab(typeID)`：新实例天生就对（开局就生效）；活实例再补一次兜底。
-- **手里是“零件组合”**：配件槽位（`ShowIf_*` / `HideIf_*`）、弹匣、枪机都由**游戏**按状态开关 → 只能动枪身。
+- **手里那把枪 = 枪身 `WPN_*` + 自带件 `HideIf_*` + 配件模型 `ShowIf_*` + 特效**：前两类是**旧枪的几何**（全关掉 —— 新枪模型本来就该含自带件）；`ShowIf_*`（配件物品的模型）与特效**保留**，否则玩家装的瞄准镜会消失。
 - **不要重建实体**（如 `ItemAgentUtilities.CreateAgent`）：它会销毁旧实体，游戏还持有引用 → 武器**选不中 / 用不了**。
 - **克隆作模板时必须保持激活**：`SetActive(false)` 会让游戏实例化出来的**全都隐形**。
 - **对齐尺寸**：按原枪身包围盒等比缩放（0.2 m 的手枪要撑到 0.86 m 的 MP5 槽位）。

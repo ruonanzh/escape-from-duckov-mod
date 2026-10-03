@@ -15,7 +15,12 @@
 **配件的模型**：就是它自己的 `itemGraphic`（命名规律 `IG_Acc_<类型>_<名字>`，例：消音器 `Item_Muzzle_PST_DIS_1` → `IG_Acc_Muzzle_PST_DIS_1`）。
 （`ItemSetting_Accessory.accessoryPfb` 这个字段在 262 个资产里**全是 null** —— 不是模型来源。）
 
-**装在枪上的样子不是「挂 prefab」**：武器模型里自带**条件零件**（`ShowIf_<槽位>` / `HideIf_<槽位>`，实测 `ShowIf_Tec` 38 / `HideIf_Muzzle` 36 / `ShowIf_Scope` 34 …），由游戏按「装了哪些配件」开关 —— 详见 [`00-shared.md`](00-shared.md) 的「挂点」一节。
+**装在枪上的样子不是「挂 prefab」**：武器模型里自带**条件零件**，由游戏按「装了哪些配件」开关 —— 实测 `ShowIf_Tec` 38 / `HideIf_Muzzle` 36 / `ShowIf_Scope` 34 …。两类含义不同：
+
+- `ShowIf_<槽位>` = **配件物品的模型**（装了才显示；实测 MP5 的 `ShowIf_Scope` 借用了 M700 的材质）；
+- `HideIf_<槽位>` = **枪自带的默认件**（装了该槽位配件就隐藏）—— **它属于这把枪本身**。
+
+→ 换枪模型时：`WPN_*` + `HideIf_*`（旧枪的全部几何）都要关掉，`ShowIf_*` 与特效保留（见 [`02-items.md`](02-items.md) 的「运行时：怎么换物品模型」）。
 
 ## 样例（用 `inspect_game_data` 从游戏里读出的原文）
 
