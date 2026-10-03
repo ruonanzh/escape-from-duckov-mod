@@ -43,7 +43,7 @@
 | 类别 | 去哪看 |
 |---|---|
 | **角色**（骨骼 / socket：`ArmorSocket` `HelmatSocket` `RightHandSocket`…）| [`03-characters.md`](03-characters.md) 的「运行时：怎么用（库 API）」与「挂载要点」|
-| **武器与配件**（配件槽位 `ShowIf_*` / `HideIf_*`、5 个槽位名、`slots` 挂点声明）| [`01-weapons.md`](01-weapons.md) 的「配件怎么装到枪上」|
+| **武器与配件**（配件槽位 `ShowIf_*` / `HideIf_*`、5 个槽位名、`slots` 挂点声明）| [`01-weapons.md`](01-weapons.md) 的「槽位与挂点」|
 | **物品**（`itemGraphic` / `ItemAgent` / 挂饰 `ItemGraphicInfo.sockets`）| [`02-items.md`](02-items.md) 的「运行时：怎么换物品模型」|
 
 ## 5. 分工（谁负责什么）

@@ -45,7 +45,7 @@
 | `parts[]` | ✅ | 零件清单（见下）|
 | `material` | | `{"mode":"clone","pick":"body"}` = 克隆游戏里同类的现有材质（URP 自定义 shader 必须克隆）|
 | `texture` | | 贴图与 UV（见「贴图与 UV」一节）：尺寸、texel 密度、来源、每零件底色 |
-| `slots` | | 可选，配件挂点：`{"<槽位>": [x,y,z] \| null}`（米、**模型坐标系**；`null` = 没有这个挂点）。**多数模型不用写** —— 不写则运行时按零件语义自动摆；取值方法见 [`01-weapons.md`](01-weapons.md) 的「槽位」一节 |
+| `slots` | | 可选，配件挂点：`{"<槽位>": [x,y,z] \| null}`（米、**模型坐标系**；`null` = 没有这个挂点）。**多数模型不用写** —— 不写则运行时按零件语义自动摆；取值方法见 [`01-weapons.md`](01-weapons.md) 的「槽位与挂点」一节 |
 | `attach` | | `{"kind":"item_graphic"}`（物品）/ `{"kind":"socket","name":"HelmatSocket"}`（挂饰）|
 | `pivotOffset` | | 可选，`[x,y,z]`（米）—— 模型原点的微调；默认零即"模型自己的原点"|
 

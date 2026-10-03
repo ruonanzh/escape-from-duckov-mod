@@ -1,76 +1,55 @@
 # 01 · 武器（枪械 / 近战 / 配件）
 
-## 游戏怎么分类（`Item.tags`，实测）
+## 分类（`Item.tags`）
 
-| 类 | 标签 | 数量 | 说明 |
-|---|---|---|---|
-| 枪械 | `Gun` | 124 | 100% 属于 `Weapon` |
-| 正式武器 | `Weapon` | **158** | = `Gun` 124 + 正经近战 34（**不含**配件与工具）|
-| 近战 | `MeleeWeapon` | 48 | 含 14 件工具（它们**没有** `Weapon` 标签）|
-| **配件** | **`Accessory`** + 子类：`Muzzle` 67 · `Stock` 51 · `Magazine` 53 · `Scope` 31 · `Grip` 23，再加适配枪型的 `GunType_*`（如 `GunType_SMG`）| — | **是物品，不是武器** —— 标签里**没有** `Weapon` |
-| 子弹 | `Bullet` | 145 | 独立类目 |
+| 类 | 标签 | 说明 |
+|---|---|---|
+| 枪械 | `Gun` | 124 件；全部属于 `Weapon` |
+| 正式武器 | `Weapon` | 158 件 = 枪 124 + 正经近战 34 |
+| 近战 | `MeleeWeapon` | 48 件（含 14 件工具，它们**没有** `Weapon` 标签）|
+| **配件** | `Accessory` + 子类 `Muzzle` / `Stock` / `Magazine` / `Scope` / `Grip` + `GunType_*` | **是物品，不是武器**（标签里没有 `Weapon`）|
+| 子弹 | `Bullet` | 145 件，独立类目 |
 
-**配件怎么装到枪上**：配件物品带 `ItemSetting_Accessory` 组件；枪上有 **slot**（`ItemStatsSystem.Items.Slot`，用 `key` 标识、`requireTags`/`excludeTags` 筛能装什么），插进去后由 `AccessoryBase.socketName` 决定挂到**枪模型上的 socket**。
+配件装到枪上：枪上有**槽位**（`SlotCollection.list[].key`，配 `requireTags`/`excludeTags` 筛能装什么），
+插进去后由**槽位 key** 决定挂到枪模型上的哪个挂点。
 
-### 槽位：`Sockets/<槽位>` 才是挂点
+## 槽位与挂点
+
+### `Sockets/<槽位>` 才是挂点
 
 武器 prefab 里有三样东西，别混：
 
 | 对象 | 是什么 |
 |---|---|
-| ⭐ **`Sockets/<槽位>`** | **真挂点**。`Sockets` 容器下有 5 个子节点：`Scope` · `Tec` · `Muzzle` · `Stock` · `Grip`。装上的配件由 `ItemGraphicInfo` 实例化后 `SetParent(socketPoint)`（局部位置/旋转归零、缩放 1）——**挂点在哪，配件就出现在哪** |
-| `ShowIf_<槽位>` | **占位模型**（配件的样子；实测 MP5 的 `ShowIf_Scope` 借用了 M700 的材质、`ShowIf_Grip` 用 VSS 的）。⚠️ 实测：MP5 prefab 里 `ShowIf_Scope` / `ShowIf_Grip` / `ShowIf_Tec` / `WPN_MP5` **位置完全相同**（都在枪坐标系原点）—— 它们的几何是"按枪的坐标系摆好"的，**不能拿它们的 Transform 当挂点** |
-| `HideIf_<槽位>` | **枪自带的默认件**（装了该槽位配件就隐藏）—— **属于这把枪本身** |
+| ⭐ **`Sockets/<槽位>`** | **真挂点**：`Sockets` 容器下有 5 个子节点 `Scope` · `Tec` · `Muzzle` · `Stock` · `Grip`。装上的配件由游戏实例化后挂到这个 Transform 下（局部位置/旋转归零、缩放 1）→ **挂点在哪，配件就出现在哪** |
+| `ShowIf_<槽位>` | 装上该槽位配件后**在枪上随之出现**的那段（转接座/底座那种）|
+| `HideIf_<槽位>` | 被它替换掉的**原装件**（属于这把枪本身）|
 
-数量（实测）：`ShowIf_Tec` 38 · `HideIf_Muzzle` 36 · `ShowIf_Scope` 34 · `HideIf_Stock` 28 · `ShowIf_Grip` 21 …
-
-→ 换枪模型时：`WPN_*`（枪身）+ `HideIf_*`（自带件）**全关掉**，`ShowIf_*` 与特效保留。
-
-**三者的关系**（MP5 实测 `ItemGraphicInfo_Gun.sockets` + 反编译 `AutoSet`）：槽位表把三者绑在一起 ——
-
-| 槽位（`Sockets` 子节点名）| `socketPoint` | `showIfPluged` | `hideIfPluged` |
-|---|---|---|---|
-| `Muzzle` | ✔ | **—** | `HideIf_Muzzle` |
-| `Tec` | ✔ | `ShowIf_Tec` | **—** |
-| `Scope` | ✔ | `ShowIf_Scope` | `HideIf_Scope` |
-| `Grip` | ✔ | `ShowIf_Grip` | `HideIf_Grip` |
-| `Stock` | ✔ | **—** | `HideIf_Stock` |
-
-- **靠名字绑定**：`AutoSet()` 遍历 `Sockets` 的子节点，再按 `"ShowIf_" + 子节点名` / `"HideIf_" + 子节点名` 去找
-  → **槽位名 = `Sockets` 子节点的名字**。
-- **`ShowIf_<槽位>` 都可以缺**（全游戏：`ShowIf_Tec` 38 · `ShowIf_Scope` 34 · `ShowIf_Grip` 20 · `ShowIf_Stock` 4；
-  枪口槽位**一个 `ShowIf_Muzzle` 都没有** —— 枪口配件直接套枪管，不需要中间件）。
-- 装上配件时（`RefreshSubGraphics`）：默认态 = `ShowIf_*` 关、`HideIf_*` 开；对**有内容**的槽位 →
+- ⚠️ **别拿 `ShowIf_<槽位>` 的 Transform 当挂点**：实测 MP5 prefab 里 `ShowIf_Scope` / `ShowIf_Grip` /
+  `ShowIf_Tec` / `WPN_MP5` **位置完全相同**（都在枪坐标系原点）——它们的几何是按枪的坐标系摆好的。
+- **靠名字绑定**（反编译 `ItemGraphicInfo.AutoSet`）：遍历 `Sockets` 的子节点，按 `"ShowIf_" + 子节点名` /
+  `"HideIf_" + 子节点名` 去绑 → **槽位名 = `Sockets` 子节点的名字**。
+- **`ShowIf_*` 可以缺**（例：枪口槽位全游戏没有一个 `ShowIf_Muzzle` —— 枪口配件直接套枪管）。
+- 装配件时游戏做什么（`RefreshSubGraphics`）：默认态 = `ShowIf_*` 关、`HideIf_*` 开；对**有内容**的槽位 →
   把**配件自己的模型**挂到 `socketPoint` 下，并把 `ShowIf_*` 打开、`HideIf_*` 关掉。
-- 所以：**挂点**放配件自己的模型；**`ShowIf_*`** = 装上后**在枪上随之出现**的那段（转接座/底座那种）；
-  **`HideIf_*`** = 被替换掉的**原装件**。
+- **配件的模型来自它自己的 `itemGraphic`**（命名规律 `IG_Acc_<类型>_<名字>`，例：`Item_Muzzle_PST_DIS_1` →
+  `IG_Acc_Muzzle_PST_DIS_1`）。
 
-### 槽位 ≠ 挂点：不是每个槽位都有 `Sockets`（弹夹就是典型）
+### 槽位 ≠ 挂点（弹夹就是典型）
 
-武器上有个 **`SlotCollection`** 组件列着**全部槽位 key**；而模型 prefab 里的 `Sockets` 容器可能**少几个**：
-**只有 `Sockets/<槽位>` 存在时，配件模型才会被挂上去**；没有的槽位是"纯数值槽"。
-
-MP5 实测：
+`SlotCollection` 列的槽位**可能比 `Sockets` 子节点多**：**只有 `Sockets/<槽位>` 存在时，配件模型才会被挂上去**，
+没有的槽位是"纯数值槽"。MP5 实测：
 
 | | key |
 |---|---|
 | `SlotCollection.list[].key`（6 个）| `Scope` · `Muzzle` · `Grip` · `Stock` · `Tec` · **`Mag`** |
-| prefab 的 `Sockets` 子节点（5 个）| `Scope` · `Muzzle` · `Grip` · `Stock` · `Tec`（**没有 `Mag`**）|
+| prefab 的 `Sockets` 子节点（5 个）| 同上但**没有 `Mag`** |
 
-**弹夹（`Mag`）**：
+**弹夹（`Mag`）**：52 件弹匣物品（tag 叫 `Magazine`，槽位 key 叫 `Mag`）**全部 `itemGraphic = null`**、
+全游戏也没有 `IG_Magazine*` prefab → **换弹匣只改数值和 UI 图标，不改变枪的外观**。
 
-| 项 | 实测 |
-|---|---|
-| 弹匣物品 | **52 件**（tag = `Accessory;Magazine;GunType_AR` / `…SMG` 等；**标签叫 `Magazine`，槽位 key 叫 `Mag`**）|
-| 有 3D 模型的 | **0 件** —— 52/52 全是 `itemGraphic = null`；全游戏也没有 `IG_Magazine*` prefab |
-| 结论 | **换弹匣只改数值和 UI 图标，不改变枪的外观** —— 所以它不需要挂点 |
-
-各槽位在武器上出现次数（实测）：`Tec` 63 · `Scope` 61 · `Muzzle` 60 · **`Mag` 54** · `Grip` 44 · `Stock` 39。
-
-**而且"有模型的配件"只是一部分**（有模型 / `itemGraphic = null`）：
-`Muzzle` 34/32 · `Grip` 10/12 · `Scope` 7/23 · `Stock` 6/44 · **`Mag` 0/52**。
-→ **装了某件配件看不到变化是正常的**：那件配件本来就没有模型（游戏代码里 `CreateAGraphic` 拿到 null 时，
-连 `ShowIf_*` / `HideIf_*` 都不会切）。
+> 顺带：**部分配件本身就没有模型**（`itemGraphic = null`，例：`Muzzle` 34/66、`Mag` 0/52）→
+> **装了某件配件看不到变化是正常的**（游戏拿到 null 时连 `ShowIf_*`/`HideIf_*` 都不切）。
 
 ### 配件装在哪 = 把挂点摆到我们模型上（模型文件 `slots`）
 
@@ -81,85 +60,28 @@ MP5 实测：
   "Stock":  null                    // null = 这把枪没有这个挂点 → 槽位与占位件都关掉
 }
 ```
-- **`slots` 可选**，每项可为 `null`；**不同枪槽位集合不同**（UZI ≠ MP5），只写有的那几个。
-- 语义 = **槽位在我们模型上的位置**（米、模型自身坐标系，原点=模型原点）。
-- ⭐ **多数模型不用写 `slots`**：不写就是自动 —— 先按**语义零件**算（枪口=枪管前端、顶部=机匣顶面…，
-  规则在 `MeshKit.TryGuessSlot`），零件 role 不认识时才退回"原挂点在原枪身包围盒里的相对位置 →
-  我们 mesh 包围盒的同一相对位置"。**只在观感上要覆盖时才写 `slots`。**
-- ⚠️ **别拿整模型的 AABB 当"边缘"**：那样"顶部"会被对到整模型最高点（实测我们模型最高点是**后照门**，
-  不是机匣顶面）。要按**哪个零件**的哪个面来取值。
-
-| 槽位 | 自动摆放取哪 | 手算（模型坐标系）|
-|---|---|---|
-| `Muzzle` | `barrel` 前端 | `[barrel.x, barrel.y, barrel.z + barrel.h/2]` |
-| `Scope` | `receiver` 顶面 | `[receiver.x, receiver.y + receiver.h/2, 机匣中前段]` |
-| `Tec` | `receiver` 顶面后段 | 同上，z 往枪尾偏 |
-| `Grip` | `receiver` 底面 | `[receiver.x, receiver.y - receiver.h/2, 护木前段]` |
-| `Stock` | `stock` 后端 | `[stock.x, stock.y, stock.z - stock.d/2]` |
-
-- 取值可以直接**问工具**（按语义零件打印、可直接抄进 `slots`）：
+- **可选**、每项可为 `null`、**不同枪槽位集合不同**（UZI ≠ MP5），只写有的那几个。
+- 语义 = **槽位在我们模型上的位置**（米、模型自身坐标系，原点 = 模型原点）。
+- ⭐ **多数模型不用写**：不写就自动按**语义零件**算（枪口 = `barrel` 前端、顶部 = `receiver` 顶面…，
+  规则在 `MeshKit.TryGuessSlot`）；只在观感上要覆盖时才写 `slots`。
+- 取值问工具（按语义零件打印、可直接抄）：
   ```
   dotnet tools/model-check/bin/Release/net8.0/model-check.dll --file models/smg_compact.json --slots
   ```
-- 工具会校验：**槽位名**（只认那 5 个）+ **数值离模型太远就 WARN**（超过 5cm，多半是填反轴/单位写错）。
-  但**"接在哪"是几何事实 + 观感的取舍**（枪口写 `0.22` = 接在枪管末端，写 `0.16` = 让配件往枪身套 6cm，
-  两者都合法），工具不会替你决定。
-  数值不对时改模型文件存盘即生效（demo 会热重载），不需要重新编译。
-
-**配件的几何怎么落**（实测 `IG_Acc_Muzzle_SMG_REC_4`，挂点局部坐标）：`z 0 → +0.247m`，**原点在尾端** ——
-也就是**配件后端正好落在挂点平面上**、朝枪口方向延伸；它的后端开口 **8.4 × 8.4cm**。
-（原版 MP5 对应的是"枪身网格一直长到枪口"：`WPN_MP5` 的 z 到 **0.3412**，枪口挂点也正好在 **0.3412**。）
-
-**配件的模型**：就是它自己的 `itemGraphic`（命名规律 `IG_Acc_<类型>_<名字>`，例：消音器 `Item_Muzzle_PST_DIS_1` → `IG_Acc_Muzzle_PST_DIS_1`）。
-（`ItemSetting_Accessory.accessoryPfb` 这个字段在 262 个资产里**全是 null** —— 不是模型来源。）
-
-## 样例（用 `inspect_game_data` 从游戏里读出的原文）
-
-### A. 一个真实物品模型 prefab 的完整结构
-
-`Item.itemGraphic -> pathID 77253`（`ItemGraphicInfo`）→ `m_GameObject -> pathID 14367`：
-
-```
-=== GameObject IG_Acc_Muzzle_PST_DIS_1 (classID 1, pathID 14367) ===
-  m_Component
-    [ref] Transform            (pathID 36989)  m_LocalPosition = (0,0,0)  m_LocalScale = (1,1,1)  m_Children = []
-    [ref] CharacterSubVisuals  (pathID 84491)  renderers[] / particles[] / lights[] / mainModel
-    [ref] ItemGraphicInfo      (pathID 77253)  groundPoint -> pathID 46681   sockets[]
-  m_Name = IG_Acc_Muzzle_PST_DIS_1
-```
-
-→ **武器配件 = GameObject + Transform + CharacterSubVisuals(渲染器集合) + ItemGraphicInfo(挂点)**。这就是要照着造的骨架。
-
-### B. 规模：物品模型 prefab 有多少
-
-```
-search --class GameObject --pattern "IG_"     → 374 match(es)
-  IG_Acc_Grip_ALL_REC_2 / IG_Acc_Muzzle_PST_DIS_1 / IG_Acc_Sight_ALL_REC_1 / …
-```
-
-命名规律：`IG_Acc_<类型>_<名字>`（`Acc` = 配件；另有 `Backpack` / `BaseDeco` 等其它类别，见各自文档）。
-
-### C. 渲染器在哪（批量导）
-
-```
-export --class CharacterSubVisuals \
-  --field "m_GameObject.#name" --field "renderers[].#class" --rows 6
-→ 433 行；例：IG_Acc_Muzzle_PST_DIS_1 / IG_Acc_Grip_ALL_REC_2 …  renderers[].#class = MeshRenderer
-```
-
-即：**模型的实际渲染器是 `CharacterSubVisuals.renderers` 里的 `MeshRenderer`**（数组，元素为 PPtr）。
+- 工具会校验**槽位名**（只认那 5 个）+ **数值离模型太远就 WARN**（超 5cm，多半填反轴/单位写错）；
+  但"接在哪"是几何 + 观感的取舍，工具不替你决定。
 
 ## 提取命令（做新类时照抄，改 pattern）
 
 ```
 # 1) 找一类模型的 prefab
 action=search  class=GameObject  pattern="IG_Acc"
-# 2) 看某个 prefab 的完整结构
+# 2) 看某个 prefab 的完整结构（Transform / 渲染器 / 挂点）
 action=dump    pathid=<上面给的 id>  follow=true  depth=4
 # 3) 从物品反查它的模型 prefab
 action=dump    class=Item  match="typeID=<物品 id>"  depth=2      # 看 itemGraphic -> pathID
 action=dump    pathid=<那个 ItemGraphicInfo 的 id>  follow=true  # 拿到 m_GameObject
-# 4) 批量导渲染器/名字
+# 4) 批量导名字 / 渲染器
 action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers[].#class"]  rows=50
 ```
 
@@ -169,139 +91,95 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
   按前缀匹配）：**自动挂点按它找面**（枪口 = `barrel` 前端）、`model-check --slots` 也靠它给建议值。
 - **枪管**：圆柱（半径 0.01–0.03 m，长 0.1–0.4 m，分段 12–24）。圆柱默认**竖着**（沿 +Y），要沿 +Z 就用 `"rot": [90,0,0]`。
 - **枪身/枪托**：盒体（0.05×0.1×0.3 m 量级）；倒角 = 多条不同尺寸的盒体叠出来。
-- **弹匣**：斜置盒体/旋转体，做**枪身 mesh 的一部分** —— 游戏不给弹匣挂模型（换弹匣只改数值、不改变外观）。
-- **瞄具/握把/枪口/枪托这些是"配件"**：它们的模型属于**配件物品自己**（`IG_Acc_*`），**做枪时不用画**；
-  你要保证的是"**枪上挂配件的位置有实体**"—— 挂点摆哪见上文「槽位」一节（不写 `slots` 就按零件语义自动摆）。
-- 组合：每个基本体算完顶点后 `Matrix4x4.TRS(位置, 旋转, 缩放)` 变换再拼接；一张 mesh 顶多加几个 submesh。
+- **弹匣**：斜置盒体/旋转体，做**枪身 mesh 的一部分**（游戏不给弹匣挂模型）。
+- **瞄具/握把/枪口/枪托这些是"配件"**：模型属于**配件物品自己**（`IG_Acc_*`），**做枪时不用画**；
+  要保证的是"枪上挂配件的位置有实体"（挂点摆哪见上文）。
+- 组合：每个基本体算完顶点后按 `(位置, 旋转, 缩放)` 变换再拼接；一张 mesh 顶多加几个 submesh。
 - **材质**：克隆同类物品的材质改色（避免 URP shader 找不到 → 粉紫）。
-
-## 挂载点
-
-
-| 目标 | 做法 |
-|---|---|
-| 世界/地面显示 | 换 `ItemGraphicInfo` 那棵树里 `MeshRenderer.sharedMesh` |
-| 手持显示 | `ItemAgentUtilities.GetPrefab/CreateAgent/BindNewAgent` |
-| 配件 | 挂到 `ItemGraphicInfo.sockets` 的 socket Transform |
-
 
 ## 运行时：怎么把新枪模型装进游戏
 
-**一句话：用 JSON 在运行时算出「几何」，替换掉原枪 prefab 里的几何；prefab 的其余一切照抄原版**
-（sockets、配件槽位、特效节点 `MuzzleFlash`、组件 `ItemAgent_Gun`、动画）→ 所以新枪一上来就能跟手、能装配件、有枪口火焰。
+**一句话：用 JSON 算出的几何，替换掉原枪图形 prefab 里的几何；其余一切照抄原版**，所以新枪一上来就能跟手、
+能装配件、有枪口火焰。
 
 ```
 models/*.json（零件清单）
-   ↓ MeshKit 算顶点/索引/UV        ↓ TextureKit 按 fills 画贴图
-   ↓
-拼出一个 GameObject（MeshFilter + MeshRenderer + 克隆枪身材质）
-   ↓ 挂进“原枪 prefab 的副本”里：旧枪几何关掉，我们的 mesh 挂上
-   ↓ 写回 Item.itemGraphic（模板级）→ 游戏以后实例化的就是这份“换了几何的原枪 prefab”
+   ↓ MeshKit 算顶点/索引/UV   ↓ TextureKit 按 fills 画贴图
+   拼一个 GameObject（MeshFilter + MeshRenderer + 克隆枪身材质）
+   ↓ 挂进"原枪 prefab 的副本"：旧枪几何关掉、我们的 mesh 挂上
+   ↓ 写回 Item.itemGraphic → 游戏以后实例化的就是这份"换了几何的原枪 prefab"
 ```
 
-**本质 = 借一份游戏原有的 prefab**：**克隆 -> 只换主体零件（枪身）的几何 + 贴图 -> 其余照抄**
-（sockets、配件槽位、`MuzzleFlash`、`ItemAgent_Gun` 组件、动画）。**不从零造 prefab。**
-
-要有两份，都得换：
+**本质 = 借一份游戏原有的 prefab**：克隆 → 只换主体零件的几何+贴图 → 其余照抄。**不从零造 prefab。**
 
 | 哪份 prefab | 管什么 | 我们怎么换 |
 |---|---|---|
-| **物品图形** `Item.itemGraphic`（`ItemGraphicInfo`）| 掉落 / 展示 / 图标 | 克隆 `ItemAssetsCollection.GetPrefab(typeID)` 里的这份 -> 换几何 -> 反射写回（**模板级**）+ 清实体缓存 `hashedAgentsCache` |
-| **手持实体** `ItemAgent`（`item.ActiveAgent`）| 拿在手里那把 | 实测 `ActiveAgent = IG_Gun_Mp5(Clone)(ItemAgent_Gun)`，**由图形 prefab 派生**；已经拿在手里的游戏**不会重建** -> **就地换几何**（关旧枪渲染器、挂我们的 mesh，**只改渲染器，不销毁任何东西**）|
+| **物品图形** `Item.itemGraphic`（`ItemGraphicInfo`）| 掉落 / 展示 / 手上 | 克隆 `ItemAssetsCollection.GetPrefab(typeID)` 里这份 → 换几何 → 反射写回（模板级）+ 清实体缓存 `hashedAgentsCache` |
+| **手持实体** `ItemAgent`（`item.ActiveAgent`）| 已经拿在手里的那把 | **由图形 prefab 派生**（`ActiveAgent = IG_Gun_Mp5(Clone)(ItemAgent_Gun)`）；已持有的游戏**不会重建** → **就地换几何**（关旧枪渲染器、挂我们的 mesh，**只改渲染器、不销毁任何东西**）|
 
-⚠️ `Item.ItemGraphic` 只有 getter -> 反射写私有字段 `itemGraphic`（社区顺序：先试可写属性 `ItemGraphic`，再退字段）。
+⚠️ `Item.ItemGraphic` 只有 getter → 反射写私有字段 `itemGraphic`。
 
-⚠️ **只换主体零件（`WPN_*` / 最大的非配件零件）那一个**，其余零件一概不碰 —— 枪上其它零件由游戏按状态开关，
-我们碰了会出现「第一次看不到配件、切换一次才全显示」（实测踩过两次）。
-
-### 枪的几何 = 四类零件
+**只换主体零件（`WPN_*` / 最大的非配件零件）那一个**，其余一概不碰（枪上其它零件由游戏按状态开关）：
 
 | 零件 | 是什么 | 替换时 |
 |---|---|---|
-| `WPN_<枪名>` | **枪身本体** | **关掉** |
-| `HideIf_<槽位>` | **枪自带的默认件**（枪口 / 枪托 / 镜座 / 握把）| **关掉** —— 也是这把旧枪的几何 |
-| `ShowIf_<槽位>` | **配件的占位模型**（装了才显示；实测借用别的枪的配件网格）| **保留**（但要跟着挂点一起平移）|
+| `WPN_<枪名>` | 枪身本体 | **关掉** |
+| `HideIf_<槽位>` | 枪自带的默认件（枪口/枪托/镜座/握把）| **关掉**（也是旧枪几何）|
+| `ShowIf_<槽位>` | 配件的占位模型 | **保留**（跟着挂点一起平移）|
 | `MuzzleFlash` / `Particle*` | 特效 | 保留 |
-
-**配件装在哪**：把 `Sockets/<槽位>` 挂点摆到我们模型对应位置（模型文件 `slots` 声明，不写则自动）—— 详见上文「槽位」一节。
 
 ### 尺寸与原点
 
-- **尺寸 = 真实米制、`scale` 恒为 1**（实测：原游戏物品图形 99.5% 是 1、社区 mod 包 100% 是 1）→ 不缩放。
-- ⚠️ 但 prefab 内部的**缩放链不一定是 1** —— 实测（沿父链相乘得到"世界缩放"）：
-
-  | 样本 | 世界缩放 = 1 | 非 1 |
-  |---|---|---|
-  | 原游戏枪身 `WPN_*`（99）| 67（68%）| **32（32%）**：`WPN_M14` 1.039（本地=1，**父级带缩放**）· `WPN_Minotaur` 1.225 · `WPN_ASVAL_Lightsaber` 15.5 |
-  | 工坊武器 mod 的包（优香MPX 26）| **100%** | 0 |
-
-  → mesh 要挂在**原枪身零件**的变换下，并把 `localScale` 取 `1 / 该零件 lossyScale`，让它在**世界尺度上是真实尺寸**。
-  （挂在根节点而不补缩放，会被父链带偏 —— 实测表现是**缩小到看不见**。）
+- **尺寸 = 真实米制、`scale` 恒为 1**（实测：原游戏物品图形 99.5%、社区包 100% 都是 1）→ 不缩放。
+- ⚠️ prefab 内部**缩放链不一定是 1**（实测枪身 `WPN_*` 有 32% 不是 1，例 `WPN_M14` 1.039、`WPN_ASVAL_Lightsaber` 15.5）
+  → mesh 挂在**原枪身零件**的变换下，`localScale` 取 `1 / 该零件 lossyScale`，保证**世界尺度**是真实尺寸。
 - **原点 = 握把**（手握住的地方），由模型文件的 `pivotOffset`（米）声明。
 
 ### 坑（都实测踩过）
 
 | 现象 | 原因 → 做法 |
 |---|---|
-| 武器**选不中 / 用不了** | 用 `ItemAgentUtilities.CreateAgent` 去"替换"活实体会**销毁**它，游戏引用失效 → **就地换几何**，别销毁 |
+| 武器**选不中 / 用不了** | 用 `CreateAgent` 去"替换"活实体会**销毁**它、游戏引用失效 → **就地换几何**，别销毁 |
 | 改完开局还是原版 | 改 prefab **不会重建已经拿在手里的实例** → 那个实例要**就地换** |
-| 新模型看不见 / 巨大 | 挂在了 prefab 里缩放不为 1 的节点下没补缩放，或把"某个小零件"当锚点 → 用**原枪身零件**当锚点 + 补 `1/lossyScale` |
-| 配件消失 / 只剩几个 | 把 `ShowIf_*`（配件模型）或 `HideIf_*` 处理错 → `WPN_*`+`HideIf_*` 关掉、`ShowIf_*` 保留 |
-| 找不到"原版是不是 1 倍" | 数一数：原游戏物品图形 99.5% 是 `scale=1`、社区包 100% → **按真实尺寸建模，不要缩放去凑** |
+| 新模型看不见 / 巨大 | 锚点用了缩放不为 1 的节点，或把"小零件"当锚点 → 用**原枪身零件** + 补 `1/lossyScale` |
+| 配件消失 / 只剩几个 | `ShowIf_*`（配件模型）或 `HideIf_*` 处理错 → `WPN_*`+`HideIf_*` 关掉、`ShowIf_*` 保留 |
 
-## 新增一把枪（模型层这一半）
+## 新增一把枪
 
-"新增物品"是**数据层**的事（新 `typeID` / 名字 / 数值 / `ItemAssetsCollection.AddDynamicEntry`）；
-模型层只负责**提供 `itemGraphic`** —— 那是数据层与模型层**唯一的连接点**（社区 mod 优香MPX 也是接在这里）。
+**模型层只提供 `itemGraphic`**（数据层与模型层唯一的连接点）；物品本身的创建属于**数据层**
+（新 typeID / 名字 / 数值 / `AddDynamicEntry`，见 `mod-creator` SKILL）。
 
-- 模型层接口（库 `ItemModelBinder`）：
-  ```csharp
-  ItemGraphicInfo g = binder.BuildGraphicClone(源物品的typeID);   // 复制源物品的图形 prefab → 换成我们的几何
-  binder.WriteGraphicTo(newItem, g);                              // 写到新物品的 itemGraphic
-  ```
-  （`BuildGraphicClone` 也能直接吃一个 `ItemGraphicInfo`；失败会让物品在游戏里退化成"纸片"。）
-- 数据层用库里的 **`ItemFactory.CloneAsNewItem(源typeID, 新typeID, 显示名)`** —— 它把"四条每次都要做对的事"
-  内置了（① `DontDestroyOnLoad` ② 名字走"键+本地化表" ③ `useSpriteForPickup=false` ④ 枪自动打 `IsGun` 标记，
-  按源物品的 `Gun` 标签判断）。然后 `WriteGraphicTo` 写图形、`AddDynamicEntry` 注册。
-  照社区原始做法（实测跑通，`reference/item_swap` 的 `newItem` 配置块）：
-  克隆源物品 `Instantiate(GetPrefab(源).gameObject)` → `SetTypeID(新)` → 名字（见下）→ `useSpriteForPickup=false`
-  → **写图形**（上面两行）→ `AddDynamicEntry(新物品)`。
-- ⚠️ **名字必须是"键 + 本地化表"**：`DisplayNameRaw` 塞字面量会被显示成 `*字面量*`（缺键标记）——
-  用 `LocalizationManager.SetOverrideText(key, 文本)` 然后 `DisplayNameRaw = key`（与工坊 mod 同做法）。
-- ⚠️ **注册发生在进关卡之前**：这时还没有玩家，`FindMainCharacter()` 是 null → "发给玩家/掉到地上"要
-  **等进关卡后再做**（`PickupItem` 失败时游戏会把物品掉在脚下，别以为没成功）。
-- 新物品还要有**获得途径**（工作台配方 / 掉落 / 直接发放），否则只能在代码里造出来。
-
-## ⭐ 我们造的运行时对象必须常驻（`DontDestroyOnLoad`）
-
-**这一条是我们这条路线的"必要代价"，不照做就会出诡异现象**（实测：物品第一次拿到没有模型/只有图标）。
-
-我们走的是"**运行时用 JSON 算几何**"（不依赖 Unity、不打包 AssetBundle）→ 我们自己 `Instantiate` 出来的东西
-（图形克隆、新物品模板、手持实体）都是**场景对象**：
-
-```
-场景对象归属于"当前场景"
-→ 从主菜单进关卡时场景卸载 → 对象被销毁
-→ 物品的 itemGraphic 变成"已销毁引用"（Unity 里 `== null` 判 true）
-→ 游戏回退：地上/手里显示图标贴图（看着像"黑方块"或"原版图"）
+```csharp
+// 数据层（库 ItemFactory 内置：常驻 / 名字走本地化 / useSpriteForPickup=false / 枪自动打 IsGun）
+var item = ItemFactory.CloneAsNewItem(源typeID, 新typeID, "显示名");
+// 模型层：给这个新物品一份"换成我们几何"的图形
+binder.WriteGraphicTo(item, binder.BuildGraphicClone(源typeID));
+// 注册
+ItemAssetsCollection.AddDynamicEntry(item);
 ```
 
-**所以凡是我们运行时创建、又会被跨场景引用的对象，创建后立刻 `DontDestroyOnLoad`：**
+三条坑：
+
+- **名字必须是"键 + 本地化表"**（`LocalizationManager.SetOverrideText(key, 文本)` + `DisplayNameRaw = key`）——
+  塞字面量会被显示成 `*字面量*`。
+- **注册通常发生在进关卡之前**（那时还没有玩家）→ "发给玩家 / 掉到地上"要**等进关卡后再做**。
+- 新物品要有**获得途径**（工作台配方 / 掉落 / 发放），否则只能在代码里造出来。
+
+### ⭐ 我们造的运行时对象必须常驻（`DontDestroyOnLoad`）
+
+我们走"运行时算几何"这条路 → 自己 `Instantiate` 出来的东西（**图形克隆 / 新物品模板 / 手持实体**）都是
+**场景对象** → 从主菜单进关卡时场景卸载 → 被销毁 → 物品的 `itemGraphic` 变成"已销毁引用"（Unity `== null` 判 true）
+→ 游戏回退成图标贴图（看着像"黑方块/原版图"）。**所以创建后立刻 `DontDestroyOnLoad`：**
 
 ```csharp
 Object.DontDestroyOnLoad(clone.gameObject);   // ① 图形克隆（写进 itemGraphic 的那份）
-Object.DontDestroyOnLoad(itemGo);             // ② 新物品模板（克隆源物品得到的那个）
-Object.DontDestroyOnLoad(agentGo);            // ③ 手持实体（BuildAgent 造出来的）
+Object.DontDestroyOnLoad(itemGo);             // ② 新物品模板
+Object.DontDestroyOnLoad(agentGo);            // ③ 手持实体
 ```
 
-两条相关注意：
-
-- **常驻对象也要保持激活**：Unity 的 `Instantiate` **会继承模板的激活状态** → 模板 `SetActive(false)` 会让所有实例隐形（实测踩过）。
-- **别用 `MultiSceneCore.MoveToActiveWithScene` 来"保活模板"**：它是给"每关的活对象"用的（对象挂在按场景分组的容器下，
-  **激活状态跟着该场景的加载状态走**）→ 模板会在别的关卡里变 inactive → 实例同样隐形。
-
-> 对照：官方路线（Unity 里做 prefab + AssetBundle）里这些全是**资产** → 资产不属于任何场景 → 天然不会被销毁，
-> 所以官方文档从不需要提这件事 ✓（他们的 Loader README 也承认"玩家第一次获得物品可能不会有模型和效果"是同类问题）。
+- 常驻对象还要**保持激活**（Unity `Instantiate` 会继承模板激活状态 → 模板 `SetActive(false)` 会让实例全隐形）。
+- 别用 `MultiSceneCore.MoveToActiveWithScene` 保活模板（它的激活状态跟着场景走 → 别的关卡里模板变 inactive）。
+- 对照：官方路线（Unity prefab + AssetBundle）里这些都是**资产**，天然不被销毁，所以官方文档不用提这件事。
 
 ## 例子（照着写）
 

@@ -73,7 +73,7 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
 **已经拿在手里的**那个要**就地换几何**（别销毁它）。
 
 - **配件挂点**：配件挂到 `Sockets/<槽位>` 下。**多数模型不用写挂点**（运行时按零件语义自动摆）；
-  要覆盖时在模型文件里写 `slots`。细节与取值方法见 `docs/unity-3d/01-weapons.md` 的「槽位」一节。
+  要覆盖时在模型文件里写 `slots`。细节与取值方法见 `docs/unity-3d/01-weapons.md` 的「槽位与挂点」一节。
 - **尺寸 = 真实米制、`scale` 恒为 1**；**原点 = 放置点**（武器 = 握把），由 `pivotOffset` 声明。
 - 可复用实现：`reference/mod-kit/ItemModelBinder.cs`；例子：`reference/item_swap/`（`config.json` 可切模型/目标，改完保存即生效）。
 - 细节（四类零件怎么分、为什么别用 `CreateAgent`、缩放链怎么补）：`docs/unity-3d/01-weapons.md` 与 `02-items.md`。

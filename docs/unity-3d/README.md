@@ -16,7 +16,7 @@
 
 1. 判断类别（武器 / 物品 / 附件 / 角色 / 建筑…）→ 打开对应 `NN-*.md`；
 2. **照着真实样例的组件结构**，用参数化模板生成 mesh（几何用代码拼，不要手抄顶点）；
-3. 按该篇的「挂载点」把 mesh 装到游戏对象上；
+3. 按该篇的「运行时」一节把 mesh 装进游戏对象（条目：克隆原 prefab → 只换主体零件 → 写回 `itemGraphic`）；
 4. 几何来源与坐标约定见 [`00-shared.md`](00-shared.md)。
 
 ## 模型 prefab 的通用结构（真实 dump，`IG_Acc_Muzzle_PST_DIS_1`）
@@ -29,7 +29,7 @@ GameObject  IG_Acc_Muzzle_PST_DIS_1        ← 模型 prefab 根
 ```
 
 物品资产里怎么找到它：`Item.itemGraphic -> ItemGraphicInfo`（该组件的 `m_GameObject` 就是 prefab 根）。
-**挂载点**：`ItemStatsSystem.ItemAgentUtilities.GetPrefab(key)` / `CreateAgent(prefab, agentType)` / `BindNewAgent(agent, agentType)`。
+**装进去**：物品走 `Item.itemGraphic`（反射写）；手持实体走 `ItemAgentUtilities.GetPrefab(key)` / `CreateAgent(prefab, agentType)` / `BindNewAgent(agent, agentType)`。
 
 ## 查真实样例（都用 `inspect_game_data`，不用运行游戏）
 
