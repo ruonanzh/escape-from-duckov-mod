@@ -160,6 +160,15 @@ namespace ModelKit
         /// ⚠️ 反例：用 `CreateAgent` 去"替换"活实体会销毁它，游戏引用失效 → 武器选不中/用不了。</summary>
         public bool InPlaceHeldSwap = true;
 
+        /// <summary>没在模型文件里声明的槽位，按"原枪身包围盒里的相对位置"自动映射到新模型上（不用手填）。</summary>
+        public bool AutoSlots = true;
+
+        /// <summary>在每个挂点放一个小球，便于在游戏里肉眼确认挂点落哪（调试用）。</summary>
+        public bool DebugMarkers = false;
+
+        /// <summary>每个槽位的"原位置 -> 新位置"与两边包围盒，供核对。</summary>
+        public string SlotDebug { get; private set; } = "";
+
         /// <summary>属于**旧模型**、要替换掉的零件：枪身（`WPN_*`）+ 原枪自带的默认件（`HideIf_*`）。
         /// `ShowIf_*`（配件本身的模型）与特效（`MuzzleFlash` / `Particle`）留给游戏管，不能动。</summary>
         static bool IsOldModelPart(Renderer r)
@@ -226,41 +235,84 @@ namespace ModelKit
             mr.sharedMaterial = UnityAdapter.CloneWithTexture(anchor != null ? anchor.sharedMaterial : null, _texture);
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
 
-            ApplySlotPlacements(root);
+            PlaceSlots(root, go, mr, anchor);
         }
 
-        /// <summary>把游戏里 `ShowIf_&lt;槽位&gt;`（= 配件模型）的挂点挪到模型文件声明的位置。
-        /// 只改位置、保持它原有的旋转/缩放（配件的世界变换不动，只是换个安装点）。</summary>
-        void ApplySlotPlacements(Transform root)
+        /// <summary>把游戏里 `ShowIf_&lt;槽位&gt;`（= 配件模型）的挂点摆到新模型上。两种来源：
+        /// ① **模型文件 `slots` 声明**（米、模型自身坐标系）—— 声明了就用它；
+        /// ② **自动**（默认）：把原位置在"原枪身包围盒"里的相对位置映射到"我们 mesh 的包围盒"。
+        /// 只改位置、保留原件旋转/缩放（配件的世界朝向不动，只是换个安装点）。</summary>
+        void PlaceSlots(Transform root, GameObject meshGo, Renderer ourRenderer, Renderer anchor)
         {
-            SlotReport = "";
-            if (_spec.Slots == null || _spec.Slots.Count == 0) return;
+            SlotReport = ""; SlotDebug = "";
+            var parts = new Dictionary<string, Transform>();
+            foreach (var t in root.GetComponentsInChildren<Transform>(true))
+                if (t.name.StartsWith("ShowIf_"))
+                    parts[t.name.Substring("ShowIf_".Length)] = t;
+            if (parts.Count == 0) { SlotReport = "(prefab 无 ShowIf_ 槽位)"; return; }
 
-            var rs = root.lossyScale;
-            Vector3 inv = new Vector3(
-                Mathf.Abs(rs.x) > 1e-6f ? 1f / rs.x : 1f,
-                Mathf.Abs(rs.y) > 1e-6f ? 1f / rs.y : 1f,
-                Mathf.Abs(rs.z) > 1e-6f ? 1f / rs.z : 1f);
+            Bounds body = anchor != null ? anchor.bounds : ourRenderer.bounds;   // 原枪身的世界包围盒
+            Bounds mine = ourRenderer.bounds;                                    // 我们 mesh 的世界包围盒
 
-            foreach (var kv in _spec.Slots)
+            foreach (var kv in parts)
             {
-                var part = FindByName(root, "ShowIf_" + kv.Key);
-                if (part == null) { SlotReport += $"{kv.Key}(未找到);"; continue; }
+                string slot = kv.Key;
+                var part = kv.Value;
 
-                if (kv.Value == null)                                  // 声明 null：我们这把枪没有这个挂点 → 藏掉（免得配件飘在旧位置）
+                float[] v = null; bool declared = false, hide = false;
+                if (_spec.Slots != null && _spec.Slots.ContainsKey(slot))
+                { declared = true; v = _spec.Slots[slot]; hide = v == null; }
+
+                if (hide)                          // 声明 null：我们这把枪没有这个挂点 → 藏掉（免得配件飘在旧位置）
                 {
                     part.gameObject.SetActive(false);
-                    SlotReport += $"{kv.Key}✗(无挂点);";
+                    SlotReport += slot + "✗(无挂点);";
                     continue;
                 }
 
-                var v = kv.Value;
-                part.SetParent(root, true);                          // 保持世界变换，只把它挂到根下
-                if (v.Length >= 6)
-                    part.localRotation = Quaternion.Euler(v[3], v[4], v[5]);
-                part.localPosition = Vector3.Scale(new Vector3(v[0], v[1], v[2]), inv);   // 声明的是"米"
-                SlotReport += $"{kv.Key}✓;";
+                Vector3 before = part.position;    // 原位置（世界）
+                // 自动方案（仅供参考/对照）：按包围盒相对位置映射
+                Vector3 auto = new Vector3(
+                    body.size.x > 1e-6f ? mine.min.x + Mathf.Clamp01((before.x - body.min.x) / body.size.x) * mine.size.x : mine.center.x,
+                    body.size.y > 1e-6f ? mine.min.y + Mathf.Clamp01((before.y - body.min.y) / body.size.y) * mine.size.y : mine.center.y,
+                    body.size.z > 1e-6f ? mine.min.z + Mathf.Clamp01((before.z - body.min.z) / body.size.z) * mine.size.z : mine.center.z);
+                if (declared)
+                {
+                    // 挂到**我们的 mesh** 下：它的世界缩放=1 → 声明值（米）就是相对模型原点的偏移（模型原点=握把）
+                    part.SetParent(meshGo.transform, true);
+                    if (v.Length >= 6) part.localRotation = Quaternion.Euler(v[3], v[4], v[5]);
+                    part.localPosition = new Vector3(v[0], v[1], v[2]);
+                    SlotReport += slot + "✓(声明);";
+                }
+                else if (AutoSlots)
+                {
+                    // 原位置在"原枪身包围盒"中的相对坐标(0..1) → 映射到"我们 mesh 的包围盒"的同一相对位置
+                    part.position = auto;
+                    SlotReport += slot + "✓(自动);";
+                }
+                else { SlotReport += slot + "-(未处理);"; continue; }
+
+                if (DebugMarkers) MakeMarker(part);
+                SlotDebug += slot + ": " + Fmt(before) + " -> " + Fmt(part.position)
+                    + (declared ? "（自动会放 " + Fmt(auto) + "）" : "")
+                    + " | 原枪身盒 min=" + Fmt(body.min) + " size=" + Fmt(body.size)
+                    + " | 我方盒 min=" + Fmt(mine.min) + " size=" + Fmt(mine.size) + " || ";
             }
+        }
+
+        static string Fmt(Vector3 v) => "(" + v.x.ToString("0.###") + "," + v.y.ToString("0.###") + "," + v.z.ToString("0.###") + ")";
+
+        /// <summary>调试用：在挂点处放一个小球（默认材质，最不容易受 shader 影响）。</summary>
+        static void MakeMarker(Transform slot)
+        {
+            foreach (Transform c in slot) if (c.name.StartsWith("ModelKitMarker")) return;
+            var m = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            m.name = "ModelKitMarker_" + slot.name;
+            var col = m.GetComponent<Collider>(); if (col != null) UnityEngine.Object.Destroy(col);
+            m.transform.SetParent(slot, false);
+            m.transform.localPosition = Vector3.zero;
+            float s = slot.lossyScale.x; m.transform.localScale = new Vector3(
+                Mathf.Abs(s) > 1e-6f ? 0.02f / s : 0.02f, Mathf.Abs(s) > 1e-6f ? 0.02f / s : 0.02f, Mathf.Abs(s) > 1e-6f ? 0.02f / s : 0.02f);
         }
 
         static Transform FindByName(Transform root, string name)

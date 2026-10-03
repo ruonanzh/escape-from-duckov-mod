@@ -4,5 +4,6 @@
   "typeIDs": [
     655
   ],
-  "bindNew": false
+  "bindNew": false,
+  "debugMarkers": true
 }

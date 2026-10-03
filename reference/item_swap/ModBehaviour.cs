@@ -119,6 +119,7 @@ namespace ItemSwap
                 _binder = new ItemModelBinder(_spec);
                 // 只有 config 里显式写了才覆盖（否则用库的默认 true —— 开局那份必须就地换，游戏不会自己重建）
                 if (_cfg?["inPlaceHeldSwap"] != null) _binder.InPlaceHeldSwap = _cfg["inPlaceHeldSwap"].Bool;
+                if (_cfg?["debugMarkers"] != null) _binder.DebugMarkers = _cfg["debugMarkers"].Bool;
                 _boundNew.Clear();
                 Log($"配置：模型={mf}（{_spec.Parts.Count} 零件）bindNew={_bindNew} pivot={_spec.PivotOffset[0]},{_spec.PivotOffset[1]},{_spec.PivotOffset[2]}｜mesh {_binder.Mesh.vertexCount} 顶点");
             }
