@@ -8,8 +8,8 @@
   "debugMarkers": true,
   "newItem": {
     "cloneFrom": 655,
-    "typeID": 9001,
-    "displayName": "方块冲锋枪（新）",
+    "typeID": 9002,
+    "displayName": "方块冲锋枪（新2）",
     "give": "drop"
   }
 }

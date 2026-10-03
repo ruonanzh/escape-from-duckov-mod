@@ -42,6 +42,8 @@ namespace ItemSwap
         string _pendingGiveMode = "drop";
         int  _pendingGiveTypeID;      // 要发的新物品 typeID
         int  _newItemTypeID;          // 已注册的新物品 typeID（用于诊断）
+        ItemStatsSystem.Item _newItemTemplate;
+        ItemGraphicInfo _newGraphic;
         int  _pendingGiveTries;
 
         void Start()
@@ -77,6 +79,15 @@ namespace ItemSwap
                     var g = item.ItemGraphic;
                     Log($"新物品手持诊断：ItemGraphic={(g != null ? g.gameObject.name : "null")} " +
                         $"子渲染器={(g != null ? g.GetComponentsInChildren<Renderer>(true).Length : 0)}");
+                    foreach (var mr in item.GetComponentsInChildren<MeshRenderer>(true))
+                        if (mr.gameObject.name.StartsWith("ModelKit_") && mr.gameObject.name.EndsWith("_mesh"))
+                        {
+                            var m = mr.GetComponent<MeshFilter>()?.sharedMesh;
+                            var sb = new StringBuilder();
+                            for (int i = 0; i < (m != null ? m.subMeshCount : 0); i++) sb.Append(m.GetTriangles(i).Length / 3).Append(" ");
+                            Log($"  mesh 诊断：{mr.gameObject.name} 子网格={m?.subMeshCount} 各子网格三角数=[{sb}] " +
+                                $"材质数={mr.sharedMaterials.Length} 顶点={m?.vertexCount} 启用={mr.enabled}");
+                        }
                     Diagnose(item);
                 }
                 Flush();
@@ -161,6 +172,8 @@ namespace ItemSwap
                 Log($"新增物品：克隆自 {cloneFrom}（{src.DisplayName}）→ typeID={item.TypeID} 名字={item.DisplayName} 图标={(item.Icon != null ? "有" : "无")}");
 
                 var g = _binder.BuildGraphicClone(cloneFrom);
+                _newGraphic = g;
+                _newItemTemplate = item;
                 if (g == null) { Log("新增物品：BuildGraphicClone 返回 null（源物品没有 itemGraphic？）"); Object.Destroy(go); _newItemDone = true; return; }
                 if (!_binder.WriteGraphicTo(item, g)) { Log("新增物品：反射写 itemGraphic 失败（游戏里会退化成纸片）"); Object.Destroy(go); _newItemDone = true; return; }
                 Log($"新增物品：图形已挂上（{g.gameObject.name}，渲染器 {g.GetComponentsInChildren<Renderer>(true).Length} 个）");
@@ -198,6 +211,13 @@ namespace ItemSwap
             var player = GameApi.FindMainCharacter();
             var inst = ItemStatsSystem.ItemAssetsCollection.InstantiateSync(_pendingGiveTypeID);
             if (inst == null) { Log("发新物品：InstantiateSync 返回 null"); _pendingGive = false; Flush(); return; }
+            Log($"发新物品：实例 typeID={inst.TypeID} name={inst.name} 模板同一对象={ReferenceEquals(inst, _newItemTemplate)} " +
+                $"图形=({(inst.ItemGraphic != null ? inst.ItemGraphic.gameObject.name : "null")}) 我们要的图形=({(_newGraphic != null ? _newGraphic.gameObject.name : "null")})");
+            if (inst.ItemGraphic == null && _newGraphic != null)
+            {
+                bool w = _binder.WriteGraphicTo(inst, _newGraphic);
+                Log($"发新物品：实例图形为空 → 兜底再写一次 = {w}（现在 {((inst.ItemGraphic != null) ? inst.ItemGraphic.gameObject.name : "仍为 null")}）");
+            }
             if (_pendingGiveMode == "pickup")
             {
                 bool got = GameApi.GiveItemToPlayer(inst);
