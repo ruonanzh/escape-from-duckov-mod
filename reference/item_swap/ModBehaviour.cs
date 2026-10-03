@@ -21,6 +21,7 @@ namespace ItemSwap
         readonly StringBuilder _sb = new StringBuilder();
         string _configPath;
         System.DateTime _configStamp;
+        System.DateTime _modelStamp;
         JsonValue _cfg;
 
         ModelSpec _spec;
@@ -107,8 +108,11 @@ namespace ItemSwap
             try
             {
                 var stamp = File.Exists(_configPath) ? File.GetLastWriteTime(_configPath) : System.DateTime.MinValue;
-                if (!force && stamp == _configStamp) return;
-                _configStamp = stamp;
+                string mfNow = (_cfg?["model"]?.AsString("") ?? "models/smg_compact.json");
+                var mp = Path.Combine(ModelLoader.ModDir(), mfNow);
+                var mstamp = File.Exists(mp) ? File.GetLastWriteTime(mp) : System.DateTime.MinValue;
+                if (!force && stamp == _configStamp && mstamp == _modelStamp) return;
+                _configStamp = stamp; _modelStamp = mstamp;
 
                 _cfg = File.Exists(_configPath) ? Json.Parse(File.ReadAllText(_configPath)) : null;
                 string mf = _cfg?["model"]?.AsString("models/pistol_compact.json") ?? "models/pistol_compact.json";
