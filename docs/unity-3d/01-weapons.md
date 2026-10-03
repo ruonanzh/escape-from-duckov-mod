@@ -45,6 +45,33 @@
 - 所以：**挂点**放配件自己的模型；**`ShowIf_*`** = 装上后**在枪上随之出现**的那段（转接座/底座那种）；
   **`HideIf_*`** = 被替换掉的**原装件**。
 
+### 槽位 ≠ 挂点：不是每个槽位都有 `Sockets`（弹夹就是典型）
+
+武器上有个 **`SlotCollection`** 组件列着**全部槽位 key**；而模型 prefab 里的 `Sockets` 容器可能**少几个**：
+**只有 `Sockets/<槽位>` 存在时，配件模型才会被挂上去**；没有的槽位是"纯数值槽"。
+
+MP5 实测：
+
+| | key |
+|---|---|
+| `SlotCollection.list[].key`（6 个）| `Scope` · `Muzzle` · `Grip` · `Stock` · `Tec` · **`Mag`** |
+| prefab 的 `Sockets` 子节点（5 个）| `Scope` · `Muzzle` · `Grip` · `Stock` · `Tec`（**没有 `Mag`**）|
+
+**弹夹（`Mag`）**：
+
+| 项 | 实测 |
+|---|---|
+| 弹匣物品 | **52 件**（tag = `Accessory;Magazine;GunType_AR` / `…SMG` 等；**标签叫 `Magazine`，槽位 key 叫 `Mag`**）|
+| 有 3D 模型的 | **0 件** —— 52/52 全是 `itemGraphic = null`；全游戏也没有 `IG_Magazine*` prefab |
+| 结论 | **换弹匣只改数值和 UI 图标，不改变枪的外观** —— 所以它不需要挂点 |
+
+各槽位在武器上出现次数（实测）：`Tec` 63 · `Scope` 61 · `Muzzle` 60 · **`Mag` 54** · `Grip` 44 · `Stock` 39。
+
+**而且"有模型的配件"只是一部分**（有模型 / `itemGraphic = null`）：
+`Muzzle` 34/32 · `Grip` 10/12 · `Scope` 7/23 · `Stock` 6/44 · **`Mag` 0/52**。
+→ **装了某件配件看不到变化是正常的**：那件配件本来就没有模型（游戏代码里 `CreateAGraphic` 拿到 null 时，
+连 `ShowIf_*` / `HideIf_*` 都不会切）。
+
 ### 配件装在哪 = 把挂点摆到我们模型上（模型文件 `slots`）
 
 ```
