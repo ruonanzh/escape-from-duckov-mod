@@ -49,6 +49,20 @@ description: Escape From Duckov 的 C# mod 制作与修改：目录结构、info
 4. **默认值 = 游戏内当前值**（用 `inspect_game_data` 导出填入），玩家只需改想改的那几行；配置里写清“改哪个键影响什么”。
 5. **mod 只读配置**，不负责生成/覆盖它；配置随 mod 一起发（放 mod 目录根，与 `<ModName>.dll` 同级）。
 
+## 新增物品（数据层）
+
+克隆一个现有物品再注册成新物品（社区 mod 实测可行）：
+
+- 克隆：`Instantiate(ItemAssetsCollection.GetPrefab(源typeID).gameObject)`（记得 `DontDestroyOnLoad`）
+  → `GetComponent<Item>()` → `SetTypeID(新typeID)`。
+- 名字：`LocalizationManager.SetOverrideText(key, 文本)` + `DisplayNameRaw = key`
+  （直接塞字面量会被显示成 `*字面量*`）。
+- 注册：`ItemAssetsCollection.AddDynamicEntry(item)`（同 typeID 会覆盖原版并打警告；失败要销毁克隆体）。
+- **模型**由模型侧给：`model-kit` 的 `BuildGraphicClone(源typeID)` + `WriteGraphicTo(item, g)`
+  （`itemGraphic` 是数据层与模型层唯一的连接点）—— 详见 `docs/unity-3d/01-weapons.md` 的「新增一把枪」。
+- 注意：注册通常发生在**进关卡之前**（那时没有玩家）→ 发放/掉落到地上要等进关卡后再做；
+  新物品还需要**获得途径**（工作台配方/掉落/发放）。
+
 ## 使用方式与条件分支
 
 - **动手前：先确认需求再动手**：先跟玩家对齐“这个 mod 是什么”（改什么、覆盖范围、产物/配置形态），给出**一份 mod 内容描述**；玩家确认后再开始写代码。

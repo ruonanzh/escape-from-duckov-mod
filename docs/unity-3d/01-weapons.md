@@ -249,6 +249,26 @@ models/*.json（零件清单）
 | 配件消失 / 只剩几个 | 把 `ShowIf_*`（配件模型）或 `HideIf_*` 处理错 → `WPN_*`+`HideIf_*` 关掉、`ShowIf_*` 保留 |
 | 找不到"原版是不是 1 倍" | 数一数：原游戏物品图形 99.5% 是 `scale=1`、社区包 100% → **按真实尺寸建模，不要缩放去凑** |
 
+## 新增一把枪（模型层这一半）
+
+"新增物品"是**数据层**的事（新 `typeID` / 名字 / 数值 / `ItemAssetsCollection.AddDynamicEntry`）；
+模型层只负责**提供 `itemGraphic`** —— 那是数据层与模型层**唯一的连接点**（社区 mod 优香MPX 也是接在这里）。
+
+- 模型层接口（库 `ItemModelBinder`）：
+  ```csharp
+  ItemGraphicInfo g = binder.BuildGraphicClone(源物品的typeID);   // 复制源物品的图形 prefab → 换成我们的几何
+  binder.WriteGraphicTo(newItem, g);                              // 写到新物品的 itemGraphic
+  ```
+  （`BuildGraphicClone` 也能直接吃一个 `ItemGraphicInfo`；失败会让物品在游戏里退化成"纸片"。）
+- 数据层照社区做法（实测跑通，`reference/item_swap` 的 `newItem` 配置块）：
+  克隆源物品 `Instantiate(GetPrefab(源).gameObject)` → `SetTypeID(新)` → 名字（见下）→ `useSpriteForPickup=false`
+  → **写图形**（上面两行）→ `AddDynamicEntry(新物品)`。
+- ⚠️ **名字必须是"键 + 本地化表"**：`DisplayNameRaw` 塞字面量会被显示成 `*字面量*`（缺键标记）——
+  用 `LocalizationManager.SetOverrideText(key, 文本)` 然后 `DisplayNameRaw = key`（与工坊 mod 同做法）。
+- ⚠️ **注册发生在进关卡之前**：这时还没有玩家，`FindMainCharacter()` 是 null → "发给玩家/掉到地上"要
+  **等进关卡后再做**（`PickupItem` 失败时游戏会把物品掉在脚下，别以为没成功）。
+- 新物品还要有**获得途径**（工作台配方 / 掉落 / 直接发放），否则只能在代码里造出来。
+
 ## 例子（照着写）
 
 坐标与单位约定见 [`00-shared.md`](00-shared.md)，格式见 [`05-model-format.md`](05-model-format.md)。
