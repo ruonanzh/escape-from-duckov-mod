@@ -33,6 +33,7 @@ namespace ModelKit
 
         readonly ModelSpec _spec;
         Mesh _mesh;
+        ModelKit.MeshData _data;      // 生成时的顶点数据（含每个零件的盒 → 按语义算槽位）
         Texture2D _texture;
 
         // 反射：社区 mod 的做法是"先试可写属性 ItemGraphic，再退到私有字段 itemGraphic"（更能抗游戏更新）
@@ -79,7 +80,8 @@ namespace ModelKit
         void EnsureBuilt()
         {
             if (_mesh != null) return;
-            var data = MeshKit.Build(_spec);
+            _data = MeshKit.Build(_spec);
+            var data = _data;
             _mesh = UnityAdapter.ToMesh(data, _spec.Name);
             _texture = UnityAdapter.ToTexture(TextureKit.Paint(_spec, data), _spec.Name + "_tex");
         }
@@ -292,6 +294,10 @@ namespace ModelKit
                 Vector3 from = socket.position;                                         // 原挂点（世界）
                 Vector3 fromLocal = frame.InverseTransformPoint(from);                  // 同上，锚点局部系
                 Vector3 autoLocal = MapBox(fromLocal, body, mine);
+                // 优先"按零件语义"算（枪口=barrel 前端…）；零件 role 不认识时才退回包围盒归一化映射
+                Vec3 guess;
+                if (_data != null && _data.TryGuessSlot(slot, out guess))
+                    autoLocal = new Vector3(guess.X, guess.Y, guess.Z);
                 Vector3 auto = frame.TransformPoint(autoLocal);
                 Vector3 target = declared ? meshGo.transform.TransformPoint(new Vector3(v[0], v[1], v[2])) : auto;
                 Vector3 delta = target - from;

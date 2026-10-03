@@ -28,6 +28,7 @@ namespace ModelCheck
             var files = new List<string>();
             var markdown = new List<string>();
             int sideOverride = 0;
+            bool wantSlots = false;
             string pngOut = null, templateOut = null;
 
             for (int i = 0; i < args.Length; i++)
@@ -37,10 +38,11 @@ namespace ModelCheck
                     case "--file": files.Add(args[++i]); break;
                     case "--md": markdown.Add(args[++i]); break;
                     case "--side": sideOverride = int.Parse(args[++i]); break;
+                    case "--slots": wantSlots = true; break;
                     case "--png": pngOut = args[++i]; break;
                     case "--template": templateOut = args[++i]; break;
                     default:
-                        Console.Error.WriteLine("usage: model-check [--file <json>]... [--md <markdown>]... [--side N] [--png <path|dir>] [--template <path|dir>]");
+                        Console.Error.WriteLine("usage: model-check [--file <json>]... [--md <markdown>]... [--side N] [--png <path|dir>] [--template <path|dir>] [--slots]");
                         return 2;
                 }
             }
@@ -49,7 +51,7 @@ namespace ModelCheck
             int fails = 0;
             foreach (var f in files)
             {
-                var r = CheckBlock(File.ReadAllText(f), Path.GetFileName(f), sideOverride, pngOut, templateOut);
+                var r = CheckBlock(File.ReadAllText(f), Path.GetFileName(f), sideOverride, pngOut, templateOut, wantSlots);
                 Console.Write(r.Report);
                 fails += r.Fails;
             }
@@ -59,7 +61,7 @@ namespace ModelCheck
                 foreach (Match m in Regex.Matches(File.ReadAllText(md), @"```json\n(.*?)```", RegexOptions.Singleline))
                 {
                     idx++;
-                    var r = CheckBlock(m.Groups[1].Value, $"{Path.GetFileName(md)} #{idx}", sideOverride, pngOut, templateOut);
+                    var r = CheckBlock(m.Groups[1].Value, $"{Path.GetFileName(md)} #{idx}", sideOverride, pngOut, templateOut, wantSlots);
                     Console.Write(r.Report);
                     fails += r.Fails;
                 }
@@ -71,7 +73,7 @@ namespace ModelCheck
 
         sealed class Result { public StringBuilder Report = new StringBuilder(); public int Fails; }
 
-        static Result CheckBlock(string json, string label, int sideOverride, string pngOut, string templateOut)
+        static Result CheckBlock(string json, string label, int sideOverride, string pngOut, string templateOut, bool wantSlots)
         {
             var res = new Result();
             JsonValue root;
@@ -138,7 +140,22 @@ namespace ModelCheck
             res.Report.AppendLine(
                 $"{tag}  {label,-22} category={spec.Category,-18} parts={mesh.Emitted.Count,2}  verts={mesh.VertexCount,5}  tris={mesh.TriangleCount,5}  " +
                 $"bbox={size.X:0.###}×{size.Y:0.###}×{size.Z:0.###}m  min=({mesh.Min.X:0.###},{mesh.Min.Y:0.###},{mesh.Min.Z:0.###}) max=({mesh.Max.X:0.###},{mesh.Max.Y:0.###},{mesh.Max.Z:0.###})  centerX={center.X:0.###}  atlas={mesh.AtlasSize}²  density={mesh.PixelsPerMeter} px/m ({1000f / mesh.PixelsPerMeter:0.##} mm/px)");
+            if (wantSlots) res.Report.AppendLine(SlotHints(spec, mesh));
             return res;
+        }
+
+        /// <summary>按**语义零件**给出槽位建议值（规则在 MeshKit.TryGuessSlot，唯一一份）——可直接抄进 slots。</summary>
+        static string SlotHints(ModelKit.ModelSpec spec, ModelKit.MeshData mesh)
+        {
+            string P(Vec3 p) => "[" + p.X.ToString("0.###") + ", " + p.Y.ToString("0.###") + ", " + p.Z.ToString("0.###") + "]";
+            var lines = new List<string>();
+            foreach (var slot in new[] { "Scope", "Tec", "Muzzle", "Stock", "Grip" })
+            {
+                Vec3 p;
+                if (mesh.TryGuessSlot(slot, out p)) lines.Add("  \"" + slot + "\": " + P(p) + ",");
+            }
+            if (lines.Count == 0) return "槽位建议：零件 role 里没有 barrel/receiver/stock → 用 slots 手写";
+            return "槽位建议（按零件语义算的，可直接抄进 slots）：\n{\n" + string.Join("\n", lines) + "\n}";
         }
 
         static string WriteTarget(string pathOrDir, string filename)

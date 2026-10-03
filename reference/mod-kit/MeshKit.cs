@@ -124,6 +124,15 @@ namespace ModelKit
         public int Start, Count;    // Indices 里的区间
     }
 
+    /// <summary>模型坐标系里的轴对齐包围盒。</summary>
+    public struct Box3
+    {
+        public Vec3 Min, Max;
+        public Box3(Vec3 min, Vec3 max) { Min = min; Max = max; }
+        public Vec3 Size => new Vec3(Max.X - Min.X, Max.Y - Min.Y, Max.Z - Min.Z);
+        public Vec3 Center => new Vec3((Min.X + Max.X) * 0.5f, (Min.Y + Max.Y) * 0.5f, (Min.Z + Max.Z) * 0.5f);
+    }
+
     public sealed class MeshData
     {
         public List<Vec3> Positions = new List<Vec3>();
@@ -133,6 +142,46 @@ namespace ModelKit
         public List<SubMesh> SubMeshes = new List<SubMesh>();
         public List<AtlasRect> Atlas = new List<AtlasRect>();
         public List<PartSpec> Emitted;      // 与 Atlas 同序（已展开 mirror）
+        public List<Box3> EmittedBounds = new List<Box3>();   // 与 Emitted 同序：每个零件在**模型坐标系**里的包围盒
+
+        /// <summary>按 role（前缀匹配）取这些零件合并后的包围盒；没有该 role 时返回 false。
+        /// 用来按**语义零件**（barrel / receiver / stock…）算挂点，而不是拿整模型的 AABB 当边缘。</summary>
+        public bool TryBoundsOfRole(string rolePrefix, out Box3 bounds)
+        {
+            var mn = new Vec3(float.MaxValue, float.MaxValue, float.MaxValue);
+            var mx = new Vec3(float.MinValue, float.MinValue, float.MinValue);
+            bool any = false;
+            for (int i = 0; i < Emitted.Count && i < EmittedBounds.Count; i++)
+            {
+                if (Emitted[i].Role == null || !Emitted[i].Role.StartsWith(rolePrefix)) continue;
+                var b = EmittedBounds[i];
+                mn = new Vec3(Math.Min(mn.X, b.Min.X), Math.Min(mn.Y, b.Min.Y), Math.Min(mn.Z, b.Min.Z));
+                mx = new Vec3(Math.Max(mx.X, b.Max.X), Math.Max(mx.Y, b.Max.Y), Math.Max(mx.Z, b.Max.Z));
+                any = true;
+            }
+            bounds = any ? new Box3(mn, mx) : new Box3(new Vec3(0, 0, 0), new Vec3(0, 0, 0));
+            return any;
+        }
+
+        /// <summary>按**语义零件**给某槽位一个默认位置（模型坐标系）：枪口取 `barrel` 前端、顶部取 `receiver` 顶面…
+        /// 而不是拿整模型的 AABB 当边缘（那会把"后照门最高点"当导轨面）。找不到对应零件时返回 false。</summary>
+        public bool TryGuessSlot(string slot, out Vec3 p)
+        {
+            p = new Vec3(0, 0, 0);
+            if (slot == "Muzzle" && TryBoundsOfRole("barrel", out var b))
+            { p = new Vec3(b.Center.X, b.Center.Y, b.Max.Z); return true; }
+            if ((slot == "Scope" || slot == "Tec" || slot == "Grip") && TryBoundsOfRole("receiver", out var r))
+            {
+                p = slot == "Scope" ? new Vec3(r.Center.X, r.Max.Y, r.Center.Z + 0.02f)
+                  : slot == "Tec" ? new Vec3(r.Center.X, r.Max.Y, r.Min.Z + 0.03f)
+                  : new Vec3(r.Center.X, r.Min.Y, r.Max.Z - 0.04f);
+                return true;
+            }
+            if (slot == "Stock" && TryBoundsOfRole("stock", out var st))
+            { p = new Vec3(st.Center.X, st.Center.Y, st.Min.Z); return true; }
+            return false;
+        }
+
         public int AtlasSize;
         public float PixelsPerMeter;
         public Vec3 Min, Max;
@@ -165,6 +214,7 @@ namespace ModelKit
             var rects = Pack(parts, atlas, ppm);
 
             var data = new MeshData { AtlasSize = atlas, PixelsPerMeter = ppm, Atlas = rects, Emitted = parts };
+            for (int i = 0; i < parts.Count; i++) data.EmittedBounds.Add(new Box3(new Vec3(0, 0, 0), new Vec3(0, 0, 0)));
 
             // 按 role 分组发射（同 role 连续 → 一个 submesh）
             var roles = new List<string>();
@@ -175,14 +225,25 @@ namespace ModelKit
                 int start = data.Indices.Count;
                 for (int i = 0; i < parts.Count; i++)
                     if (parts[i].Role == role)
+                    {
+                        int vstart = data.Positions.Count;
                         EmitPart(data, parts[i], rects[i], atlas);
+                        data.EmittedBounds[i] = AabbOf(data.Positions, vstart);   // 该零件在**作者坐标系**里的盒
+                    }
                 data.SubMeshes.Add(new SubMesh { Role = role, Start = start, Count = data.Indices.Count - start });
             }
 
             // 原点平移：把声明的 pivotOffset 从所有顶点里减掉（于是"握把"落在原点）
             if (model.PivotOffset != null && (model.PivotOffset[0] != 0 || model.PivotOffset[1] != 0 || model.PivotOffset[2] != 0))
-                for (int i = 0; i < data.Positions.Count; i++)
-                    data.Positions[i] = data.Positions[i] - new Vec3(model.PivotOffset[0], model.PivotOffset[1], model.PivotOffset[2]);
+            {
+                var pv = new Vec3(model.PivotOffset[0], model.PivotOffset[1], model.PivotOffset[2]);
+                for (int i = 0; i < data.Positions.Count; i++) data.Positions[i] = data.Positions[i] - pv;
+                for (int i = 0; i < data.EmittedBounds.Count; i++)               // 零件盒跟着移到模型坐标系
+                {
+                    var b = data.EmittedBounds[i];
+                    data.EmittedBounds[i] = new Box3(b.Min - pv, b.Max - pv);
+                }
+            }
 
             var min = new Vec3(float.MaxValue, float.MaxValue, float.MaxValue);
             var max = new Vec3(float.MinValue, float.MinValue, float.MinValue);
@@ -197,11 +258,26 @@ namespace ModelKit
 
         /// <summary>只生成一个零件（矩形由调用方指定）。给 YSM 用：cube 的 uv 已经写在模型里，
         /// 不需要（也不能）走自动排布。</summary>
+        /// <summary>positions[start..] 的包围盒（给"每个零件的盒"用）。</summary>
+        static Box3 AabbOf(List<Vec3> positions, int start)
+        {
+            var mn = new Vec3(float.MaxValue, float.MaxValue, float.MaxValue);
+            var mx = new Vec3(float.MinValue, float.MinValue, float.MinValue);
+            for (int i = start; i < positions.Count; i++)
+            {
+                var p = positions[i];
+                mn = new Vec3(Math.Min(mn.X, p.X), Math.Min(mn.Y, p.Y), Math.Min(mn.Z, p.Z));
+                mx = new Vec3(Math.Max(mx.X, p.X), Math.Max(mx.Y, p.Y), Math.Max(mx.Z, p.Z));
+            }
+            return new Box3(mn, mx);
+        }
+
         public static MeshData BuildPart(PartSpec part, AtlasRect rect, int atlasSize)
         {
             var data = new MeshData { AtlasSize = atlasSize, PixelsPerMeter = 1f, Atlas = new List<AtlasRect> { rect },
                                       Emitted = new List<PartSpec> { part } };
             EmitPart(data, part, rect, atlasSize);
+            data.EmittedBounds.Add(AabbOf(data.Positions, 0));
             data.SubMeshes.Add(new SubMesh { Role = part.Role, Start = 0, Count = data.Indices.Count });
 
             var min = new Vec3(float.MaxValue, float.MaxValue, float.MaxValue);
