@@ -185,6 +185,44 @@ namespace ModelCheck
                 if (uv.X < -1e-4f || uv.X > 1 + 1e-4f || uv.Y < -1e-4f || uv.Y > 1 + 1e-4f)
                 { fail = $"UV 越界：({uv.X:0.###},{uv.Y:0.###})"; return; }
 
+            // 绕序：Unity 是左手系，**顺时针 = 正面** → 右手叉积应指向法线的**反方向**（点积 < 0）。
+            // 反过来写就会整模型变背面被剔除（表现：模型完全看不见，只剩游戏原版的部件）——实测踩过。
+            int back = 0, tris = 0;
+            for (int t = 0; t + 2 < mesh.Indices.Count; t += 3)
+            {
+                var a = mesh.Positions[mesh.Indices[t]];
+                var b = mesh.Positions[mesh.Indices[t + 1]];
+                var c = mesh.Positions[mesh.Indices[t + 2]];
+                var e1 = new Vec3(b.X - a.X, b.Y - a.Y, b.Z - a.Z);
+                var e2 = new Vec3(c.X - a.X, c.Y - a.Y, c.Z - a.Z);
+                var cr = new Vec3(e1.Y * e2.Z - e1.Z * e2.Y, e1.Z * e2.X - e1.X * e2.Z, e1.X * e2.Y - e1.Y * e2.X);
+                var n = mesh.Indices[t] < mesh.Normals.Count ? mesh.Normals[mesh.Indices[t]] : new Vec3(0, 1, 0);
+                tris++;
+                if (cr.X * n.X + cr.Y * n.Y + cr.Z * n.Z >= 0) back++;
+            }
+            if (Environment.GetEnvironmentVariable("MC_WINDING") == "1")
+            {
+                foreach (var sm in mesh.SubMeshes)
+                {
+                    int b2 = 0, t2 = 0;
+                    for (int t = sm.Start; t + 2 < sm.Start + sm.Count; t += 3)
+                    {
+                        var a = mesh.Positions[mesh.Indices[t]];
+                        var bb = mesh.Positions[mesh.Indices[t + 1]];
+                        var cc = mesh.Positions[mesh.Indices[t + 2]];
+                        var e1 = new Vec3(bb.X - a.X, bb.Y - a.Y, bb.Z - a.Z);
+                        var e2 = new Vec3(cc.X - a.X, cc.Y - a.Y, cc.Z - a.Z);
+                        var cr = new Vec3(e1.Y * e2.Z - e1.Z * e2.Y, e1.Z * e2.X - e1.X * e2.Z, e1.X * e2.Y - e1.Y * e2.X);
+                        var n2 = mesh.Indices[t] < mesh.Normals.Count ? mesh.Normals[mesh.Indices[t]] : new Vec3(0, 1, 0);
+                        t2++;
+                        if (cr.X * n2.X + cr.Y * n2.Y + cr.Z * n2.Z >= 0) b2++;
+                    }
+                    warns.Add($"  [绕序] submesh '{sm.Role}': 背面 {b2}/{t2}");
+                }
+            }
+            if (back > 0)
+            { fail = $"绕序反了：{back}/{tris} 个三角面在 Unity 里是背面（会被整片剔除 → 模型看不见）"; return; }
+
             // 配件槽位：可选、每项可为 null（= 没有该挂点）；名字只认游戏那 5 个
             foreach (var kv in spec.Slots)
             {

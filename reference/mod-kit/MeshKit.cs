@@ -381,6 +381,17 @@ namespace ModelKit
             }
         }
 
+        /// <summary>法线变换：只做旋转 + 按缩放的倒数（法线的正确变换是逆转置；我们只支持轴对齐缩放）。
+        /// ⚠️ 忘了这一步 → 旋转过的零件法线全错（表现：不受光/看着是黑的；绕序检查也会误判）。</summary>
+        static Vec3 XfNormal(PartSpec p, Vec3 n)
+        {
+            var s = new Vec3(
+                Math.Abs(p.Scale[0]) > 1e-6f ? n.X / p.Scale[0] : n.X,
+                Math.Abs(p.Scale[1]) > 1e-6f ? n.Y / p.Scale[1] : n.Y,
+                Math.Abs(p.Scale[2]) > 1e-6f ? n.Z / p.Scale[2] : n.Z);
+            return Rotate(s, p.Rot).Normalized();
+        }
+
         static Vec3 Xf(PartSpec p, Vec3 v)
         {
             var s = new Vec3(v.X * p.Scale[0], v.Y * p.Scale[1], v.Z * p.Scale[2]);
@@ -416,13 +427,16 @@ namespace ModelKit
                          (Vec3 pos, float s, float t) c, (Vec3 pos, float s, float t) e)
         {
             var q = new[] { a, b, c, e };
-            if (Vec3.Dot(Vec3.Cross(q[1].pos - q[0].pos, q[2].pos - q[0].pos), n) < 0)
+            // ⚠️ Unity 是**左手系**：正面 = 从外侧看**顺时针** → 右手叉积应指向法线**反方向**（点积 < 0）。
+            // 反过来写 = 每个面都是背面 → 整模型被剔除（实测踩过：模型完全看不见）
+            if (Vec3.Dot(Vec3.Cross(q[1].pos - q[0].pos, q[2].pos - q[0].pos), n) > 0)
             { var t = q[1]; q[1] = q[3]; q[3] = t; }
             int b0 = d.Positions.Count;
+            var xn = XfNormal(p, n);
             foreach (var v in q)
             {
                 d.Positions.Add(Xf(p, v.pos));
-                d.Normals.Add(n.Normalized());
+                d.Normals.Add(xn);
                 d.Uvs.Add(UvOf(r, atlas, v.s, v.t));
             }
             d.Indices.Add(b0); d.Indices.Add(b0 + 1); d.Indices.Add(b0 + 2);
@@ -433,12 +447,13 @@ namespace ModelKit
                         (Vec3 pos, float s, float t) a, (Vec3 pos, float s, float t) b, (Vec3 pos, float s, float t) c)
         {
             var q = new[] { a, b, c };
-            if (Vec3.Dot(Vec3.Cross(q[1].pos - q[0].pos, q[2].pos - q[0].pos), n) < 0) { var t = q[1]; q[1] = q[2]; q[2] = t; }
+            if (Vec3.Dot(Vec3.Cross(q[1].pos - q[0].pos, q[2].pos - q[0].pos), n) > 0) { var t = q[1]; q[1] = q[2]; q[2] = t; }   // 同 Quad：Unity 左手系
             int b0 = d.Positions.Count;
+            var xn = XfNormal(p, n);
             foreach (var v in q)
             {
                 d.Positions.Add(Xf(p, v.pos));
-                d.Normals.Add(n.Normalized());
+                d.Normals.Add(xn);
                 d.Uvs.Add(UvOf(r, atlas, v.s, v.t));
             }
             d.Indices.Add(b0); d.Indices.Add(b0 + 1); d.Indices.Add(b0 + 2);
