@@ -158,6 +158,8 @@ binder.WriteGraphicTo(item, binder.BuildGraphicClone(源typeID));
 ItemAssetsCollection.AddDynamicEntry(item);
 ```
 
+可运行的起点（工程结构 / config 字段 / build+装+热重载）：`reference/item_swap/README.md`。
+
 三条坑：
 
 - **名字必须是"键 + 本地化表"**（`LocalizationManager.SetOverrideText(key, 文本)` + `DisplayNameRaw = key`）——

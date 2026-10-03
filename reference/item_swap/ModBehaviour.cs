@@ -2,8 +2,8 @@
 //
 // 逻辑在库里（ItemModelBinder）：替换（换掉已实例化模型的渲染器）/ 新增（造 ItemGraphicInfo 绑给物品）。
 // config.json：
-//   { "model": "models/pistol_compact.json", "bindNew": false }
-//   bindNew=true 时还会走"新增"那条路（反射写 Item.itemGraphic 并回读校验）。
+//   { "model": "models/smg_compact.json", "match": "MP5_Normal", "typeIDs": [655] }
+//   config / 模型文件一改存盘即生效（热重载）；改代码才要重编译 + 重启游戏。
 
 using System.Collections.Generic;
 using System.IO;
@@ -26,12 +26,10 @@ namespace ItemSwap
 
         ModelSpec _spec;
         ItemModelBinder _binder;
-        bool _bindNew;
         readonly HashSet<int> _bound = new HashSet<int>();
         string _match = "";
         readonly HashSet<int> _typeIds = new HashSet<int>();
         string _lastHeld;
-        readonly HashSet<int> _boundNew = new HashSet<int>();
         bool _loggedFirst;
 
         // ── "新增物品"（数据层演示；模型由库里 BuildGraphicClone 提供）──
@@ -117,13 +115,6 @@ namespace ItemSwap
                     if (_binder.SlotDebug.Length > 0) Log("槽位坐标：" + _binder.SlotDebug);
                 }
                 catch (System.Exception e) { Log("换模型异常: " + e); }
-                Flush();
-            }
-
-            if (_bindNew && _boundNew.Add(item.GetInstanceID()))
-            {
-                bool ok = _binder.BindGraphic(item);
-                Log($"新增/替换图形（反射写 Item.itemGraphic）：{(ok ? "写入并回读一致 ✓" : "失败 ✗")}");
                 Flush();
             }
         }
@@ -247,7 +238,6 @@ namespace ItemSwap
                 if (_newCfg == null || _newCfg.Kind == JsonKind.Null) _newItemDone = true;   // 没配 = 不做
                 else { _newItemDone = false; _newItemRetry = 0; }
                 string mf = _cfg?["model"]?.AsString("models/pistol_compact.json") ?? "models/pistol_compact.json";
-                _bindNew = _cfg?["bindNew"] != null && _cfg["bindNew"].Bool;
                 _match = _cfg?["match"]?.AsString("") ?? "";
                 _typeIds.Clear();
                 var ids = _cfg?["typeIDs"];
@@ -258,8 +248,7 @@ namespace ItemSwap
                 // 只有 config 里显式写了才覆盖（否则用库的默认 true —— 开局那份必须就地换，游戏不会自己重建）
                 if (_cfg?["inPlaceHeldSwap"] != null) _binder.InPlaceHeldSwap = _cfg["inPlaceHeldSwap"].Bool;
                 if (_cfg?["debugMarkers"] != null) _binder.DebugMarkers = _cfg["debugMarkers"].Bool;
-                _boundNew.Clear();
-                Log($"配置：模型={mf}（{_spec.Parts.Count} 零件）bindNew={_bindNew} pivot={_spec.PivotOffset[0]},{_spec.PivotOffset[1]},{_spec.PivotOffset[2]}｜mesh {_binder.Mesh.vertexCount} 顶点");
+                Log($"配置：模型={mf}（{_spec.Parts.Count} 零件）pivot={_spec.PivotOffset[0]},{_spec.PivotOffset[1]},{_spec.PivotOffset[2]}｜mesh {_binder.Mesh.vertexCount} 顶点");
             }
             catch (System.Exception e) { Log("配置/模型载入失败: " + e.Message); _binder = null; }
         }

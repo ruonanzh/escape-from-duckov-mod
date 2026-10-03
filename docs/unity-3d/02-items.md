@@ -89,7 +89,8 @@ models/*.json（零件清单）
 
 ## 可运行的例子
 
-`reference/item_swap/`（配置见 `config.json`：`model` / `match` / `typeIDs` / `bindNew` / `newItem`，改完保存即生效）。
+`reference/item_swap/`（**含 README**：工程结构 / `config.json` 字段 / build+装+热重载 / 日志位置；
+配置改完保存即生效）。
 库实现：`reference/mod-kit/ItemModelBinder.cs`。
 
 ## 例子（照着写）

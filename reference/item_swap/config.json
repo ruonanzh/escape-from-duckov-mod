@@ -4,8 +4,7 @@
   "typeIDs": [
     655
   ],
-  "bindNew": false,
-  "debugMarkers": true,
+  "debugMarkers": false,
   "newItem": {
     "cloneFrom": 655,
     "typeID": 9002,
