@@ -63,70 +63,47 @@ action=dump    class=Item  match="typeID=<id>"  depth=2    # 从物品反查 ite
 
 ## 运行时：怎么换物品模型（枪 / 背包 / 箱子…）
 
-> 「武器配件其实不是挂上去的」（`ShowIf_*` / `HideIf_*` 条件零件）与挂点清单见 [`00-shared.md`](00-shared.md) 的「挂点」一节。
+**一句话：用 JSON 在运行时算出「几何」，替换掉原版 prefab 里的几何；prefab 的其余一切照抄原版。**
 
-物品的模型有**两条独立路径**，位置不同、做法不同：
-
-| 在哪 | 是什么 | 怎么换成我们的 |
-|---|---|---|
-| **拿在手上** | `Item.ActiveAgent`（`ItemAgent`）| 在实体上**只替换“枪身”那一个零件**：把它 `enabled = false`，在**它的变换下**挂我们的 mesh；**其余零件一律不碰** |
-| **掉落 / 展示** | `ItemGraphicInfo`（游戏用 `ItemGraphicInfo.CreateAGraphic(item.ItemGraphic, …)` 实例化）| **克隆 `item.ItemGraphic`** → 换掉克隆里的几何 → **反射写回**私有的 `Item.itemGraphic`（游戏之后实例化的就是我们的）|
-
-```csharp
-// ① 手持：就地换（不要重建实体）
-var active = item.ActiveAgent;
-var body = active.GetComponentsInChildren<MeshRenderer>(true)
-                 .First(r => r.gameObject.name.StartsWith("WPN_"));     // 枪身
-body.enabled = false;
-var go = new GameObject("ModelKit_mesh");
-go.transform.SetParent(body.transform, false);                          // 继承枪身的位置/旋转/缩放
-go.transform.localScale = Vector3.one * fit;                            // fit = 原枪身尺寸 / 我们模型尺寸
-go.AddComponent<MeshFilter>().sharedMesh = ourMesh;
-go.AddComponent<MeshRenderer>().sharedMaterial = 克隆枪身材质 + 我们的贴图(_MainTex);
-
-// ② 掉落 / 展示：换 prefab，让游戏去实例化
-var clone = Object.Instantiate(item.ItemGraphic);                       // 保留 sockets / groundPoint / 设置
-clone.gameObject.SetActive(true);                                       // ⚠️ 必须保持激活
-clone.transform.position = new Vector3(0f, -5000f, 0f);                 // 模板挪到世界外
-// 同样的方式把 clone 里的几何换成我们的
-typeof(Item).GetField("itemGraphic", BindingFlags.Instance | BindingFlags.NonPublic)
-            .SetValue(item, clone);
+```
+models/*.json（零件清单）
+   ↓ MeshKit 算顶点/索引/UV          ↓ TextureKit 按 fills 画贴图
+   ↓
+我们拼出一个 GameObject（MeshFilter + MeshRenderer + 克隆来的材质）
+   ↓ 挂进“原版 prefab 的副本”里：旧枪的几何关掉，我们的 mesh 挂上
+   ↓ 写回 Item.itemGraphic（模板级）→ 游戏以后实例化的就是这份“换了几何的原版 prefab”
 ```
 
-**要记住的几点**
+**为什么要“复制原 prefab + 换几何”，而不是从零重建**：sockets / 配件槽位（`ShowIf_*`）/ 特效节点（`MuzzleFlash`）/
+组件（`ItemAgent_Gun`）/ 动画 —— 全部照抄原版，所以一上来就能跟手、能装配件、有枪口火焰。
+（工坊武器 mod 的差别只在：他们的几何是 Unity/美术/AI 事先做好的；我们是**运行时用 JSON 现算**。）
 
-- **手里那把枪 = 四类零件**，换模型时按类处理（实测 MP5）：
+### 两条必须分开处理的情况
 
-  | 零件 | 是什么 | 替换时 |
-  |---|---|---|
-  | `WPN_<枪名>` | **枪身本体** | **关掉** |
-  | `HideIf_<槽位>` | **枪自带的默认件**（枪口 / 枪托 / 镜座 / 握把）| **关掉** —— 它们是**这把旧枪的一部分** |
-  | `ShowIf_<槽位>` | **玩家装的配件物品的模型**（瞄准镜/握把；实测 MP5 的 `ShowIf_Scope` 用的是 M700 的材质，即借来的配件网格）| **保留** —— 那属于**配件那件物品**，不属于枪 |
-  | `MuzzleFlash` / `Particle*` | 特效 | 保留 |
+| 情况 | 做法 |
+|---|---|
+| **游戏会自己重建的实例**（开局之后掉落 / 捡起 / 切枪 / 新生成）| ① **改物品模板** `ItemAssetsCollection.GetPrefab(typeID)` 的 `Item.itemGraphic` + ④ **清实体缓存** `hashedAgentsCache` → 游戏重建时就用我们的 |
+| **已经拿在手里、游戏不会重建**的那个实例 | ③ **就地换几何**：把旧枪的渲染器关掉，在**原枪身零件的变换下**挂我们的 mesh（⭐ 只改渲染器，不销毁任何东西）|
 
-  → **新枪模型 = 枪身 + 自带件**：换上就把旧枪的几何**全部关掉**（`WPN_*` + `HideIf_*`）；
-  只留「配件与特效」，否则玩家装的瞄准镜会一起消失。
-- **不要重建实体**（例如 `ItemAgentUtilities.CreateAgent`）：它会销毁旧实体，而游戏（`ItemAgentHolder` 等）还持有引用 → 那件武器会**选不中 / 用不了**，直到你丢地上再捡起来。
-- **对齐尺寸**：物品 prefab 的比例与真实尺寸不一致（我们 0.2 m 的手枪要塞进 MP5 的 0.86 m 槽位）→ 按**原枪身包围盒**等比缩放。
-- **材质**：克隆**枪身**的材质，把我们的贴图塞进 `_MainTex`（武器 shader `SodaCraft/SodaLit` 的主贴图槽就是 `_MainTex`）；别从零建材质。
-- **每帧重申**：物品会被反复实例化（开局 / 掉落 / 拾取 / 切枪）→ 看到没换过的实例就换。
-- **不缩放**：把模型按真实尺寸做好（`scale` 恒为 1），原点用模型文件里的 `pivotOffset` 声明（武器 = 握把）——**运行时不做任何缩放/对齐**。
-- **优先写“物品模板”**（`ItemAssetsCollection.GetPrefab(typeID)`）：以后每次实例化都对（开局就生效）；
-  活实例再补一次，兜住“改之前就已经生成”的那些。
-- **给全新物品模型**：同 ② —— 反射写 `itemGraphic` 就是“给这个物品一份模型”。
+⚠️ **`Item.ItemGraphic` 只有 getter** → 反射写私有字段 `itemGraphic`（社区 mod 的顺序是"先试可写属性 `ItemGraphic`，再退到字段"，更能抗更新）。
 
-## 与社区做法的对照（都是反编译社区 mod 得到的）
+### 手里那把枪 = 四类零件（实测 MP5）
 
-| 环节 | 社区做法（三角洲合集 / 优香MPX）| 我们 |
+| 零件 | 是什么 | 替换时 |
 |---|---|---|
-| 写物品图形 | 反射：**先试可写属性 `ItemGraphic`，再退到私有字段 `itemGraphic`** | 同（已采纳这个顺序）|
-| **写到哪** | **写到物品模板 `ItemAssetsCollection.GetPrefab(typeID)`** → 以后每次实例化都对 | 也写模板（`BindGraphicOnPrefab`）+ 补一次活实例 |
-| 图形 prefab 怎么造 | 用 **bundle 里的 prefab** + `AddComponent<ItemGraphicInfo>()` + 子物体塞进 `ModelPivot` | **克隆物品已有的图形**（保留 sockets / groundPoint / 各设置），只换几何 |
-| 手持实体 | `SetAgentPrefab`（写 `ItemAgentUtilities.agents`）+ **`ClearAgentCache`**（清 `hashedAgentsCache`）让游戏重建 | **就地换几何**（不重建 → 不破坏游戏持有的引用）|
-| 材质 / shader | 自带材质 + **`FixModelShaders`**：把所有材质 shader 统一换成 `SodaCraft/SodaLit`（退 URP Lit/Unlit/Standard），保留贴图与颜色 | **克隆游戏现成材质**（因此不需要修 shader）|
+| `WPN_<枪名>` | **枪身本体** | **关掉** |
+| `HideIf_<槽位>` | **枪自带的默认件**（枪口 / 枪托 / 镜座 / 握把）| **关掉** —— 它们也是**这把旧枪的一部分** |
+| `ShowIf_<槽位>` | **玩家装的配件物品的模型**（实测 MP5 的 `ShowIf_Scope` 用的是 M700 材质，即借来的配件网格）| **保留** —— 属于**配件那件物品** |
+| `MuzzleFlash` / `Particle*` | 特效 | 保留 |
 
-**结论**：两条路殊途同归，**优先写"物品模板"**（`ItemAssetsCollection.GetPrefab`）—— 这样新实例天生就对，
-不用每帧重申；活实例的补绑只是兜底（处理"改之前就已经生成"的那些）。
+→ **新枪模型 = 枪身 + 自带件**：换上就把旧枪几何**全部关掉**（`WPN_*` + `HideIf_*`），只留配件与特效。
+
+### 尺寸与原点
+
+- **尺寸 = 真实米制、`scale` 恒为 1**（实测原游戏物品图形 99.5%、社区 mod 包 100% 都是 1）→ 不缩放。
+- 但 prefab 内部的**缩放链不一定是 1** → 我们的 mesh 挂在**原枪身零件**的变换下，并把 `localScale` 设成
+  `1 / 该零件 lossyScale`，**让它在世界尺度上保持真实尺寸**（实测：挂在根节点会被父级缩放带偏到看不见）。
+- **原点 = 游戏放置点**：武器 = 握把；由模型文件的 `pivotOffset`（米）声明。
 
 ## 这些坑：哪些是游戏事实、哪些是做法不对
 

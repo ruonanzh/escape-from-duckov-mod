@@ -113,14 +113,32 @@ namespace ModelKit
             catch { return false; }
         }
 
-        /// <summary>手持那条：**就地**在现有实体上换几何。
+        /// <summary>清掉物品的"实体缓存"（社区做法 `ClearAgentCache`）：让游戏下次创建实体时重新读
+        /// `item.ItemGraphic`（= 我们的图形）。**不要自己去销毁/替换活着的实体** —— 游戏还持有引用，
+        /// 那样会让武器"选不中/用不了"（实测踩过）。</summary>
+        public bool ClearAgentCache(ItemStatsSystem.Item item)
+        {
+            var au = item != null ? item.AgentUtilities : null;
+            if (au == null) return false;
+            try
+            {
+                var f = typeof(ItemStatsSystem.ItemAgentUtilities).GetField("hashedAgentsCache",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+                if (f == null) return false;
+                f.SetValue(au, null);
+                return true;
+            }
+            catch { return false; }
+        }
+
+        /// <summary>手持那条（**备选**）：就地改活实体。默认不走这条 —— 正解是"改 prefab + 清缓存"让游戏重建。
         ///
         /// ⚠️ 不要用 `ItemAgentUtilities.CreateAgent()` 去替换实体：它内部会 `ReleaseActiveAgent()` 销毁旧实体，
         /// 而游戏（ItemAgentHolder 等）还持有旧实体的引用 → 那件武器会"选不中/用不了"，直到丢地上再捡起来。
         /// 就地换几何不动游戏持有的对象，所以状态不受影响。</summary>
         public bool ReplaceHeld(ItemStatsSystem.Item item)
         {
-            if (item == null) return false;
+            if (item == null || !InPlaceHeldSwap) return false;
             EnsureBuilt();
 
             var active = item.ActiveAgent;
@@ -135,6 +153,11 @@ namespace ModelKit
             HeldReplaced = true;
             return true;
         }
+
+        /// <summary>就地改活实体（默认 **true**）：改 prefab + 清缓存只影响**以后**生成的实例，
+        /// 已经拿在手里的那个不会自己变 —— 必须就地换几何（不销毁任何东西，所以安全）。
+        /// ⚠️ 反例：用 `CreateAgent` 去"替换"活实体会销毁它，游戏引用失效 → 武器选不中/用不了。</summary>
+        public bool InPlaceHeldSwap = true;
 
         /// <summary>属于**旧模型**、要替换掉的零件：枪身（`WPN_*`）+ 原枪自带的默认件（`HideIf_*`）。
         /// `ShowIf_*`（配件本身的模型）与特效（`MuzzleFlash` / `Particle`）留给游戏管，不能动。</summary>
@@ -180,15 +203,21 @@ namespace ModelKit
             MaterialInfo = anchor != null && anchor.sharedMaterial != null
                 ? $"{anchor.sharedMaterial.name}/{anchor.sharedMaterial.shader.name}" : "无（兜底材质）";
 
-            // **按真实尺寸放（scale = 1，永不缩放）**：原游戏物品图形 99.5% 是 scale=1、社区 mod 包 100% 是 1；
-            // 尺寸由模型自己定义（枪 0.5–0.9 m…），原点由模型文件声明（pivotOffset）——运行时不做任何缩放/对齐。
+            // 我们的 mesh：挂在**原枪身零件**的位置上（同一个变换帧、同一个原点、同一个朝向），
+            // 并把缩放补回"世界尺度 = 1"—— 因为 prefab 内部缩放链不一定为 1（实测踩过：挂在根上会缩到看不见）。
+            Vector3 lossy = anchor != null ? anchor.transform.lossyScale : root.lossyScale;
+            var inv = new Vector3(
+                Mathf.Abs(lossy.x) > 1e-6f ? 1f / lossy.x : 1f,
+                Mathf.Abs(lossy.y) > 1e-6f ? 1f / lossy.y : 1f,
+                Mathf.Abs(lossy.z) > 1e-6f ? 1f / lossy.z : 1f);
+
             var go = new GameObject("ModelKit_" + _spec.Name + "_mesh");
-            go.layer = root.gameObject.layer;
-            go.transform.SetParent(root, false);
+            go.layer = anchor != null ? anchor.gameObject.layer : root.gameObject.layer;
+            go.transform.SetParent(anchor != null ? anchor.transform : root, false);
             go.transform.localPosition = Vector3.zero;
             go.transform.localRotation = Quaternion.identity;
-            go.transform.localScale = Vector3.one;
-            OurWorldSize = _mesh.bounds.size.magnitude * (root.lossyScale.magnitude / Mathf.Sqrt(3f));
+            go.transform.localScale = inv;
+            OurWorldSize = _mesh.bounds.size.magnitude;
 
             var mf = go.AddComponent<MeshFilter>();
             mf.sharedMesh = _mesh;
@@ -203,10 +232,19 @@ namespace ModelKit
             if (item == null) return 0;
             int id = item.GetInstanceID();
             int done = 0;
-            if (!bound.Contains(id) || item.ItemGraphic == null || !item.ItemGraphic.name.StartsWith("ModelKit_"))
+
+            // ① 物品模板（社区做法）：改一次，之后每次实例化都用我们的图形
+            if (!bound.Contains(id) && BindGraphicOnPrefab(item.TypeID)) done++;
+            // ② 活动实例的图形（如果那份还是旧的）
+            if (!bound.Contains(id) && item.ItemGraphic != null && !item.ItemGraphic.name.StartsWith("ModelKit_"))
             {
-                if (BindGraphic(item)) { bound.Add(id); done++; }
+                if (BindGraphic(item)) done++;
             }
+            // ③ 已经拿在手里的那个实例：就地换几何（只改渲染器 + 挂我们的 mesh，不销毁任何东西）
+            if (ReplaceHeld(item)) done++;
+            // ④ 清实体缓存 → 以后游戏创建实体时会读我们的图形
+            if (done > 0) ClearAgentCache(item);
+            if (done > 0) bound.Add(id);
             return done;
         }
 

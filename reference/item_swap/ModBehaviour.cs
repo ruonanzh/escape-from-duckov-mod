@@ -69,10 +69,12 @@ namespace ItemSwap
             {
                 try
                 {
-                    bool pt = _binder.BindGraphicOnPrefab(item.TypeID);   // 先改模板 → 之后的实例天生就对
-                    bool g = _binder.BindGraphic(item);
-                    bool h = _binder.ReplaceHeld(item);
-                    Log($"已换：模板(prefab)={pt}｜图形(实例)={g}｜手持实体={h}" +
+                    bool pt = _binder.BindGraphicOnPrefab(item.TypeID);   // ① 模板（社区做法）
+                    bool g = _binder.BindGraphic(item);                   // ② 活动实例的图形
+                    bool cc = _binder.ClearAgentCache(item);              // ③ 清实体缓存 → 让游戏重建实体
+                    bool h = _binder.InPlaceHeldSwap;                     // 可选：就地改活实体（默认关）
+                    if (h) _binder.ReplaceHeld(item);
+                    Log($"已换：模板={pt}｜图形={g}｜清实体缓存={cc}｜就地改活实体={h}" +
                         $"｜锚点={_binder.AnchoredAt} 材质={_binder.MaterialInfo} 枪身渲染器关掉 {_binder.HiddenRenderers} 个（保留配件槽位 {_binder.KeptConditional} 个）" +
                         $"｜场上的我们的图形 {ModelKit.ItemModelBinder.CountOurGraphics()} 个");
                 }
@@ -115,6 +117,8 @@ namespace ItemSwap
                 _lastHeld = null;
                 _spec = ModelLoader.LoadPartsSpec(Path.Combine(ModelLoader.ModDir(), mf));
                 _binder = new ItemModelBinder(_spec);
+                // 只有 config 里显式写了才覆盖（否则用库的默认 true —— 开局那份必须就地换，游戏不会自己重建）
+                if (_cfg?["inPlaceHeldSwap"] != null) _binder.InPlaceHeldSwap = _cfg["inPlaceHeldSwap"].Bool;
                 _boundNew.Clear();
                 Log($"配置：模型={mf}（{_spec.Parts.Count} 零件）bindNew={_bindNew} pivot={_spec.PivotOffset[0]},{_spec.PivotOffset[1]},{_spec.PivotOffset[2]}｜mesh {_binder.Mesh.vertexCount} 顶点");
             }
@@ -126,6 +130,7 @@ namespace ItemSwap
         /// <summary>精确诊断：只看"手里那个实体"和"它的渲染器"，把每个渲染器的真实状态打出来。</summary>
         void Diagnose(ItemStatsSystem.Item item)
         {
+            DumpOurs();
             var active = item != null ? item.ActiveAgent : null;
             if (active == null) { Log("── 诊断：没有 ActiveAgent"); Flush(); return; }
 
@@ -148,6 +153,32 @@ namespace ItemSwap
                 Log($"   {(r.enabled ? "启用" : "关闭")} '{r.gameObject.name}' 顶点={vc} 世界尺寸={r.bounds.size.magnitude:0.###}m " +
                     $"层={r.gameObject.layer} 活动={r.gameObject.activeInHierarchy} 材质={(mat != null ? mat.name + "/" + mat.shader.name : "无")} 贴图={tex}");
             }
+            Flush();
+        }
+
+        void DumpOurs()
+        {
+            int n = 0;
+            foreach (var g in FindObjectsOfType<ItemGraphicInfo>())
+            {
+                if (g == null || !g.name.StartsWith("ModelKit_")) continue;
+                n++;
+                var rs = g.GetComponentsInChildren<Renderer>(true);
+                Log($"   ★我们的图形 '{TPath(g.transform)}'｜渲染器 {rs.Length} 个");
+                foreach (var r in rs)
+                {
+                    if (rs.Length > 8 && !r.enabled) continue;
+                    var mf = r.GetComponent<MeshFilter>();
+                    Log($"       {(r.enabled ? "启用" : "关闭")} '{r.gameObject.name}' 顶点={(mf != null && mf.sharedMesh != null ? mf.sharedMesh.vertexCount : 0)} " +
+                        $"世界尺寸={r.bounds.size.magnitude:0.####}m 层={r.gameObject.layer} 活动={r.gameObject.activeInHierarchy} " +
+                        $"缩放={r.transform.lossyScale} 材质={(r.sharedMaterial != null ? r.sharedMaterial.name : "无")}");
+                }
+            }
+            // 手持实体若是我们的克隆，也打一遍
+            var mc = Object.FindObjectsOfType<ItemStatsSystem.ItemAgent>();
+            foreach (var a in mc)
+                if (a != null && a.gameObject.name.StartsWith("ModelKit_")) Log($"   ★我们的实体 '{TPath(a.transform)}' 渲染器 {a.GetComponentsInChildren<Renderer>(true).Length} 个");
+            Log($"   （ModelKit_ 图形共 {n} 个；ITemAgent 里我们的 {mc.Count(a => a != null && a.gameObject.name.StartsWith("ModelKit_"))} 个）");
             Flush();
         }
 
