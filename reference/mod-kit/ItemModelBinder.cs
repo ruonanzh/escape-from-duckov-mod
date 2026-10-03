@@ -35,8 +35,33 @@ namespace ModelKit
         Mesh _mesh;
         Texture2D _texture;
 
-        static readonly FieldInfo GraphicField =
-            typeof(ItemStatsSystem.Item).GetField("itemGraphic", BindingFlags.Instance | BindingFlags.NonPublic);
+        // 反射：社区 mod 的做法是"先试可写属性 ItemGraphic，再退到私有字段 itemGraphic"（更能抗游戏更新）
+        static PropertyInfo _graphicProp;
+        static FieldInfo _graphicField;
+        static bool _probed;
+
+        static void ProbeGraphic()
+        {
+            if (_probed) return;
+            _probed = true;
+            var prop = typeof(ItemStatsSystem.Item).GetProperty("ItemGraphic",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (prop != null && prop.CanWrite) _graphicProp = prop;
+            if (_graphicProp == null)
+            {
+                var f = typeof(ItemStatsSystem.Item).GetField("itemGraphic",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (f != null && f.FieldType == typeof(ItemGraphicInfo)) _graphicField = f;
+            }
+        }
+
+        static bool WriteGraphic(ItemStatsSystem.Item item, ItemGraphicInfo graphic)
+        {
+            ProbeGraphic();
+            if (_graphicProp != null) { _graphicProp.SetValue(item, graphic); return true; }
+            if (_graphicField != null) { _graphicField.SetValue(item, graphic); return true; }
+            return false;
+        }
 
         public ItemModelBinder(ModelSpec spec) { _spec = spec; }
 
@@ -61,7 +86,7 @@ namespace ModelKit
         /// <summary>掉落/展示那条：把物品的图形换成"克隆它自己 + 我们的几何"。</summary>
         public bool BindGraphic(ItemStatsSystem.Item item)
         {
-            if (item == null || GraphicField == null) return false;
+            if (item == null) return false;
             var src = item.ItemGraphic;
             if (src == null) return false;
             EnsureBuilt();
@@ -72,8 +97,20 @@ namespace ModelKit
             clone.transform.position = new Vector3(0f, -5000f, 0f);  // 模板藏到世界外
 
             PrepareGeometry(clone.transform);
-            GraphicField.SetValue(item, clone);
-            return ReferenceEquals(GraphicField.GetValue(item), clone);
+            return WriteGraphic(item, clone);
+        }
+
+        /// <summary>把图形写到**物品模板（prefab）**上：`ItemAssetsCollection.GetPrefab(typeID)`。
+        /// 社区 mod 走的就是这条 —— 以后游戏每次实例化这个物品都直接用我们的图形（开局就对，不用等重申）。</summary>
+        public bool BindGraphicOnPrefab(int typeID)
+        {
+            try
+            {
+                var prefab = ItemStatsSystem.ItemAssetsCollection.GetPrefab(typeID);
+                if (prefab == null) return false;
+                return BindGraphic(prefab);
+            }
+            catch { return false; }
         }
 
         /// <summary>手持那条：**就地**在现有实体上换几何。

@@ -69,9 +69,10 @@ namespace ItemSwap
             {
                 try
                 {
+                    bool pt = _binder.BindGraphicOnPrefab(item.TypeID);   // 先改模板 → 之后的实例天生就对
                     bool g = _binder.BindGraphic(item);
                     bool h = _binder.ReplaceHeld(item);
-                    Log($"已换：图形={g}（掉落/展示用）｜手持实体={h}（ActiveAgent）" +
+                    Log($"已换：模板(prefab)={pt}｜图形(实例)={g}｜手持实体={h}" +
                         $"｜锚点={_binder.AnchoredAt} 材质={_binder.MaterialInfo} 枪身渲染器关掉 {_binder.HiddenRenderers} 个（保留配件槽位 {_binder.KeptConditional} 个）｜贴合缩放 {_binder.FitScale:0.##}" +
                         $"｜场上的我们的图形 {ModelKit.ItemModelBinder.CountOurGraphics()} 个");
                 }

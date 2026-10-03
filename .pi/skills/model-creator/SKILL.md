@@ -73,6 +73,7 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
 | **拿在手上**（`Item.ActiveAgent`）| **只替换“枪身”那一个零件**：`WPN_*`（或最大的非配件零件）`enabled = false`，在**它的变换下**挂我们的 mesh｜**其余零件一律不碰** |
 | **掉落 / 展示**（`ItemGraphicInfo`）| **克隆 `item.ItemGraphic`** → 换掉克隆里的几何 → 反射写回私有字段 `Item.itemGraphic`（游戏之后实例化的就是我们的）|
 
+- **优先写“物品模板”** `ItemAssetsCollection.GetPrefab(typeID)`：新实例天生就对（开局就生效）；活实例再补一次兜底。
 - **手里是“零件组合”**：配件槽位（`ShowIf_*` / `HideIf_*`）、弹匣、枪机都由**游戏**按状态开关 → 只能动枪身。
 - **不要重建实体**（如 `ItemAgentUtilities.CreateAgent`）：它会销毁旧实体，游戏还持有引用 → 武器**选不中 / 用不了**。
 - **克隆作模板时必须保持激活**：`SetActive(false)` 会让游戏实例化出来的**全都隐形**。

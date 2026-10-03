@@ -100,7 +100,22 @@ typeof(Item).GetField("itemGraphic", BindingFlags.Instance | BindingFlags.NonPub
 - **对齐尺寸**：物品 prefab 的比例与真实尺寸不一致（我们 0.2 m 的手枪要塞进 MP5 的 0.86 m 槽位）→ 按**原枪身包围盒**等比缩放。
 - **材质**：克隆**枪身**的材质，把我们的贴图塞进 `_MainTex`（武器 shader `SodaCraft/SodaLit` 的主贴图槽就是 `_MainTex`）；别从零建材质。
 - **每帧重申**：物品会被反复实例化（开局 / 掉落 / 拾取 / 切枪）→ 看到没换过的实例就换。
+- **优先写“物品模板”**（`ItemAssetsCollection.GetPrefab(typeID)`）：以后每次实例化都对（开局就生效）；
+  活实例再补一次，兜住“改之前就已经生成”的那些。
 - **给全新物品模型**：同 ② —— 反射写 `itemGraphic` 就是“给这个物品一份模型”。
+
+## 与社区做法的对照（都是反编译社区 mod 得到的）
+
+| 环节 | 社区做法（三角洲合集 / 优香MPX）| 我们 |
+|---|---|---|
+| 写物品图形 | 反射：**先试可写属性 `ItemGraphic`，再退到私有字段 `itemGraphic`** | 同（已采纳这个顺序）|
+| **写到哪** | **写到物品模板 `ItemAssetsCollection.GetPrefab(typeID)`** → 以后每次实例化都对 | 也写模板（`BindGraphicOnPrefab`）+ 补一次活实例 |
+| 图形 prefab 怎么造 | 用 **bundle 里的 prefab** + `AddComponent<ItemGraphicInfo>()` + 子物体塞进 `ModelPivot` | **克隆物品已有的图形**（保留 sockets / groundPoint / 各设置），只换几何 |
+| 手持实体 | `SetAgentPrefab`（写 `ItemAgentUtilities.agents`）+ **`ClearAgentCache`**（清 `hashedAgentsCache`）让游戏重建 | **就地换几何**（不重建 → 不破坏游戏持有的引用）|
+| 材质 / shader | 自带材质 + **`FixModelShaders`**：把所有材质 shader 统一换成 `SodaCraft/SodaLit`（退 URP Lit/Unlit/Standard），保留贴图与颜色 | **克隆游戏现成材质**（因此不需要修 shader）|
+
+**结论**：两条路殊途同归，**优先写"物品模板"**（`ItemAssetsCollection.GetPrefab`）—— 这样新实例天生就对，
+不用每帧重申；活实例的补绑只是兜底（处理"改之前就已经生成"的那些）。
 
 ## 这些坑：哪些是游戏事实、哪些是做法不对
 
