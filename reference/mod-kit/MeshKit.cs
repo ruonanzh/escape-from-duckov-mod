@@ -101,6 +101,11 @@ namespace ModelKit
         /// <summary>模型原点相对几何中心的偏移（米）：声明"游戏放置点"在哪（武器 = 握把）。
         /// 由模型文件声明、构建时一次性平移，**运行时不缩放**。</summary>
         public float[] PivotOffset = { 0, 0, 0 };
+
+        /// <summary>配件槽位的**挂点位置**（米，模型自身坐标系）：槽位名 → [x,y,z]（或 [x,y,z,rx,ry,rz]）。
+        /// 槽位名是游戏定的：`Scope` / `Tec` / `Muzzle` / `Stock` / `Grip`。
+        /// 换枪模型后，游戏靠原模型里 `ShowIf_&lt;槽位&gt;` 零件的 Transform 摆放配件 —— 声明这里就能把它们挪到我们枪的对应部位。</summary>
+        public Dictionary<string, float[]> Slots = new Dictionary<string, float[]>();
         public List<PartSpec> Parts = new List<PartSpec>();
         public TextureSpec Texture = new TextureSpec();
     }

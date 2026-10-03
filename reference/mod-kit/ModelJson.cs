@@ -70,6 +70,19 @@ namespace ModelKit
                 PivotOffset = F3(root["pivotOffset"], new float[] { 0, 0, 0 })
             };
 
+            // 配件槽位挂点（可选）：{ "Scope": [x,y,z], "Muzzle": [x,y,z,rx,ry,rz], ... }
+            var slots = root["slots"];
+            if (slots != null && slots.IsObject)
+                foreach (var kv in slots.Object)
+                {
+                    var arr = kv.Value;
+                    if (arr == null || arr.Kind == JsonKind.Null) { spec.Slots[kv.Key] = null; continue; }   // null = 这把枪没有该挂点
+                    if (!arr.IsArray || arr.Count < 3) continue;
+                    var vals = new float[arr.Count];
+                    for (int i = 0; i < arr.Count; i++) vals[i] = arr[i].AsFloat();
+                    spec.Slots[kv.Key] = vals;
+                }
+
             var parts = root["parts"];
             if (parts == null || !parts.IsArray)
             {

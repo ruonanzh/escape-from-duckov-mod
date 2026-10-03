@@ -74,6 +74,7 @@ namespace ModelKit
         public float OurWorldSize { get; private set; }
         public int KeptConditional { get; private set; }
         public string PartsDebug { get; private set; } = "";
+        public string SlotReport { get; private set; } = "";
 
         void EnsureBuilt()
         {
@@ -224,6 +225,54 @@ namespace ModelKit
             var mr = go.AddComponent<MeshRenderer>();
             mr.sharedMaterial = UnityAdapter.CloneWithTexture(anchor != null ? anchor.sharedMaterial : null, _texture);
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+
+            ApplySlotPlacements(root);
+        }
+
+        /// <summary>把游戏里 `ShowIf_&lt;槽位&gt;`（= 配件模型）的挂点挪到模型文件声明的位置。
+        /// 只改位置、保持它原有的旋转/缩放（配件的世界变换不动，只是换个安装点）。</summary>
+        void ApplySlotPlacements(Transform root)
+        {
+            SlotReport = "";
+            if (_spec.Slots == null || _spec.Slots.Count == 0) return;
+
+            var rs = root.lossyScale;
+            Vector3 inv = new Vector3(
+                Mathf.Abs(rs.x) > 1e-6f ? 1f / rs.x : 1f,
+                Mathf.Abs(rs.y) > 1e-6f ? 1f / rs.y : 1f,
+                Mathf.Abs(rs.z) > 1e-6f ? 1f / rs.z : 1f);
+
+            foreach (var kv in _spec.Slots)
+            {
+                var part = FindByName(root, "ShowIf_" + kv.Key);
+                if (part == null) { SlotReport += $"{kv.Key}(未找到);"; continue; }
+
+                if (kv.Value == null)                                  // 声明 null：我们这把枪没有这个挂点 → 藏掉（免得配件飘在旧位置）
+                {
+                    part.gameObject.SetActive(false);
+                    SlotReport += $"{kv.Key}✗(无挂点);";
+                    continue;
+                }
+
+                var v = kv.Value;
+                part.SetParent(root, true);                          // 保持世界变换，只把它挂到根下
+                if (v.Length >= 6)
+                    part.localRotation = Quaternion.Euler(v[3], v[4], v[5]);
+                part.localPosition = Vector3.Scale(new Vector3(v[0], v[1], v[2]), inv);   // 声明的是"米"
+                SlotReport += $"{kv.Key}✓;";
+            }
+        }
+
+        static Transform FindByName(Transform root, string name)
+        {
+            if (root == null) return null;
+            if (root.name == name) return root;
+            for (int i = 0; i < root.childCount; i++)
+            {
+                var hit = FindByName(root.GetChild(i), name);
+                if (hit != null) return hit;
+            }
+            return null;
         }
 
         /// <summary>每帧：图形被游戏换回去就再绑一次（手持实体只在需要时才重建，避免每帧刷新）。</summary>

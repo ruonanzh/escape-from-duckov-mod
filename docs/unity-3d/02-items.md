@@ -42,7 +42,7 @@ action=dump    class=Item  match="typeID=<id>"  depth=2    # 从物品反查 ite
 ## 挂载点
 
 - 世界/地面模型走 `Item.itemGraphic`（`ItemGraphicInfo`）那棵树；
-- 挂饰/附加件挂 `ItemGraphicInfo.sockets`（**挂点全清单 + 命名变体**见 [`00-shared.md`](00-shared.md) 的「挂点」一节）。
+- 挂饰/附加件：挂到 `ItemGraphicInfo.sockets` 里的 socket（运行时还可 `DuckovItemAgent.GetSocket(name, createNew)` / `AddSocket(transform)`）；注意游戏里 `Socket` 与 `Soket` 两种拼法都有。
 
 
 ## 地面模型与身上模型：同一个

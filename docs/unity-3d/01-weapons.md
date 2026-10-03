@@ -12,6 +12,28 @@
 
 **配件怎么装到枪上**：配件物品带 `ItemSetting_Accessory` 组件；枪上有 **slot**（`ItemStatsSystem.Items.Slot`，用 `key` 标识、`requireTags`/`excludeTags` 筛能装什么），插进去后由 `AccessoryBase.socketName` 决定挂到**枪模型上的 socket**。
 
+**槽位就 5 个**（实测）：`Scope`(48) · `Tec`(39) · `Muzzle`(36) · `Stock`(32) · `Grip`(28)。
+它们在武器模型里体现为**条件零件**，由游戏按「装了哪些配件」开关：
+
+| 命名 | 含义 |
+|---|---|
+| `ShowIf_<槽位>` | 装了该槽位配件时**显示**的模型（配件本身；实测 MP5 的 `ShowIf_Scope` 用的是 M700 的材质，即借来的配件网格）|
+| `HideIf_<槽位>` | 装了该槽位配件时**隐藏**的「原装件」—— **它属于这把枪本身** |
+
+→ 换枪模型时：`WPN_*`（枪身）+ `HideIf_*`（自带件）**全关掉**，`ShowIf_*` 与特效保留（见 [`02-items.md`](02-items.md) 的运行时一节）。
+
+**配件装在哪 = 我们自己声明**（模型文件的 `slots` 字段，米、模型自身坐标系）：
+
+```
+"slots": {
+  "Scope":  [0, 0.005, -0.03],   // 机匣顶部导轨
+  "Muzzle": [0, -0.035, 0.23],   // 枪管口
+  "Stock":  null                  // null = 这把枪没有该挂点 → 隐藏对应的 ShowIf_
+}
+```
+- `slots` **可选**；每项可为 `null`；**不同枪槽位集合不同**（UZI ≠ MP5），只写有的那几个即可。
+- 运行时把 `ShowIf_<槽位>` 零件挪到声明的位置（只改位置，保留它自己的旋转/缩放）。
+
 **配件的模型**：就是它自己的 `itemGraphic`（命名规律 `IG_Acc_<类型>_<名字>`，例：消音器 `Item_Muzzle_PST_DIS_1` → `IG_Acc_Muzzle_PST_DIS_1`）。
 （`ItemSetting_Accessory.accessoryPfb` 这个字段在 262 个资产里**全是 null** —— 不是模型来源。）
 

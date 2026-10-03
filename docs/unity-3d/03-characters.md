@@ -35,7 +35,7 @@
 | **骨骼名** | YSM 里**直接用游戏骨骼名**（`Spine.002` / `UpperArm.R` / `Hand.R`…）→ 按名字 1:1 挂载；导入别人做的 YSM（骨骼名是 `root`/`body`/`leftArm` 那套）才需要映射表，缺失的骨骼保留原挂点 |
 | **层（Layer）** | 挂上去的物件要放在**角色渲染器所在层** —— 角色模型根节点在 `layer 0`，但**相机不渲染 `layer 0`**（`Main Camera` 的 `cullingMask` 渲染 `layer 9`，NPC 鸭子模型的角色渲染器在 `layer 9`，另有 `layer 15`）；放错层就整块看不见 |
 | **材质** | **克隆游戏现有材质**再改颜色/贴图：身体材质 `Skin`、shader `SodaCraft/SodaCharacter`（自定义 URP shader，自建材质找不到它 → 粉紫）|
-| **挂点（socket）** | 全清单见 [`00-shared.md`](00-shared.md) 的「挂点」一节（`HelmatSocket`·`ArmorSocket`·`BackpackSocket`·`MeleeWeaponSocket`·`LeftHandSocket`·`RightHandSocket`·`FaceMaskSocket`·`HairSocket`·`MouthSocket`…）；`CharacterModel` 的 socket 字段是 `private`，用反射取 |
+| **挂点（socket）** | 清单见本文件「角色身上的挂点」；`CharacterModel` 的 socket 字段是 `private`，用反射取 |
 | **替换原有外观** | `CharacterSubVisuals.SetRenderersHidden(true)` 隐藏原渲染器、`AddRenderer(renderer)` 登记自己的渲染器 |
 | **找骨骼的入口** | `CharacterMainControl.characterModel` → `CharacterModel.transform` 往下按名字遍历（`FindDeepChild` 式递归）|
 
@@ -51,6 +51,24 @@ Character(Clone)/ModelRoot/0_CharacterModel_Custom_Template(Clone)/CustomFaceIns
      IG_Helmat_Storm_Lv5(Clone)→HelmatSocket、IG_Armor_Storm_Lv5(Clone)→ArmorSocket、
      IG_Backpack_LV5(Clone)→BackpackSocket、MeleeWeaponAgent_Knife_04_Karambit(Clone)→MeleeWeaponSocket
 ```
+
+### 角色身上的挂点（socket）
+
+挂点是**命名 Transform**，游戏按名字找它放东西 —— 实测清单（括号内是游戏里出现的次数）：
+
+| 挂点 | 放什么 |
+|---|---|
+| `ArmorSocket`(55) · `HelmatSocket`(55) · `BackpackSocket`(53) | 护甲 / 头盔 / 背包 |
+| `RightHandSocket`(55) · `LeftHandSocket`(28) · `Hand.Soket.L/R`(28) | 手上的东西（武器 / 手持物）|
+| `MeleeWeaponSocket`(64) · `MeleeWeaponSocketFixed`(28) | 近战武器 |
+| `FaceMaskSocket`(28) · `HairSocket`(28) · `MouthSocket`(28) · `FaceSocket`(4) | 面罩 / 头发 / 嘴部 |
+| `FootRSocket`(28) · `FootLSocket`(28) · `TailSocket`(28) | 脚部 / 尾巴 |
+| `PopTextSocket`(59) · `VehicleSocket`(5) | 伤害飘字 / 载具 |
+| `Sockets`(111) | 上面这些挂点的**容器节点**，它本身不是挂点 |
+
+- **装备/饰品**：游戏自己挂（装什么就把对应的 `IG_*` 挂到 socket 上，见 [`02-items.md`](02-items.md)）。
+- **我们生成的挂件**：把物体 `SetParent` 到对应 socket；运行时取挂点用 `ItemGraphicInfo.sockets`、`DuckovItemAgent.GetSocket(name, createNew)` / `AddSocket(transform)`；YSM 模型自带 `bones[].locators`。
+- ⚠️ 命名有变体：`Socket` 与 **`Soket`**（`Hand.Soket.L`）两种都要试。
 
 ## 运行时：怎么用（库 API）
 

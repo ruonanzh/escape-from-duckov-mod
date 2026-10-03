@@ -168,6 +168,11 @@ namespace ModelCheck
                 if (uv.X < -1e-4f || uv.X > 1 + 1e-4f || uv.Y < -1e-4f || uv.Y > 1 + 1e-4f)
                 { fail = $"UV 越界：({uv.X:0.###},{uv.Y:0.###})"; return; }
 
+            // 配件槽位：可选、每项可为 null（= 没有该挂点）；名字只认游戏那 5 个
+            foreach (var kv in spec.Slots)
+                if (System.Array.IndexOf(new[] { "Scope", "Tec", "Muzzle", "Stock", "Grip" }, kv.Key) < 0)
+                    warns.Add($"slots 里的 '{kv.Key}' 不是游戏槽位名（只有 Scope / Tec / Muzzle / Stock / Grip）");
+
             if (spec.Texture.Source == "file")
                 warns.Add($"贴图来自外部文件 {spec.Texture.File} —— 无法在此校验图片尺寸（要求与 size 一致）");
         }
