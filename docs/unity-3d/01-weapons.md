@@ -83,11 +83,28 @@ MP5 实测：
 ```
 - **`slots` 可选**，每项可为 `null`；**不同枪槽位集合不同**（UZI ≠ MP5），只写有的那几个。
 - 语义 = **槽位在我们模型上的位置**（米、模型自身坐标系，原点=模型原点）。
-- **不写就是自动**：先按**语义零件**算（`barrel` 前端 / `receiver` 顶面…，规则在 `MeshKit.TryGuessSlot`）；
-  role 不认识时才退回"原挂点在原枪身包围盒里的相对位置 → 我们 mesh 包围盒的同一相对位置"。
+- ⭐ **多数模型不用写 `slots`**：不写就是自动 —— 先按**语义零件**算（枪口=枪管前端、顶部=机匣顶面…，
+  规则在 `MeshKit.TryGuessSlot`），零件 role 不认识时才退回"原挂点在原枪身包围盒里的相对位置 →
+  我们 mesh 包围盒的同一相对位置"。**只在观感上要覆盖时才写 `slots`。**
 - ⚠️ **别拿整模型的 AABB 当"边缘"**：那样"顶部"会被对到整模型最高点（实测我们模型最高点是**后照门**，
   不是机匣顶面）。要按**哪个零件**的哪个面来取值。
-- 取值可以直接问工具：`model-check --file models/x.json --slots` 会按语义零件打印可抄进 `slots` 的建议值。
+
+| 槽位 | 自动摆放取哪 | 手算（模型坐标系）|
+|---|---|---|
+| `Muzzle` | `barrel` 前端 | `[barrel.x, barrel.y, barrel.z + barrel.h/2]` |
+| `Scope` | `receiver` 顶面 | `[receiver.x, receiver.y + receiver.h/2, 机匣中前段]` |
+| `Tec` | `receiver` 顶面后段 | 同上，z 往枪尾偏 |
+| `Grip` | `receiver` 底面 | `[receiver.x, receiver.y - receiver.h/2, 护木前段]` |
+| `Stock` | `stock` 后端 | `[stock.x, stock.y, stock.z - stock.d/2]` |
+
+- 取值可以直接**问工具**（按语义零件打印、可直接抄进 `slots`）：
+  ```
+  dotnet tools/model-check/bin/Release/net8.0/model-check.dll --file models/smg_compact.json --slots
+  ```
+- 工具会校验：**槽位名**（只认那 5 个）+ **数值离模型太远就 WARN**（超过 5cm，多半是填反轴/单位写错）。
+  但**"接在哪"是几何事实 + 观感的取舍**（枪口写 `0.22` = 接在枪管末端，写 `0.16` = 让配件往枪身套 6cm，
+  两者都合法），工具不会替你决定。
+  数值不对时改模型文件存盘即生效（demo 会热重载），不需要重新编译。
 
 **配件的几何怎么落**（实测 `IG_Acc_Muzzle_SMG_REC_4`，挂点局部坐标）：`z 0 → +0.247m`，**原点在尾端** ——
 也就是**配件后端正好落在挂点平面上**、朝枪口方向延伸；它的后端开口 **8.4 × 8.4cm**。

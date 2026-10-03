@@ -187,8 +187,24 @@ namespace ModelCheck
 
             // 配件槽位：可选、每项可为 null（= 没有该挂点）；名字只认游戏那 5 个
             foreach (var kv in spec.Slots)
+            {
                 if (System.Array.IndexOf(new[] { "Scope", "Tec", "Muzzle", "Stock", "Grip" }, kv.Key) < 0)
+                {
                     warns.Add($"slots 里的 '{kv.Key}' 不是游戏槽位名（只有 Scope / Tec / Muzzle / Stock / Grip）");
+                    continue;
+                }
+                var v = kv.Value;
+                if (v == null || v.Length < 3) continue;                 // null = 声明"没有这个挂点"，合法
+                // 数值合理性：离模型太远 = 多半填错（填反轴 / 单位写错 / 抄了别的模型）
+                const float tol = 0.05f;
+                var p3 = new Vec3(v[0], v[1], v[2]);
+                bool inside = p3.X >= mesh.Min.X - tol && p3.X <= mesh.Max.X + tol
+                           && p3.Y >= mesh.Min.Y - tol && p3.Y <= mesh.Max.Y + tol
+                           && p3.Z >= mesh.Min.Z - tol && p3.Z <= mesh.Max.Z + tol;
+                if (!inside)
+                    warns.Add($"slots['{kv.Key}'] = ({p3.X:0.###},{p3.Y:0.###},{p3.Z:0.###}) 离模型太远（模型盒 " +
+                              $"min=({mesh.Min.X:0.###},{mesh.Min.Y:0.###},{mesh.Min.Z:0.###}) max=({mesh.Max.X:0.###},{mesh.Max.Y:0.###},{mesh.Max.Z:0.###})）—— 检查是否填反了轴/单位写错");
+            }
 
             if (spec.Texture.Source == "file")
                 warns.Add($"贴图来自外部文件 {spec.Texture.File} —— 无法在此校验图片尺寸（要求与 size 一致）");
