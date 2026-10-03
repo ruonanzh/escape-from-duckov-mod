@@ -83,30 +83,38 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
 ```csharp
 // 玩家：用 IsMainCharacter 判定 —— 不要拿 FindObjectsOfType 的第一个，那可能是 NPC
 var player = Object.FindObjectsOfType<CharacterMainControl>().FirstOrDefault(c => c.IsMainCharacter);
-var model  = player.characterModel;          // 进关卡前是 null → 每秒重试
+var model  = player.characterModel;          // 进关卡前 / 加载中是 null → 每帧重试
 var root   = model.transform;                // 骨骼都在它下面
 
-// 特定 NPC：按 GameObject 名或“模型名”筛
+// 特定 NPC：按 GameObject 名或"模型名"筛（写具体名字，例 0_CharacterModel_Boss_Jeff / 宠物 0_CharacterModel_Pet_*）
 var npc = Object.FindObjectsOfType<CharacterMainControl>()
             .FirstOrDefault(c => c.characterModel != null
-                              && c.characterModel.name.StartsWith("0_CharacterModel_Custom_"));
+                              && c.characterModel.name.StartsWith("0_CharacterModel_Boss_Jeff"));
 
-// 替换原外观：把"本体"渲染器直接关掉（改层没用 —— 游戏会改回来）；装备/武器要留着
+// 替换原外观：把"本体"渲染器直接关掉（改层没用 —— 游戏自己的显隐就是改层）；装备/武器要留着
 foreach (var r in model.GetComponentsInChildren<Renderer>(true))
 {
     if (IsOurs(r)) continue;                       // 我们自己建的方块
     bool equip = IsUnderSocket(r, model.transform); // 装备都挂在 *Socket* 下（MeleeWeaponSocket/HelmatSocket/…）
-    r.enabled = equip;                              // 本体关掉、装备打开 —— enabled 是硬的，游戏不会动它
+    r.enabled = equip;                              // 本体关掉、装备打开 —— 游戏从不写 enabled，所以这拦得住
 }
-// 每帧重申一次（游戏刷新只改层，不改 enabled）｜隐藏层 SpecialCamera=31，可见层 Character=9
+// 每帧：检查"模型实例/我们建的方块是否还在"—— 模型被游戏重建时它们会消失 → 重挂（见下第 2 条）
+```
 
-- **必须用 `IsMainCharacter` 挑玩家**：主菜单里一个角色都没有；关卡里一次能找到十几个（玩家 + NPC + 宠物），`FindObjectsOfType` 的第一个常是 NPC。
-- **角色模型会被游戏重建**（进关卡、换装备）→ 每秒检查“模型根是否变了 / 方块是否还在”，变了就重新挂。
-- **别用“改层”当隐藏**：游戏刷新会把层改回 `Character`（实测踩过）；`enabled = false` 才拦得住。
-- **卡 T-pose**：Unity `Animator` 默认 `CullUpdateTransforms` —— 本体渲染器一被禁用就停更骨骼 → 把 Animator 设成 `AlwaysAnimate`。
+- **必须用 `IsMainCharacter` 挑玩家**：`FindObjectsOfType` 的第一个常是 NPC；场景里角色数从 0（主菜单/加载中）
+  到十几个都不等，先判 `characterModel != null`。
+- **角色模型会被游戏重建**：`CharacterMainControl.SetCharacterModel` 里是
+  `Instantiate(新模型)` + **`Destroy(旧模型.gameObject)`** → 我们挂在骨骼下的方块会**跟着一起被销毁**
+  → 所以每帧检查"方块还在不在 / 模型实例是不是同一个"，不在就重挂。（触发时机视玩法而定，防御性处理最稳。）
+- **别用"改层"当隐藏**：游戏自己的显隐就是改层（`CharacterSubVisuals.SetRenderersHidden` 把层在
+  `SpecialCamera`(31) ↔ `Character`(9) 之间切），我们的层会被它覆盖 → 用 `enabled = false`。
+- **卡 T-pose**：游戏**没有**设置 `Animator.cullingMode`（搜遍 DLL 没有 `AlwaysAnimate`）→ 默认
+  `CullUpdateTransforms`，本体渲染器一被禁用就停更骨骼 → 自己把 Animator 设成 `AlwaysAnimate`。
 - **白模**：找不到材质源时（有的模型没有蒙皮网格）取任意有材质的渲染器；都没有才是白模。
-- **装备规则**：挂在名字含 `Socket` 的挂点下 = 装备/武器（背包、头盔、手里的枪）→ 保持 `enabled = true`，否则背包和枪会一起消失。
-- **模板骨架要跟目标角色对上**：玩家在关卡里用 `Pelvis`/`UpperArm` 那套；boss Jeff 用 `Hip`/`Arm.Root` 那套 —— 选错会**静默不挂**（用 `inspect_game_data` dump 目标模型的骨骼名确认）。
+- **装备规则**：挂在名字含 `Socket` 的挂点下 = 装备/武器（背包、头盔、手里的枪）→ 保持 `enabled = true`，
+  否则背包和枪会一起消失。
+- **模板骨架要跟目标角色对上**：玩家用 `Pelvis`/`UpperArm` 那套；boss Jeff 用 `Hip`/`Arm.Root` 那套 ——
+  选错会**静默不挂**（用 `inspect_game_data` dump 目标模型的骨骼名确认）。
 - 可复用实现：`reference/mod-kit/CharacterModelReplacer.cs`（`ReplaceBody` 开关 = 替换 / 只增加；`Attach` + 每帧 `Tick`）+ `GameApi.cs`（找玩家 / 找 NPC）。
 - 例子：`reference/cube_person/`（读 mod 目录的 `config.json`，可切玩家/NPC，改完保存即生效）。
 

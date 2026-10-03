@@ -43,8 +43,9 @@ namespace CubePerson
             var who = PickTarget();
             if (who != null && (!_replacer.Attached || _replacer.HiddenBody == 0))
             {
+                bool wasAttached = _replacer.Attached;
                 bool ok = _replacer.Attach(who);
-                if (ok) Log($"挂上 '{who.name}'（模型={GameApi.GetModel(who)?.name}）；方块 {_replacer.CubeCount}，骨骼 {_replacer.AttachedBones.Count}，缺 {_replacer.MissingBones.Count}" +
+                if (ok && !wasAttached) Log($"挂上 '{who.name}'（模型={GameApi.GetModel(who)?.name}）；方块 {_replacer.CubeCount}，骨骼 {_replacer.AttachedBones.Count}，缺 {_replacer.MissingBones.Count}" +
                             $"；材质源={(_replacer.MaterialSource != null ? _replacer.MaterialSource.name + "/" + _replacer.MaterialSource.shader.name : "无(会用兜底白模)")}");
                 Flush();
             }
