@@ -57,7 +57,26 @@ action=dump    class=Item  match="typeID=<id>"  depth=2    # 从物品反查 ite
 
 实测证据：`Item_ArmorLV5_2` → `itemGraphic` = `IG_Armor_Lv5-2`；运行时角色 `ArmorSocket` 下挂的就是 `IG_Armor_Storm_Lv5(Clone)`（同名 IG prefab）；放置入口是 `ItemGraphicInfo.CreateAGraphic(item, parent, snapGround, useSpriteIfNoGraphic)` —— 参数就是「**父节点**」。
 
-**例外（1580 件物品里 11 件）**：地面不用 3D 模型而用**贴图**（`Item.useSpriteForPickup = 1`），另有 `ItemGraphicInfo.spriteGraphicPfb` / `fallbackSprite` 兜底。
+### 例外：11 件物品掉在地上时只显示一张**图标贴图**
+
+实测 1581 件物品里 **11 件** `Item.useSpriteForPickup = 1`：
+
+| 类别 | 物品 |
+|---|---|
+| 基地墙纸（6）| `Item_BaseWallPaper_Rock` / `_NewYear` / `_White` / `_Island` / `_Test` / `_Warehouse` |
+| 基地装饰（3）| `Item_BaseDeco_Snow` / `_Halloween` / `_Test` |
+| 电池（2）| `Item_BatteryPP3`（typeID 11）· `Item_BatteryR6`（typeID 8）|
+
+机制（反编译 `InteractablePickup.CreateGraphic`）：**掉在地上的可拾取物**按这个字段二选一 ——
+`= 1` 时克隆通用贴图 prefab `ItemGraphicInfo.spriteGraphicPfb`，并把 `Item.Icon` 设成它的 sprite（**地上一张图**）；
+`= 0` 时才 `ItemGraphicInfo.CreateAGraphic(...)` 克隆物品自己的 `itemGraphic`（3D 模型）。
+
+- **平时几乎见不到**：`CreateGraphic()` 只在物品**没有自己的 pickup 显示 prefab** 时才被调用
+  （`ItemExtensions.CreatePickupAgent` 先取 `AgentUtilities.GetPrefab("Pickup")`，取不到才用通用 `PickupAgentPrefab`）。
+  想看效果：把一块电池丢到地上（电池没有自己的 pickup prefab → 走这条路 → 显示图标）。
+- 另一处兜底在 `ItemGraphicInfo.CreateAGraphic`：物品**根本没有** `itemGraphic` 时，同样用 `spriteGraphicPfb` + `Icon` 显示图标。
+- ⚠️ **只影响"掉在地上的样子"**：拿在手里 / 穿在身上 / 背包图标仍用 3D 模型（这 11 件都有 `itemGraphic`）→
+  **换模型不用管这个字段**；但如果要让这些物品在地上显示新模型，得**先清掉 `useSpriteForPickup`**。
 
 → 做模型时的含义：**一个物品做一份模型就够了**，地面 / 身上 / 手持都由游戏复用同一份；`attach` 只决定默认挂哪。
 
