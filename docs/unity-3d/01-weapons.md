@@ -20,7 +20,7 @@
 | `ShowIf_<槽位>` | 装了该槽位配件时**显示**的模型（配件本身；实测 MP5 的 `ShowIf_Scope` 用的是 M700 的材质，即借来的配件网格）|
 | `HideIf_<槽位>` | 装了该槽位配件时**隐藏**的「原装件」—— **它属于这把枪本身** |
 
-→ 换枪模型时：`WPN_*`（枪身）+ `HideIf_*`（自带件）**全关掉**，`ShowIf_*` 与特效保留（见 [`02-items.md`](02-items.md) 的运行时一节）。
+→ 换枪模型时：`WPN_*`（枪身）+ `HideIf_*`（自带件）**全关掉**，`ShowIf_*` 与特效保留（见本文「运行时：怎么把新枪模型装进游戏」）。
 
 **配件装在哪 = 我们自己声明**（模型文件的 `slots` 字段，米、模型自身坐标系）：
 
@@ -42,7 +42,7 @@
 - `ShowIf_<槽位>` = **配件物品的模型**（装了才显示；实测 MP5 的 `ShowIf_Scope` 借用了 M700 的材质）；
 - `HideIf_<槽位>` = **枪自带的默认件**（装了该槽位配件就隐藏）—— **它属于这把枪本身**。
 
-→ 换枪模型时：`WPN_*` + `HideIf_*`（旧枪的全部几何）都要关掉，`ShowIf_*` 与特效保留（见 [`02-items.md`](02-items.md) 的「运行时：怎么换物品模型」）。
+→ 换枪模型时：`WPN_*` + `HideIf_*`（旧枪的全部几何）都要关掉，`ShowIf_*` 与特效保留。
 
 ## 样例（用 `inspect_game_data` 从游戏里读出的原文）
 
@@ -105,7 +105,6 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
 
 ## 挂载点
 
-> 运行时怎么换（手持 / 掉落两条路、注意事项）：见 [`02-items.md`](02-items.md) 的「运行时：怎么换物品模型」——枪与物品是同一套机制。
 
 | 目标 | 做法 |
 |---|---|
@@ -113,6 +112,57 @@ action=export  class=CharacterSubVisuals  field=["m_GameObject.#name","renderers
 | 手持显示 | `ItemAgentUtilities.GetPrefab/CreateAgent/BindNewAgent` |
 | 配件 | 挂到 `ItemGraphicInfo.sockets` 的 socket Transform |
 
+
+## 运行时：怎么把新枪模型装进游戏
+
+**一句话：用 JSON 在运行时算出「几何」，替换掉原枪 prefab 里的几何；prefab 的其余一切照抄原版**
+（sockets、配件槽位、特效节点 `MuzzleFlash`、组件 `ItemAgent_Gun`、动画）→ 所以新枪一上来就能跟手、能装配件、有枪口火焰。
+
+```
+models/*.json（零件清单）
+   ↓ MeshKit 算顶点/索引/UV        ↓ TextureKit 按 fills 画贴图
+   ↓
+拼出一个 GameObject（MeshFilter + MeshRenderer + 克隆枪身材质）
+   ↓ 挂进“原枪 prefab 的副本”里：旧枪几何关掉，我们的 mesh 挂上
+   ↓ 写回 Item.itemGraphic（模板级）→ 游戏以后实例化的就是这份“换了几何的原枪 prefab”
+```
+
+### 两条必须分开处理的情况
+
+| 情况 | 做法 |
+|---|---|
+| 游戏**会自己重建**的实例（掉落 / 捡起 / 切枪 / 新生成）| ① **改物品模板** `ItemAssetsCollection.GetPrefab(typeID)` 的 `Item.itemGraphic` + ④ **清实体缓存** `hashedAgentsCache` → 游戏重建时就用我们的 |
+| **已经拿在手里**（游戏不会重建）的那个 | ③ **就地换几何**：关掉旧枪渲染器，在**原枪身零件的变换下**挂我们的 mesh（只改渲染器，**不销毁任何东西**）|
+
+⚠️ `Item.ItemGraphic` 只有 getter → 反射写私有字段 `itemGraphic`（社区顺序：先试可写属性 `ItemGraphic`，再退字段）。
+
+### 枪的几何 = 四类零件
+
+| 零件 | 是什么 | 替换时 |
+|---|---|---|
+| `WPN_<枪名>` | **枪身本体** | **关掉** |
+| `HideIf_<槽位>` | **枪自带的默认件**（枪口 / 枪托 / 镜座 / 握把）| **关掉** —— 也是这把旧枪的几何 |
+| `ShowIf_<槽位>` | **配件物品的模型**（装了才显示；实测 MP5 的 `ShowIf_Scope` 用的是 M700 材质）| **保留** |
+| `MuzzleFlash` / `Particle*` | 特效 | 保留 |
+
+**配件装在哪**由模型文件的 `slots` 声明（上位「配件怎么装到枪上」一节）：`ShowIf_<槽位>` 零件会被挪到声明的挂点。
+
+### 尺寸与原点
+
+- **尺寸 = 真实米制、`scale` 恒为 1**（实测：原游戏物品图形 99.5% 是 1、社区 mod 包 100% 是 1）→ 不缩放。
+- 但 prefab 内部的**缩放链不一定是 1** → mesh 挂在**原枪身零件**的变换下，`localScale` 取 `1 / 该零件 lossyScale`，
+  保证**世界尺度**是真实尺寸（实测：挂在根节点会被父级缩放带偏到看不见）。
+- **原点 = 握把**（手握住的地方），由模型文件的 `pivotOffset`（米）声明。
+
+### 坑（都实测踩过）
+
+| 现象 | 原因 → 做法 |
+|---|---|
+| 武器**选不中 / 用不了** | 用 `ItemAgentUtilities.CreateAgent` 去"替换"活实体会**销毁**它，游戏引用失效 → **就地换几何**，别销毁 |
+| 改完开局还是原版 | 改 prefab **不会重建已经拿在手里的实例** → 那个实例要**就地换** |
+| 新模型看不见 / 巨大 | 挂在了 prefab 里缩放不为 1 的节点下没补缩放，或把"某个小零件"当锚点 → 用**原枪身零件**当锚点 + 补 `1/lossyScale` |
+| 配件消失 / 只剩几个 | 把 `ShowIf_*`（配件模型）或 `HideIf_*` 处理错 → `WPN_*`+`HideIf_*` 关掉、`ShowIf_*` 保留 |
+| 找不到"原版是不是 1 倍" | 数一数：原游戏物品图形 99.5% 是 `scale=1`、社区包 100% → **按真实尺寸建模，不要缩放去凑** |
 
 ## 例子（照着写）
 

@@ -66,7 +66,7 @@ Character(Clone)/ModelRoot/0_CharacterModel_Custom_Template(Clone)/CustomFaceIns
 | `PopTextSocket`(59) · `VehicleSocket`(5) | 伤害飘字 / 载具 |
 | `Sockets`(111) | 上面这些挂点的**容器节点**，它本身不是挂点 |
 
-- **装备/饰品**：游戏自己挂（装什么就把对应的 `IG_*` 挂到 socket 上，见 [`02-items.md`](02-items.md)）。
+- **装备/饰品**：游戏自己挂 —— 装了什么就把那件物品的 `IG_*` 挂到对应 socket 上（我们只要把物品的 `itemGraphic` 做好即可）。
 - **我们生成的挂件**：把物体 `SetParent` 到对应 socket；运行时取挂点用 `ItemGraphicInfo.sockets`、`DuckovItemAgent.GetSocket(name, createNew)` / `AddSocket(transform)`；YSM 模型自带 `bones[].locators`。
 - ⚠️ 命名有变体：`Socket` 与 **`Soket`**（`Hand.Soket.L`）两种都要试。
 

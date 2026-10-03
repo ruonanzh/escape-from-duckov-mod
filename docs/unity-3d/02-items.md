@@ -37,7 +37,7 @@ action=dump    class=Item  match="typeID=<id>"  depth=2    # 从物品反查 ite
 - **背包**：主体盒体（实测 `Backpack_LV1` 全尺寸 **0.44 × 0.38 × 0.30 m**）+ 背带（细长盒体/圆柱）+ 细节（小盒体、扣具圆柱）。
 - **消耗品（罐头/药剂）**：圆柱 + 顶盖圆台；贴图无关时用纯色分 submesh 区分。
 - **装饰/家具**：多为静态盒体/旋转体组合，可多 submesh 分件上色。
-- 结构与材质做法同 [`01-weapons.md`](01-weapons.md)；**先克隆同类物品材质**再改色，避免 URP 粉紫。
+- 结构参考同类的真实物品（`IG_Backpack_*` / `IG_BaseDeco_*` 等）；**先克隆同类物品的材质**再改色，避免 URP 粉紫。
 
 ## 挂载点
 
@@ -61,7 +61,7 @@ action=dump    class=Item  match="typeID=<id>"  depth=2    # 从物品反查 ite
 
 → 做模型时的含义：**一个物品做一份模型就够了**，地面 / 身上 / 手持都由游戏复用同一份；`attach` 只决定默认挂哪。
 
-## 运行时：怎么换物品模型（枪 / 背包 / 箱子…）
+## 运行时：怎么换物品模型（背包 / 护甲 / 消耗品 / 容器…）
 
 **一句话：用 JSON 在运行时算出「几何」，替换掉原版 prefab 里的几何；prefab 的其余一切照抄原版。**
 
@@ -69,41 +69,36 @@ action=dump    class=Item  match="typeID=<id>"  depth=2    # 从物品反查 ite
 models/*.json（零件清单）
    ↓ MeshKit 算顶点/索引/UV          ↓ TextureKit 按 fills 画贴图
    ↓
-我们拼出一个 GameObject（MeshFilter + MeshRenderer + 克隆来的材质）
-   ↓ 挂进“原版 prefab 的副本”里：旧枪的几何关掉，我们的 mesh 挂上
+拼出一个 GameObject（MeshFilter + MeshRenderer + 克隆来的材质）
+   ↓ 挂进“原版 prefab 的副本”里：旧几何关掉，我们的 mesh 挂上
    ↓ 写回 Item.itemGraphic（模板级）→ 游戏以后实例化的就是这份“换了几何的原版 prefab”
 ```
 
-**为什么要“复制原 prefab + 换几何”，而不是从零重建**：sockets / 配件槽位（`ShowIf_*`）/ 特效节点（`MuzzleFlash`）/
-组件（`ItemAgent_Gun`）/ 动画 —— 全部照抄原版，所以一上来就能跟手、能装配件、有枪口火焰。
-（工坊武器 mod 的差别只在：他们的几何是 Unity/美术/AI 事先做好的；我们是**运行时用 JSON 现算**。）
+**为什么要“复制原 prefab + 换几何”，而不是从零重建**：`ItemGraphicInfo` 上的 `groundPoint` / `sockets` /
+`subGraphics`、以及它挂到角色 socket 的整套关系 —— 全部照抄原版，所以物品一上来就能正确落地、能当装备挂到身上。
+（工坊物品 mod 的差别：它们的几何是事先做好的（Unity/美术/AI），我们是**运行时用 JSON 现算**。）
 
-### 两条必须分开处理的情况
+### 物品的两处模型
 
-| 情况 | 做法 |
-|---|---|
-| **游戏会自己重建的实例**（开局之后掉落 / 捡起 / 切枪 / 新生成）| ① **改物品模板** `ItemAssetsCollection.GetPrefab(typeID)` 的 `Item.itemGraphic` + ④ **清实体缓存** `hashedAgentsCache` → 游戏重建时就用我们的 |
-| **已经拿在手里、游戏不会重建**的那个实例 | ③ **就地换几何**：把旧枪的渲染器关掉，在**原枪身零件的变换下**挂我们的 mesh（⭐ 只改渲染器，不销毁任何东西）|
-
-⚠️ **`Item.ItemGraphic` 只有 getter** → 反射写私有字段 `itemGraphic`（社区 mod 的顺序是"先试可写属性 `ItemGraphic`，再退到字段"，更能抗更新）。
-
-### 手里那把枪 = 四类零件（实测 MP5）
-
-| 零件 | 是什么 | 替换时 |
+| 在哪 | 是什么 | 怎么换成我们的 |
 |---|---|---|
-| `WPN_<枪名>` | **枪身本体** | **关掉** |
-| `HideIf_<槽位>` | **枪自带的默认件**（枪口 / 枪托 / 镜座 / 握把）| **关掉** —— 它们也是**这把旧枪的一部分** |
-| `ShowIf_<槽位>` | **玩家装的配件物品的模型**（实测 MP5 的 `ShowIf_Scope` 用的是 M700 材质，即借来的配件网格）| **保留** —— 属于**配件那件物品** |
-| `MuzzleFlash` / `Particle*` | 特效 | 保留 |
+| **掉落 / 展示** | `ItemGraphicInfo`（游戏用 `ItemGraphicInfo.CreateAGraphic(item.ItemGraphic, …)` 实例化）| **克隆 `item.ItemGraphic`** → 换掉克隆里的几何 → 反射写回 `Item.itemGraphic` |
+| **穿在身上 / 拿在手上** | 游戏自己把物品的 `IG_*` 挂到角色 socket（`ArmorSocket` / `HelmatSocket` / `BackpackSocket` / `RightHandSocket`…）| 同上：换了 `itemGraphic`，游戏挂上去的就是我们的 |
 
-→ **新枪模型 = 枪身 + 自带件**：换上就把旧枪几何**全部关掉**（`WPN_*` + `HideIf_*`），只留配件与特效。
+### 两步走（都在库 `ItemModelBinder` 里）
+
+1. **改物品模板**：`ItemAssetsCollection.GetPrefab(typeID)` 的 `Item.itemGraphic` → 之后**新生成**的实例（掉落/捡起/开局）
+   天生就用我们的几何；同时**清实体缓存** `hashedAgentsCache`（社区做法），让游戏重建时读到我们的。
+2. **已经存在的实例**（游戏不会重建）→ **就地**把旧的 `MeshRenderer` 关掉、把我们的 mesh 挂进原几何的变换下
+   （**只改渲染器，不销毁任何东西**）。
+   ⚠️ `Item.ItemGraphic` 只有 getter → 反射写私有字段 `itemGraphic`（社区顺序：先试可写属性 `ItemGraphic`，再退字段）。
 
 ### 尺寸与原点
 
-- **尺寸 = 真实米制、`scale` 恒为 1**（实测原游戏物品图形 99.5%、社区 mod 包 100% 都是 1）→ 不缩放。
-- 但 prefab 内部的**缩放链不一定是 1** → 我们的 mesh 挂在**原枪身零件**的变换下，并把 `localScale` 设成
-  `1 / 该零件 lossyScale`，**让它在世界尺度上保持真实尺寸**（实测：挂在根节点会被父级缩放带偏到看不见）。
-- **原点 = 游戏放置点**：武器 = 握把；由模型文件的 `pivotOffset`（米）声明。
+- **尺寸 = 真实米制、`scale` 恒为 1**（实测：原游戏物品图形 99.5% 是 1、社区 mod 包 100% 是 1）→ 不缩放。
+- prefab 内部**缩放链不一定是 1** → mesh 挂在**原几何零件**的变换下，`localScale` 取 `1 / 该零件 lossyScale`，
+  保证**世界尺度**是真实尺寸（实测：挂在根节点会被父级缩放带偏到看不见）。
+- **原点 = 放置点**：物品按“底部中心”做最省事（游戏用 `groundPoint` 贴地）；由模型文件的 `pivotOffset`（米）声明。
 
 ## 这些坑：哪些是游戏事实、哪些是做法不对
 
@@ -114,7 +109,7 @@ models/*.json（零件清单）
 | 物品里混着几米大的特效零件（实测包围盒 **8 m**）| **游戏事实**：算尺寸只能按枪身 |
 | 物品 prefab 的比例和真实尺寸不一致 | **游戏事实**：要按原模型对齐 |
 | “关掉全部渲染器” → 配件 / 弹匣消失 / 只有几个配件 | **做法不对**：手里是零件组合，除枪身外都由游戏管 |
-| “把 mesh 塞进第一个渲染器” → 只见一个小黑管 | **做法不对**：要按语义取**枪身**（`WPN_*` 或最大的非配件零件）|
+| “把 mesh 塞进第一个渲染器” → 只见一个很小的碎片 | **做法不对**：锚点要按语义取**主体零件**（不能随便取第一个）|
 | “改 layer 当隐藏”被游戏改回去 | **游戏事实**（角色那条踩过）；物品这边直接用 `enabled = false` |
 
 ## 可运行的例子
