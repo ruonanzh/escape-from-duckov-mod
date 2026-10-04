@@ -115,10 +115,24 @@ namespace BundleSwap
 
             try { _bundle = AssetBundle.LoadFromFile(path); }
             catch (Exception e) { Log($"✗ LoadFromFile 抛异常：{e}"); return; }
-            if (_bundle == null) { Log($"✗ 第 {_loadTries} 次 LoadFromFile 返回 null → 2 秒后重试"); return; }
+            if (_bundle == null)
+            {
+                // ★ 同进程内同名 bundle 只能加载一次：如果别的 mod（如工坊那个）已经加载过，
+                //   LoadFromFile 会返回 null —— 这时**直接借用**那个已加载的 bundle ✓
+                string want = Path.GetFileName(path);
+                string loaded = "";
+                foreach (var b in AssetBundle.GetAllLoadedAssetBundles())
+                {
+                    if (b == null) continue;
+                    loaded += b.name + " ";
+                    if (b.name == want || b.name == Path.GetFileNameWithoutExtension(path)) { _bundle = b; break; }
+                }
+                if (_bundle != null) Log($"✓ 复用已加载的 bundle：{_bundle.name}（同进程同名 bundle 只能加载一次）");
+                else { Log($"✗ 第 {_loadTries} 次 LoadFromFile 返回 null；已加载的 bundle=[{loaded}] → 2 秒后重试"); return; }
+            }
 
             string[] names = _bundle.GetAllAssetNames();
-            Log($"✓ 第 {_loadTries} 次加载成功：{_bundle.name}，{names.Length} 个资产");
+            Log($"✓ 第 {_loadTries} 次加载成功：{_bundle.name}，{names.Length} 个资产  ← 文件={path}");
 
             GameObject prefab = null;
             if (!string.IsNullOrEmpty(_wantedAsset)) prefab = _bundle.LoadAsset<GameObject>(_wantedAsset);
