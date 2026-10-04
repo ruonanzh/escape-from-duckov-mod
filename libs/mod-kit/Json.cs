@@ -43,6 +43,12 @@ namespace ModelKit
         public bool Has(string key) => Kind == JsonKind.Object && Object.ContainsKey(key);
     }
 
+    /// <summary>JSON 解析失败（本文件自带，不依赖别处 ✓）</summary>
+    public sealed class JsonException : System.Exception
+    {
+        public JsonException(string message) : base(message) { }
+    }
+
     public static class Json
     {
         public static JsonValue Parse(string text)
@@ -56,7 +62,7 @@ namespace ModelKit
         static JsonValue ParseValue(string s, ref int i)
         {
             SkipWs(s, ref i);
-            if (i >= s.Length) throw new ModelKitException("JSON 意外结束");
+            if (i >= s.Length) throw new JsonException("JSON 意外结束");
             char c = s[i];
             switch (c)
             {
@@ -81,14 +87,14 @@ namespace ModelKit
                 SkipWs(s, ref i);
                 var key = ParseString(s, ref i);
                 SkipWs(s, ref i);
-                if (i >= s.Length || s[i] != ':') throw new ModelKitException($"JSON: 期望 ':'（位置 {i}）");
+                if (i >= s.Length || s[i] != ':') throw new JsonException($"JSON: 期望 ':'（位置 {i}）");
                 i++;
                 obj[key] = ParseValue(s, ref i);
                 SkipWs(s, ref i);
-                if (i >= s.Length) throw new ModelKitException("JSON: 对象未闭合");
+                if (i >= s.Length) throw new JsonException("JSON: 对象未闭合");
                 if (s[i] == ',') { i++; continue; }
                 if (s[i] == '}') { i++; break; }
-                throw new ModelKitException($"JSON: 期望 ',' 或 '}}'（位置 {i}）");
+                throw new JsonException($"JSON: 期望 ',' 或 '}}'（位置 {i}）");
             }
             return new JsonValue { Kind = JsonKind.Object, Object = obj };
         }
@@ -103,10 +109,10 @@ namespace ModelKit
             {
                 arr.Add(ParseValue(s, ref i));
                 SkipWs(s, ref i);
-                if (i >= s.Length) throw new ModelKitException("JSON: 数组未闭合");
+                if (i >= s.Length) throw new JsonException("JSON: 数组未闭合");
                 if (s[i] == ',') { i++; continue; }
                 if (s[i] == ']') { i++; break; }
-                throw new ModelKitException($"JSON: 期望 ',' 或 ']'（位置 {i}）");
+                throw new JsonException($"JSON: 期望 ',' 或 ']'（位置 {i}）");
             }
             return new JsonValue { Kind = JsonKind.Array, Array = arr };
         }
@@ -114,7 +120,7 @@ namespace ModelKit
         static string ParseString(string s, ref int i)
         {
             SkipWs(s, ref i);
-            if (i >= s.Length || s[i] != '"') throw new ModelKitException($"JSON: 期望字符串（位置 {i}）");
+            if (i >= s.Length || s[i] != '"') throw new JsonException($"JSON: 期望字符串（位置 {i}）");
             i++;
             var sb = new StringBuilder();
             while (i < s.Length)
@@ -144,7 +150,7 @@ namespace ModelKit
                     default: sb.Append(e); break;
                 }
             }
-            throw new ModelKitException("JSON: 字符串未闭合");
+            throw new JsonException("JSON: 字符串未闭合");
         }
 
         static double ParseNumber(string s, ref int i)
@@ -153,7 +159,7 @@ namespace ModelKit
             while (i < s.Length && (char.IsDigit(s[i]) || s[i] == '-' || s[i] == '+' || s[i] == '.' || s[i] == 'e' || s[i] == 'E')) i++;
             var slice = s.Substring(start, i - start);
             if (!double.TryParse(slice, NumberStyles.Float, CultureInfo.InvariantCulture, out var d))
-                throw new ModelKitException($"JSON: 不是数字 '{slice}'（位置 {start}）");
+                throw new JsonException($"JSON: 不是数字 '{slice}'（位置 {start}）");
             return d;
         }
 
@@ -165,7 +171,7 @@ namespace ModelKit
         static void Expect(string s, ref int i, string token)
         {
             if (i + token.Length > s.Length || s.Substring(i, token.Length) != token)
-                throw new ModelKitException($"JSON: 期望 '{token}'（位置 {i}）");
+                throw new JsonException($"JSON: 期望 '{token}'（位置 {i}）");
             i += token.Length;
         }
     }
