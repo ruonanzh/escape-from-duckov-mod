@@ -51,8 +51,22 @@ namespace ModelKit
             var sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);
             sprite.name = "WeaponIconSprite";
 
+            // 实例 + **同 typeID 的模板**都设（卡片读哪个都能覆盖 ✓ 不用赌它读哪个 ✓）
             int set = SetIcon(item, sprite);
-            return $"图标已设置（{tex.width}x{tex.height}，抠掉 {keyed} 个白底像素；写入 {(set > 0 ? "成功" : "失败")}）";
+            int tpl = 0;
+            try
+            {
+                var typeId = item.TypeID;
+                foreach (var other in Resources.FindObjectsOfTypeAll<ItemStatsSystem.Item>())
+                {
+                    if (other == null || ReferenceEquals(other, item)) continue;
+                    if (other.TypeID != typeId) continue;
+                    if (SetIcon(other, sprite) > 0) tpl++;
+                }
+            }
+            catch (Exception e) { return $"图标已设到实例（{tex.width}x{tex.height}，白底像素 {keyed}），模板扫描失败：{e.Message}"; }
+
+            return $"图标已设置：{tex.width}x{tex.height}（白底像素 {keyed}）；实例写入 {(set > 0 ? "成功" : "失败")}，同 typeID 模板 {tpl} 个";
         }
 
         /// <summary>`Item.icon` 既是字段也是只读属性 → 两条路都试（反射，避免版本差异）</summary>
