@@ -1,8 +1,8 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, extname, isAbsolute, resolve } from "node:path";
-import { readState } from "../lib/game-paths";
+import { homedir } from "node:os";
+import { dirname, extname, isAbsolute, join, resolve } from "node:path";
 
 /**
  * generate_model —— 用 Tripo 从「一句话」或「一张图」生成 3D 模型（GLB），存到你正在做的 mod 目录里。
@@ -19,7 +19,26 @@ import { readState } from "../lib/game-paths";
  *   · 导出 Unity 朝向：为道具/武器设 `export_orientation: "-x"` → 枪口/正面 = +Z（Unity 前向）✓
  *   · `task_id` 可复用：convert 不重新生成、不重新上传 ✓
  *   · ⚠️ 别用 .NET 调这个 API（本机网络会 DPI 重置它的 TLS 握手 → unexpected EOF ✗）；Node/Python/curl 都通 ✓
+ *
+ * API key（临时方案，将来由 app 的「管理 API keys」界面接管）：
+ *   1) 环境变量 TRIPO_API_KEY
+ *   2) ~/.gamer-agent-pi/api-keys.json  →  { "tripo": "tsk_..." }
+ * 单独一个文件、用户级（所有游戏仓库共用）；不写进仓库里的任何文件 ✓
  */
+
+/** 临时：从独立文件读 key（将来 app 的「管理 API keys」会接管这里） */
+function readTripoKey(): string | undefined {
+  const env = process.env.TRIPO_API_KEY;
+  if (env) return env;
+  try {
+    const p = join(homedir(), ".gamer-agent-pi", "api-keys.json");
+    if (!existsSync(p)) return undefined;
+    const j = JSON.parse(readFileSync(p, "utf8")) as { tripo?: string };
+    return typeof j.tripo === "string" && j.tripo.trim() ? j.tripo.trim() : undefined;
+  } catch {
+    return undefined;
+  }
+}
 export default function (pi: ExtensionAPI) {
   const BASES = {
     cn: "https://api.tripo3d.com/v2/openapi",
@@ -30,14 +49,14 @@ export default function (pi: ExtensionAPI) {
     name: "generate_model",
     label: "Generate Model (Tripo)",
     description:
-      "Generate a 3D model file (GLB) with Tripo from a text prompt or a reference image and save it where you are building the mod. This is how a model-mod gets its model (e.g. replacing a weapon's or an item's model) when the user has no model file. The tool creates the task, polls it, downloads the result immediately (the remote URL expires in 5 minutes) and re-exports it as a Unity-ready GLB (faces +Z), so the saved file needs no rotation later. Also converts an existing task again and reports the account balance. Costs credits (a low-poly model with texture is roughly 40, a conversion roughly 10) - do not call it in a loop. Needs a Tripo API key in .gamer-agent.local.json as tripo.apiKey (local to this workspace, never committed).",
+      "Generate a 3D model file (GLB) with Tripo from a text prompt or a reference image and save it where you are building the mod. This is how a model-mod gets its model (e.g. replacing a weapon's or an item's model) when the user has no model file. The tool creates the task, polls it, downloads the result immediately (the remote URL expires in 5 minutes) and re-exports it as a Unity-ready GLB (faces +Z), so the saved file needs no rotation later. Also converts an existing task again and reports the account balance. Costs credits (a low-poly model with texture is roughly 40, a conversion roughly 10) - do not call it in a loop. Needs a Tripo API key: put it in ~/.gamer-agent-pi/api-keys.json as {"tripo":"tsk_..."} (a separate file, user-level, shared by every game repo and never committed - this is a stopgap until the app manages API keys in its settings).",
     promptSnippet: "Generate a 3D model (GLB) with Tripo from a prompt or image",
     promptGuidelines: [
       "Use generate_model when a model-mod needs a model and the user has no .glb yet (ask 'what should it look like?', or use their reference image). If they already have a .glb, use that file instead - do not call this tool.",
       'Low-poly game assets come from Tripo\'s P series (the tool defaults to it, faceLimit ~3000). Pass image= for image-to-model when the user has a reference picture (better shape fidelity than text alone).',
       "The tool saves the GLB and returns PASS with the path. The result is already Unity-ready (faces +Z), so no rotation step is needed later. If you need another size/format, call it again with action=convert and the same taskId - it does not re-generate.",
       "It costs credits (~40 per textured low-poly model). Check action=balance if the user cares; never retry in a loop to 'get a better one' - improve the prompt or ask the user.",
-      'If it returns FAIL because no key is configured: ask the user for their Tripo API key and explain that you will put it in .gamer-agent.local.json as {"tripo":{"apiKey":"..."}} - that file is local to the workspace and never committed.',
+      'If it returns FAIL because no key is configured: ask the user for their Tripo API key, then write it to ~/.gamer-agent-pi/api-keys.json as {"tripo":"tsk_..."} (a separate user-level file, shared by all game repos, never committed). This is a stopgap - the app will manage API keys in its settings later.',
     ],
     parameters: Type.Object({
       action: Type.Union(
@@ -58,15 +77,14 @@ export default function (pi: ExtensionAPI) {
 
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       const cwd = ctx.cwd;
-      const st = readState(cwd) as { tripo?: { apiKey?: string } };
-      const key = st.tripo?.apiKey ?? process.env.TRIPO_API_KEY;
+      const key = readTripoKey();
       if (!key) {
         return {
           content: [
             {
               type: "text",
               text:
-                'FAIL: no Tripo API key.\nNEXT: ask the user for their Tripo API key, then write it to .gamer-agent.local.json as {"tripo":{"apiKey":"..."}} (workspace-local, never committed), or set TRIPO_API_KEY.',
+                'FAIL: no Tripo API key.\nNEXT: ask the user for their Tripo API key, then write it to ~/.gamer-agent-pi/api-keys.json as {"tripo":"tsk_..."} (separate user-level file, shared by all game repos, never committed), or set TRIPO_API_KEY.',
             },
           ],
         };

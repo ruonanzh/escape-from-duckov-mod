@@ -9,7 +9,7 @@ description: 用户想换某把武器的模型/外观时用（例："把 MP5 换
 
 ## 1. 模型从哪来
 
-> **Tripo key**：放 `.gamer-agent.local.json` 的 `tripo.apiKey`（工作区本地 ✓ 不进 git ✓）。没有 key 时工具会返回 FAIL 并说明放哪 —— 这时**向用户要一次**，写进去即可 ✓（余额可以用 `generate_model(action="balance")` 看 ✓；一次生成大约 40 积分 —— **别反复重试刷积分** ✗ 不行就改提示词或问用户 ✓）
+> **Tripo key**：放**单独的文件** `~/.gamer-agent-pi/api-keys.json` → `{ "tripo": "tsk_…" }`（用户级 ✓ 所有游戏仓库共用 ✓ 不进 git ✓；**临时方案** —— 将来由 app 的「管理 API keys」界面接管 ✓）。没有 key 时工具会返回 FAIL 并说明放哪 —— 这时**向用户要一次**，写进去即可 ✓（余额可以用 `generate_model(action="balance")` 看 ✓；一次生成大约 40 积分 —— **别反复重试刷积分** ✗ 不行就改提示词或问用户 ✓）
 
 | 情况 | 做法 |
 |---|---|
