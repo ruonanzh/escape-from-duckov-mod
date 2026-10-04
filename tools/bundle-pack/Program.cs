@@ -225,6 +225,32 @@ class Program
                 Console.WriteLine($"已平移网格：({ox}, {oy}, {oz}) 米");
             }
 
+            // ⑤ 丢弃指定网格（做成退化网格：画不出东西，但不改 prefab 结构/物理）
+            string dropArg = o.GetValueOrDefault("drop");
+            if (dropArg != null)
+            {
+                var pats = dropArg.Split(',').Select(x => x.Trim()).Where(x => x.Length > 0).ToList();
+                int dropped = 0;
+                foreach (var info in inst.file.AssetInfos)
+                {
+                    AssetTypeValueField b;
+                    try { b = am.GetBaseField(inst, info); } catch { continue; }
+                    if (b == null || b.IsDummy) continue;
+                    var v = b["m_VertexData"]; if (v == null || v.IsDummy) continue;
+                    var nm = b["m_Name"].Value != null ? b["m_Name"].Value.AsString : "";
+                    if (info.PathId == donor) continue;                     // 主体不丢
+                    bool hit = pats.Any(pt => WildMatch(nm, pt));
+                    if (!hit) continue;
+                    var tiny = new GltfMesh();
+                    for (int i = 0; i < 3; i++) { tiny.Positions.Add(new[] { 0f, 0f, 0f }); tiny.Normals.Add(new[] { 0f, 1f, 0f }); tiny.Uvs.Add(new[] { 0f, 0f }); }
+                    tiny.Indices.AddRange(new[] { 0, 1, 2 });
+                    WriteMeshInto(am, inst, tiny, info.PathId, stream, oldCab, newCab, quiet: true);
+                    Console.WriteLine($"  丢弃 Mesh '{nm}'（pathID={info.PathId}）→ 已置为退化网格 ✓");
+                    dropped++;
+                }
+                Console.WriteLine($"丢弃网格共 {dropped} 个（匹配 {string.Join(",", pats)}）");
+            }
+
             WriteMeshInto(am, inst, gm, donor, stream, oldCab, newCab);
             assetReplacers = _replacerByPathId.Values.ToList();
             Console.WriteLine($"最终 replacer：{assetReplacers.Count} 个（按 pathID 去重后）");
@@ -295,8 +321,26 @@ class Program
     // ── 第 2 步：把 GLB 的网格写进包里指定的 donor Mesh ─────────────────────
     // 关键实测：Mesh 的顶点数据**不在序列化文件里**，而在 `.resS` 资源流（`Mesh.m_StreamData` = offset/size/path）；
     // 索引（`m_IndexBuffer`）在文件里 ✓。我们的网格顶点数通常比 donor 少 → **就地覆盖流里那一段**（不挪偏移、最稳）。
+    static bool WildMatch(string name, string pat)
+    {
+        if (string.IsNullOrEmpty(name)) return false;
+        if (!pat.Contains("*")) return string.Equals(name, pat, StringComparison.OrdinalIgnoreCase);
+        var parts = pat.Split('*');
+        int pos = 0;
+        for (int i = 0; i < parts.Length; i++)
+        {
+            if (parts[i].Length == 0) continue;
+            int idx = name.IndexOf(parts[i], pos, StringComparison.OrdinalIgnoreCase);
+            if (idx < 0) return false;
+            if (i == 0 && !pat.StartsWith("*") && idx != 0) return false;
+            pos = idx + parts[i].Length;
+        }
+        if (!pat.EndsWith("*") && parts.Length > 0 && parts[parts.Length - 1].Length > 0 && pos != name.Length) return false;
+        return true;
+    }
+
     static void WriteMeshInto(AssetsManager am, AssetsFileInstance inst, GltfMesh gm, long donorPathId, byte[] stream,
-                              string oldCab = null, string newCab = null)
+                              string oldCab = null, string newCab = null, bool quiet = false)
     {
         var info = inst.file.GetAssetInfo(donorPathId);
         if (info == null) throw new Exception($"包里没有 pathID={donorPathId}");
@@ -307,42 +351,59 @@ class Program
         var sd = bf["m_StreamData"];
         long sOff = sd[0].Value.AsLong;                         // offset (UInt64)
         int sSize = (int)sd[1].Value.AsLong;                    // size   (UInt32)
-        int stride = oldCount > 0 ? sSize / oldCount : 0;
-        Console.WriteLine($"donor Mesh pathID={donorPathId}  顶点={oldCount} 流段=({sOff},{sSize}) 步长={stride}");
+        // 顶点数据有两种存法：① 在 .resS 流里（大网格 ✓）② 内联在文件的字节数组里（小网格 ✓，如吊坠）
+        byte[] inlineData = vd[2].Value != null ? vd[2].Value.AsByteArray : null;
+        bool useInline = inlineData != null && inlineData.Length > 0 && sSize == 0;
+        int stride = oldCount > 0 ? (useInline ? inlineData.Length / oldCount : sSize / oldCount) : 0;
+        if (useInline && !quiet) Console.WriteLine($"  顶点数据：内联（{inlineData.Length} 字节）");
+        if (!quiet) Console.WriteLine($"donor Mesh pathID={donorPathId}  顶点={oldCount} 流段=({sOff},{sSize}) 步长={stride}");
         if (stride <= 0) throw new Exception("donor 顶点步长算不出来");
 
         // 通道语义**按序号**（Unity 固定：0=位置 1=法线 2=切线 3=颜色 4=UV0 …）——
         // 不能靠解析出的 dimension 猜（实测那个值不可靠 ✗），offset/format 可靠 ✓
         int posCh = 0, nrmCh = 1, uvCh = 4;
-        Console.WriteLine("通道表（offset/format）：");
-        for (int i = 0; i < chans.Children.Count; i++)
+        if (!quiet)
         {
-            int st = chans[i][0].Value.AsInt, of = chans[i][1].Value.AsInt, fm = chans[i][2].Value.AsInt;
-            if (of != 0 || i < 6) Console.WriteLine($"  ch{i}: stream={st} offset={of} format={fm}");
+            Console.WriteLine("通道表（offset/format）：");
+            for (int i = 0; i < chans.Children.Count; i++)
+            {
+                int st = chans[i][0].Value.AsInt, of = chans[i][1].Value.AsInt, fm = chans[i][2].Value.AsInt;
+                if (of != 0 || i < 6) Console.WriteLine($"  ch{i}: stream={st} offset={of} format={fm}");
+            }
+            Console.WriteLine($"  采用：位置→ch{posCh}(offset={chans[posCh][1].Value.AsInt}) 法线→ch{nrmCh}(offset={chans[nrmCh][1].Value.AsInt},format={chans[nrmCh][2].Value.AsInt}) UV→ch{uvCh}(offset={chans[uvCh][1].Value.AsInt},format={chans[uvCh][2].Value.AsInt})");
         }
-        Console.WriteLine($"  采用：位置→ch{posCh}(offset={chans[posCh][1].Value.AsInt}) 法线→ch{nrmCh}(offset={chans[nrmCh][1].Value.AsInt},format={chans[nrmCh][2].Value.AsInt}) UV→ch{uvCh}(offset={chans[uvCh][1].Value.AsInt},format={chans[uvCh][2].Value.AsInt})");
 
         int n = gm.Positions.Count, idxCount = gm.Indices.Count;
         int need = stride * n;
-        if (sOff < 0 || sOff + need > stream.Length) throw new Exception($"流不够大：需要 {need} 字节 @ {sOff}，流只有 {stream.Length}");
-        Console.WriteLine($"我们的网格：顶点={n} 三角面={gm.TriangleCount} 索引={idxCount} → 需要 {need} 字节（原 {sSize}）{(need <= sSize ? "✓ 放得下" : "✗ 太大")}");
+        byte[] target;
+        if (useInline)
+        {
+            target = new byte[need];
+            vd[2].Value.AsByteArray = target;                   // 内联数组直接换成我们的（长度可变 ✓）
+        }
+        else
+        {
+            if (sOff < 0 || sOff + need > stream.Length) throw new Exception($"流不够大：需要 {need} 字节 @ {sOff}，流只有 {stream.Length}");
+            target = stream;
+        }
+        if (!quiet) Console.WriteLine($"我们的网格：顶点={n} 三角面={gm.TriangleCount} 索引={idxCount} → 需要 {need} 字节（原 {sSize}）{(need <= sSize ? "✓ 放得下" : "✗ 太大")}");
 
-        Array.Clear(stream, (int)sOff, sSize);                  // 清掉旧顶点数据（含尾部）
+        int baseOff = useInline ? 0 : (int)sOff;
         for (int v = 0; v < n; v++)
         {
-            int row = (int)sOff + v * stride;
+            int row = baseOff + v * stride;
             if (posCh >= 0)
             {
                 int o = chans[posCh][1].Value.AsInt;
-                for (int c = 0; c < 3; c++) WriteFloat(stream, row + o + c * 4, gm.Positions[v][c]);
+                for (int c = 0; c < 3; c++) WriteFloat(target, row + o + c * 4, gm.Positions[v][c]);
             }
             if (nrmCh >= 0)
             {
                 int o = chans[nrmCh][1].Value.AsInt, fmt = chans[nrmCh][2].Value.AsInt;
                 for (int c = 0; c < 3; c++)
                 {
-                    if (fmt == 1) WriteHalf(stream, row + o + c * 2, gm.Normals[v][c]);
-                    else WriteFloat(stream, row + o + c * 4, gm.Normals[v][c]);
+                    if (fmt == 1) WriteHalf(target, row + o + c * 2, gm.Normals[v][c]);
+                    else WriteFloat(target, row + o + c * 4, gm.Normals[v][c]);
                 }
             }
             if (uvCh >= 0)
@@ -350,8 +411,8 @@ class Program
                 int o = chans[uvCh][1].Value.AsInt, fmt = chans[uvCh][2].Value.AsInt;
                 for (int c = 0; c < 2; c++)
                 {
-                    if (fmt == 1) WriteHalf(stream, row + o + c * 2, gm.Uvs[v][c]);
-                    else WriteFloat(stream, row + o + c * 4, gm.Uvs[v][c]);
+                    if (fmt == 1) WriteHalf(target, row + o + c * 2, gm.Uvs[v][c]);
+                    else WriteFloat(target, row + o + c * 4, gm.Uvs[v][c]);
                 }
             }
         }
@@ -365,7 +426,7 @@ class Program
         }
 
         vd[0].Value.AsInt = n;                                  // 顶点数
-        sd[1].Value.AsLong = need;                              // 流段大小
+        if (!useInline) sd[1].Value.AsLong = need;               // 流段大小（内联的不用改）
         bf["m_IndexBuffer"][0].Value.AsByteArray = idxBytes;
         bf["m_IndexFormat"].Value.AsInt = is32 ? 1 : 0;
 
@@ -403,7 +464,7 @@ class Program
             }
         }
         AddReplacer(inst, info, bf);
-        Console.WriteLine($"✓ 网格已替换：顶点 {oldCount} → {n}，索引 {idxCount}，submesh {subs.Children.Count} 个（第 2 个清零），包围盒 max={string.Join(",", max)}");
+        if (!quiet) Console.WriteLine($"✓ 网格已替换：顶点 {oldCount} → {n}，索引 {idxCount}，submesh {subs.Children.Count} 个（第 2 个清零），包围盒 max={string.Join(",", max)}");
     }
 
     static void DumpFields(AssetTypeValueField f, string path, int depth, int maxDepth)
