@@ -28,8 +28,8 @@ namespace WeaponModelSwap
 
         Mesh _mesh;
         Texture2D _texture;
-        bool _loadTried;
-        float _nextCheck;
+        CharacterMainControl _player;
+        float _nextFindPlayer;
         readonly Dictionary<int, GameObject> _applied = new Dictionary<int, GameObject>();
         string _lastHeld;
 
@@ -38,19 +38,21 @@ namespace WeaponModelSwap
             _configPath = Path.Combine(ModelLoaderDir(), "config.json");
             ReadConfig();
             Debug.Log($"[WeaponModel] 目标='{_target}' typeIDs=[{string.Join(",", _typeIds)}] 模型='{_modelFile}'");
+            LoadModel();          // 启动就读好模型 → 玩家掏出枪时能**立刻**换（不然会先看到原模型 ✗）
         }
 
         void Update()
         {
-            if (Time.unscaledTime < _nextCheck) return;
-            _nextCheck = Time.unscaledTime + 2f;
-
-            if (!_loadTried) { _loadTried = true; LoadModel(); }
             if (_mesh == null) return;
 
-            var player = GameApi.FindMainCharacter();
-            if (player == null) return;
-            var agent = player.CurrentHoldItemAgent;
+            // 找玩家较重（FindObjectsOfType）→ 只在没有/每 2 秒找一次；**每帧**只看"手里拿的是什么"（廉价 ✓）
+            if (_player == null && Time.unscaledTime >= _nextFindPlayer)
+            {
+                _nextFindPlayer = Time.unscaledTime + 2f;
+                _player = GameApi.FindMainCharacter();
+            }
+            if (_player == null) return;
+            var agent = _player.CurrentHoldItemAgent;
             var item = agent != null ? agent.Item : null;
             if (item == null || agent == null || agent.gameObject == null) return;
 

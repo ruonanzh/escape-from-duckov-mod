@@ -86,7 +86,11 @@ namespace ModelKit
                 }
             }
 
-            // 握把归零（同打包器那套规则：最长轴=枪管轴；细端=枪口；枪托端起 8%~35% 区间最低点=握把）
+            // ① 统一朝向：枪管轴 → Z、枪口 → +Z（**不信 Tripo 的 export_orientation** ✗ 它是按几何算的，
+            //    实测同一批模型的"前"并不一致 → 运行时自己判定 ✓）
+            OrientToUnity(verts, norms);
+
+            // ② 握把归零（枪口已朝 +Z → 枪托在 −Z；枪托端起 8%~35% 区间的最低点 = 握把）
             var grip = GuessGrip(verts);
             for (int i = 0; i < verts.Count; i++) verts[i] -= grip;
 
@@ -105,6 +109,68 @@ namespace ModelKit
             return r;
         }
 
+        /// <summary>统一朝向：把最长轴转到 Z，并让**枪口朝 +Z**（游戏武器坐标系期望的方向）</summary>
+        public static void OrientToUnity(List<Vector3> verts, List<Vector3> norms)
+        {
+            int ax = LongAxis(verts);
+            if (ax != 2)                                   // X 或 Y → 绕轴转到 Z
+            {
+                for (int i = 0; i < verts.Count; i++)
+                {
+                    var v = verts[i]; var n = norms[i];
+                    if (ax == 0) { verts[i] = new Vector3(v.z, v.y, -v.x); norms[i] = new Vector3(n.z, n.y, -n.x); }
+                    else { verts[i] = new Vector3(v.x, v.z, -v.y); norms[i] = new Vector3(n.x, n.z, -n.y); }
+                }
+            }
+            if (!MuzzleAtPositiveZ(verts))                 // 枪口在 −Z → 绕 Y 转 180°
+            {
+                for (int i = 0; i < verts.Count; i++)
+                {
+                    var v = verts[i]; var n = norms[i];
+                    verts[i] = new Vector3(-v.x, v.y, -v.z);
+                    norms[i] = new Vector3(-n.x, n.y, -n.z);
+                }
+            }
+        }
+
+        static int LongAxis(List<Vector3> pts)
+        {
+            var mn = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
+            var mx = new Vector3(float.MinValue, float.MinValue, float.MinValue);
+            foreach (var p in pts) { mn = Vector3.Min(mn, p); mx = Vector3.Max(mx, p); }
+            var s = mx - mn;
+            return s.x > s.y ? (s.x > s.z ? 0 : 2) : (s.y > s.z ? 1 : 2);
+        }
+
+        /// <summary>枪口在 +Z 吗？（判据：**两个方向都细**的那端是枪管 ✓ —— 枪托只是"一个方向薄但另一个方向宽" ✗）</summary>
+        public static bool MuzzleAtPositiveZ(List<Vector3> pts)
+        {
+            var mn = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
+            var mx = new Vector3(float.MinValue, float.MinValue, float.MinValue);
+            foreach (var p in pts) { mn = Vector3.Min(mn, p); mx = Vector3.Max(mx, p); }
+            float sp = mx.z - mn.z;
+            if (sp <= 1e-6f) return true;
+            // 两端各看 6% 与 15% 两片，取较大者（枪管"细得久" ✓）
+            float tMin = Math.Max(Thickness(pts, mn.z, mn.z + sp * 0.06f), Math.Max(Thickness(pts, mn.z, mn.z + sp * 0.15f), 0f));
+            float tMax = Math.Max(Thickness(pts, mx.z - sp * 0.06f, mx.z), Math.Max(Thickness(pts, mx.z - sp * 0.15f, mx.z), 0f));
+            return tMax < tMin;                            // 细的那端是枪口
+        }
+
+        static float Thickness(List<Vector3> pts, float lo, float hi)
+        {
+            float x0 = float.MaxValue, x1 = float.MinValue, y0 = float.MaxValue, y1 = float.MinValue;
+            bool any = false;
+            foreach (var p in pts)
+            {
+                if (p.z < lo || p.z > hi) continue;
+                any = true;
+                if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x;
+                if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y;
+            }
+            if (!any) return float.MaxValue;
+            return Math.Max(x1 - x0, y1 - y0);
+        }
+
         /// <summary>猜握把（与打包器同一套规则）：最长轴=枪管轴，两端薄片细端=枪口，枪托端起 8%~35% 的最低点</summary>
         public static Vector3 GuessGrip(List<Vector3> pts)
         {
@@ -119,25 +185,9 @@ namespace ModelKit
             float Hi() => ax == 0 ? mx.x : ax == 1 ? mx.y : mx.z;
             float C(Vector3 v, int a) => a == 0 ? v.x : a == 1 ? v.y : v.z;
             float Lo1 = ax == 0 ? mn.x : ax == 1 ? mn.y : mn.z, Hi1 = ax == 0 ? mx.x : ax == 1 ? mx.y : mx.z;
-            Func<float, float, double> area = (lo, hi) =>
-            {
-                double a1 = 0, a2 = 0; bool any = false;
-                float min1 = float.MaxValue, max1 = float.MinValue, min2 = float.MaxValue, max2 = float.MinValue;
-                foreach (var p in pts)
-                {
-                    float c = C(p, ax);
-                    if (c < lo || c > hi) continue;
-                    any = true;
-                    float v1 = C(p, o1), v2 = C(p, o2);
-                    if (v1 < min1) min1 = v1; if (v1 > max1) max1 = v1;
-                    if (v2 < min2) min2 = v2; if (v2 > max2) max2 = v2;
-                }
-                if (!any) return double.MaxValue;
-                a1 = max1 - min1; a2 = max2 - min2; return a1 * a2;
-            };
             float sp = Hi1 - Lo1;
-            double aLo = area(Lo1, Lo1 + sp * 0.06f), aHi = area(Hi1 - sp * 0.06f, Hi1);
-            bool muzzleAtMin = aLo < aHi;
+            // 枪口判定与 OrientToUnity 共用同一套（这里已把枪口摆到 +Z → 枪托在 −Z ✓）
+            bool muzzleAtMin = !MuzzleAtPositiveZ(pts);
             float stock = muzzleAtMin ? Hi1 : Lo1;
             float dir = muzzleAtMin ? -1f : 1f;
             float l2 = stock + dir * sp * 0.08f, h2 = stock + dir * sp * 0.35f;
