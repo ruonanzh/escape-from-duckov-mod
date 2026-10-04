@@ -34,7 +34,8 @@ import { isCodeIdentifier, readModIdentity } from "../lib/mod-identity";
  */
 
 /** dev-only 产物，不装进游戏（obj/bin 是编译中间物，.cs/.csproj 是源码） */
-const EXCLUDED_DIRS = new Set(["obj", "bin", ".git", "node_modules"]);
+const EXCLUDED_DIRS = new Set(["obj", "bin", ".git", "node_modules", ".preview"]);
+// .preview/ = generate_model 存的 Tripo 预览图（渲染图/概念图）—— 只是给人/agent 看的，不进游戏 ✓
 const EXCLUDED_EXT = new Set([".cs", ".csproj", ".sln", ".pdb", ".user"]);
 
 /**

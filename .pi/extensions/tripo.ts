@@ -2,7 +2,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, extname, isAbsolute, join, resolve } from "node:path";
+import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path";
 
 /**
  * generate_model —— 用 Tripo 从「一句话」或「一张图」生成 3D 模型（GLB），存到你正在做的 mod 目录里。
@@ -159,14 +159,17 @@ export default function (pi: ExtensionAPI) {
           if (!url) throw new Error(`task succeeded but no model URL: ${JSON.stringify(done.output).slice(0, 200)}`);
           const rawPath = firstOut.replace(/\.glb$/i, "") + ".raw.glb";
           const size = await download(url, rawPath);                      // ⚠️ 5 分钟过期 → 立刻下
-          // 预览图（Tripo 免费附带）→ 先看形状对不对，再装进游戏 ✓
+          // 预览图（Tripo 免费附带）→ 放在模型同目录的 .preview/ 下 ✓
+          // 这个子目录**不会被 install_mod 装进游戏**（见 mod-install 的 EXCLUDED_DIRS ✓）—— 只是给人/agent 看的 ✓
           const base = firstOut.replace(/\.glb$/i, "");
+          const shotDir = join(dirname(firstOut), ".preview");
+          const shotBase = join(shotDir, basename(base));
           const shots: string[] = [];
           if (done.output?.rendered_image) {
-            try { await download(done.output.rendered_image, `${base}.preview.png`); shots.push(`${base}.preview.png`); } catch { /* 预览图下不到不影响主流程 */ }
+            try { await download(done.output.rendered_image, `${shotBase}.preview.png`); shots.push(`${shotBase}.preview.png`); } catch { /* 预览图下不到不影响主流程 */ }
           }
           if (done.output?.generated_image) {
-            try { await download(done.output.generated_image, `${base}.concept.jpg`); shots.push(`${base}.concept.jpg`); } catch { /* 同上 */ }
+            try { await download(done.output.generated_image, `${shotBase}.concept.jpg`); shots.push(`${shotBase}.concept.jpg`); } catch { /* 同上 */ }
           }
 
           const converted = await convert(api, waitTask, taskId, params.animated === true);

@@ -28,7 +28,7 @@ description: 用户想换某把武器的模型/外观时用（例："把 MP5 换
 | 情况 | 做法 |
 |---|---|
 | 用户给了 `.glb` | 直接用 ✓（`your_mods/<你的mod>/` 里放上它即可）|
-| 用户给了一张图 / 一句话 | **调 `generate_model` 工具**（π 工具，内部直连 Tripo HTTP）：`generate_model(action="generate", prompt="PPSh-41 样式的冲锋枪，游戏资产，侧视", out="your_mods/<你的mod>/gun.glb", faceLimit=3000)`；用户有参考图就用 `image="<路径>"` 代替 prompt ✓。工具会**自动建任务→轮询→立刻下载**（URL 5 分钟过期 ✗）并按 **Unity 就绪朝向**导出（枪口/正面 = +Z ✓），所以在游戏里不用再转 ✓ |
+| 用户给了一张图 / 一句话 | **调 `generate_model` 工具**（它会把 Tripo 的渲染图存到模型目录的 `.preview/` 下 ✓ **装进游戏前先看那张图** —— 形状对不对一眼就知道 ✓ 该目录不会被 `install_mod` 装进游戏 ✓）（π 工具，内部直连 Tripo HTTP）：`generate_model(action="generate", prompt="PPSh-41 样式的冲锋枪，游戏资产，侧视", out="your_mods/<你的mod>/gun.glb", faceLimit=3000)`；用户有参考图就用 `image="<路径>"` 代替 prompt ✓。工具会**自动建任务→轮询→立刻下载**（URL 5 分钟过期 ✗）并按 **Unity 就绪朝向**导出（枪口/正面 = +Z ✓），所以在游戏里不用再转 ✓ |
 
 ## 2. 做 mod（**一条工具调用**）
 
@@ -47,7 +47,7 @@ create_mod(kind="replace-weapon-model", name="MyGun", target="MP5", file="gun.gl
 | `build=false` | 不想立刻编译时（默认会编 ✓ 需要已记录游戏目录 ✓）|
 
 > **为什么必须用它**：手抄模板时最容易漏两处 —— ① 四处名字不一致（症状是"mod 静默不加载"✗）
-> ② 模板里指向 `libs/mod-kit` 的相对路径按**模板目录**算 ✓ 抄到别处就断 ✗（工具会按新位置重算 ✓）
+> ② 模板里指向 `libs/mod-kit` 的 `<Compile Include>` 是**按模板目录**算的相对路径 ✓（实测：抄到 `your_mods/<名字>/` 同深度**仍然能编** ✓；但抄到**仓库外**、或目录层数一变就断 ✗）→ 工具按新位置重算，做到**位置无关** ✓
 
 ## 3. 装进游戏
 
