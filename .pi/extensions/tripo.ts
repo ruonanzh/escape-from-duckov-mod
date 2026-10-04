@@ -8,6 +8,8 @@ import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path
  * generate_model —— 用 Tripo 从「一句话」或「一张图」生成 3D 模型（GLB），存到你正在做的 mod 目录里。
  *
  * 自己实现（不引第三方）：Tripo 就是 HTTP + JSON ✓，Node 自带 fetch ✓ → **零依赖** ✓
+ * 为什么不用现成 MCP（2026-10-04 解包核对）：npm 那个**硬编码全球站** .ai 且无 region 开关 ✗（我们的 key 是中国站 .com → 会失败 ✗）；
+ * 官方那个要 uvx/Python ✗ 且偏 Blender ✗。将来若换全球站 key，可一条命令切 MCP ✓（见 doc 仓 03-tripo-api.md §9.2）
  * （查过现成的：官方 `tripo-mcp` ★208 / npm `tripo-ai-mcp-server` / 官方 `@vastai/tripo-sdk` /
  *  官方 `tripo-cli` —— 都能用 ✓，但它们要么多一个进程、要么还要自己串"下载 + 转朝向"；
  *  这里一次调用就产出**Unity 就绪**的 GLB ✓。若哪天想走 MCP：`pi mcp add tripo -- npx -y tripo-ai-mcp-server` ✓）
