@@ -31,5 +31,6 @@
     <Compile Include="../../libs/mod-kit/GltfLoader.cs" />
     <Compile Include="../../libs/mod-kit/GameApi.cs" />
     <Compile Include="../../libs/mod-kit/WeaponModel.cs" />
+    <Compile Include="../../libs/mod-kit/WeaponIcon.cs" />
   </ItemGroup>
 </Project>

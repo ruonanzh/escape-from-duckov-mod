@@ -38,6 +38,7 @@ create_mod(kind="replace-weapon-model", name="MyGun", target="MP5", file="gun.gl
 | `name` | mod 名（字母+数字 ✓ 会成为命名空间/程序集名 ✓）|
 | `target` | 要换的武器名一段（`MP5` 会匹配 `SMG_MP5_Normal`）；或 `typeIDs=[655]` 精确匹配 |
 | `file` | GLB 文件名（默认 `gun.glb`；先把模型放到它说的目录里 ✓）|
+| `icon` | 图标文件名（默认 `icon.png` ✓）—— `generate_model` 会把 Tripo 的渲染图存成它 ✓（**512² 透明 PNG**，就是武器卡片上那个图 ✓）；没有就只换模型不换图标 ✓ |
 | `front` | **只有用户自带的模型**才需要（声明朝向：`-z`/`+x`/`-x`；`generate_model` 出的不用 ✓）|
 | `build=false` | 不想立刻编译时（默认会编 ✓ 需要已记录游戏目录 ✓）|
 

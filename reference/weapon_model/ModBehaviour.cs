@@ -24,7 +24,8 @@ namespace WeaponModelSwap
         string _configPath;
         string _target = "";
         string _modelFile = "";
-        string _front = "auto";          // 用户自带模型可声明朝向（auto/+z/-z/+x/-x）；Tripo 出的由提示词保证 ✓
+        string _front = "auto";
+        string _iconFile = "icon.png";   // mod 目录里的图标（generate_model 会存 ✓）；没有就跳过 ✓          // 用户自带模型可声明朝向（auto/+z/-z/+x/-x）；Tripo 出的由提示词保证 ✓
         readonly HashSet<int> _typeIds = new HashSet<int>();
 
         Mesh _mesh;
@@ -72,7 +73,14 @@ namespace WeaponModelSwap
             if (_applied.TryGetValue(id, out var go) && go != null) return;      // 换过、还在
 
             var r = ModelKit.WeaponModel.Apply(root, _mesh, _texture);
-            if (r.Applied) { _applied[id] = r.Instance; Debug.Log("[WeaponModel] " + r.Report); }
+            if (r.Applied)
+            {
+                _applied[id] = r.Instance;
+                Debug.Log("[WeaponModel] " + r.Report);
+                // 图标：卡片上那个 Sprite 也换成我们的（白底抠透明）
+                var iconPath = Path.IsPathRooted(_iconFile) ? _iconFile : Path.Combine(ModelLoaderDir(), _iconFile);
+                Debug.Log("[WeaponModel] " + ModelKit.WeaponIcon.Apply(item, iconPath));
+            }
             else Debug.LogWarning("[WeaponModel] 没换成：" + r.Report);
         }
 
@@ -129,6 +137,7 @@ namespace WeaponModelSwap
                 _target = cfg["target"].AsString("");
                 _modelFile = cfg["model"].AsString("");
                 _front = cfg["front"].AsString("auto");
+                _iconFile = cfg["icon"].AsString("icon.png");
                 var ids = cfg["typeIDs"];
                 if (ids != null && ids.IsArray) for (int i = 0; i < ids.Count; i++) _typeIds.Add(ids[i].AsInt(0));
             }

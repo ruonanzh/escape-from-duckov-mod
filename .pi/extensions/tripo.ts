@@ -1,6 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path";
 
@@ -166,7 +166,14 @@ export default function (pi: ExtensionAPI) {
           const shotBase = join(shotDir, basename(base));
           const shots: string[] = [];
           if (done.output?.rendered_image) {
-            try { await download(done.output.rendered_image, `${shotBase}.preview.png`); shots.push(`${shotBase}.preview.png`); } catch { /* 预览图下不到不影响主流程 */ }
+            try {
+              await download(done.output.rendered_image, `${shotBase}.preview.png`);
+              shots.push(`${shotBase}.preview.png`);
+              // 同一张渲染图再存一份到 mod 根做**图标**（背包卡片用 ✓ 白底会被运行时抠成透明 ✓）
+              const iconPath = join(dirname(firstOut), "icon.png");
+              copyFileSync(`${shotBase}.preview.png`, iconPath);
+              shots.push(iconPath);
+            } catch { /* 预览图/图标下不到不影响主流程 */ }
           }
           if (done.output?.generated_image) {
             try { await download(done.output.generated_image, `${shotBase}.concept.jpg`); shots.push(`${shotBase}.concept.jpg`); } catch { /* 同上 */ }
@@ -182,7 +189,7 @@ export default function (pi: ExtensionAPI) {
                 type: "text",
                 text:
                   `PASS: model saved to ${firstOut} (${size2}, raw also at ${rawPath} ${size}). task_id=${taskId}\n` +
-                  (shots.length ? `Preview: ${shots.join(", ")} - read/look at it and show it to the user BEFORE installing: shape is up to the prompt, orientation is already right.\n` : "") +
+                  (shots.length ? `Preview: ${shots.join(", ")} - read/look at it and show it to the user BEFORE installing: shape is up to the prompt, orientation is already right. The plain icon.png next to the model is what the weapon card uses in game (the runtime keys its white background out).\n` : "") +
                   `NEXT: put it in your mod folder and point config.json at it (e.g. {"target":"MP5","model":"${firstOut.split("/").pop()}"}), then build and install the mod.`,
               },
             ],
