@@ -60,6 +60,35 @@ class Program
         Console.WriteLine($"CAB: {oldCab}  →  {newCab}");
         Console.WriteLine($"对象数: {inst.file.AssetInfos.Count}");
 
+        // ── 诊断模式：--measure <pathID?>：量 donor 网格的几何（原点/枪管轴/枪口/握把/尺寸）──
+        if (o.ContainsKey("measure"))
+        {
+            long want = 0; long.TryParse(o["measure"], out want);
+            int ri = names.FindIndex(n => n.EndsWith(".resS"));
+            bun.file.GetFileRange(ri, out long rOff, out long rLen);
+            var rdrM = bun.file.DataReader; rdrM.Position = rOff;
+            byte[] streamM = rdrM.ReadBytes((int)rLen);
+            foreach (var info in inst.file.AssetInfos)
+            {
+                AssetTypeValueField b;
+                try { b = am.GetBaseField(inst, info); } catch { continue; }
+                if (b == null || b.IsDummy) continue;
+                var v = b["m_VertexData"];
+                if (v == null || v.IsDummy) continue;
+                if (want != 0 && info.PathId != want) continue;
+                var pts = ReadDonorVertices(v, b, streamM);
+                Console.WriteLine($"=== donor Mesh pathID={info.PathId} name={b["m_Name"].Value.AsString} 顶点={pts.Count} ===");
+                var mm = AutoGrip(pts);
+                var bb = BBox(pts);
+                Console.WriteLine($"  包围盒 min=({bb[0]:0.###},{bb[1]:0.###},{bb[2]:0.###}) max=({bb[3]:0.###},{bb[4]:0.###},{bb[5]:0.###}) 尺寸=({bb[3]-bb[0]:0.###},{bb[4]-bb[1]:0.###},{bb[5]-bb[2]:0.###})");
+                Console.WriteLine($"  原点(0,0,0) 相对包围盒：x {bb[0]:0.###}~{bb[3]:0.###}  y {bb[1]:0.###}~{bb[4]:0.###}  z {bb[2]:0.###}~{bb[5]:0.###}");
+                Console.WriteLine($"  算出的握把 = ({mm[0]:0.###}, {mm[1]:0.###}, {mm[2]:0.###})");
+                Console.WriteLine($"  → 握把相对原点偏移 = ({mm[0]:0.###}, {mm[1]:0.###}, {mm[2]:0.###}) 米");
+                if (want != 0) break;
+            }
+            return 0;
+        }
+
         // ── 诊断模式：--inspect <pathID?> 打印指定 Mesh 的字段结构 ──
         if (o.ContainsKey("inspect"))
         {
@@ -112,40 +141,13 @@ class Program
         if (glb != null)
         {
             var gm = Gltf.ReadGlb(glb);
-            // 朝向/位置修正（在打包阶段做 → 包本身是对的 ✓，任何消费方拿到都对）
-            string rot = o.GetValueOrDefault("rotate"), off = o.GetValueOrDefault("offset");
-            if (rot != null)
-            {
-                var d = rot.Split(','); float rx = float.Parse(d[0]), ry = d.Length > 1 ? float.Parse(d[1]) : 0f, rz = d.Length > 2 ? float.Parse(d[2]) : 0f;
-                ApplyRotate(gm, rx, ry, rz);
-                Console.WriteLine($"已旋转网格：({rx}, {ry}, {rz}) 度");
-            }
-            // 握把（原点）：--grip auto | "x,y,z"（米，网格自身坐标）→ 平移网格使该点成为原点 ✓
-            string gripArg = o.GetValueOrDefault("grip");
-            if (gripArg != null)
-            {
-                float gx, gy, gz;
-                if (gripArg == "auto")
-                {
-                    var g = AutoGrip(gm);
-                    gx = g[0]; gy = g[1]; gz = g[2];
-                    Console.WriteLine($"自动测握把：({gx:0.###}, {gy:0.###}, {gz:0.###})  ← 枪托端起 8%~35% 区间内的最低点（X 取中）");
-                }
-                else { var d = gripArg.Split(','); gx = float.Parse(d[0]); gy = d.Length > 1 ? float.Parse(d[1]) : 0f; gz = d.Length > 2 ? float.Parse(d[2]) : 0f; }
-                foreach (var p2 in gm.Positions) { p2[0] -= gx; p2[1] -= gy; p2[2] -= gz; }
-                Console.WriteLine($"已把握把移到原点：({gx:0.###}, {gy:0.###}, {gz:0.###})");
-            }
-            if (off != null)
-            {
-                var d = off.Split(','); float ox = float.Parse(d[0]), oy = d.Length > 1 ? float.Parse(d[1]) : 0f, oz = d.Length > 2 ? float.Parse(d[2]) : 0f;
-                foreach (var p2 in gm.Positions) { p2[0] += ox; p2[1] += oy; p2[2] += oz; }
-                Console.WriteLine($"已平移网格：({ox}, {oy}, {oz}) 米");
-            }
+            Console.WriteLine($"GLB: {System.IO.Path.GetFileName(glb)}  顶点={gm.Positions.Count} 三角面={gm.TriangleCount}");
+
+            // ① 选 donor
             long donor = 0;
             if (o.ContainsKey("donor") && long.TryParse(o["donor"], out long dv)) donor = dv;
             else
             {
-                // 自动挑：包里顶点数最多的 Mesh
                 int best = -1;
                 foreach (var info in inst.file.AssetInfos)
                 {
@@ -161,12 +163,66 @@ class Program
                 }
                 Console.WriteLine($"自动挑 donor：顶点最多的 Mesh = pathID {donor}（{best} 顶点）");
             }
-            // 先把 .resS 读进来（网格顶点数据在里面）
+
+            // ② 读 .resS（顶点数据在里面）
             int ri = names.FindIndex(n => n.EndsWith(".resS"));
             if (ri < 0) throw new Exception("这个包里没有 .resS 资源流，无法写网格");
             bun.file.GetFileRange(ri, out long rOff, out long rLen);
-            var rdr0 = bun.file.DataReader; long savePos = rdr0.Position;
-            rdr0.Position = rOff; byte[] stream = rdr0.ReadBytes((int)rLen); rdr0.Position = savePos;
+            var rdrS = bun.file.DataReader; long saveP = rdrS.Position;
+            rdrS.Position = rOff; byte[] stream = rdrS.ReadBytes((int)rLen); rdrS.Position = saveP;
+
+            // ③ 对齐：默认 `--align donor`（替换武器的正确做法 —— 用同一套测量，系统偏差自动抵消）
+            string align = o.GetValueOrDefault("align") ?? "donor";
+            if (align == "donor")
+            {
+                var dpts = ReadDonorVertices(inst, am, stream, out long dd);
+                if (dpts.Count == 0)
+                    Console.WriteLine("⚠ 量不到 donor（该 Mesh 没在流里）→ 退回 --grip auto");
+                else
+                {
+                    var db = BBox(dpts); var dg = AutoGripPts(dpts);
+                    var ob = BBox(gm.Positions); var og = AutoGripPts(gm.Positions);
+                    float dLen = Math.Max(Math.Max(db[3] - db[0], db[4] - db[1]), db[5] - db[2]);
+                    float oLen = Math.Max(Math.Max(ob[3] - ob[0], ob[4] - ob[1]), ob[5] - ob[2]);
+                    float sc = dLen > 0 && oLen > 0 ? dLen / oLen : 1f;
+                    Console.WriteLine($"对齐 donor：长度 {oLen:0.###} → {dLen:0.###} m（缩放 ×{sc:0.####}）");
+                    Console.WriteLine($"  donor 握把=({dg[0]:0.###},{dg[1]:0.###},{dg[2]:0.###})  我们握把=({og[0]:0.###},{og[1]:0.###},{og[2]:0.###})");
+                    float tx = dg[0] - sc * og[0], ty = dg[1] - sc * og[1], tz = dg[2] - sc * og[2];
+                    foreach (var q in gm.Positions) { q[0] = q[0] * sc + tx; q[1] = q[1] * sc + ty; q[2] = q[2] * sc + tz; }
+                    var nb = BBox(gm.Positions);
+                    Console.WriteLine($"  平移=({tx:0.###},{ty:0.###},{tz:0.###})");
+                    Console.WriteLine($"  对齐后 我们包围盒 min=({nb[0]:0.###},{nb[1]:0.###},{nb[2]:0.###}) max=({nb[3]:0.###},{nb[4]:0.###},{nb[5]:0.###})");
+                    Console.WriteLine($"  donor   包围盒 min=({db[0]:0.###},{db[1]:0.###},{db[2]:0.###}) max=({db[3]:0.###},{db[4]:0.###},{db[5]:0.###})   ← 两者越接近越对 ✓");
+                }
+            }
+            else if (o.ContainsKey("grip"))
+            {
+                string gripArg = o["grip"];
+                float gx, gy, gz;
+                if (gripArg == "auto")
+                {
+                    var g = AutoGrip(gm); gx = g[0]; gy = g[1]; gz = g[2];
+                    Console.WriteLine($"自动测握把：({gx:0.###}, {gy:0.###}, {gz:0.###})");
+                }
+                else { var d = gripArg.Split(','); gx = float.Parse(d[0]); gy = d.Length > 1 ? float.Parse(d[1]) : 0f; gz = d.Length > 2 ? float.Parse(d[2]) : 0f; }
+                foreach (var q in gm.Positions) { q[0] -= gx; q[1] -= gy; q[2] -= gz; }
+                Console.WriteLine($"已把握把移到原点：({gx:0.###}, {gy:0.###}, {gz:0.###})");
+            }
+
+            // ④ 显式旋转/平移（需要时）
+            if (o.ContainsKey("rotate"))
+            {
+                var d = o["rotate"].Split(','); float rx = float.Parse(d[0]), ry = d.Length > 1 ? float.Parse(d[1]) : 0f, rz = d.Length > 2 ? float.Parse(d[2]) : 0f;
+                ApplyRotate(gm, rx, ry, rz);
+                Console.WriteLine($"已旋转网格：({rx}, {ry}, {rz}) 度");
+            }
+            if (o.ContainsKey("offset"))
+            {
+                var d = o["offset"].Split(','); float ox = float.Parse(d[0]), oy = d.Length > 1 ? float.Parse(d[1]) : 0f, oz = d.Length > 2 ? float.Parse(d[2]) : 0f;
+                foreach (var q in gm.Positions) { q[0] += ox; q[1] += oy; q[2] += oz; }
+                Console.WriteLine($"已平移网格：({ox}, {oy}, {oz}) 米");
+            }
+
             WriteMeshInto(am, inst, gm, donor, stream, oldCab, newCab);
             assetReplacers = _replacerByPathId.Values.ToList();
             Console.WriteLine($"最终 replacer：{assetReplacers.Count} 个（按 pathID 去重后）");
@@ -379,42 +435,84 @@ class Program
 
     static readonly List<AssetsReplacer> _pendingAssetReplacers = new List<AssetsReplacer>();
 
-    /// <summary>自动测握把：① 最长轴 = 枪管轴 ② 两端横截面细的 = 枪口 → 另一端 = 枪托
-    /// ③ 枪托端起 8%~35% 这段（扳机/握把所在区）里的**最低点** = 握把底部，X 取中 ✓</summary>
-    static float[] AutoGrip(GltfMesh gm)
+    static float[] BBox(System.Collections.Generic.List<float[]> pts)
     {
-        var min = new float[3] { float.MaxValue, float.MaxValue, float.MaxValue };
-        var max = new float[3] { float.MinValue, float.MinValue, float.MinValue };
-        foreach (var p in gm.Positions) for (int c = 0; c < 3; c++) { if (p[c] < min[c]) min[c] = p[c]; if (p[c] > max[c]) max[c] = p[c]; }
+        var mn = new float[3] { float.MaxValue, float.MaxValue, float.MaxValue };
+        var mx = new float[3] { float.MinValue, float.MinValue, float.MinValue };
+        foreach (var p in pts) for (int c = 0; c < 3; c++) { if (p[c] < mn[c]) mn[c] = p[c]; if (p[c] > mx[c]) mx[c] = p[c]; }
+        return new[] { mn[0], mn[1], mn[2], mx[0], mx[1], mx[2] };
+    }
+
+    /// <summary>把 donor 的顶点从 .resS 流里读出来（位置通道：ch0，offset 0，float32×3）</summary>
+    static System.Collections.Generic.List<float[]> ReadDonorVertices(AssetsFileInstance inst, AssetsManager am, byte[] stream, out long pathId)
+    {
+        pathId = 0;
+        long best = -1; System.Collections.Generic.List<float[]> bestPts = null;
+        foreach (var info in inst.file.AssetInfos)
+        {
+            AssetTypeValueField b; try { b = am.GetBaseField(inst, info); } catch { continue; }
+            if (b == null || b.IsDummy) continue;
+            var v = b["m_VertexData"]; if (v == null || v.IsDummy) continue;
+            var pts = ReadDonorVertices(v, b, stream);
+            if (pts.Count > best) { best = pts.Count; bestPts = pts; pathId = info.PathId; }
+        }
+        return bestPts ?? new System.Collections.Generic.List<float[]>();
+    }
+
+    static System.Collections.Generic.List<float[]> ReadDonorVertices(AssetTypeValueField vd, AssetTypeValueField meshBf, byte[] stream)
+    {
+        var outp = new System.Collections.Generic.List<float[]>();
+        int n = vd[0].Value.AsInt;
+        var chans = vd[1][0];
+        var sd = meshBf["m_StreamData"];
+        long sOff = sd[0].Value.AsLong; int sSize = (int)sd[1].Value.AsLong;
+        int stride = n > 0 ? sSize / n : 0;
+        if (stride <= 0) return outp;
+        int chPos = chans[0][1].Value.AsInt;                    // ch0 = 位置
+        for (int i = 0; i < n; i++)
+        {
+            int row = (int)sOff + i * stride + chPos;
+            outp.Add(new[] { BitConverter.ToSingle(stream, row), BitConverter.ToSingle(stream, row + 4), BitConverter.ToSingle(stream, row + 8) });
+        }
+        return outp;
+    }
+
+    static float[] AutoGrip(System.Collections.Generic.List<float[]> pos) => AutoGripPts(pos);
+
+    /// <summary>自动测握把（对"点集"版本，donor 与我们自己的网格共用同一套规则）</summary>
+    static float[] AutoGripPts(System.Collections.Generic.List<float[]> P)
+    {
+        var b = BBox(P);
+        var min = new[] { b[0], b[1], b[2] };
+        var max = new[] { b[3], b[4], b[5] };
         var span = new float[3]; for (int c = 0; c < 3; c++) span[c] = max[c] - min[c];
         int ax = span[0] > span[1] ? (span[0] > span[2] ? 0 : 2) : (span[1] > span[2] ? 1 : 2);
-        var oth = new List<int>(); for (int c = 0; c < 3; c++) if (c != ax) oth.Add(c);
+        var oth = new System.Collections.Generic.List<int>(); for (int c = 0; c < 3; c++) if (c != ax) oth.Add(c);
         double Area(float lo, float hi)
         {
-            var sel = gm.Positions.Where(p => p[ax] >= lo && p[ax] <= hi).ToList();
+            var sel = P.Where(p => p[ax] >= lo && p[ax] <= hi).ToList();
             if (sel.Count == 0) return double.MaxValue;
             return (sel.Max(p => p[oth[0]]) - sel.Min(p => p[oth[0]])) * (sel.Max(p => p[oth[1]]) - sel.Min(p => p[oth[1]]));
         }
         double aLo = Area(min[ax], min[ax] + span[ax] * 0.06f), aHi = Area(max[ax] - span[ax] * 0.06f, max[ax]);
-        bool muzzleAtMin = aLo < aHi;                     // 细端 = 枪口
-        // 枪托 = 枪口的另一端；从枪托端起算 8%~35%
+        bool muzzleAtMin = aLo < aHi;
         float stock = muzzleAtMin ? max[ax] : min[ax];
-        float dir = muzzleAtMin ? -1f : 1f;                // 从枪托朝枪口
+        float dir = muzzleAtMin ? -1f : 1f;
         float lo2 = stock + dir * span[ax] * 0.08f, hi2 = stock + dir * span[ax] * 0.35f;
         if (lo2 > hi2) { var t = lo2; lo2 = hi2; hi2 = t; }
-        var band = gm.Positions.Where(p => p[ax] >= lo2 && p[ax] <= hi2).ToList();
-        if (band.Count == 0) band = gm.Positions;
-        var low = band.OrderBy(p => p[1]).First();         // 最低点（Y 最小）
+        var band = P.Where(p => p[ax] >= lo2 && p[ax] <= hi2).ToList();
+        if (band.Count == 0) band = P;
+        var low = band.OrderBy(p => p[1]).First();
         var g = new float[3];
         g[ax] = low[ax];
-        g[1] = low[1] + 0.02f;                             // 从"最低"抬 2cm ≈ 握把中心
-        for (int c = 0; c < 3; c++) if (c != ax && c != 1) g[c] = (min[c] + max[c]) * 0.5f;   // 其余轴取中
-        if (ax == 1) g[1] = low[1] + 0.02f;
-        Console.WriteLine($"  模型包围盒 min=({min[0]:0.###},{min[1]:0.###},{min[2]:0.###}) max=({max[0]:0.###},{max[1]:0.###},{max[2]:0.###}) 尺寸=({span[0]:0.###},{span[1]:0.###},{span[2]:0.###})");
-        string axName = "XYZ"[ax].ToString();
-        Console.WriteLine($"  最长轴={axName}  枪口在 {(!muzzleAtMin ? "+" : "-")}{axName}（细端面积 {Math.Min(aLo, aHi):0.#####} vs 粗端 {Math.Max(aLo, aHi):0.#####}）");
+        g[1] = low[1] + 0.02f;
+        for (int c = 0; c < 3; c++) if (c != ax && c != 1) g[c] = (min[c] + max[c]) * 0.5f;
         return g;
     }
+
+    /// <summary>自动测握把：① 最长轴 = 枪管轴 ② 两端横截面细的 = 枪口 → 另一端 = 枪托
+    /// ③ 枪托端起 8%~35% 这段（扳机/握把所在区）里的**最低点** = 握把底部，X 取中 ✓</summary>
+    static float[] AutoGrip(GltfMesh gm) => AutoGripPts(gm.Positions);
 
     /// <summary>绕 X→Y→Z 旋转网格（位置与法线；度）</summary>
     static void ApplyRotate(GltfMesh gm, float xd, float yd, float zd)
