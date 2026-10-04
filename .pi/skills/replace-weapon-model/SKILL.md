@@ -14,7 +14,7 @@ description: 用户想换某把武器的模型/外观时用（例："把 MP5 换
 | 情况 | 做法 |
 |---|---|
 | 用户给了 `.glb` | 直接用 ✓（`your_mods/<你的mod>/` 里放上它即可）|
-| 用户给了一张图 / 一句话 | **调 `generate_model` 工具**（π 工具，底层是 `tools/tripo` 的 C# CLI）：`generate_model(action="generate", prompt="PPSh-41 样式的冲锋枪，游戏资产，侧视", out="your_mods/<你的mod>/gun.glb", faceLimit=3000)`；用户有参考图就用 `image="<路径>"` 代替 prompt ✓。工具会**自动建任务→轮询→立刻下载**（URL 5 分钟过期 ✗）并按 **Unity 就绪朝向**导出（枪口/正面 = +Z ✓），所以在游戏里不用再转 ✓ |
+| 用户给了一张图 / 一句话 | **调 `generate_model` 工具**（π 工具，内部直连 Tripo HTTP）：`generate_model(action="generate", prompt="PPSh-41 样式的冲锋枪，游戏资产，侧视", out="your_mods/<你的mod>/gun.glb", faceLimit=3000)`；用户有参考图就用 `image="<路径>"` 代替 prompt ✓。工具会**自动建任务→轮询→立刻下载**（URL 5 分钟过期 ✗）并按 **Unity 就绪朝向**导出（枪口/正面 = +Z ✓），所以在游戏里不用再转 ✓ |
 
 ## 2. 做 mod（照 `reference/weapon_model/` 抄）
 
