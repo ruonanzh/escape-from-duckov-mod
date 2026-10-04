@@ -38,6 +38,7 @@ namespace BundleSwap
         string _match = "MP5";
         readonly HashSet<int> _typeIds = new HashSet<int>();
         string _materialMode = "game";
+        bool _alignRef = true;                  // 默认：按游戏那把枪的包围盒对齐 ✓
         float _scale = 1f;
         Vector3 _offset = Vector3.zero;
         Vector3 _rotate = Vector3.zero;
@@ -244,7 +245,26 @@ namespace BundleSwap
                                   Mathf.Abs(lossy.y) > 1e-6f ? 1f / lossy.y : 1f,
                                   Mathf.Abs(lossy.z) > 1e-6f ? 1f / lossy.z : 1f);
             inst.transform.localScale = Vector3.Scale(inv, Vector3.one * _scale);
-            inst.transform.localPosition = _offset;
+            // ⭐ 参照对齐：用**游戏自己那把枪的局部包围盒**当基准（不猜握把 ✓）
+            //    原理：游戏那把枪的"原点"就是手的位置 ✓ → 算出原点在它包围盒里的**归一化位置**（如"距枪托32%、高44%"）
+            //    → 把我们模型里**同一归一化位置**的点挪到原点 ✓ → 两把枪就落在同一个"包络"里 ✓
+            Vector3 target = Vector3.zero;
+            if (_alignRef && anchor != null)
+            {
+                var refB = anchor.localBounds;
+                var myR = inst.GetComponentInChildren<Renderer>();
+                var myB = myR != null ? myR.localBounds : new Bounds();
+                Vector3 frac = new Vector3(
+                    Mathf.Approximately(refB.size.x, 0f) ? 0.5f : (0f - refB.min.x) / refB.size.x,
+                    Mathf.Approximately(refB.size.y, 0f) ? 0.5f : (0f - refB.min.y) / refB.size.y,
+                    Mathf.Approximately(refB.size.z, 0f) ? 0.5f : (0f - refB.min.z) / refB.size.z);
+                target = new Vector3(myB.min.x + frac.x * myB.size.x,
+                                     myB.min.y + frac.y * myB.size.y,
+                                     myB.min.z + frac.z * myB.size.z);
+                Log($"参照对齐：游戏枪 '{anchor.name}' 包围盒 尺寸={refB.size} min={refB.min} 原点归一化=({frac.x:0.##},{frac.y:0.##},{frac.z:0.##})");
+                Log($"  我们模型 包围盒 尺寸={myB.size} min={myB.min} → 对齐点={target}");
+            }
+            inst.transform.localPosition = _offset - target;
             inst.transform.localRotation = Quaternion.Euler(_rotate);
             SetLayerRecursive(inst, parent.gameObject.layer);
 
@@ -309,6 +329,7 @@ namespace BundleSwap
                 _wantedAsset = root["asset"].AsString("");
                 _match = root["match"].AsString(_match);
                 _materialMode = root["material"].AsString("game");
+                _alignRef = root["alignRef"].AsString("1") != "0";
                 _scale = root["scale"].AsFloat(1f);
                 _typeIds.Clear();
                 var ids = root["typeIDs"];
