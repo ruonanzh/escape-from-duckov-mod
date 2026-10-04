@@ -18,6 +18,10 @@ description: 用户想换某把武器的模型/外观时用（例："把 MP5 换
 > **"to the left" → 枪口落在 +Z = Unity 前向 ✓**（"to the right" → −Z ✗）→ **进游戏不用再转** ✓
 > （完整数据：doc 仓 `docs/unity-3d-assets/03-tripo-api.md` §8.8 / §8.9）
 
+> **卡片图标（可选但推荐）**：`generate_icon(model="your_mods/<名字>/gun.glb")` —— 不带 `style` 时**免费** ✓（用模型自己的渲染图 ✓ 形状与游戏里一致 ✓）
+> → 存成 mod 根的 `icon.png` ✓（mod 会把它设成武器卡片图标 ✓；运行时自动对齐游戏的 **256² + PPU50** ✓）
+> （想要别的风格时给 `style="clean game inventory icon, 3/4 view"` ✓ 约 10 积分 ✓）
+
 > **Tripo key**：放**单独的文件** `~/.gamer-agent-pi/api-keys.json` → `{ "tripo": "tsk_…" }`（用户级 ✓ 所有游戏仓库共用 ✓ 不进 git ✓；**临时方案** —— 将来由 app 的「管理 API keys」界面接管 ✓）。没有 key 时工具会返回 FAIL 并说明放哪 —— 这时**向用户要一次**，写进去即可 ✓（余额可以用 `generate_model(action="balance")` 看 ✓；一次生成大约 40 积分 —— **别反复重试刷积分** ✗ 不行就改提示词或问用户 ✓）
 
 | 情况 | 做法 |
@@ -38,7 +42,7 @@ create_mod(kind="replace-weapon-model", name="MyGun", target="MP5", file="gun.gl
 | `name` | mod 名（字母+数字 ✓ 会成为命名空间/程序集名 ✓）|
 | `target` | 要换的武器名一段（`MP5` 会匹配 `SMG_MP5_Normal`）；或 `typeIDs=[655]` 精确匹配 |
 | `file` | GLB 文件名（默认 `gun.glb`；先把模型放到它说的目录里 ✓）|
-| `icon` | 图标文件名（默认 `icon.png` ✓）—— `generate_model` 会把 Tripo 的渲染图存成它 ✓（**512² 透明 PNG** ✓ 运行时缩到 256²+PPU50 与游戏图标一致 ✓）；没有就只换模型不换图标 ✓ |
+| `icon` | 图标文件名（默认 `icon.png` ✓）—— 用 `generate_icon` 生成后放在 mod 根 ✓（运行时缩到 256²+PPU50 与游戏图标一致 ✓）；没有这个文件就只换模型不换图标 ✓ |
 | `front` | **只有用户自带的模型**才需要（声明朝向：`-z`/`+x`/`-x`；`generate_model` 出的不用 ✓）|
 | `build=false` | 不想立刻编译时（默认会编 ✓ 需要已记录游戏目录 ✓）|
 
@@ -47,9 +51,9 @@ create_mod(kind="replace-weapon-model", name="MyGun", target="MP5", file="gun.gl
 
 ## 3. 装进游戏
 
-> **用户自带 GLB 时**（没走过 `generate_model` ✓ → 没有渲染图 ✓）：调一次
-> `generate_model(action="icon", model="your_mods/<名字>/gun.glb")` → 它会取/生成这个模型的渲染图并存成 `icon.png` ✓
-> （Tripo 生成的模型**不用调** ✓ 工具已经顺手存好了 ✓）
+> **图标这步两种情形**：
+> - 模型是 `generate_model` 生成的 → `generate_icon(model="…/gun.glb")` ✓（工具能用它记下的 task id 直接取渲染图 ✓ **不花积分** ✓）
+> - 用户自带的 GLB → 同样 `generate_icon(model="…/gun.glb")` ✓（工具会自动 import_model 上传后取渲染图 ✓）
 
 
 

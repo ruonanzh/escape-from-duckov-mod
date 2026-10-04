@@ -51,6 +51,128 @@ export default function (pi: ExtensionAPI) {
     global: "https://api.tripo3d.ai/v2/openapi",
   } as const;
 
+  // ── generate_icon：独立的图标工具（与 generate_model 平级，参数保持通用）────────────────
+  //    做一张方形图标图（PNG，透明底）—— 就是物品卡/背包格子那种图。
+  //    不写 style 时用它自己的渲染图（免费 ✓）；写 style 时按参考图重画一张（约 10 积分 ✓）。
+  //    "存成什么名字、放在哪、给哪个物品用" 属于**具体能力**的事 → 由各自的 SKILL 讲 ✓
+  pi.registerTool({
+    name: "generate_icon",
+    label: "Generate Icon",
+    description:
+      "Make one square icon image (PNG, transparent background) for a 3D model - the kind of picture shown on an item card or inventory slot. Give it a model file (or a Tripo task id, or a reference image), optionally a style direction, and where to save it. Without a style it uses the model's own render (free, shape always matches the model); with one it redraws the icon in that style (costs credits). Saves the file and returns PASS with the path. Needs the Tripo API key (~/.gamer-agent-pi/api-keys.json, key 'tripo').",
+    promptSnippet: "Make a square transparent icon image for a model",
+    promptGuidelines: [
+      "Use generate_icon when something needs an icon image (an item card, a slot picture) for a model you have. Give model= for a .glb file, or taskId= when the model came from generate_model.",
+      "Omit style to get the model's own render for free; pass style= to redraw it in a requested style (e.g. 'clean game inventory icon, 3/4 view') - that costs credits (~10).",
+      "The icon is a plain square PNG with a transparent background; how it must be named, where it goes and which item uses it depends on the mod you are building - follow the capability skill.",
+    ],
+    parameters: Type.Object({
+      model: Type.Optional(Type.String({ description: "A .glb file to make the icon for." })),
+      taskId: Type.Optional(Type.String({ description: "A Tripo task id (when the model came from generate_model)." })),
+      image: Type.Optional(Type.String({ description: "A reference image to base the icon on (when there is no model)." })),
+      style: Type.Optional(Type.String({ description: "Optional style direction; without it the model's own render is used (free)." })),
+      out: Type.Optional(Type.String({ description: "Where to save the PNG (default: icon.png next to the model)." })),
+      region: Type.Optional(Type.Union([Type.Literal("cn"), Type.Literal("global")], { description: "API region (default cn)." })),
+    }),
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const cwd = ctx.cwd;
+      const key = readTripoKey();
+      if (!key) {
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                'FAIL: no Tripo API key.\nNEXT: ask the user for their Tripo API key, then write it to ~/.gamer-agent-pi/api-keys.json as {"tripo":"tsk_..."}, or set TRIPO_API_KEY.',
+            },
+          ],
+        };
+      }
+      const base = BASES[params.region === "global" ? "global" : "cn"];
+      const api = async (path: string, body?: unknown): Promise<any> => {
+        const r = await fetch(base + path, {
+          method: body === undefined ? "GET" : "POST",
+          headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+          body: body === undefined ? undefined : JSON.stringify(body),
+        });
+        const j: any = await r.json().catch(() => ({}));
+        if (j.code !== 0) throw new Error(`Tripo API code=${j.code} ${j.message ?? ""}`.trim());
+        return j.data;
+      };
+      const waitTask = async (id: string): Promise<any> => {
+        const t0 = Date.now();
+        for (;;) {
+          const d = await api(`/task/${id}`);
+          if (String(d.status) === "success") return d;
+          if (["failed", "banned", "expired", "cancelled"].includes(String(d.status))) throw new Error(`task ${d.status}`);
+          if (Date.now() - t0 > 900_000) throw new Error("task timed out");
+          await new Promise((r) => setTimeout(r, 2000));
+        }
+      };
+      const pickUrl = (o: any): string | null => {
+        for (const v of Object.values(o ?? {})) if (typeof v === "string" && v.startsWith("http")) return v;
+        return null;
+      };
+      const save = async (url: string, outPath: string): Promise<string> => {
+        const r = await fetch(url);
+        if (!r.ok) throw new Error(`download failed HTTP ${r.status}`);
+        const buf = Buffer.from(await r.arrayBuffer());
+        mkdirSync(dirname(outPath), { recursive: true });
+        writeFileSync(outPath, buf);
+        return `${(buf.length / 1024).toFixed(0)} KB`;
+      };
+
+      try {
+        const modelPath = params.model ? (isAbsolute(params.model) ? params.model : resolve(cwd, params.model)) : null;
+        let renderUrl: string | null = null;
+
+        if (params.taskId) {
+          const t = await api(`/task/${params.taskId}`);
+          renderUrl = t.output?.rendered_image ?? pickUrl(t.output);
+        } else if (modelPath) {
+          if (!existsSync(modelPath)) throw new Error(`model not found: ${modelPath}`);
+          const sidecar = join(dirname(modelPath), ".preview", `${basename(modelPath).replace(/\.glb$/i, "")}.task`);
+          if (existsSync(sidecar)) {
+            const t = await api(`/task/${readFileSync(sidecar, "utf8").trim()}`);
+            renderUrl = t.output?.rendered_image ?? null;
+          } else {
+            const b64 = `data:model/gltf-binary;base64,${readFileSync(modelPath).toString("base64")}`;
+            const imp = await api("/task", { type: "import_model", file: b64 });
+            const done = await waitTask(String(imp.task_id));
+            renderUrl = done.output?.rendered_image ?? null;
+          }
+        }
+
+        let url: string | null = renderUrl;
+        if (params.style) {
+          const src = renderUrl ?? (params.image ? `data:image/${extname(params.image).toLowerCase() === ".png" ? "png" : "jpeg"};base64,${readFileSync(isAbsolute(params.image) ? params.image : resolve(cwd, params.image)).toString("base64")}` : null);
+          if (!src) throw new Error("style needs a model, taskId or image to work from");
+          const gen = await api("/task", { type: "generate_image", file: src, prompt: params.style });
+          const done = await waitTask(String(gen.task_id));
+          url = pickUrl(done.output);
+        }
+        if (!url) throw new Error("no image to save (no render for this model, and no style/image given)");
+
+        const defaultOut = modelPath ? join(dirname(modelPath), "icon.png") : resolve(cwd, "icon.png");
+        const outPath = params.out ? (isAbsolute(params.out) ? params.out : resolve(cwd, params.out)) : defaultOut;
+        const size = await save(url, outPath);
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                `PASS: icon saved to ${outPath} (${size}, square PNG with transparent background${params.style ? ", redrawn in the requested style" : ", the model's own render (no credits spent)"}).\n` +
+                `NEXT: place it where your mod expects it and wire it up - see the capability skill (naming and placement are mod-specific).`,
+            },
+          ],
+        };
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        return { content: [{ type: "text", text: `FAIL: generate_icon: ${msg.slice(0, 600)}` }] };
+      }
+    },
+  });
+
   pi.registerTool({
     name: "generate_model",
     label: "Generate Model (Tripo)",
@@ -64,11 +186,8 @@ export default function (pi: ExtensionAPI) {
     ],
     parameters: Type.Object({
       action: Type.Union(
-        [Type.Literal("generate"), Type.Literal("icon"), Type.Literal("convert"), Type.Literal("balance")],
-        {
-          description:
-            "generate = prompt/image -> a new model; icon = make the inventory-card icon (icon.png) for a model; convert = re-export an existing task; balance = credits left.",
-        },
+        [Type.Literal("generate"), Type.Literal("convert"), Type.Literal("balance")],
+        { description: "generate = prompt/image -> a new model; convert = re-export an existing task; balance = credits left." },
       ),
       prompt: Type.Optional(
         Type.String({ description: 'What the model is, e.g. "PPSh-41 style submachine gun with drum magazine, game asset, side view, no hands".' }),
@@ -76,7 +195,6 @@ export default function (pi: ExtensionAPI) {
       image: Type.Optional(Type.String({ description: "Path to a reference image (png/jpg) for image-to-model." })),
       out: Type.Optional(Type.String({ description: "Where to save the GLB (usually inside your mod folder). Default: model.glb." })),
       taskId: Type.Optional(Type.String({ description: "For action=convert: task id from an earlier generate." })),
-      model: Type.Optional(Type.String({ description: "For action=icon: the model file to make an icon for (default: the same name as out)." })),
       faceLimit: Type.Optional(Type.Number({ description: "Max triangles (default 3000). Game assets: 1500-4000." })),
       animated: Type.Optional(Type.Boolean({ description: "Keep skeleton/animation data (default false = static, correct for props and weapons)." })),
       noTexture: Type.Optional(Type.Boolean({ description: "Skip texturing (cheaper, faster)." })),
@@ -179,10 +297,7 @@ export default function (pi: ExtensionAPI) {
               await download(done.output.rendered_image, `${shotBase}.preview.png`);
               shots.push(`${shotBase}.preview.png`);
               // 同一张渲染图再存一份到 mod 根做**图标**（背包卡片用 ✓ 白底会被运行时抠成透明 ✓）
-              const iconPath = join(dirname(firstOut), "icon.png");
-              copyFileSync(`${shotBase}.preview.png`, iconPath);
-              shots.push(iconPath);
-              // 记下 task id（`.preview/<模型名>.task`）→ 以后要重新取图标/换尺寸时**不再调 API、不花积分** ✓
+              // 记下 task id（`.preview/<模型名>.task`）→ generate_icon 可直接复用它的渲染图（不花积分 ✓）
               writeFileSync(`${shotBase}.task`, String(taskId));
             } catch { /* 预览图/图标下不到不影响主流程 */ }
           }
@@ -200,44 +315,8 @@ export default function (pi: ExtensionAPI) {
                 type: "text",
                 text:
                   `PASS: model saved to ${firstOut} (${size2}, raw also at ${rawPath} ${size}). task_id=${taskId}\n` +
-                  (shots.length ? `Preview: ${shots.join(", ")} - read/look at it and show it to the user BEFORE installing: shape is up to the prompt, orientation is already right. The plain icon.png next to the model is what the weapon card uses in game (the runtime keys its white background out).\n` : "") +
+                  (shots.length ? `Preview: ${shots.join(", ")} - read/look at it and show it to the user BEFORE installing: shape is up to the prompt, orientation is already right.\n` : "") +
                   `NEXT: put it in your mod folder and point config.json at it (e.g. {"target":"MP5","model":"${firstOut.split("/").pop()}"}), then build and install the mod.`,
-              },
-            ],
-          };
-        }
-
-        // action=icon：为物品生成卡片图标（512² 透明 PNG；尺寸/PPU 由运行时对齐游戏 ✓）
-        if (params.action === "icon") {
-          const modelPath = params.model
-            ? (isAbsolute(params.model) ? params.model : resolve(cwd, params.model))
-            : firstOut;
-          const sidecar = join(dirname(modelPath), ".preview", `${basename(modelPath).replace(/\.glb$/i, "")}.task`);
-          let renderUrl: string | null = null;
-
-          if (existsSync(sidecar)) {
-            // 这个模型是 Tripo 生成的 → 直接取它已有的渲染图（**不花积分** ✓）
-            const t = await api(`/task/${readFileSync(sidecar, "utf8").trim()}`);
-            renderUrl = t.output?.rendered_image ?? null;
-          } else {
-            // 用户自带的 GLB → 传上去（import_model）再取渲染图
-            if (!existsSync(modelPath)) throw new Error(`model not found: ${modelPath}`);
-            const b64 = `data:model/gltf-binary;base64,${readFileSync(modelPath).toString("base64")}`;
-            const imp = await api("/task", { type: "import_model", file: b64 });
-            const doneImp = await waitTask(String(imp.task_id), "import");
-            renderUrl = doneImp.output?.rendered_image ?? null;
-          }
-          if (!renderUrl) throw new Error("no rendered_image for this model (Tripo did not return one)");
-
-          const iconOut = join(dirname(modelPath), "icon.png");
-          const size = await download(renderUrl, iconOut);
-          return {
-            content: [
-              {
-                type: "text",
-                text:
-                  `PASS: icon saved to ${iconOut} (${size}, 512x512 transparent PNG).\n` +
-                  `NEXT: keep it named icon.png in the mod folder (the runtime shrinks it to 256 and sets the weapon-card sprite, matching the game's own icons).`,
               },
             ],
           };
