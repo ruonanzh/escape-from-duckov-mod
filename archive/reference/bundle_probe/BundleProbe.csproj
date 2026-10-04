@@ -20,12 +20,12 @@
     <Reference Include="$(ManagedDir)/Unity*"><Private>false</Private></Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="../mod-kit/Json.cs" />
-    <Compile Include="../mod-kit/ModelJson.cs" />
-    <Compile Include="../mod-kit/MeshKit.cs" />
-    <Compile Include="../mod-kit/TextureKit.cs" />
-    <Compile Include="../mod-kit/UnityAdapter.cs" />
-    <Compile Include="../mod-kit/ModelLoader.cs" />
-    <Compile Include="../mod-kit/GameApi.cs" />
+    <Compile Include="../../../reference/mod-kit/Json.cs" />
+    <Compile Include="../../../reference/mod-kit/ModelJson.cs" />
+    <Compile Include="../../../reference/mod-kit/MeshKit.cs" />
+    <Compile Include="../../../reference/mod-kit/TextureKit.cs" />
+    <Compile Include="../../../reference/mod-kit/UnityAdapter.cs" />
+    <Compile Include="../../../reference/mod-kit/ModelLoader.cs" />
+    <Compile Include="../../../reference/mod-kit/GameApi.cs" />
   </ItemGroup>
 </Project>

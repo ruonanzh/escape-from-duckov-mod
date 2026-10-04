@@ -4,8 +4,8 @@
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <AssemblyName>CubePerson</AssemblyName>
-    <RootNamespace>CubePerson</RootNamespace>
+    <AssemblyName>BoneProbe</AssemblyName>
+    <RootNamespace>BoneProbe</RootNamespace>
 
     <!-- Game dir: `node tools/check_runtime.mjs` discovers it and caches to
          .gamer-agent.local.json; export DUCKOV_DIR=<gameDir> before building.
@@ -34,19 +34,8 @@
     <Reference Include="$(ManagedDir)/Unity*">
       <Private>false</Private>
     </Reference>
-    <Reference Include="$(MSBuildThisFileDirectory)../../libs/0Harmony.dll">
+    <Reference Include="$(MSBuildThisFileDirectory)../../../../libs/0Harmony.dll">
       <Private>true</Private>
     </Reference>
-  </ItemGroup>
-  <!-- 共享层 + 运行时适配器（见 reference/mod-kit/README.md）-->
-  <ItemGroup>
-    <Compile Include="../mod-kit/Json.cs" />
-    <Compile Include="../mod-kit/ModelJson.cs" />
-    <Compile Include="../mod-kit/MeshKit.cs" />
-    <Compile Include="../mod-kit/TextureKit.cs" />
-    <Compile Include="../mod-kit/UnityAdapter.cs" />
-    <Compile Include="../mod-kit/ModelLoader.cs" />
-    <Compile Include="../mod-kit/GameApi.cs" />
-    <Compile Include="../mod-kit/CharacterModelReplacer.cs" />
   </ItemGroup>
 </Project>

@@ -8,7 +8,7 @@
     <NoWarn>MSB3277</NoWarn>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="AssetsTools.NET"><HintPath>../data-probe/lib/AssetsTools.NET.dll</HintPath></Reference>
-    <None Include="../data-probe/lib/classdata.tpk"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></None>
+    <Reference Include="AssetsTools.NET"><HintPath>../../../tools/data-probe/lib/AssetsTools.NET.dll</HintPath></Reference>
+    <None Include="../../../tools/data-probe/lib/classdata.tpk"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></None>
   </ItemGroup>
 </Project>
