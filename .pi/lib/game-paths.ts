@@ -49,6 +49,8 @@ export interface RuntimeState {
   workshopDir?: string | null;
   modInstallDir?: string | null;
   runtime?: unknown;
+  /** Tripo（AI 3D 生成）的本地配置：key 只放在工作区本地的状态文件里，不进 git */
+  tripo?: { apiKey?: string };
   [key: string]: unknown;
 }
 
