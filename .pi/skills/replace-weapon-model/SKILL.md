@@ -9,19 +9,14 @@ description: 用户想换某把武器的模型/外观时用（例："把 MP5 换
 
 ## 1. 模型从哪来
 
-> ⭐ **提示词里必须写明朝向** —— 这是**唯一可靠**的办法 ✓
-> （实测：Tripo 自己的 `export_orientation` 参数对同一批模型结果都不一致 ✗；
->   靠几何判定也不行 —— 火箭筒这种"两端都细"的没法判 ✗）
+> ⭐ **提示词里必须写明朝向** —— 这是唯一可靠的办法 ✓
+> Tripo 的 `export_orientation` 参数不可靠 ✗（同一批模型结果不一致）；靠几何判断也不行 ✗（火箭筒这种"两端都细"的没法判）
 >
 > ```
 > …, the barrel and muzzle point to the LEFT, the stock is on the right
 > ```
-> 实测映射：**"to the left" → 枪口落在 +Z = Unity 前向 ✓**（"to the right" → −Z ✗）
-> → **朝向在生成阶段就定好，进游戏不用再转** ✓
->
-> **为什么不能靠别的**：Tripo 的 `export_orientation` 参数对同一批模型结果都不一致 ✗（有时翻有时不翻）；
-> "几何判定哪端是枪口"对**火箭筒**这种两端都细的必然失效 ✗ → 提示词是唯一可靠的手段 ✓
-> （完整实测见 doc 仓 `docs/unity-3d-assets/03-tripo-api.md` §8.8 / §8.9）
+> **"to the left" → 枪口落在 +Z = Unity 前向 ✓**（"to the right" → −Z ✗）→ **进游戏不用再转** ✓
+> （完整数据：doc 仓 `docs/unity-3d-assets/03-tripo-api.md` §8.8 / §8.9）
 
 > **Tripo key**：放**单独的文件** `~/.gamer-agent-pi/api-keys.json` → `{ "tripo": "tsk_…" }`（用户级 ✓ 所有游戏仓库共用 ✓ 不进 git ✓；**临时方案** —— 将来由 app 的「管理 API keys」界面接管 ✓）。没有 key 时工具会返回 FAIL 并说明放哪 —— 这时**向用户要一次**，写进去即可 ✓（余额可以用 `generate_model(action="balance")` 看 ✓；一次生成大约 40 积分 —— **别反复重试刷积分** ✗ 不行就改提示词或问用户 ✓）
 
@@ -47,7 +42,7 @@ create_mod(kind="replace-weapon-model", name="MyGun", target="MP5", file="gun.gl
 | `build=false` | 不想立刻编译时（默认会编 ✓ 需要已记录游戏目录 ✓）|
 
 > **为什么必须用它**：手抄模板时最容易漏两处 —— ① 四处名字不一致（症状是"mod 静默不加载"✗）
-> ② 模板里指向 `libs/mod-kit` 的 `<Compile Include>` 是**按模板目录**算的相对路径 ✓（实测：抄到 `your_mods/<名字>/` 同深度**仍然能编** ✓；但抄到**仓库外**、或目录层数一变就断 ✗）→ 工具按新位置重算，做到**位置无关** ✓
+> ② 模板里指向 `libs/mod-kit` 的 `<Compile Include>` 是按**模板自身的目录**算的相对路径 ✓ → mod 放到别处（或目录层数不同）就编不过 ✗；工具会**按 mod 实际位置重算** ✓
 
 ## 3. 装进游戏
 
