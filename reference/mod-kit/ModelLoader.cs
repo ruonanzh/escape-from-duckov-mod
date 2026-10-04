@@ -68,6 +68,11 @@ namespace ModelKit
 
             const float px = 1f / 16f;   // 像素 → 米
 
+            // ⚠️ 关键：游戏骨骼的**绑定旋转不是单位**（Root 就转了 90°，四肢各有 30~75°）。
+            // YSM 方块是"模型空间"里摆的（像 Minecraft），而方块会成为骨骼的子物体 → 会被骨骼的旋转带着转。
+            // 所以必须按骨骼的**绑定旋转**把"模型空间偏移"换算进骨骼局部坐标系（否则四肢会歪/散开）。
+            var bindRot = CollectBindRotations(modelRoot);
+
             foreach (var bone in ysm.Bones)
             {
                 var boneTf = FindDeep(modelRoot, bone.Name);
@@ -100,13 +105,40 @@ namespace ModelKit
                         PxW = (int)sx, PxH = (int)sy, PxD = (int)sz
                     };
 
+                    // 方块网格建在"以原点为中心"，位置/旋转交给 GameObject（便于按骨骼绑定旋转换算）
+                    part.At = new[] { 0f, 0f, 0f };
                     var data = MeshKit.BuildPart(part, rect, ysm.TextureWidth);
                     var go = UnityAdapter.CreateMeshObject($"{bone.Name}_cube", UnityAdapter.ToMesh(data, bone.Name), mat, boneTf, layer);
+                    Quaternion rInv = Quaternion.identity;
+                    Quaternion r; if (bindRot.TryGetValue(bone.Name, out r)) rInv = Quaternion.Inverse(r);
+                    go.transform.localPosition = rInv * new Vector3(centerPx.X * px, centerPx.Y * px, centerPx.Z * px);
+                    go.transform.localRotation = rInv;
                     result.Objects.Add(go);
                     result.CubeCount++;
                 }
             }
             return result;
+        }
+
+        /// <summary>取每根骨骼在**模型空间**的绑定旋转（来自模型的 `SkinnedMeshRenderer.bindposes`）。
+        /// 没有蒙皮网格（或找不到该骨骼）时退化成单位旋转（= 老行为，只适合"方块放在 pivot 上"的模型）。</summary>
+        public static Dictionary<string, Quaternion> CollectBindRotations(Transform modelRoot)
+        {
+            var map = new Dictionary<string, Quaternion>();
+            if (modelRoot == null) return map;
+            foreach (var smr in modelRoot.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+            {
+                var mesh = smr.sharedMesh;
+                if (mesh == null || smr.bones == null) continue;
+                for (int i = 0; i < smr.bones.Length && i < mesh.bindposes.Length; i++)
+                {
+                    var b = smr.bones[i];
+                    if (b == null || map.ContainsKey(b.name)) continue;
+                    var localToWorldAtBind = mesh.bindposes[i].inverse;      // bindpose = 世界→骨骼（绑定姿势下）
+                    map[b.name] = localToWorldAtBind.rotation;               // 它在模型空间的旋转
+                }
+            }
+            return map;
         }
 
         /// <summary>按名字递归找骨骼（游戏骨骼名与 YSM 的 bones[].name 一致 —— 模板就是这么生成的）。</summary>

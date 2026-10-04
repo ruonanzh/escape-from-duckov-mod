@@ -1,5 +1,5 @@
 {
-  "model": "models/duck_hip.json",
+  "model": "models/cat_hip.json",
   "target": "npc",
   "match": "Jeff",
   "replaceBody": true

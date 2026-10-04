@@ -29,6 +29,9 @@ namespace ModelKit
 
     public sealed class YsmModel
     {
+        /// <summary>按骨骼名给的底色（可选，来自模型文件 `texture.fills`）；缺省时按骨骼名哈希取色。</summary>
+        public Dictionary<string, string> Fills = new Dictionary<string, string>();
+
         public string Identifier = "";
         public int TextureWidth = 64, TextureHeight = 64;
         public List<YsmBone> Bones = new List<YsmBone>();
@@ -181,6 +184,14 @@ namespace ModelKit
                 model.TextureWidth = desc["texture_width"]?.AsInt(64) ?? 64;
                 model.TextureHeight = desc["texture_height"]?.AsInt(64) ?? 64;
             }
+
+            var fills = root["texture"]?["fills"];      // 我们的扩展：{"Hip":"#E0913C", ...} 按骨骼名上色
+            if (fills != null && fills.IsObject)
+                foreach (var kv in fills.Object)
+                {
+                    var c = kv.Value.AsString("");
+                    if (!string.IsNullOrEmpty(c)) model.Fills[kv.Key] = c;
+                }
 
             var bones = g["bones"];
             if (bones == null || !bones.IsArray || bones.Count == 0) { errors.Add("bones 为空"); return model; }

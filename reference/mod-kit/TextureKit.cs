@@ -84,7 +84,7 @@ namespace ModelKit
 
             foreach (var bone in model.Bones)
             {
-                var c = ColorFor(bone.Name);
+                var c = ParseColorOr(model.Fills, bone.Name) ?? ColorFor(bone.Name);   // fills 优先，否则按名字取色
                 foreach (var cube in bone.Cubes)
                 {
                     int pw = Math.Max(1, (int)Math.Round(cube.Size[0]));
@@ -105,6 +105,23 @@ namespace ModelKit
         }
 
         /// <summary>名字 → 颜色（稳定哈希，保证同一骨骼每次同色）。</summary>
+        /// <summary>从模型文件的 fills 里取某个骨骼的颜色（`#RRGGBB`），没有返回 null。</summary>
+        public static (byte r, byte g, byte b)? ParseColorOr(Dictionary<string, string> fills, string key)
+        {
+            if (fills == null || fills.Count == 0) return null;
+            string hex;
+            if (!fills.TryGetValue(key, out hex) && !fills.TryGetValue("*", out hex)) return null;
+            hex = (hex ?? "").Trim().TrimStart('#');
+            if (hex.Length < 6) return null;
+            try
+            {
+                return (Convert.ToByte(hex.Substring(0, 2), 16),
+                        Convert.ToByte(hex.Substring(2, 2), 16),
+                        Convert.ToByte(hex.Substring(4, 2), 16));
+            }
+            catch { return null; }
+        }
+
         public static (byte r, byte g, byte b) ColorFor(string name)
         {
             int hash = 17;

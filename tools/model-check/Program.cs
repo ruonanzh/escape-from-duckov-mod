@@ -88,7 +88,7 @@ namespace ModelCheck
             }
             if (root == null || !root.IsObject) { res.Report.AppendLine($"FAIL  {label}    顶层不是对象"); res.Fails++; return res; }
 
-            if (root["minecraft:geometry"] != null) return CheckYsm(root, label);
+            if (root["minecraft:geometry"] != null) return CheckYsm(root, label, objOut);
 
             var errors = new List<string>();
             var spec = ModelJson.ToModel(root, errors);
@@ -298,7 +298,7 @@ namespace ModelCheck
             "UpperArm.L","Elbow.L","ForeArm.L","Hand.L","Hand.Soket.L","UpperArm.R","Elbow.R","ForeArm.R","Hand.R","Hand.Soket.R",
             "Thigh.R","Foot.R","Thigh.L","Foot.L","Tail","Tail.001" };
 
-        static Result CheckYsm(JsonValue root, string label)
+        static Result CheckYsm(JsonValue root, string label, string objOut)
         {
             var res = new Result();
             var errors = new List<string>();
@@ -344,10 +344,61 @@ namespace ModelCheck
             if (unknown.Count > 0)
                 warns.Add($"不在已知骨架里的骨骼名（拼写？）：{string.Join(", ", unknown.Take(6))}{(unknown.Count > 6 ? " …" : "")}");
 
+            // YSM 的 uv 展开矩形不能重叠（重叠 = 上色互相覆盖）
+            var rects = new List<(string bone, int x, int y, int w, int h)>();
+            foreach (var b in ysm.Bones)
+                foreach (var c in b.Cubes)
+                {
+                    int rw = 2 * (int)Math.Round((double)c.Size[2]) + 2 * (int)Math.Round((double)c.Size[0]);
+                    int rh = (int)Math.Round((double)c.Size[2]) + (int)Math.Round((double)c.Size[1]);
+                    int x = c.Uv[0], y = c.Uv[1];
+                    foreach (var o in rects)
+                        if (x < o.x + o.w && o.x < x + rw && y < o.y + o.h && o.y < y + rh)
+                            warns.Add($"{b.Name}: uv 展开矩形与 {o.bone} 重叠 → 上色会互相覆盖");
+                    rects.Add((b.Name, x, y, rw, rh));
+                }
+
             foreach (var w in warns) res.Report.AppendLine($"WARN  {label}    {w}");
+            if (objOut != null)
+            {
+                var preview = BuildYsmPreview(ysm);
+                WriteObj(objOut, preview);
+                res.Report.AppendLine($"已导出 OBJ（YSM 绑定姿势预览）：{objOut}  顶点={preview.VertexCount} 三角={preview.TriangleCount}");
+            }
             var tag = res.Fails > 0 ? "FAIL" : (warns.Count > 0 ? "WARN" : "PASS");
             res.Report.AppendLine($"{tag}  {label,-22} YSM  bones={names.Count,3}  cubes={cubes,3}  texture={ysm.TextureWidth}×{ysm.TextureHeight}  id={ysm.Identifier}");
             return res;
+        }
+
+        /// <summary>YSM 的"绑定姿势预览"网格：每个 cube 按模型空间 origin 摆好（不套骨架变换）。
+        /// 用来离线看造型（配合 --obj + 自己的渲染器），不进游戏也能检查比例。</summary>
+        static ModelKit.MeshData BuildYsmPreview(ModelKit.YsmModel ysm)
+        {
+            const float px = 1f / 16f;
+            var all = new ModelKit.MeshData { AtlasSize = 64, PixelsPerMeter = 1f,
+                                              Atlas = new List<ModelKit.AtlasRect>(), Emitted = new List<PartSpec>() };
+            foreach (var b in ysm.Bones)
+                foreach (var c in b.Cubes)
+                {
+                    float sx = Math.Max(1, (float)Math.Round(c.Size[0]));
+                    float sy = Math.Max(1, (float)Math.Round(c.Size[1]));
+                    float sz = Math.Max(1, (float)Math.Round(c.Size[2]));
+                    var part = new PartSpec
+                    {
+                        Role = b.Name, Shape = "box",
+                        Size = new[] { sx * px, sy * px, sz * px },
+                        At = new[] { (c.Origin[0] + sx / 2f) * px, (c.Origin[1] + sy / 2f) * px, (c.Origin[2] + sz / 2f) * px },
+                    };
+                    var rect = new ModelKit.AtlasRect { Role = b.Name, X = 0, Y = 0, W = 1, H = 1, PxW = 1, PxH = 1, PxD = 1 };
+                    var one = MeshKit.BuildPart(part, rect, 64);
+                    int b0 = all.Positions.Count, i0 = all.Indices.Count;
+                    all.Positions.AddRange(one.Positions);
+                    all.Normals.AddRange(one.Normals);
+                    all.Uvs.AddRange(one.Uvs);
+                    foreach (var idx in one.Indices) all.Indices.Add(idx + b0);
+                    all.SubMeshes.Add(new ModelKit.SubMesh { Role = b.Name, Start = i0, Count = all.Indices.Count - i0 });
+                }
+            return all;
         }
 
         static bool IsPow2(int v) => v > 0 && (v & (v - 1)) == 0;
