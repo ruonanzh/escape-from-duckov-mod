@@ -51,7 +51,10 @@ namespace ModelKit
             tex.wrapMode = TextureWrapMode.Clamp;
             tex.name = "WeaponIcon";
 
-            var sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);
+            // ⭐ 尺寸对齐游戏自己的物品图标：实测游戏是 **256×256 贴图 + Sprite PPU 50**（MP5 等 158 把武器一致）
+            //   我们的来源图是 512² → 缩到 256²（盒式均值 ✓）并同样用 PPU 50 → 显示尺寸与游戏完全一致 ✓
+            tex = DownscaleTo(tex, 256);
+            var sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 50f);
             sprite.name = "WeaponIconSprite";
 
             // 实例 + **同 typeID 的模板**都设（卡片读哪个都能覆盖 ✓ 不用赌它读哪个 ✓）
@@ -69,7 +72,38 @@ namespace ModelKit
             }
             catch (Exception e) { return $"图标已设到实例（{tex.width}x{tex.height}，白底像素 {keyed}），模板扫描失败：{e.Message}"; }
 
-            return $"图标已设置：{tex.width}x{tex.height}（白底像素 {keyed}）；实例写入 {(set > 0 ? "成功" : "失败")}，同 typeID 模板 {tpl} 个";
+            return $"图标已设置：{tex.width}x{tex.height} @PPU50（白底像素 {keyed}）；实例写入 {(set > 0 ? "成功" : "失败")}，同 typeID 模板 {tpl} 个";
+        }
+
+        /// <summary>等比缩到 target 边长（盒式均值 ✓ 简单、无副作用）</summary>
+        static Texture2D DownscaleTo(Texture2D src, int target)
+        {
+            if (src.width <= target) return src;
+            var dst = new Texture2D(target, target, TextureFormat.RGBA32, false);
+            int f = src.width / target;                       // 512→256 即 f=2
+            if (!Mathf.IsPowerOfTwo(f)) f = 2;
+            var sPix = src.GetPixels32();
+            var dPix = new Color32[target * target];
+            for (int y = 0; y < target; y++)
+                for (int x = 0; x < target; x++)
+                {
+                    int r = 0, g = 0, b = 0, a = 0, n = 0;
+                    for (int dy = 0; dy < f; dy++)
+                        for (int dx = 0; dx < f; dx++)
+                        {
+                            int sx = x * f + dx, sy = y * f + dy;
+                            if (sx >= src.width || sy >= src.height) continue;
+                            var c = sPix[sy * src.width + sx];
+                            r += c.r; g += c.g; b += c.b; a += c.a; n++;
+                        }
+                    if (n == 0) { dPix[y * target + x] = new Color32(0, 0, 0, 0); continue; }
+                    dPix[y * target + x] = new Color32((byte)(r / n), (byte)(g / n), (byte)(b / n), (byte)(a / n));
+                }
+            dst.SetPixels32(dPix);
+            dst.Apply();
+            dst.wrapMode = TextureWrapMode.Clamp;
+            dst.name = "WeaponIcon_256";
+            return dst;
         }
 
         /// <summary>`Item.icon` 既是字段也是只读属性 → 两条路都试（反射，避免版本差异）</summary>
