@@ -50,15 +50,12 @@ export default function (pi: ExtensionAPI) {
     name: "generate_model",
     label: "Generate Model (Tripo)",
     description:
-      "Generate a 3D model file (GLB) with Tripo from a text prompt or a reference image and save it where you are building the mod. This is how a model-mod gets its model (e.g. replacing a weapon's or an item's model) when the user has no model file. The tool creates the task, polls it, downloads the result immediately (the remote URL expires in 5 minutes) and re-exports it as a Unity-ready GLB (faces +Z), so the saved file needs no rotation later. Also converts an existing task again and reports the account balance. Costs credits (a low-poly model with texture is roughly 40, a conversion roughly 10) - do not call it in a loop. Needs a Tripo API key: put it in ~/.gamer-agent-pi/api-keys.json as {"tripo":"tsk_..."} (a separate file, user-level, shared by every game repo and never committed - this is a stopgap until the app manages API keys in its settings).",
+      "Generate a 3D model (GLB) with Tripo from a text prompt or a reference image, saved next to the mod you are building. Downloads it immediately (the remote URL expires in 5 minutes) as a Unity-ready GLB, so no rotation is needed later. Costs credits (~40 per textured low-poly model) - do not call it in a loop.",
     promptSnippet: "Generate a 3D model (GLB) with Tripo from a prompt or image",
     promptGuidelines: [
-      "Use generate_model when a model-mod needs a model and the user has no .glb yet (ask 'what should it look like?', or use their reference image). If they already have a .glb, use that file instead - do not call this tool.",
-      'Low-poly game assets come from Tripo\'s P series (the tool defaults to it, faceLimit ~3000). Pass image= for image-to-model when the user has a reference picture (better shape fidelity than text alone).',
-      "ALWAYS state the orientation in the prompt, e.g. '..., the barrel and muzzle point to the LEFT, the stock is on the right'. Measured: 'to the left' lands the muzzle at +Z (Unity forward, no rotation needed); 'to the right' lands it at -Z. Tripo's export_orientation parameter is NOT reliable (the same batch came out inconsistent) and geometric guessing fails on tube-like weapons (a rocket launcher has two thin ends), so the prompt is the only dependable lever.",
-      "The tool saves the GLB and returns PASS with the path. The result is already Unity-ready (faces +Z), so no rotation step is needed later. If you need another size/format, call it again with action=convert and the same taskId - it does not re-generate.",
-      "It costs credits (~40 per textured low-poly model). Check action=balance if the user cares; never retry in a loop to 'get a better one' - improve the prompt or ask the user.",
-      'If it returns FAIL because no key is configured: ask the user for their Tripo API key, then write it to ~/.gamer-agent-pi/api-keys.json as {"tripo":"tsk_..."} (a separate user-level file, shared by all game repos, never committed). This is a stopgap - the app will manage API keys in its settings later.',
+      "Use it only when no model file exists yet - if the user already has a .glb, use that.",
+      "Always put the orientation in the prompt, e.g. '..., the barrel and muzzle point to the LEFT' - that is the only reliable way to control which way it faces (it lands the muzzle at +Z, Unity forward).",
+      "Never retry in a loop for a better result (each call costs credits); if it FAILs about a missing API key, follow the NEXT in its message.",
     ],
     parameters: Type.Object({
       action: Type.Union(

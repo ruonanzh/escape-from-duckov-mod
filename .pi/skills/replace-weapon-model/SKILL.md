@@ -18,6 +18,10 @@ description: 用户想换某把武器的模型/外观时用（例："把 MP5 换
 > ```
 > 实测映射：**"to the left" → 枪口落在 +Z = Unity 前向 ✓**（"to the right" → −Z ✗）
 > → **朝向在生成阶段就定好，进游戏不用再转** ✓
+>
+> **为什么不能靠别的**：Tripo 的 `export_orientation` 参数对同一批模型结果都不一致 ✗（有时翻有时不翻）；
+> "几何判定哪端是枪口"对**火箭筒**这种两端都细的必然失效 ✗ → 提示词是唯一可靠的手段 ✓
+> （完整实测见 doc 仓 `docs/unity-3d-assets/03-tripo-api.md` §8.8 / §8.9）
 
 > **Tripo key**：放**单独的文件** `~/.gamer-agent-pi/api-keys.json` → `{ "tripo": "tsk_…" }`（用户级 ✓ 所有游戏仓库共用 ✓ 不进 git ✓；**临时方案** —— 将来由 app 的「管理 API keys」界面接管 ✓）。没有 key 时工具会返回 FAIL 并说明放哪 —— 这时**向用户要一次**，写进去即可 ✓（余额可以用 `generate_model(action="balance")` 看 ✓；一次生成大约 40 积分 —— **别反复重试刷积分** ✗ 不行就改提示词或问用户 ✓）
 
