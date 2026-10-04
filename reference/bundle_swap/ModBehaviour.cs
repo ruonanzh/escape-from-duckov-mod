@@ -48,17 +48,21 @@ namespace BundleSwap
         string _lastHeld;
         readonly Dictionary<int, GameObject> _applied = new Dictionary<int, GameObject>();   // root InstanceID → 我们挂的实例
         bool _loggedFirst;
+        DateTime _cfgStamp;
 
         void Start()
         {
             _cfgPath = Path.Combine(ModelLoader.ModDir(), "config.json");
             Log("=== BundleSwap start ===");
             ReloadConfig();
+            _cfgStamp = File.Exists(_cfgPath) ? File.GetLastWriteTimeUtc(_cfgPath) : DateTime.MinValue;
             Flush();
         }
 
         void Update()
         {
+            ReloadIfChanged();
+
             // ① 加载 bundle（实测：mod 启动最早期会失败 → 每 2 秒重试）
             if (_template == null)
             {
@@ -94,6 +98,26 @@ namespace BundleSwap
 
             Apply(root, item);
             Flush();
+        }
+
+        /// <summary>配置一改存盘就重新生效：丢掉我们挂过的实例、清记录 → 下一轮按新配置重挂 ✓（不用重启）</summary>
+        void ReloadIfChanged()
+        {
+            try
+            {
+                if (!File.Exists(_cfgPath)) return;
+                var st = File.GetLastWriteTimeUtc(_cfgPath);
+                if (st == _cfgStamp) return;
+                _cfgStamp = st;
+                ReloadConfig();
+                int n = 0;
+                foreach (var kv in _applied)
+                    if (kv.Value != null) { UnityEngine.Object.Destroy(kv.Value); n++; }
+                _applied.Clear();
+                _lastHeld = null;
+                Log($"配置热重载：bundle={_bundleRel} offset={_offset} rotate={_rotate} scale={_scale} material={_materialMode}（已丢弃 {n} 个旧实例，稍后按新配置重挂）");
+            }
+            catch (Exception e) { Log($"热重载失败：{e.Message}"); }
         }
 
         bool Matches(ItemStatsSystem.Item item)
