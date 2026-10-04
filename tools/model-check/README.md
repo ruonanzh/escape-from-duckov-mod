@@ -1,7 +1,7 @@
 # model-check —— 离线校验模型文件（干跑）
 
 不启动游戏，就能知道模型**做出来长什么样**：顶点数、三角面数、包围盒、贴图排布与自动密度，
-以及格式/尺寸/UV/骨架名等规则违例。规范见 `archive/docs/unity-3d/05-model-format.md`。
+以及格式/尺寸/UV/骨架名等规则违例。规范见 （旧模型做法文档已归档到 **doc 仓** `docs/archive/unity-3d-exploration/unity-3d-docs/`）。
 
 ## 用法
 
@@ -13,16 +13,16 @@ dotnet tools/model-check/bin/Release/model-check.dll --file my_gun.json
 
 # 校验文档里所有 ```json 块（零件清单 / YSM 骨架）
 dotnet tools/model-check/bin/Release/model-check.dll \
-  --md archive/docs/unity-3d/01-weapons.md --md archive/docs/unity-3d/02-items.md --md archive/docs/unity-3d/04-buildings.md
+  --md <模型格式文档>   # ← 已归档到 doc 仓 docs/archive/unity-3d-exploration/unity-3d-docs/
 
 # 指定贴图边长（演示自动密度的变化）
 dotnet tools/model-check/bin/Release/model-check.dll --file my_gun.json --side 1024
 
 # 按 fills 生成贴图（路径给目录时写成 <目录>/<模型名>.png）
-dotnet tools/model-check/bin/Release/model-check.dll --md archive/docs/unity-3d/01-weapons.md --png /tmp/tex/
+dotnet tools/model-check/bin/Release/model-check.dll --md <模型格式文档> --png /tmp/tex/
 
 # 导出 UV 模板（给"手绘 / 外部图"照着涂；同样支持目录）
-dotnet tools/model-check/bin/Release/model-check.dll --md archive/docs/unity-3d/02-items.md --template /tmp/tex/
+dotnet tools/model-check/bin/Release/model-check.dll --md <模型格式文档> --template /tmp/tex/
 ```
 
 退出码：有 `FAIL` → `1`，否则 `0`（`WARN` 不算失败，可用于 CI）。

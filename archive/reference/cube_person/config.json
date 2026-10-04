@@ -1,5 +1,0 @@
-{
-  "model": "models/cat_voxel_pelvis.json",
-  "target": "player",
-  "replaceBody": true
-}

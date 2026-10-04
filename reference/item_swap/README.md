@@ -13,7 +13,7 @@ item_swap/
   ItemSwap.csproj            # 唯一工程文件（netstandard2.1）：引用游戏 DLL + 编译 ../mod-kit/*.cs
   ModBehaviour.cs            # 全部逻辑：读 config、热重载、调库、打日志
   config.json                # 运行时可改的配置（字段见下）
-  models/*.json              # 模型零件清单（格式：archive/docs/unity-3d/05-model-format.md）
+  models/*.json              # 模型零件清单（旧格式；说明已归档到 doc 仓）
   info.ini                   # mod 元数据（name / displayName / description / version）
   bin/Release/ItemSwap.dll   # 产物
 ```
@@ -56,16 +56,15 @@ dotnet build -c Release .                     # 在 item_swap/ 目录里
 ## 拿它当起点做自己的 mod
 
 1. 复制目录 → 改 `info.ini` 的 `name`/`displayName`，csproj 的 `AssemblyName` 改成你的 mod 名
-2. 换 `models/*.json` 为你的模型（格式见 [`archive/docs/unity-3d/05-model-format.md`](../../archive/docs/unity-3d/05-model-format.md)）
-3. 定目标物品：`typeIDs` 填 typeID（用 `inspect_game_data` 查，见 [`01-weapons.md`](../../archive/docs/unity-3d/01-weapons.md) 的提取命令）
+2. 换 `models/*.json` 为你的模型（模型格式说明已归档到 **doc 仓** `docs/archive/unity-3d-exploration/unity-3d-docs/`）
+3. 定目标物品：`typeIDs` 填 typeID（用 `inspect_game_data` 查）
 4. `model-check` 干跑一遍（几何/UV/绕序/挂点建议）→ 进游戏看 → 需要时开 `debugMarkers` 调挂点
 5. 要"新增物品"就填 `newItem`（`cloneFrom` 选一把最接近的现有枪）
 
 ## 相关文档与实现
 
-- 模型格式 / 坐标约定：[`05-model-format.md`](../../archive/docs/unity-3d/05-model-format.md) · [`00-shared.md`](../../archive/docs/unity-3d/00-shared.md)
-- 武器 / 物品的完整做法（挂点、四类零件、坑）：[`01-weapons.md`](../../archive/docs/unity-3d/01-weapons.md) · [`02-items.md`](../../archive/docs/unity-3d/02-items.md)
+- 模型格式 / 坐标约定 / 武器与物品做法：已归档到 doc 仓 `docs/archive/unity-3d-exploration/unity-3d-docs/`
 - 库实现（`../mod-kit/`）：`ItemModelBinder`（换图形：克隆 → 只换主体零件 → 写回 `itemGraphic`）·
   `ItemFactory`（新增物品：`CloneAsNewItem`，内置常驻/名字/`IsGun`）· `MeshKit`（几何）· `TextureKit`（贴图）·
   `GameApi`（找角色 / 发放物品）
-- 角色模型：另一个 demo [`../../archive/reference/cube_person/`](../cube_person/)（+ [`03-characters.md`](../../archive/docs/unity-3d/03-characters.md)）
+- 角色模型：见 doc 仓的归档（方块路线已放弃）

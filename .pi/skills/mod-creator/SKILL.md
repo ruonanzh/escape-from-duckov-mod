@@ -59,7 +59,7 @@ description: Escape From Duckov 的 C# mod 制作与修改：目录结构、info
   （直接塞字面量会被显示成 `*字面量*`）。
 - 注册：`ItemAssetsCollection.AddDynamicEntry(item)`（同 typeID 会覆盖原版并打警告；失败要销毁克隆体）。
 - **模型**由模型侧给：`model-kit` 的 `BuildGraphicClone(源typeID)` + `WriteGraphicTo(item, g)`
-  （`itemGraphic` 是数据层与模型层唯一的连接点）—— 详见 `archive/docs/unity-3d/01-weapons.md` 的「新增一把枪」。
+  （`itemGraphic` 是数据层与模型层唯一的连接点）（旧做法文档已归档到 doc 仓 `docs/archive/unity-3d-exploration/`）
 - ⭐ **运行时造的对象必须 `DontDestroyOnLoad`**（图形克隆、新物品模板、手持实体）——否则换场景（菜单→关卡）
   被销毁，`itemGraphic` 变"已销毁引用"（Unity `== null` 判 true）→ 物品回退成图标。
 - 注意：注册通常发生在**进关卡之前**（那时没有玩家）→ 发放/掉落到地上要等进关卡后再做；
