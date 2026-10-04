@@ -28,16 +28,21 @@ namespace BundleProbe
 
         readonly StringBuilder _sb = new StringBuilder();
         string _cfgPath;
+        DateTime _cfgStamp;
 
         string _bundleRel = "mpxmodels";
         string _wantedAsset = "";
         string _attach = "hand";
         float _scale = 1f;
         int _layerOverride;
+        string _materialMode = "keep";   // keep=用包里的材质 / game=换成游戏自己的 URP 材质（保留包里的贴图）
+        bool _materialsApplied;
 
         AssetBundle _bundle;
         GameObject _instance;
         bool _tried;
+        int _loadTries;
+        float _nextLoadTry;
         float _nextCheck;
         string _lastParent;
         bool _dumped;
@@ -49,15 +54,30 @@ namespace BundleProbe
             Log($"mod dir = {ModelLoader.ModDir()}");
             Log($"config  = {_cfgPath}  exists={File.Exists(_cfgPath)}");
             ReloadConfig();
+            _cfgStamp = File.Exists(_cfgPath) ? File.GetLastWriteTimeUtc(_cfgPath) : DateTime.MinValue;
             Flush();
         }
 
         void Update()
         {
-            if (!_tried) { _tried = true; TryLoad(); Flush(); return; }
+            // 加载：失败就重试（实测：mod 启动最早期 LoadFromFile 会返回 null，
+            // 工坊 mod 的日志里也有同样一行 —— 它们成功是因为稍后重试了）
+            if (_bundle == null)
+            {
+                if (Time.unscaledTime >= _nextLoadTry)
+                {
+                    _nextLoadTry = Time.unscaledTime + 2f;
+                    _loadTries++;
+                    TryLoad();
+                    Flush();
+                }
+                return;
+            }
+            if (!_tried) { _tried = true; Log($"✓ 第 {_loadTries} 次尝试时加载成功"); Flush(); }
 
             if (Time.unscaledTime < _nextCheck) return;
             _nextCheck = Time.unscaledTime + 2f;
+            ReloadIfChanged();
             EnsureAttached();
             if (_sb.Length > 0) Flush();
         }
@@ -74,8 +94,36 @@ namespace BundleProbe
                 _attach      = root["attach"].AsString("hand");
                 _scale       = root["scale"].AsFloat(1f);
                 _layerOverride = root["layer"].AsInt(0);
+                _materialMode = root["material"].AsString("keep");
             }
             catch (Exception e) { Log($"配置读取失败：{e.Message}"); }
+        }
+
+        void ReloadIfChanged()
+        {
+            try
+            {
+                if (!File.Exists(_cfgPath)) return;
+                var st = File.GetLastWriteTimeUtc(_cfgPath);
+                if (st == _cfgStamp) return;
+                _cfgStamp = st;
+                ReloadConfig();
+                _lastParent = null;                 // 配置变了 → 重新摆位
+                _materialsApplied = false;          // 配置变了 → 重新处理材质
+                Log($"配置热重载：attach={_attach} scale={_scale} layer={_layerOverride} asset='{_wantedAsset}' material={_materialMode}");
+            }
+            catch (Exception e) { Log($"配置热重载失败：{e.Message}"); }
+        }
+
+        void LogHeldItem()
+        {
+            var mc = GameApi.FindMainCharacter();
+            if (mc == null) { Log("手里诊断：找不到玩家角色"); return; }
+            var agent = mc.CurrentHoldItemAgent;
+            var item = agent != null ? agent.Item : null;
+            if (item == null) { Log("手里诊断：玩家当前没有手持物品（手上是空的）"); return; }
+            var g = item.ItemGraphic;
+            Log($"手里诊断：玩家手持 '{item.name}'（typeID={item.TypeID}），它的 ItemGraphic={(g != null ? g.gameObject.name : "null")}");
         }
 
         // ── 加载 bundle ─────────────────────────────────────────────────────
@@ -89,7 +137,7 @@ namespace BundleProbe
             try { _bundle = AssetBundle.LoadFromFile(path); }
             catch (Exception e) { Log($"✗ LoadFromFile 抛异常：{e}"); return; }
 
-            if (_bundle == null) { Log("✗ LoadFromFile 返回 null（格式/版本不匹配，或包损坏）"); return; }
+            if (_bundle == null) { Log($"✗ 第 {_loadTries} 次 LoadFromFile 返回 null（太早 / 格式不符）→ 2 秒后重试"); return; }
             Log($"✓ bundle 已加载：name={_bundle.name}");
 
             string[] names = null;
@@ -109,6 +157,7 @@ namespace BundleProbe
             if (_layerOverride > 0) SetLayerRecursive(_instance, _layerOverride);
 
             DumpInstance(_instance);
+            TryApplyGameMaterials();
         }
 
         GameObject LoadPrefab(string[] names)
@@ -161,12 +210,128 @@ namespace BundleProbe
                     if (m == null) { Log("        (null 材质)"); continue; }
                     string sh = m.shader != null ? m.shader.name : "(no shader)";
                     bool sup = m.shader != null && m.shader.isSupported;
-                    Log($"        mat='{m.name}' shader='{sh}' supported={sup}");
+                    var tex = m.mainTexture;
+                    string texName = tex != null ? tex.name + $"({tex.width}x{tex.height})" : "无贴图";
+                    string props = m.HasProperty("_BaseMap") ? "有_BaseMap" : (m.HasProperty("_MainTex") ? "有_MainTex(内置管线风格)" : "无常见贴图属性");
+                    Log($"        mat='{m.name}' shader='{sh}' supported={sup} 主贴图={texName} {props}");
                 }
             }
 
             var names = go.GetComponentsInChildren<Transform>(true).Select(t => t.name).Take(30);
             Log("  子物体名：" + string.Join(", ", names));
+        }
+
+        void LogCameraCheck()
+        {
+            var cam = Camera.main;
+            if (cam == null) { Log("相机诊断：Camera.main 为空"); return; }
+            int need = _layerOverride > 0 ? _layerOverride : (_instance != null ? _instance.layer : 0);
+            bool rendered = (cam.cullingMask & (1 << need)) != 0;
+            Log($"相机诊断：{cam.name}  cullingMask 包含 layer {need}? {rendered}");
+            if (_instance != null)
+            {
+                int vis = 0, tot = 0;
+                foreach (var r in _instance.GetComponentsInChildren<Renderer>(true)) { tot++; if (r.isVisible) vis++; }
+                Log($"相机诊断：实例渲染器 {vis}/{tot} 被相机判定为可见（isVisible）");
+            }
+        }
+
+        /// <summary>把包里的材质换成"游戏自己的 URP 材质克隆"，但保留包里的贴图。
+        /// 目的：区分"URP 不画内置管线 shader"与"其它问题"。</summary>
+        void TryApplyGameMaterials()
+        {
+            if (_materialMode != "game" || _materialsApplied || _instance == null) return;
+            _materialsApplied = true;
+
+            var src = FindGameMaterial();
+            if (src == null) { Log("材质替换：✗ 没找到可克隆的游戏材质"); return; }
+            Log($"材质替换：源材质='{src.name}' shader='{src.shader?.name}'");
+
+            int n = 0;
+            foreach (var r in _instance.GetComponentsInChildren<Renderer>(true))
+            {
+                var mats = r.sharedMaterials;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    var oldMat = mats[i];
+                    var clone = new Material(src);
+                    if (oldMat != null)
+                    {
+                        var tex = oldMat.mainTexture;
+                        if (tex != null)
+                        {
+                            if (clone.HasProperty("_BaseMap")) clone.SetTexture("_BaseMap", tex);
+                            else if (clone.HasProperty("_MainTex")) clone.SetTexture("_MainTex", tex);
+                            if (clone.HasProperty("_BaseColor")) clone.SetColor("_BaseColor", Color.white);
+                        }
+                        clone.name = "BundleProbe_" + oldMat.name;
+                    }
+                    mats[i] = clone;
+                    n++;
+                }
+                r.sharedMaterials = mats;
+            }
+            Log($"材质替换：已替换 {n} 个材质槽（改用游戏的 shader，贴图沿用包里的）");
+        }
+
+        Material FindGameMaterial()
+        {
+            var mc = GameApi.FindMainCharacter();
+
+            // ① 手里武器的**实际模型**（agent 的 gameObject，不是模板）
+            if (mc != null)
+            {
+                var agent = mc.CurrentHoldItemAgent;
+                if (agent != null)
+                {
+                    var m = FirstMaterial(agent.gameObject, out string tag);
+                    if (m != null) { Log($"材质源①：手持模型 {tag}"); return m; }
+                }
+                // ② 玩家模型
+                if (mc.characterModel != null)
+                {
+                    var m = FirstMaterial(mc.characterModel.gameObject, out string tag);
+                    if (m != null) { Log($"材质源②：玩家模型 {tag}"); return m; }
+                }
+            }
+
+            // ③ 场景里任一带 Soda* shader 的渲染器（含未激活对象）
+            try
+            {
+                foreach (var r in Resources.FindObjectsOfTypeAll<Renderer>())
+                {
+                    var m = r != null ? r.sharedMaterial : null;
+                    if (m != null && m.shader != null && m.shader.name.StartsWith("Soda", StringComparison.Ordinal))
+                    { Log($"材质源③：{r.name} → shader={m.shader.name}"); return m; }
+                }
+            }
+            catch (Exception e) { Log($"材质源③失败：{e.Message}"); }
+
+            // ④ 兜底：直接按名字找游戏 shader
+            foreach (var name in new[] { "SodaCraft/SodaLit", "SodaCraft/SodaCharacter", "Universal Render Pipeline/Lit", "Standard" })
+            {
+                var sh = Shader.Find(name);
+                if (sh != null) { Log($"材质源④：Shader.Find('{name}') ✓"); return new Material(sh); }
+            }
+            Log("材质源⑤：全部失败（连 Shader.Find 都找不到）");
+            return null;
+        }
+
+        static Material FirstMaterial(GameObject go, out string tag)
+        {
+            tag = "";
+            foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+            {
+                foreach (var m in r.sharedMaterials)
+                {
+                    if (m != null && m.shader != null)
+                    {
+                        tag = $"{go.name}/{r.name} → shader={m.shader.name}";
+                        return m;
+                    }
+                }
+            }
+            return null;
         }
 
         // ── 每 2 秒：保证它挂在手上 / 保持在玩家面前 ─────────────────────────
@@ -175,6 +340,25 @@ namespace BundleProbe
             if (_instance == null) return;
             var mc = GameApi.FindMainCharacter();
             if (mc == null) return;
+
+            // attach=camera：直接放在相机前方 2m（一定在视野里，用来排除"朝向/位置猜错"）
+            if (_attach == "camera")
+            {
+                var cam = Camera.main;
+                if (cam == null) return;
+                _instance.transform.SetParent(null, false);
+                _instance.transform.position = cam.transform.position + cam.transform.forward * 2f;
+                _instance.transform.rotation = cam.transform.rotation;
+                if (_lastParent != "camera")
+                {
+                    _lastParent = "camera";
+                    Log($"→ 已放到相机前方 2m（attach=camera）  世界坐标={_instance.transform.position}");
+                    LogHeldItem();
+                    LogCameraCheck();
+                }
+                TryApplyGameMaterials();
+                return;
+            }
 
             Transform target = null;
             string label = "";
@@ -198,7 +382,9 @@ namespace BundleProbe
             _instance.transform.SetParent(target, false);
             _instance.transform.localPosition = _attach == "hand" && label.StartsWith("手") ? Vector3.zero : new Vector3(0f, 0.1f, 2f);
             _instance.transform.localRotation = Quaternion.identity;
-            Log($"→ 已挂到 {label}（attach={_attach}）");
+            Log($"→ 已挂到 {label}（attach={_attach}）  世界坐标={_instance.transform.position}");
+            LogHeldItem();
+            TryApplyGameMaterials();
         }
 
         Transform FindHand(Transform root)

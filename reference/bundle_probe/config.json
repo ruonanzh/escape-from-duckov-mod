@@ -1,7 +1,8 @@
 {
   "bundle": "mpxmodels",
   "asset": "",
-  "attach": "hand",
+  "attach": "camera",
   "scale": 1.0,
-  "layer": 9
+  "layer": 9,
+  "material": "game"
 }

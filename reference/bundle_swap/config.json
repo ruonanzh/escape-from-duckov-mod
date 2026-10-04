@@ -1,0 +1,20 @@
+{
+  "bundle": "mpxmodels",
+  "asset": "",
+  "match": "MP5",
+  "typeIDs": [
+    655
+  ],
+  "material": "game",
+  "scale": 1.0,
+  "offset": [
+    0,
+    0,
+    0
+  ],
+  "rotate": [
+    0,
+    0,
+    0
+  ]
+}
