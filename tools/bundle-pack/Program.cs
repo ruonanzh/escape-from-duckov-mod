@@ -156,7 +156,17 @@ class Program
         {
             var gm = Gltf.ReadGlb(glb);
             Console.WriteLine($"模型: {System.IO.Path.GetFileName(glb)}  顶点={gm.Positions.Count} 三角面={gm.TriangleCount}");
-            if (!o.ContainsKey("align")) o["align"] = "donor";          // 默认：对齐到 donor
+            // 默认（不依赖任何目标 ✓）：自动把朝向转成枪口 +Z + 自动把握把移到原点
+            string alignMode = o.GetValueOrDefault("align") ?? "auto";
+            if (alignMode == "auto")
+            {
+                AutoOrientToUnity(gm);                                  // ① 朝向 → 枪口 +Z
+                var g0 = AutoGrip(gm);                                  // ② 握把 → 原点
+                foreach (var q in gm.Positions) { q[0] -= g0[0]; q[1] -= g0[1]; q[2] -= g0[2]; }
+                Console.WriteLine($"握把→原点：({g0[0]:0.###}, {g0[1]:0.###}, {g0[2]:0.###})");
+                var bb0 = BBox(gm.Positions);
+                Console.WriteLine($"  结果包围盒 min=({bb0[0]:0.###},{bb0[1]:0.###},{bb0[2]:0.###}) max=({bb0[3]:0.###},{bb0[4]:0.###},{bb0[5]:0.###}) 尺寸=({bb0[3]-bb0[0]:0.###},{bb0[4]-bb0[1]:0.###},{bb0[5]-bb0[2]:0.###})");
+            }
             if (!o.ContainsKey("drop")) o["drop"] = "auto";             // 默认：删掉旧模型其余网格 ✓
 
             // ① 选 donor
@@ -188,7 +198,7 @@ class Program
             rdrS.Position = rOff; byte[] stream = rdrS.ReadBytes((int)rLen); rdrS.Position = saveP;
 
             // ③ 对齐：默认 `--align donor`（替换武器的正确做法 —— 用同一套测量，系统偏差自动抵消）
-            string align = o.GetValueOrDefault("align") ?? "donor";
+            string align = o.GetValueOrDefault("align") ?? "none";
             if (align == "donor")
             {
                 var dpts = ReadDonorVertices(inst, am, stream, out long dd);
@@ -558,6 +568,43 @@ class Program
     }
 
     static float[] AutoGrip(System.Collections.Generic.List<float[]> pos) => AutoGripPts(pos);
+
+    /// <summary>自动把朝向转成"枪口 +Z / Y 向上"（Unity 前向）—— 自己量、自己验证 ✓</summary>
+    static void AutoOrientToUnity(GltfMesh gm)
+    {
+        for (int attempt = 0; attempt < 4; attempt++)
+        {
+            var (ax, muzzlePositive) = LongAxisAndMuzzle(gm);
+            if (ax == 2 && muzzlePositive) { Console.WriteLine("朝向：已是枪口 +Z ✓ 不转"); return; }
+            float rx = 0, ry = 0, rz = 0;
+            if (ax == 2) ry = 180;                 // 枪口在 -Z → 绕 Y 转 180°
+            else if (ax == 0) ry = muzzlePositive ? -90 : 90;   // 枪口在 ±X → 绕 Y 转到 +Z
+            else rx = muzzlePositive ? 90 : -90;   // 枪口在 ±Y → 绕 X 转到 +Z
+            Console.WriteLine($"朝向：枪口在 {(muzzlePositive ? "+" : "-")}{"XYZ"[ax]} → 旋转 (x={rx}, y={ry}, z={rz})");
+            ApplyRotate(gm, rx, ry, rz);
+        }
+        var (ax2, mp2) = LongAxisAndMuzzle(gm);
+        Console.WriteLine($"朝向：旋转后枪口在 {(mp2 ? "+" : "-")}{"XYZ"[ax2]}" + ((ax2 == 2 && mp2) ? " ✓" : " ✗（没转对）"));
+    }
+
+    /// <summary>量：最长轴 + 枪口是否在该轴正方向（两端横截面，细端=枪口）</summary>
+    static (int, bool) LongAxisAndMuzzle(GltfMesh gm)
+    {
+        var b = BBox(gm.Positions);
+        var min = new[] { b[0], b[1], b[2] };
+        var max = new[] { b[3], b[4], b[5] };
+        var span = new float[3]; for (int c = 0; c < 3; c++) span[c] = max[c] - min[c];
+        int ax = span[0] > span[1] ? (span[0] > span[2] ? 0 : 2) : (span[1] > span[2] ? 1 : 2);
+        var oth = new List<int>(); for (int c = 0; c < 3; c++) if (c != ax) oth.Add(c);
+        double Area(float lo, float hi)
+        {
+            var sel = gm.Positions.Where(p => p[ax] >= lo && p[ax] <= hi).ToList();
+            if (sel.Count == 0) return double.MaxValue;
+            return (sel.Max(p => p[oth[0]]) - sel.Min(p => p[oth[0]])) * (sel.Max(p => p[oth[1]]) - sel.Min(p => p[oth[1]]));
+        }
+        double aLo = Area(min[ax], min[ax] + span[ax] * 0.06f), aHi = Area(max[ax] - span[ax] * 0.06f, max[ax]);
+        return (ax, aHi < aLo);                    // 细端在 +方向 → 枪口朝正
+    }
 
     /// <summary>自动测握把（对"点集"版本，donor 与我们自己的网格共用同一套规则）</summary>
     static float[] AutoGripPts(System.Collections.Generic.List<float[]> P)
