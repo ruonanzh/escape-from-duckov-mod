@@ -1,6 +1,6 @@
 {
-  "bundle": "mpx_gun6",
-  "asset": "",
+  "model": "gun.glb",
+  "bundle": "",
   "match": "MP5",
   "typeIDs": [
     655

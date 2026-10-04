@@ -33,6 +33,7 @@ namespace BundleSwap
         string _cfgPath;
 
         string _bundleRel = "mpxmodels";
+        string _modelRel = "";                      // 非空 = 直接从 GLB 读（不走 bundle）✓
         string _wantedAsset = "";
         string _match = "MP5";
         readonly HashSet<int> _typeIds = new HashSet<int>();
@@ -131,8 +132,35 @@ namespace BundleSwap
         }
 
         // ── 加载 ────────────────────────────────────────────────────────────
+        // ── 模型来源：GLB 直读（主路线）──
+        void TryLoadModel()
+        {
+            string path = _modelRel;
+            if (!Path.IsPathRooted(path)) path = Path.Combine(ModelLoader.ModDir(), _modelRel);
+            if (!File.Exists(path)) { Log($"✗ 找不到模型：{path}"); return; }
+            try
+            {
+                var g = GltfLoader.LoadFile(path);
+                Log($"✓ GLB 已读取：{g.Report}");
+                var go = new GameObject("GLB_template");
+                var mf = go.AddComponent<MeshFilter>(); mf.sharedMesh = g.Mesh;
+                var mr = go.AddComponent<MeshRenderer>();
+                mr.sharedMaterial = new Material(Shader.Find("Standard"));   // 占位；挂上时换成游戏材质 ✓
+                _glbTexture = g.MainTexture;
+                _template = go;
+                _template.SetActive(false);
+                UnityEngine.Object.DontDestroyOnLoad(_template);
+                _modelLoaded = true;
+            }
+            catch (Exception e) { Log($"✗ 读 GLB 失败：{e.Message}"); }
+        }
+
+        Texture2D _glbTexture;
+        bool _modelLoaded;
+
         void TryLoad()
         {
+            if (!string.IsNullOrEmpty(_modelRel)) { TryLoadModel(); return; }
             string path = _bundleRel;
             if (!Path.IsPathRooted(path)) path = Path.Combine(ModelLoader.ModDir(), _bundleRel);
             if (!File.Exists(path)) { Log($"✗ 找不到 bundle：{path}"); return; }
@@ -236,7 +264,7 @@ namespace BundleSwap
                         var old = mats[i];
                         var clone = srcMat != null ? new Material(srcMat) : (old != null ? new Material(old) : null);
                         if (clone == null) continue;
-                        var tex = old != null ? old.mainTexture : null;
+                        var tex = _glbTexture != null ? _glbTexture : (old != null ? old.mainTexture : null);
                         if (tex != null)
                         {
                             if (clone.HasProperty("_BaseMap")) clone.SetTexture("_BaseMap", tex);
@@ -277,6 +305,7 @@ namespace BundleSwap
                 if (!File.Exists(_cfgPath)) return;
                 var root = Json.Parse(File.ReadAllText(_cfgPath));
                 _bundleRel = root["bundle"].AsString(_bundleRel);
+                _modelRel = root["model"].AsString("");
                 _wantedAsset = root["asset"].AsString("");
                 _match = root["match"].AsString(_match);
                 _materialMode = root["material"].AsString("game");

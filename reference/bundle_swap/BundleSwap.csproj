@@ -27,5 +27,6 @@
     <Compile Include="../mod-kit/UnityAdapter.cs" />
     <Compile Include="../mod-kit/ModelLoader.cs" />
     <Compile Include="../mod-kit/GameApi.cs" />
+    <Compile Include="../mod-kit/GltfLoader.cs" />
   </ItemGroup>
 </Project>
