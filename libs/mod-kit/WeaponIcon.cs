@@ -58,7 +58,7 @@ namespace ModelKit
             sprite.name = "WeaponIconSprite";
 
             // 实例 + **同 typeID 的模板**都设（卡片读哪个都能覆盖 ✓ 不用赌它读哪个 ✓）
-            int set = SetIcon(item, sprite);
+            int set = SetSpritesEverywhere(item, sprite);
             int tpl = 0;
             try
             {
@@ -67,12 +67,62 @@ namespace ModelKit
                 {
                     if (other == null || ReferenceEquals(other, item)) continue;
                     if (other.TypeID != typeId) continue;
-                    if (SetIcon(other, sprite) > 0) tpl++;
+                    if (SetSpritesEverywhere(other, sprite) > 0) tpl++;
                 }
             }
             catch (Exception e) { return $"图标已设到实例（{tex.width}x{tex.height}，白底像素 {keyed}），模板扫描失败：{e.Message}"; }
 
             return $"图标已设置：{tex.width}x{tex.height} @PPU50（白底像素 {keyed}）；实例写入 {(set > 0 ? "成功" : "失败")}，同 typeID 模板 {tpl} 个";
+        }
+
+        /// <summary>把 item 上**所有** Sprite 字段/属性都盖上（不猜字段名 ✓）：
+        /// `Item.icon`（实例+模板 ✓）+ `Item.ItemGraphic`（ItemGraphicInfo）上任何 Sprite 字段 ✓
+        /// + 它的 `spriteGraphicPfb` 里的 SpriteRenderer.sprite ✓ —— 卡片/格子可能各读一处 ✗</summary>
+        public static int SetSpritesEverywhere(ItemStatsSystem.Item item, Sprite sprite)
+        {
+            if (item == null || sprite == null) return 0;
+            int n = SetIcon(item, sprite);
+            try
+            {
+                var ig = item.ItemGraphic;                      // ItemGraphicInfo
+                if (ig != null)
+                {
+                    n += SetSpriteFields(ig, sprite);
+                    // spriteGraphicPfb：共享 prefab → 直接改它的 SpriteRenderer（所有实例一起生效 ✓）
+                    var f = ig.GetType().GetField("spriteGraphicPfb", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                    if (f != null)
+                    {
+                        var pfb = f.GetValue(ig) as GameObject;
+                        if (pfb != null)
+                            foreach (var sr in pfb.GetComponentsInChildren<SpriteRenderer>(true))
+                                if (sr.sprite != sprite) { sr.sprite = sprite; n++; }
+                    }
+                }
+            }
+            catch { }
+            return n;
+        }
+
+        /// <summary>递归把对象上所有 Sprite 类型的字段/属性设成 sprite（深度 1，防环 ✓）</summary>
+        static int SetSpriteFields(object obj, Sprite sprite)
+        {
+            int n = 0;
+            var t = obj.GetType();
+            foreach (var f in t.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+            {
+                if (f.FieldType == typeof(Sprite))
+                {
+                    try { if (!ReferenceEquals(f.GetValue(obj), sprite)) { f.SetValue(obj, sprite); n++; } } catch { }
+                }
+            }
+            foreach (var pr in t.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+            {
+                if (pr.PropertyType == typeof(Sprite) && pr.CanWrite)
+                {
+                    try { if (!ReferenceEquals(pr.GetValue(obj), sprite)) { pr.SetValue(obj, sprite); n++; } } catch { }
+                }
+            }
+            return n;
         }
 
         /// <summary>按名字片段/typeID 扫所有已加载的 Item（模板 + 实例）设图标 —— 供启动时"尽早预置" ✓</summary>
@@ -88,7 +138,7 @@ namespace ModelKit
                         || (!string.IsNullOrEmpty(namePart) && it.name != null &&
                             it.name.IndexOf(namePart, StringComparison.OrdinalIgnoreCase) >= 0);
                 if (!hit) continue;
-                if (SetIcon(it, sprite) > 0) n++;
+                if (SetSpritesEverywhere(it, sprite) > 0) n++;
             }
             return n;
         }
