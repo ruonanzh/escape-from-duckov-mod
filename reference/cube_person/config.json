@@ -1,6 +1,5 @@
 {
-  "model": "models/cat_hip.json",
-  "target": "npc",
-  "match": "Jeff",
+  "model": "models/cat_pelvis.json",
+  "target": "player",
   "replaceBody": true
 }
