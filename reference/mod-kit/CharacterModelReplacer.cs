@@ -45,6 +45,8 @@ namespace ModelKit
         /// <summary>克隆用的材质源（null = 用了兜底材质 → 会是白模）。</summary>
         public Material MaterialSource { get; private set; }
         public bool Attached => _covered >= 0;
+        /// <summary>上一次 Tick 判定"需要重挂"的原因（诊断用；空 = 不需要重挂）。</summary>
+        public string ReattachReason { get; private set; } = "";
 
         public CharacterModelReplacer(YsmModel model) { _model = model; }
 
@@ -83,6 +85,7 @@ namespace ModelKit
                 if (an.cullingMode != AnimatorCullingMode.AlwaysAnimate) an.cullingMode = AnimatorCullingMode.AlwaysAnimate;
 
             _covered = cm.GetInstanceID();
+            ReattachReason = "";
             return true;
         }
 
@@ -92,15 +95,29 @@ namespace ModelKit
             if (_cm == null) return;
 
             // 角色模型被游戏重建（进关卡、换装备）→ 我们的方块被销毁 → 重挂
-            if (_objects.Length == 0 || _objects[0] == null || !_cm) { _covered = -1; return; }
-            if (_root != _cm.transform) { _covered = -1; return; }
+            if (_objects.Length == 0 || _objects[0] == null || !_cm)
+            {
+                if (ReattachReason != "方块被销毁") ReattachReason = "方块被销毁";
+                _covered = -1; return;
+            }
+            if (_root != _cm.transform)
+            {
+                if (ReattachReason != "模型实例被替换") ReattachReason = "模型实例被替换";
+                _covered = -1; return;
+            }
+            ReattachReason = "";
 
             if (ReplaceBody) ApplyBodyState();
         }
 
+        /// <summary>最近一次"关掉/保留"的渲染器名字（诊断用，各取前几个）。</summary>
+        public string HiddenNames { get; private set; } = "";
+        public string KeptNames { get; private set; } = "";
+
         void ApplyBodyState()
         {
             int hidden = 0, kept = 0;
+            var hn = new List<string>(); var kn = new List<string>();
             foreach (var r in _cm.GetComponentsInChildren<Renderer>(true))
             {
                 if (r == null || IsOurs(r.transform)) continue;
@@ -110,15 +127,18 @@ namespace ModelKit
                     if (!r.enabled) r.enabled = true;
                     if (GameApi.VisibleLayer >= 0 && r.gameObject.layer != GameApi.VisibleLayer) r.gameObject.layer = GameApi.VisibleLayer;
                     kept++;
+                    if (kn.Count < 8) kn.Add(r.gameObject.name);
                 }
                 else
                 {
+                    if (hn.Count < 8) hn.Add(r.gameObject.name);
                     if (r.enabled) r.enabled = false;                  // 硬关（改层没用）
                     if (GameApi.HiddenLayer >= 0 && r.gameObject.layer != GameApi.HiddenLayer) r.gameObject.layer = GameApi.HiddenLayer;
                     hidden++;
                 }
             }
             HiddenBody = hidden; KeptEquipment = kept;
+            HiddenNames = string.Join(",", hn); KeptNames = string.Join(",", kn);
         }
 
         public void Detach()

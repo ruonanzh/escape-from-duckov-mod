@@ -87,11 +87,9 @@ namespace ModelKit
                 var c = ParseColorOr(model.Fills, bone.Name) ?? ColorFor(bone.Name);   // fills 优先，否则按名字取色
                 foreach (var cube in bone.Cubes)
                 {
-                    int pw = Math.Max(1, (int)Math.Round(cube.Size[0]));
-                    int ph = Math.Max(1, (int)Math.Round(cube.Size[1]));
-                    int pd = Math.Max(1, (int)Math.Round(cube.Size[2]));
+                    // 同骨骼同色 → 每个方块用同一块 4×4 小区域即可（也支持小数尺寸的细体素）
                     var rect = new AtlasRect { Role = bone.Name, X = cube.Uv[0], Y = cube.Uv[1],
-                                               W = 2 * pd + 2 * pw, H = pd + ph, PxW = pw, PxH = ph, PxD = pd };
+                                               W = 4, H = 4, PxW = 4, PxH = 4, PxD = 4 };
                     bmp.Fill(rect.X, rect.Y, rect.W, rect.H, c.r, c.g, c.b);
                     byte eR = (byte)Math.Max(0, c.r - 45), eG = (byte)Math.Max(0, c.g - 45), eB = (byte)Math.Max(0, c.b - 45);
                     foreach (var f in new[] { "top", "bottom", "right", "front", "left", "back" })

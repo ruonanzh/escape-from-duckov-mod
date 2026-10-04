@@ -79,43 +79,61 @@ namespace ModelKit
                 if (boneTf == null) { if (bone.Cubes.Count > 0) result.MissingBones.Add(bone.Name); continue; }
                 result.AttachedBones.Add(bone.Name);
 
+                // 该骨骼的所有方块**合并成一个 mesh**（一个骨骼一个 GameObject）——
+                // 否则细体素会有上千个 GameObject（上千次绘制调用），性能撑不住。
+                var merged = new MeshData
+                {
+                    AtlasSize = ysm.TextureWidth, PixelsPerMeter = 1f,
+                    Atlas = new List<AtlasRect>(), Emitted = new List<PartSpec>(),
+                };
+                int cubeIndex = 0;
                 foreach (var cube in bone.Cubes)
                 {
-                    // cube 在模型空间：origin 是最小角；换算成"相对该骨骼 pivot 的盒子中心"
-                    float sx = Math.Max(1, (float)Math.Round(cube.Size[0]));
-                    float sy = Math.Max(1, (float)Math.Round(cube.Size[1]));
-                    float sz = Math.Max(1, (float)Math.Round(cube.Size[2]));
+                    float sx = Math.Max(0.05f, cube.Size[0]);
+                    float sy = Math.Max(0.05f, cube.Size[1]);
+                    float sz = Math.Max(0.05f, cube.Size[2]);
                     var centerPx = new Vec3(cube.Origin[0] + sx / 2f - bone.Pivot[0],
                                             cube.Origin[1] + sy / 2f - bone.Pivot[1],
                                             cube.Origin[2] + sz / 2f - bone.Pivot[2]);
-
+                    // 网格建在"以原点为中心"，再按骨骼绑定旋转换算：位置 = R⁻¹·offset，朝向 = R⁻¹
                     var part = new PartSpec
                     {
                         Role = bone.Name,
                         Shape = "box",
                         Size = new[] { sx * px, sy * px, sz * px },
-                        At = new[] { centerPx.X * px, centerPx.Y * px, centerPx.Z * px },
-                        Rot = new[] { bone.Rotation[0], bone.Rotation[1], bone.Rotation[2] }
+                        At = new[] { 0f, 0f, 0f },
                     };
-                    var rect = new AtlasRect
-                    {
-                        Role = bone.Name,
-                        X = cube.Uv[0], Y = cube.Uv[1],
-                        W = 2 * (int)sz + 2 * (int)sx, H = (int)sz + (int)sy,
-                        PxW = (int)sx, PxH = (int)sy, PxD = (int)sz
-                    };
+                    var rect = new AtlasRect { Role = bone.Name, X = cube.Uv[0], Y = cube.Uv[1], W = 4, H = 4, PxW = 4, PxH = 4, PxD = 4 };
+                    var one = MeshKit.BuildPart(part, rect, ysm.TextureWidth);
 
-                    // 方块网格建在"以原点为中心"，位置/旋转交给 GameObject（便于按骨骼绑定旋转换算）
-                    part.At = new[] { 0f, 0f, 0f };
-                    var data = MeshKit.BuildPart(part, rect, ysm.TextureWidth);
-                    var go = UnityAdapter.CreateMeshObject($"{bone.Name}_cube", UnityAdapter.ToMesh(data, bone.Name), mat, boneTf, layer);
                     Quaternion rInv = Quaternion.identity;
-                    Quaternion r; if (bindRot.TryGetValue(bone.Name, out r)) rInv = Quaternion.Inverse(r);
-                    go.transform.localPosition = rInv * new Vector3(centerPx.X * px, centerPx.Y * px, centerPx.Z * px);
-                    go.transform.localRotation = rInv;
-                    result.Objects.Add(go);
-                    result.CubeCount++;
+                    if (bindRot.TryGetValue(bone.Name, out var rq)) rInv = Quaternion.Inverse(rq);
+                    var offset = rInv * new Vector3(centerPx.X * px, centerPx.Y * px, centerPx.Z * px);
+
+                    int v0 = merged.Positions.Count, i0 = merged.Indices.Count;
+                    for (int v = 0; v < one.Positions.Count; v++)
+                    {
+                        var pv = one.Positions[v];
+                        var world = offset + rInv * new Vector3(pv.X, pv.Y, pv.Z);
+                        merged.Positions.Add(new Vec3(world.x, world.y, world.z));
+                        var nv = one.Normals[v];
+                        var nworld = rInv * new Vector3(nv.X, nv.Y, nv.Z);
+                        merged.Normals.Add(new Vec3(nworld.x, nworld.y, nworld.z));
+                        merged.Uvs.Add(one.Uvs[v]);
+                    }
+                    foreach (var idx in one.Indices) merged.Indices.Add(idx + v0);
+                    merged.Atlas.Add(rect);
+                    merged.Emitted.Add(part);
+                    merged.EmittedBounds.Add(new Box3(new Vec3(0, 0, 0), new Vec3(0, 0, 0)));
+                    cubeIndex++;
                 }
+                if (merged.Positions.Count == 0) continue;
+
+                var go = UnityAdapter.CreateMeshObject($"{bone.Name}_cubes", UnityAdapter.ToMesh(merged, bone.Name), mat, boneTf, layer);
+                go.transform.localPosition = Vector3.zero;
+                go.transform.localRotation = Quaternion.identity;
+                result.Objects.Add(go);
+                result.CubeCount += cubeIndex;
             }
             return result;
         }
