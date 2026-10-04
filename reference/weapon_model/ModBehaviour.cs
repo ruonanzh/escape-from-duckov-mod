@@ -31,6 +31,7 @@ namespace WeaponModelSwap
         Texture2D _texture;
         CharacterMainControl _player;
         float _nextFindPlayer;
+        DateTime _cfgStamp;
         readonly Dictionary<int, GameObject> _applied = new Dictionary<int, GameObject>();
         string _lastHeld;
 
@@ -39,11 +40,13 @@ namespace WeaponModelSwap
             _configPath = Path.Combine(ModelLoaderDir(), "config.json");
             ReadConfig();
             Debug.Log($"[WeaponModel] 目标='{_target}' typeIDs=[{string.Join(",", _typeIds)}] 模型='{_modelFile}'");
+            _cfgStamp = File.Exists(_configPath) ? File.GetLastWriteTimeUtc(_configPath) : DateTime.MinValue;
             LoadModel();          // 启动就读好模型 → 玩家掏出枪时能**立刻**换（不然会先看到原模型 ✗）
         }
 
         void Update()
         {
+            ReloadIfChanged();
             if (_mesh == null) return;
 
             // 找玩家较重（FindObjectsOfType）→ 只在没有/每 2 秒找一次；**每帧**只看"手里拿的是什么"（廉价 ✓）
@@ -71,6 +74,26 @@ namespace WeaponModelSwap
             var r = ModelKit.WeaponModel.Apply(root, _mesh, _texture);
             if (r.Applied) { _applied[id] = r.Instance; Debug.Log("[WeaponModel] " + r.Report); }
             else Debug.LogWarning("[WeaponModel] 没换成：" + r.Report);
+        }
+
+        /// <summary>config.json 一改存盘就重新生效（不用重启游戏）：重读配置、丢旧实例、必要时重读模型 ✓</summary>
+        void ReloadIfChanged()
+        {
+            try
+            {
+                if (!File.Exists(_configPath)) return;
+                var st = File.GetLastWriteTimeUtc(_configPath);
+                if (st == _cfgStamp) return;
+                _cfgStamp = st;
+                var oldModel = _modelFile;
+                ReadConfig();
+                foreach (var kv in _applied) if (kv.Value != null) UnityEngine.Object.Destroy(kv.Value);
+                _applied.Clear();
+                _lastHeld = null;
+                if (_modelFile != oldModel) { _mesh = null; _texture = null; LoadModel(); }
+                Debug.Log($"[WeaponModel] 配置已热重载：目标='{_target}' 模型='{_modelFile}' front='{_front}'（旧实例已丢弃，稍后按新配置重挂）");
+            }
+            catch (Exception e) { Debug.LogWarning($"[WeaponModel] 热重载失败：{e.Message}"); }
         }
 
         bool Matches(ItemStatsSystem.Item item)

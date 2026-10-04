@@ -159,6 +159,16 @@ export default function (pi: ExtensionAPI) {
           if (!url) throw new Error(`task succeeded but no model URL: ${JSON.stringify(done.output).slice(0, 200)}`);
           const rawPath = firstOut.replace(/\.glb$/i, "") + ".raw.glb";
           const size = await download(url, rawPath);                      // ⚠️ 5 分钟过期 → 立刻下
+          // 预览图（Tripo 免费附带）→ 先看形状对不对，再装进游戏 ✓
+          const base = firstOut.replace(/\.glb$/i, "");
+          const shots: string[] = [];
+          if (done.output?.rendered_image) {
+            try { await download(done.output.rendered_image, `${base}.preview.png`); shots.push(`${base}.preview.png`); } catch { /* 预览图下不到不影响主流程 */ }
+          }
+          if (done.output?.generated_image) {
+            try { await download(done.output.generated_image, `${base}.concept.jpg`); shots.push(`${base}.concept.jpg`); } catch { /* 同上 */ }
+          }
+
           const converted = await convert(api, waitTask, taskId, params.animated === true);
           const url2 = pickUrl(converted.output);
           if (!url2) throw new Error("convert succeeded but no URL");
@@ -169,6 +179,7 @@ export default function (pi: ExtensionAPI) {
                 type: "text",
                 text:
                   `PASS: model saved to ${firstOut} (${size2}, raw also at ${rawPath} ${size}). task_id=${taskId}\n` +
+                  (shots.length ? `Preview: ${shots.join(", ")} - read/look at it and show it to the user BEFORE installing: shape is up to the prompt, orientation is already right.\n` : "") +
                   `NEXT: put it in your mod folder and point config.json at it (e.g. {"target":"MP5","model":"${firstOut.split("/").pop()}"}), then build and install the mod.`,
               },
             ],

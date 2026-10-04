@@ -30,20 +30,28 @@ description: 用户想换某把武器的模型/外观时用（例："把 MP5 换
 | 用户给了 `.glb` | 直接用 ✓（`your_mods/<你的mod>/` 里放上它即可）|
 | 用户给了一张图 / 一句话 | **调 `generate_model` 工具**（π 工具，内部直连 Tripo HTTP）：`generate_model(action="generate", prompt="PPSh-41 样式的冲锋枪，游戏资产，侧视", out="your_mods/<你的mod>/gun.glb", faceLimit=3000)`；用户有参考图就用 `image="<路径>"` 代替 prompt ✓。工具会**自动建任务→轮询→立刻下载**（URL 5 分钟过期 ✗）并按 **Unity 就绪朝向**导出（枪口/正面 = +Z ✓），所以在游戏里不用再转 ✓ |
 
-## 2. 做 mod（照 `reference/weapon_model/` 抄）
+## 2. 做 mod（**一条工具调用**）
 
-1. 在 `your_mods/<你的mod名>/` 建目录，把 `reference/weapon_model/` 的 4 个文件抄过来
-2. **把三处名字改成 `<你的mod名>`**：目录名 / `info.ini` 的 `name` / `.csproj` 的 `AssemblyName` 与 `ModBehaviour.cs` 的 `namespace`（游戏要求 `<mod名>.ModBehaviour` 这个类型）
-3. 把 GLB 放进去，写 `config.json`：`{ "target": "MP5", "model": "gun.glb" }`
-   - 不知道武器名/typeID → 用 `inspect_game_data` 查（`docs/guides/items.md`）
-
-## 3. 编译 + 装进游戏
-
-```bash
-export DUCKOV_DIR="<游戏安装目录>"
-dotnet build -c Release
 ```
-用 `install_mod` 工具装进游戏（会校验 + 装到 Mods 目录）。
+create_mod(kind="replace-weapon-model", name="MyGun", target="MP5", file="gun.glb")
+```
+它会：拷模板 → **把四处名字改成一致**（目录 / `info.ini` 的 name / `.csproj` 的 AssemblyName+RootNamespace /
+`ModBehaviour.cs` 的 namespace —— 游戏要求 `<mod名>.ModBehaviour` 类型 ✓）→ 写 `config.json` → 编译 ✓
+
+| 参数 | 说明 |
+|---|---|
+| `name` | mod 名（字母+数字 ✓ 会成为命名空间/程序集名 ✓）|
+| `target` | 要换的武器名一段（`MP5` 会匹配 `SMG_MP5_Normal`）；或 `typeIDs=[655]` 精确匹配 |
+| `file` | GLB 文件名（默认 `gun.glb`；先把模型放到它说的目录里 ✓）|
+| `front` | **只有用户自带的模型**才需要（声明朝向：`-z`/`+x`/`-x`；`generate_model` 出的不用 ✓）|
+| `build=false` | 不想立刻编译时（默认会编 ✓ 需要已记录游戏目录 ✓）|
+
+> **为什么必须用它**：手抄模板时最容易漏两处 —— ① 四处名字不一致（症状是"mod 静默不加载"✗）
+> ② 模板里指向 `libs/mod-kit` 的相对路径按**模板目录**算 ✓ 抄到别处就断 ✗（工具会按新位置重算 ✓）
+
+## 3. 装进游戏
+
+用 `install_mod` 工具（会校验 + 装到 Mods 目录）。
 
 ## 4. 怎么确认成功
 
