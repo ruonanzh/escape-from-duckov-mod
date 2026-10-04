@@ -1,6 +1,10 @@
 # 03 · 角色（玩家 / NPC / 宠物）
 
-## 做法：YSM 文本模型，按骨骼名挂到游戏骨骼
+> **两条路线**：
+> - **网格 + 蒙皮**（当前方案，见设计仓 `docs/unity-3d-assets/00-plan.md`）：外部生成/导入的**带骨骼网格**（如 Tripo 的 Mixamo 绑骨 GLB）→ 运行时解析并重定向挂到游戏骨骼 ✓ 能匹配游戏美术风格 ✓
+> - **方块 + 本文的 YSM 路线**（可选）：纯 JSON 文本、运行时不解析任何模型文件 ✓，但网格粒度 = **1 像素 = 1/16 m ≈ 6.25 cm** → 整只角色只有 ~14 像素高 → **方块感**（另一种风格，不是同款美术）
+
+## 做法（YSM 路线）：YSM 文本模型，按骨骼名挂到游戏骨骼
 
 角色模型 = **骨骼树 + 方块**，用 **YSM 格式**（源自 Minecraft Bedrock 几何），纯 JSON 文本：
 
@@ -156,6 +160,24 @@ action=export  class=SkinnedMeshRenderer \
 | 武器上的蒙皮网格 | 4 | 4–6 | `Root;Arrow;Spring…` | `WPN_AHBow` |
 
 按家族建映射即可：**6 套左右**覆盖绝大多数（NPC 鸭子 / 玩家鸭子 / 蜘蛛·机械 / 兽类 / 载具 / 无人机）。
+
+### ⚠️ 判定家族只能看 `m_Bones`（别数 prefab 子树里的骨骼名）
+
+**实测踩过**：宠物 prefab（`0_CharacterModel_Pet_Jinitaimei`）的子树里**残留了一整套没用的鸭子骨架**（`Hip`/`Spine.001`/`Arm.Root`/`Hand`…），
+照子树数名字会得出"宠物与 NPC 同族"——**是错的** ✗。网格真正绑在哪根骨头上由 `SkinnedMeshRenderer.m_Bones` 决定，以它为准。
+
+| 目标 | 家族（`m_Bones`）| 骨骼数 |
+|---|---|---|
+| **玩家** | 鸭子 B（`Pelvis`/`UpperArm` 命名）| 24（我们模板 `duck_pelvis` 是它的 23 骨子集）|
+| **NPC** | 鸭子 A（`Hip`/`Arm.Root` 命名）| 37（模板 `duck_hip` 是它的 21 骨子集）|
+| **宠物/小型动物** | **独立小骨架**（与上面两套毫无关系）| **10–12** |
+
+宠物两套具体长这样：
+- 四足：`root;body;ear.L/R;tail.01/02;leg.F.L/R;leg.B.L/R`（10；带耳骨 12）
+- 禽类：`root;body;tail.01/02;hair.01/02;wing.L/R;feet.L/R`（10）← **宠物 Jinitaimei 是这套**
+
+→ 结论：宠物**不是"小一号的 NPC"**；做宠物映射要新写一张（骨少，很好写 ✓）。
+（另：`Tagilla` 已用 `mixamorig:*` 52 骨 —— 生态里已有 Mixamo 骨骼角色模型的先例 ✓）
 
 ## 做什么 / 怎么做
 
