@@ -184,8 +184,10 @@ class Program
                     var ob = BBox(gm.Positions); var og = AutoGripPts(gm.Positions);
                     float dLen = Math.Max(Math.Max(db[3] - db[0], db[4] - db[1]), db[5] - db[2]);
                     float oLen = Math.Max(Math.Max(ob[3] - ob[0], ob[4] - ob[1]), ob[5] - ob[2]);
-                    float sc = dLen > 0 && oLen > 0 ? dLen / oLen : 1f;
-                    Console.WriteLine($"对齐 donor：长度 {oLen:0.###} → {dLen:0.###} m（缩放 ×{sc:0.####}）");
+                    bool fit = align == "fit";
+                    float sc = fit && dLen > 0 && oLen > 0 ? dLen / oLen : 1f;
+                    Console.WriteLine(fit ? $"对齐(含缩放)：长度 {oLen:0.###} → {dLen:0.###} m（×{sc:0.####}）"
+                                          : $"对齐(纯平移)：长度保持 {oLen:0.###} m（donor {dLen:0.###} m 仅供参考）");
                     Console.WriteLine($"  donor 握把=({dg[0]:0.###},{dg[1]:0.###},{dg[2]:0.###})  我们握把=({og[0]:0.###},{og[1]:0.###},{og[2]:0.###})");
                     float tx = dg[0] - sc * og[0], ty = dg[1] - sc * og[1], tz = dg[2] - sc * og[2];
                     foreach (var q in gm.Positions) { q[0] = q[0] * sc + tx; q[1] = q[1] * sc + ty; q[2] = q[2] * sc + tz; }
