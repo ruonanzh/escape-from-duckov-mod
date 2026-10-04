@@ -33,6 +33,8 @@ namespace WeaponModelSwap
         CharacterMainControl _player;
         float _nextFindPlayer;
         DateTime _cfgStamp;
+        string _iconPath;
+        float _nextIconSweep;
         readonly Dictionary<int, GameObject> _applied = new Dictionary<int, GameObject>();
         string _lastHeld;
 
@@ -42,12 +44,22 @@ namespace WeaponModelSwap
             ReadConfig();
             Debug.Log($"[WeaponModel] 目标='{_target}' typeIDs=[{string.Join(",", _typeIds)}] 模型='{_modelFile}'");
             _cfgStamp = File.Exists(_configPath) ? File.GetLastWriteTimeUtc(_configPath) : DateTime.MinValue;
-            LoadModel();          // 启动就读好模型 → 玩家掏出枪时能**立刻**换（不然会先看到原模型 ✗）
+            LoadModel();
+            _iconPath = Path.IsPathRooted(_iconFile) ? _iconFile : Path.Combine(ModelLoaderDir(), _iconFile);          // 启动就读好模型 → 玩家掏出枪时能**立刻**换（不然会先看到原模型 ✗）
         }
 
         void Update()
         {
             ReloadIfChanged();
+
+            // 图标要**尽早**盖上：背包卡片可能在"掏出武器"之前就建好了 ✗
+            // → 启动后几秒内反复按名字匹配所有（模板 + 实例）并设图标 ✓
+            if (_iconPath != null && Time.unscaledTime < 20f && Time.unscaledTime >= _nextIconSweep)
+            {
+                _nextIconSweep = Time.unscaledTime + 2f;
+                var n = ModelKit.WeaponIcon.ApplyToAllMatching(_target, _typeIds, _iconPath);
+                if (n > 0) Debug.Log($"[WeaponModel] 图标预置：按名字/typeID 命中 {n} 个 Item（含模板）");
+            }
             if (_mesh == null) return;
 
             // 找玩家较重（FindObjectsOfType）→ 只在没有/每 2 秒找一次；**每帧**只看"手里拿的是什么"（廉价 ✓）
@@ -134,10 +146,10 @@ namespace WeaponModelSwap
             {
                 if (!File.Exists(_configPath)) { Debug.LogWarning($"[WeaponModel] 没有 config.json：{_configPath}"); return; }
                 var cfg = Json.Parse(File.ReadAllText(_configPath));
-                _target = cfg["target"].AsString("");
-                _modelFile = cfg["model"].AsString("");
-                _front = cfg["front"].AsString("auto");
-                _iconFile = cfg["icon"].AsString("icon.png");
+                _target = cfg.GetStr("target", "");
+                _modelFile = cfg.GetStr("model", "");
+                _front = cfg.GetStr("front", "auto");
+                _iconFile = cfg.GetStr("icon", "icon.png");
                 var ids = cfg["typeIDs"];
                 if (ids != null && ids.IsArray) for (int i = 0; i < ids.Count; i++) _typeIds.Add(ids[i].AsInt(0));
             }

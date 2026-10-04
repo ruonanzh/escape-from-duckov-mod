@@ -75,6 +75,40 @@ namespace ModelKit
             return $"图标已设置：{tex.width}x{tex.height} @PPU50（白底像素 {keyed}）；实例写入 {(set > 0 ? "成功" : "失败")}，同 typeID 模板 {tpl} 个";
         }
 
+        /// <summary>按名字片段/typeID 扫所有已加载的 Item（模板 + 实例）设图标 —— 供启动时"尽早预置" ✓</summary>
+        public static int ApplyToAllMatching(string namePart, System.Collections.Generic.HashSet<int> typeIds, string pngPath)
+        {
+            var sprite = BuildSprite(pngPath);
+            if (sprite == null) return 0;
+            int n = 0;
+            foreach (var it in Resources.FindObjectsOfTypeAll<ItemStatsSystem.Item>())
+            {
+                if (it == null) continue;
+                bool hit = (typeIds != null && typeIds.Contains(it.TypeID))
+                        || (!string.IsNullOrEmpty(namePart) && it.name != null &&
+                            it.name.IndexOf(namePart, StringComparison.OrdinalIgnoreCase) >= 0);
+                if (!hit) continue;
+                if (SetIcon(it, sprite) > 0) n++;
+            }
+            return n;
+        }
+
+        /// <summary>把 pngPath 读成"对齐游戏尺寸"的 Sprite（256² + PPU50 ✓）</summary>
+        static Sprite BuildSprite(string pngPath)
+        {
+            if (string.IsNullOrEmpty(pngPath) || !File.Exists(pngPath)) return null;
+            try
+            {
+                var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                if (!tex.LoadImage(File.ReadAllBytes(pngPath))) return null;
+                tex = DownscaleTo(tex, 256);
+                var sp = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 50f);
+                sp.name = "WeaponIconSprite";
+                return sp;
+            }
+            catch { return null; }
+        }
+
         /// <summary>等比缩到 target 边长（盒式均值 ✓ 简单、无副作用）</summary>
         static Texture2D DownscaleTo(Texture2D src, int target)
         {
