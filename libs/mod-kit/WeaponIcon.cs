@@ -51,6 +51,9 @@ namespace ModelKit
             tex.wrapMode = TextureWrapMode.Clamp;
             tex.name = "WeaponIcon";
 
+            // ⭐ 构图：按透明包围盒裁成正方形并居中（Tripo 渲染图物体偏下 ✗）→ 与游戏图标构图一致 ✓
+            tex = CenterOnContent(tex);
+
             // ⭐ 尺寸对齐游戏自己的物品图标：实测游戏是 **256×256 贴图 + Sprite PPU 50**（MP5 等 158 把武器一致）
             //   我们的来源图是 512² → 缩到 256²（盒式均值 ✓）并同样用 PPU 50 → 显示尺寸与游戏完全一致 ✓
             tex = DownscaleTo(tex, 256);
@@ -151,12 +154,43 @@ namespace ModelKit
             {
                 var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
                 if (!tex.LoadImage(File.ReadAllBytes(pngPath))) return null;
-                tex = DownscaleTo(tex, 256);
+                tex = DownscaleTo(CenterOnContent(tex), 256);
                 var sp = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 50f);
                 sp.name = "WeaponIconSprite";
                 return sp;
             }
             catch { return null; }
+        }
+
+        /// <summary>按透明包围盒裁成正方形并**居中**（Tripo 的渲染图物体偏下 ✗ 我们统一构图 ✓）</summary>
+        static Texture2D CenterOnContent(Texture2D src, float margin = 0.12f)
+        {
+            var p = src.GetPixels32();
+            int w = src.width, h = src.height;
+            int mnx = w, mny = h, mxx = -1, mxy = -1;
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                    if (p[y * w + x].a > 8)
+                    {
+                        if (x < mnx) mnx = x; if (x > mxx) mxx = x;
+                        if (y < mny) mny = y; if (y > mxy) mxy = y;
+                    }
+            if (mxx < 0) return src;                                  // 全透明 → 原样返回
+            int bw = mxx - mnx + 1, bh = mxy - mny + 1;
+            int side = Mathf.CeilToInt(Mathf.Max(bw, bh) * (1f + margin * 2f));
+            var dst = new Texture2D(side, side, TextureFormat.RGBA32, false);
+            var q = new Color32[side * side];
+            int cx = (mnx + mxx) / 2, cy = (mny + mxy) / 2;
+            for (int y = 0; y < side; y++)
+                for (int x = 0; x < side; x++)
+                {
+                    int sx = cx - side / 2 + x, sy = cy - side / 2 + y;
+                    q[y * side + x] = (sx >= 0 && sx < w && sy >= 0 && sy < h) ? p[sy * w + sx] : new Color32(0, 0, 0, 0);
+                }
+            dst.SetPixels32(q);
+            dst.Apply();
+            dst.wrapMode = TextureWrapMode.Clamp;
+            return dst;
         }
 
         /// <summary>等比缩到 target 边长（盒式均值 ✓ 简单、无副作用）</summary>
