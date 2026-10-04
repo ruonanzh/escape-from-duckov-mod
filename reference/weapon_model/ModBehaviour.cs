@@ -24,6 +24,7 @@ namespace WeaponModelSwap
         string _configPath;
         string _target = "";
         string _modelFile = "";
+        string _front = "auto";          // 用户自带模型可声明朝向（auto/+z/-z/+x/-x）；Tripo 出的由提示词保证 ✓
         readonly HashSet<int> _typeIds = new HashSet<int>();
 
         Mesh _mesh;
@@ -89,7 +90,7 @@ namespace WeaponModelSwap
             if (!File.Exists(path)) { Debug.LogWarning($"[WeaponModel] 找不到模型文件：{path}"); return; }
             try
             {
-                var g = GltfLoader.LoadFile(path);
+                var g = GltfLoader.LoadFile(path, _front);
                 _mesh = g.Mesh; _texture = g.MainTexture;
                 Debug.Log("[WeaponModel] " + g.Report);
             }
@@ -104,6 +105,7 @@ namespace WeaponModelSwap
                 var cfg = Json.Parse(File.ReadAllText(_configPath));
                 _target = cfg["target"].AsString("");
                 _modelFile = cfg["model"].AsString("");
+                _front = cfg["front"].AsString("auto");
                 var ids = cfg["typeIDs"];
                 if (ids != null && ids.IsArray) for (int i = 0; i < ids.Count; i++) _typeIds.Add(ids[i].AsInt(0));
             }

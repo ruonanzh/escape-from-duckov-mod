@@ -27,9 +27,9 @@ namespace ModelKit
             public string Report = "";
         }
 
-        public static Loaded LoadFile(string path) => Load(File.ReadAllBytes(path));
+        public static Loaded LoadFile(string path, string front = "auto") => Load(File.ReadAllBytes(path), front);
 
-        public static Loaded Load(byte[] data)
+        public static Loaded Load(byte[] data, string front = "auto")
         {
             var r = new Loaded();
             if (data.Length < 20 || data[0] != 'g' || data[1] != 'l' || data[2] != 'T' || data[3] != 'F')
@@ -86,11 +86,16 @@ namespace ModelKit
                 }
             }
 
-            // ① 统一朝向：枪管轴 → Z、枪口 → +Z（**不信 Tripo 的 export_orientation** ✗ 它是按几何算的，
-            //    实测同一批模型的"前"并不一致 → 运行时自己判定 ✓）
-            OrientToUnity(verts, norms);
+            // ① 朝向：**不在这里猜** ✗
+            //    实测（2026-10-04）：Tripo 的模型朝向由**提示词**决定 —— 提示词写
+            //    "the muzzle points to the left" → 枪口落在 **+Z**（= Unity 前向 ✓）；
+            //    写 "to the right" → 落在 −Z。所以**朝向在生成阶段就定好** ✓
+            //    （详见 doc 仓 docs/unity-3d-assets/03-tripo-api.md §8.9）
+            //    用户自己给的 GLB 没有这个保证 → 用 mod 的 `config.json` 的 "front" 声明（下面会转）
 
-            // ② 握把归零（枪口已朝 +Z → 枪托在 −Z；枪托端起 8%~35% 区间的最低点 = 握把）
+            ApplyFrontDeclaration(verts, norms, front);
+
+            // ② 握把归零（枪口朝 +Z → 枪托在 −Z；枪托端起 8%~35% 区间的最低点 = 握把）
             var grip = GuessGrip(verts);
             for (int i = 0; i < verts.Count; i++) verts[i] -= grip;
 
@@ -107,6 +112,28 @@ namespace ModelKit
             r.MainTexture = LoadBaseColor(doc, views, bin);
             r.Report = $"GLB：顶点 {r.VertexCount}，三角面 {r.TriangleCount}，贴图 {(r.MainTexture != null ? r.MainTexture.name + $" {r.MainTexture.width}x{r.MainTexture.height}" : "无")}；包围盒 {mesh.bounds.size}；握把归零 {grip}";
             return r;
+        }
+
+        /// <summary>按声明旋转（用户自带的 GLB 用）：front = "auto"（不转）/"-z"/"+x"/"-x" → 把枪口转到 +Z ✓</summary>
+        public static void ApplyFrontDeclaration(List<Vector3> verts, List<Vector3> norms, string front)
+        {
+            if (string.IsNullOrEmpty(front) || front == "auto" || front == "+z") return;
+            foreach (var v0 in new[] { verts })
+            {
+                for (int i = 0; i < verts.Count; i++)
+                {
+                    var v = verts[i]; var n = norms[i]; Vector3 nv; Vector3 nn;
+                    switch (front)
+                    {
+                        case "-z": nv = new Vector3(-v.x, v.y, -v.z); nn = new Vector3(-n.x, n.y, -n.z); break;
+                        case "+x": nv = new Vector3(-v.z, v.y, v.x); nn = new Vector3(-n.z, n.y, n.x); break;
+                        case "-x": nv = new Vector3(v.z, v.y, -v.x); nn = new Vector3(n.z, n.y, -n.x); break;
+                        default: nv = v; nn = n; break;
+                    }
+                    verts[i] = nv; norms[i] = nn;
+                }
+                break;
+            }
         }
 
         /// <summary>统一朝向：把最长轴转到 Z，并让**枪口朝 +Z**（游戏武器坐标系期望的方向）</summary>
@@ -186,10 +213,9 @@ namespace ModelKit
             float C(Vector3 v, int a) => a == 0 ? v.x : a == 1 ? v.y : v.z;
             float Lo1 = ax == 0 ? mn.x : ax == 1 ? mn.y : mn.z, Hi1 = ax == 0 ? mx.x : ax == 1 ? mx.y : mx.z;
             float sp = Hi1 - Lo1;
-            // 枪口判定与 OrientToUnity 共用同一套（这里已把枪口摆到 +Z → 枪托在 −Z ✓）
-            bool muzzleAtMin = !MuzzleAtPositiveZ(pts);
-            float stock = muzzleAtMin ? Hi1 : Lo1;
-            float dir = muzzleAtMin ? -1f : 1f;
+            // 朝向由提示词保证（枪口 +Z）→ 枪托在 −Z ✓ 不需要再判定
+            float stock = Lo1;
+            float dir = 1f;
             float l2 = stock + dir * sp * 0.08f, h2 = stock + dir * sp * 0.35f;
             if (l2 > h2) { var t = l2; l2 = h2; h2 = t; }
             Vector3 low = Vector3.zero; bool found = false;

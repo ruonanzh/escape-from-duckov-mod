@@ -9,6 +9,16 @@ description: 用户想换某把武器的模型/外观时用（例："把 MP5 换
 
 ## 1. 模型从哪来
 
+> ⭐ **提示词里必须写明朝向** —— 这是**唯一可靠**的办法 ✓
+> （实测：Tripo 自己的 `export_orientation` 参数对同一批模型结果都不一致 ✗；
+>   靠几何判定也不行 —— 火箭筒这种"两端都细"的没法判 ✗）
+>
+> ```
+> …, the barrel and muzzle point to the LEFT, the stock is on the right
+> ```
+> 实测映射：**"to the left" → 枪口落在 +Z = Unity 前向 ✓**（"to the right" → −Z ✗）
+> → **朝向在生成阶段就定好，进游戏不用再转** ✓
+
 > **Tripo key**：放**单独的文件** `~/.gamer-agent-pi/api-keys.json` → `{ "tripo": "tsk_…" }`（用户级 ✓ 所有游戏仓库共用 ✓ 不进 git ✓；**临时方案** —— 将来由 app 的「管理 API keys」界面接管 ✓）。没有 key 时工具会返回 FAIL 并说明放哪 —— 这时**向用户要一次**，写进去即可 ✓（余额可以用 `generate_model(action="balance")` 看 ✓；一次生成大约 40 积分 —— **别反复重试刷积分** ✗ 不行就改提示词或问用户 ✓）
 
 | 情况 | 做法 |
@@ -46,5 +56,6 @@ dotnet build -c Release
 |---|---|
 | 形状对但**握把偏** | 看日志两侧包围盒；`WeaponModel.Apply(..., extraOffset)` 可微调（一般不用 ✓）|
 | **贴图没上** | GLB 里没有 baseColor 贴图（重新 `texture_model` 或直接用带贴图的 GLB）|
-| **模型整块看不见** | 典型是绕序/朝向 ✗ 用 `convert_model(export_orientation="-x")` 重导 ✓ |
+| **模型整块看不见** | 绕序/UV 问题（加载器已按左手系转换 ✓）→ 改提示词或换参考图重生成 ✓ |
+| **前后反了** | 提示词朝向写反了 ✓（写 "left" ✓）；**用户自带的模型**没这个保证 → 在 `config.json` 里写 `"front": "-z"`（或 `+x`/`-x`）✓ |
 | 日志没有 `[WeaponModel]` | mod 没装成功或名字对不上（`<mod名>.ModBehaviour`）→ 用 `validate_mod` / `install_mod` 的返回确认 |

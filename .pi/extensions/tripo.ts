@@ -16,7 +16,8 @@ import { dirname, extname, isAbsolute, join, resolve } from "node:path";
  *   · 中国站 api.tripo3d.com（key 是哪个站的就用哪个；--global 用 .ai）
  *   · 模型 URL **5 分钟后过期** → 成功必须**立刻下载** ✓
  *   · 轮询 2 秒一次（官方限流）
- *   · 导出 Unity 朝向：为道具/武器设 `export_orientation: "-x"` → 枪口/正面 = +Z（Unity 前向）✓
+ *   · 朝向**由提示词决定**（唯一可靠）：prompt 里写 "the barrel and muzzle point to the LEFT" → 枪口落在 +Z（Unity 前向）✓
+ *     ⚠️ `export_orientation` 参数不可靠（同一批模型结果不一致 ✗）；几何判定对"两端都细"的武器（火箭筒）也不可用 ✗
  *   · `task_id` 可复用：convert 不重新生成、不重新上传 ✓
  *   · ⚠️ 别用 .NET 调这个 API（本机网络会 DPI 重置它的 TLS 握手 → unexpected EOF ✗）；Node/Python/curl 都通 ✓
  *
@@ -191,7 +192,7 @@ export default function (pi: ExtensionAPI) {
   });
 }
 
-/** 转成 Unity 就绪：export_orientation="-x" → 枪口/正面 = +Z（Unity 前向）✓ */
+/** 转静态 + 1024 PNG。**不传 export_orientation** ✗（那个参数不可靠；朝向已由提示词定好 ✓） */
 async function convert(api: (p: string, b?: unknown) => Promise<any>, waitTask: (id: string, l: string) => Promise<any>, taskId: string, animated: boolean) {
   const created = await api("/task", {
     type: "convert_model",
@@ -200,7 +201,6 @@ async function convert(api: (p: string, b?: unknown) => Promise<any>, waitTask: 
     with_animation: animated,
     texture_size: 1024,
     texture_format: "PNG",
-    export_orientation: "-x",
   });
   return waitTask(String(created.task_id), "convert");
 }
