@@ -22,6 +22,20 @@ class Program
 {
     static int Main(string[] args)
     {
+        // 任务级子命令（给"小白流程/SKILL"用的唯一入口）——
+        // 把内部那些旋钮（donor/对齐/丢弃/命名）全变成自动默认 ✓
+        if (args.Length > 0 && args[0] == "replace-weapon")
+        {
+            var list = new List<string>();
+            for (int i = 1; i < args.Length; i++)
+            {
+                if (args[i] == "--model") { list.Add("--glb"); continue; }
+                if (args[i] == "--template") { list.Add("--mold"); continue; }
+                list.Add(args[i]);
+            }
+            Console.WriteLine("任务：替换武器模型（内部自动：挑 donor ✓ 对齐 ✓ 删掉旧模型其余网格 ✓ 唯一包名 ✓）");
+            args = list.ToArray();
+        }
         var o = Parse(args);
         string mold = o.GetValueOrDefault("mold");
         string outp = o.GetValueOrDefault("out");
@@ -141,7 +155,9 @@ class Program
         if (glb != null)
         {
             var gm = Gltf.ReadGlb(glb);
-            Console.WriteLine($"GLB: {System.IO.Path.GetFileName(glb)}  顶点={gm.Positions.Count} 三角面={gm.TriangleCount}");
+            Console.WriteLine($"模型: {System.IO.Path.GetFileName(glb)}  顶点={gm.Positions.Count} 三角面={gm.TriangleCount}");
+            if (!o.ContainsKey("align")) o["align"] = "donor";          // 默认：对齐到 donor
+            if (!o.ContainsKey("drop")) o["drop"] = "auto";             // 默认：删掉旧模型其余网格 ✓
 
             // ① 选 donor
             long donor = 0;
@@ -229,7 +245,8 @@ class Program
             string dropArg = o.GetValueOrDefault("drop");
             if (dropArg != null)
             {
-                var pats = dropArg.Split(',').Select(x => x.Trim()).Where(x => x.Length > 0).ToList();
+                bool dropAll = dropArg == "auto";                       // auto = 除 donor 外的旧模型网格全丢 ✓
+                var pats = dropAll ? new List<string>() : dropArg.Split(',').Select(x => x.Trim()).Where(x => x.Length > 0).ToList();
                 int dropped = 0;
                 foreach (var info in inst.file.AssetInfos)
                 {
@@ -239,7 +256,7 @@ class Program
                     var v = b["m_VertexData"]; if (v == null || v.IsDummy) continue;
                     var nm = b["m_Name"].Value != null ? b["m_Name"].Value.AsString : "";
                     if (info.PathId == donor) continue;                     // 主体不丢
-                    bool hit = pats.Any(pt => WildMatch(nm, pt));
+                    bool hit = dropAll || pats.Any(pt => WildMatch(nm, pt));
                     if (!hit) continue;
                     var tiny = new GltfMesh();
                     for (int i = 0; i < 3; i++) { tiny.Positions.Add(new[] { 0f, 0f, 0f }); tiny.Normals.Add(new[] { 0f, 1f, 0f }); tiny.Uvs.Add(new[] { 0f, 0f }); }
@@ -248,7 +265,7 @@ class Program
                     Console.WriteLine($"  丢弃 Mesh '{nm}'（pathID={info.PathId}）→ 已置为退化网格 ✓");
                     dropped++;
                 }
-                Console.WriteLine($"丢弃网格共 {dropped} 个（匹配 {string.Join(",", pats)}）");
+                Console.WriteLine($"丢弃网格共 {dropped} 个（{(dropAll ? "旧模型其余网格（auto）" : string.Join(",", pats))}）");
             }
 
             WriteMeshInto(am, inst, gm, donor, stream, oldCab, newCab);
