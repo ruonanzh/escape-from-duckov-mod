@@ -64,14 +64,10 @@ generate_image(model="your_mods/<mod>/gun.glb", styleRef="<游戏里那把武器
 - **尺寸/抠白/居中由游戏运行时自动处理**（256² + PPU50）→ 不要自己裁
 - 不写 `style` → 直接用模型自己的渲染图（免费）；没有 `icon.png` 就只换模型、不换图标
 
-### 成本一览
+### 成本一览（合计 ≈ 60 积分）
 
-| 步 | 工具 | 约 |
-|---|---|---|
-| ② 骨架 | 自己建（照 `reference/`）| 0 |
-| ③ 预览图 | `generate_image` | 5 |
-| ④ 3D 模型 | `generate_model` | 50 |
-| ⑤ 图标 | `generate_image` | 5（或 0）|
+- 预览图 `generate_image` **5** · 3D 模型 `generate_model` **50**（含转换）· 图标 `generate_image` **5**（用模型自带的渲染图则**免费**）
+- 骨架（②）自己建，不花钱
 
 > **Tripo key**：放**单独的文件** `~/.gamer-agent-pi/api-keys.json` → `{ "tripo": "tsk_..." }`
 > （用户级、所有游戏仓库共用、不进 git；**临时方案** —— 将来由 app 的「管理 API keys」界面接管）
