@@ -7,27 +7,79 @@ description: 用户想换某把武器的模型/外观时用（例："把 MP5 换
 
 **目标**：用户手里那把武器（或指定某把武器）的**外观**换成用户提供的模型。不改数值、不改行为。
 
-## 1. 模型从哪来
+## 1. 模型从哪来（四步资产流程）
 
-> ⭐ **提示词里必须写明朝向** —— 这是唯一可靠的办法 ✓
-> Tripo 的 `export_orientation` 参数不可靠 ✗（同一批模型结果不一致）；靠几何判断也不行 ✗（火箭筒这种"两端都细"的没法判）
->
+用户**只说一句话**也能做 ✓ 但**最省积分、最不容易白花钱**的顺序是这四步：
+第 ②④ 步各只要 **5 积分**，只有第 ③ 步贵（约 **50**）→ **先把便宜的做完、和用户确认，再花贵的那步** ✓
+
+### ① 参考图（免费）
+
+- 用户给了图 → 就用它（聊天里发的图会落盘，拿到的是**绝对路径** ✓ 直接传给工具 ✓）
+- 用户只说了句话 → 跳过这步，直接进 ②（② 支持纯提示词 ✓）
+- 给了好几张 → **问用户用哪张** ✓
+
+### ② 风格化预览图（约 5 积分）—— **先给用户看，等他确认**
+
+```
+generate_image(
+  image="<用户的图>",                  // 没图就省略 → 纯提示词出图 ✓
+  styleRef="<游戏内武器的图>",           // 强烈建议：一张游戏里已有武器的图（工坊图标/截图）→ 出得像本作 ✓
+  style="…, the barrel and muzzle point to the LEFT, the stock is on the right",
+  out=".preview/<名字>.preview.png")    // 中间图一律进 .preview/ ✓ 不会被装进游戏 ✓
+```
+
+- 出图后**自己先看**（读这张图 ✓）→ 再**给用户看，问他「就要这个吗」** ✓
+- 不像就改 `style` 再来一次 ✓（每次都便宜 ✓）—— **不要**在没确认前去做 ③ ✓
+- 想更像本作：`image` 给用户的图、`styleRef` 给游戏内的图，**两个都给最准** ✓
+
+### ③ 3D 模型（约 50 积分，含转换）
+
+```
+generate_model(action="generate", image=".preview/<名字>.preview.png",
+               out="your_mods/<mod>/gun.glb", faceLimit=3000)
+```
+
+- 用 ② 那张**已确认的预览图**做输入 ✓ —— **图 → 3D 比纯文字准得多** ✓（冷门型号尤其 ✓）
+- 用户只要一句话、没图 → 用 `prompt="…"` ✓（**提示词里也必须写朝向** ✓）
+- 用户自带 `.glb` → ①②③ 全跳过 ✓ 直接用他的文件 ✓（那时要在 `create_mod` 里声明 `front=` ✓）
+- 工具会把 Tripo 的渲染图存到 `.preview/<名字>.preview.png` ✓ 并记下 task id（供 ④ 免费用 ✓）
+- ⚠️ **别连发**：两次生成之间隔开 —— 平台有限流，会返回 `exceeded the limit of generation` ✗
+
+> **朝向只能靠提示词** ✓（`export_orientation` 参数不可靠 ✗，几何判定对「两端都细」的武器也不可用 ✗）
 > ```
 > …, the barrel and muzzle point to the LEFT, the stock is on the right
 > ```
 > **"to the left" → 枪口落在 +Z = Unity 前向 ✓**（"to the right" → −Z ✗）→ **进游戏不用再转** ✓
-> （完整数据：doc 仓 `docs/unity-3d-assets/03-tripo-api.md` §8.8 / §8.9）
 
-> **卡片图标（可选但推荐）**：`generate_icon(model="your_mods/<名字>/gun.glb")` —— 不带 `style` 时**免费** ✓（用模型自己的渲染图 ✓ 形状与游戏里一致 ✓）
-> → 存成 mod 根的 `icon.png` ✓（mod 会把它设成武器卡片图标 ✓；运行时自动对齐游戏的 **256² + PPU50** ✓）
-> （想要别的风格时给 `style="clean game inventory icon, 3/4 view"` ✓ 约 10 积分 ✓）
+### ④ 图标（约 5 积分；想省钱用 ③ 的渲染图则**免费**）
 
-> **Tripo key**：放**单独的文件** `~/.gamer-agent-pi/api-keys.json` → `{ "tripo": "tsk_…" }`（用户级 ✓ 所有游戏仓库共用 ✓ 不进 git ✓；**临时方案** —— 将来由 app 的「管理 API keys」界面接管 ✓）。没有 key 时工具会返回 FAIL 并说明放哪 —— 这时**向用户要一次**，写进去即可 ✓（余额可以用 `generate_model(action="balance")` 看 ✓；一次生成大约 40 积分 —— **别反复重试刷积分** ✗ 不行就改提示词或问用户 ✓）
+```
+generate_image(
+  model="your_mods/<mod>/gun.glb",
+  styleRef="<游戏里那把武器的卡片图标>",
+  style="clean game inventory icon, side profile, pure white background, no shadow, centered",
+  out="your_mods/<mod>/icon.png")
+```
 
-| 情况 | 做法 |
-|---|---|
-| 用户给了 `.glb` | 直接用 ✓（`your_mods/<你的mod>/` 里放上它即可）|
-| 用户给了一张图 / 一句话 | **调 `generate_model` 工具**（它会把 Tripo 的渲染图存到模型目录的 `.preview/` 下 ✓ **装进游戏前先看那张图** —— 形状对不对一眼就知道 ✓ 该目录不会被 `install_mod` 装进游戏 ✓）（π 工具，内部直连 Tripo HTTP）：`generate_model(action="generate", prompt="PPSh-41 样式的冲锋枪，游戏资产，侧视", out="your_mods/<你的mod>/gun.glb", faceLimit=3000)`；用户有参考图就用 `image="<路径>"` 代替 prompt ✓。工具会**自动建任务→轮询→立刻下载**（URL 5 分钟过期 ✗）并按 **Unity 就绪朝向**导出（枪口/正面 = +Z ✓），所以在游戏里不用再转 ✓ |
+- **尺寸/抠白/居中都不用管** ✓ —— 游戏运行时会自动抠成透明、居中、缩到 **256² + PPU50**（与游戏自带图标一致 ✓）
+  → **不要**自己裁、不要自己缩放 ✗
+- 不写 `style` → 直接拿模型自己的渲染图 ✓（免费 ✓ 形状必然一致 ✓）→ 存成 `icon.png` ✓
+- 背景一定写 **`pure white background, no shadow`** ✓（灰底/阴影会被运行时留下淡淡的边 ✗）
+- 没有 `icon.png` → 只换模型、不换图标 ✓
+
+### 成本一览
+
+| 步 | 工具 | 约 |
+|---|---|---|
+| ② 预览图 | `generate_image` | 5 |
+| ③ 3D 模型 | `generate_model` | 50 |
+| ④ 图标 | `generate_image` | 5（或 0 = 用模型的渲染图 ✓）|
+| | 合计 | **≈ 60** ✓ |
+
+> **Tripo key**：放**单独的文件** `~/.gamer-agent-pi/api-keys.json` → `{ "tripo": "tsk_…" }`
+> （用户级 ✓ 所有游戏仓库共用 ✓ 不进 git ✓；**临时方案** —— 将来由 app 的「管理 API keys」界面接管 ✓）
+> 没有 key 时工具会返回 FAIL 并说明放哪 —— 这时**向用户要一次**，写进去即可 ✓
+> 余额用 `generate_model(action="balance")` 看 ✓；**别反复重试刷积分** ✗ 不行就改提示词或问用户 ✓
 
 ## 2. 做 mod（**一条工具调用**）
 
@@ -51,9 +103,10 @@ create_mod(kind="replace-weapon-model", name="MyGun", target="MP5", file="gun.gl
 
 ## 3. 装进游戏
 
-> **图标这步两种情形**：
-> - 模型是 `generate_model` 生成的 → `generate_icon(model="…/gun.glb")` ✓（工具能用它记下的 task id 直接取渲染图 ✓ **不花积分** ✓）
-> - 用户自带的 GLB → 同样 `generate_icon(model="…/gun.glb")` ✓（工具会自动 import_model 上传后取渲染图 ✓）
+> **图标这步**：`generate_image(model="…/gun.glb", out="…/icon.png")` ✓
+> - 不给 `style` → 直接用模型自己的渲染图 ✓（免费 ✓ 形状与游戏里一致 ✓）
+> - 给 `style` = `styleRef`（游戏内图标）→ 重画一张更像本作的 ✓（约 5 积分 ✓）
+> - **尺寸/抠白/居中由游戏运行时自动处理** ✓（256² + PPU50）→ 不用自己裁 ✗
 
 
 
