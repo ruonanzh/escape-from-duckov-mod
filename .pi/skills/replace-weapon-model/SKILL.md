@@ -103,9 +103,28 @@ generate_image(model="your_mods/<mod>/gun.glb", styleRef="<游戏里那把武器
 | `icon` | 图标文件名（默认 `icon.png`）；没有就只换模型、不换图标 |
 | `front` | **只有用户自带的模型**才需要：`-z`/`+x`/`-x` 声明枪口朝向（`generate_model` 出的不用）|
 
-**怎么引 `libs/mod-kit`**（两种都行，你挑）：
-- 抄 `reference/weapon_model/WeaponModelSwap.csproj` 里那几行 `<Compile Include="...">`，路径按**你的 mod 目录**算
-- 或把 `libs/mod-kit/*.cs` **拷进你的 mod 目录**（自包含，路径最省事）
+**这个能力要引的 mod-kit 文件（5 个都要）**：
+
+| 文件 | 干嘛的 |
+|---|---|
+| `libs/mod-kit/GltfLoader.cs` | 读 GLB → `Mesh` + `Texture2D`（坐标/绕序/UV 转换、握把归零、按 `front` 转朝向）|
+| `libs/mod-kit/WeaponModel.cs` | 把模型换到**手持武器**上（选锚点 / 藏旧零件 / 对齐 / 克隆游戏材质换贴图）|
+| `libs/mod-kit/WeaponIcon.cs` | 换武器图标（抠白底 + 居中 + 缩 256² + PPU50）|
+| `libs/mod-kit/GameApi.cs` | 找玩家与手持物（`FindMainCharacter` / `EnsureHandheldAgent` …）|
+| `libs/mod-kit/Json.cs` | 读 `config.json`（不用引第三方 JSON 库）|
+
+两种引法（挑一种）：
+- 抄 `reference/weapon_model/WeaponModelSwap.csproj` 里那 5 行 `<Compile Include="...">`，路径按**你的 mod 目录**算
+- 或把这 5 个文件**拷进你的 mod 目录**（自包含，路径最省事）
+
+**接口**（完整签名：`rg "public static" libs/mod-kit/`）：
+
+| 调用 | 作用 |
+|---|---|
+| `GltfLoader.LoadFile(path, front)` → `Loaded { Mesh, MainTexture, VertexCount, TriangleCount, Report }` | 读 GLB；`front` 用 `"auto"`，用户自带的模型按 `config.json` 传 `"-z"`/`"+x"`/`"-x"` |
+| `WeaponModel.Apply(anchorRoot, mesh, texture)` → `Result { Applied, Instance, Report }` | 换到手持武器上 —— **`reference/weapon_model/ModBehaviour.cs` 里有完整用法，照抄即可** |
+| `WeaponIcon.Apply(item, "icon.png")`（有图标时才调）| 换图标（幂等，内部自己归一化尺寸）|
+| `Json.Parse(text)` → `GetStr/GetInt/GetFloat(key, fallback)` | 读 `config.json` 字段 |
 
 **要用 Harmony**（自己改数值/行为时）：再加 `libs/0Harmony.dll` 的引用 —— 照 `reference/example_mod/ExampleMod.csproj`（它是 `<Private>true</Private>`，会随 mod 自带）。
 
