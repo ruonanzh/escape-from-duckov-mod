@@ -142,7 +142,7 @@ export default function (pi: ExtensionAPI) {
     name: "generate_image",
     label: "Generate Image (Tripo)",
     description:
-      "Make one square PNG from a 3D model, a Tripo task id, or a reference picture. Without style you get the model's own render (free, always matches the model); with style (and/or extra references) a new image is generated (a few credits). Saves the PNG where you ask and returns PASS with the path. Needs the Tripo API key (~/.gamer-agent-pi/api-keys.json, key 'tripo').",
+      "Make one square PNG from a 3D model, a Tripo task id, or a reference picture. Without style you get the model's own render (free, always matches the model); with style a new image is generated (a few credits) - from the model or reference if you gave one, otherwise from the description alone. Saves the PNG where you ask and returns PASS with the path. Needs the Tripo API key (~/.gamer-agent-pi/api-keys.json, key 'tripo').",
     promptSnippet: "Make a square PNG (preview or icon) from a model or a reference picture",
     promptGuidelines: [
       "Use style= when you need a new look or a style match (a few credits): a preview to agree on with the user before spending ~40 credits on generate_model, or a stylized icon for an item.",
@@ -159,7 +159,7 @@ export default function (pi: ExtensionAPI) {
       style: Type.Optional(
         Type.String({
           description:
-            'What to aim for. Omit it to just get the model\'s own render (free). Example: "clean game inventory icon, side profile, white background, centered, the barrel and muzzle point to the LEFT".',
+            'What to draw / which style to aim for (this is the prompt). Omit it to just get the model\'s own render (free). Example: "clean game inventory icon, side profile, white background, centered, the barrel and muzzle point to the LEFT".',
         }),
       ),
       out: Type.Optional(
@@ -180,8 +180,9 @@ export default function (pi: ExtensionAPI) {
         const imagePath = params.image ? (isAbsolute(params.image) ? params.image : resolve(cwd, params.image)) : null;
         const styleRefPath = params.styleRef ? (isAbsolute(params.styleRef) ? params.styleRef : resolve(cwd, params.styleRef)) : null;
         for (const p of [modelPath, imagePath, styleRefPath]) if (p && !existsSync(p)) throw new Error(`not found: ${p}`);
-        if (!modelPath && !params.taskId && !imagePath) {
-          throw new Error("nothing to work from: pass model= (a .glb), taskId=, or image= (a picture)");
+        // 纯提示词也合法 ✓（text_to_image 那条路 ✓）；但完全空的调用要明确报错 ✓
+        if (!modelPath && !params.taskId && !imagePath && !params.style) {
+          throw new Error("nothing to work from: pass style= (a description) and/or model= / taskId= / image=");
         }
 
         // ① 参考：模型的渲染图（免费 ✓ 从 task 或现算）
@@ -212,18 +213,18 @@ export default function (pi: ExtensionAPI) {
         let url: string | null = renderUrl;
         const wantsNew = Boolean(params.style || imagePath || styleRefPath);
         if (wantsNew) {
+          // 有参考 → generate_image（带 file/files ✓ 已实测）；没有参考 → text_to_image（纯提示词 ✓）
           const body: Record<string, unknown> = {
-            type: "generate_image",
+            type: refs.length ? "generate_image" : "text_to_image",
             prompt: params.style ?? "clean game asset image, side profile, plain background, centered, no hands",
           };
-          if (refs.length === 0) {
-            throw new Error("style needs something to work from (model=, taskId= or image=)");
-          } else if (refs.length === 1 && refs[0].kind === "render") {
+          // refs.length === 0 → 纯提示词：不挂 file / files ✓
+          if (refs.length === 1 && refs[0].kind === "render") {
             body.file = refs[0].value;
           } else if (refs.length === 1) {
             const mime = tripoImageType(refs[0].value) === "png" ? "image/png" : "image/jpeg";
             body.file = `data:${mime};base64,${readFileSync(refs[0].value).toString("base64")}`;
-          } else {
+          } else if (refs.length > 1) {
             const files: Array<Record<string, string>> = [];
             for (const r of refs) {
               if (r.kind === "render") files.push({ type: "png", url: r.value });
