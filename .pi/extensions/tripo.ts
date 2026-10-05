@@ -73,7 +73,7 @@ async function tripoApi(base: string, key: string, path: string, body?: unknown)
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const j: any = await r.json().catch(() => ({}));
-  if (j.code !== 0) throw new Error(`Tripo API code=${j.code} ${j.message ?? ""}`.trim());
+  if (j.code !== 0) throw new Error(`Tripo API code=${j.code} ${j.message ?? ""} ${j.suggestion ?? ""}`.trim());
   return j.data;
 }
 
@@ -201,28 +201,35 @@ export default function (pi: ExtensionAPI) {
           }
         }
 
-        // ② 要不要生成新图：有 style 或 有第二张参考 → 生成 ✓；否则直接给渲染图（免费 ✓）
+        // ② 要不要生成新图：给了 style / 参考图 才生成 ✓；只给 model/taskId → 直接返回渲染图（免费 ✓）
+        //    参考图按重要性排序：模型的渲染图（它长什么样）→ 玩家给的图 → 游戏内风格锚点
+        //    1 张 → `file:`（已实测的最简路 ✓）；≥2 张 → 先 v2 /upload 再 `files:`（可混 `{url}` 与 `{file_token}` ✓）
+        const refs: Array<{ kind: "render" | "file"; value: string }> = [];
+        if (renderUrl) refs.push({ kind: "render", value: renderUrl });
+        if (imagePath) refs.push({ kind: "file", value: imagePath });
+        if (styleRefPath) refs.push({ kind: "file", value: styleRefPath });
+
         let url: string | null = renderUrl;
-        const wantsNew = Boolean(params.style || styleRefPath);
+        const wantsNew = Boolean(params.style || imagePath || styleRefPath);
         if (wantsNew) {
           const body: Record<string, unknown> = {
             type: "generate_image",
             prompt: params.style ?? "clean game asset image, side profile, plain background, centered, no hands",
           };
-          const files: Array<Record<string, string>> = [];
-          if (styleRefPath) files.push({ type: tripoImageType(styleRefPath), file_token: await tripoUpload(base, key, styleRefPath) });
-          if (imagePath && styleRefPath) {
-            files.unshift({ type: tripoImageType(imagePath), file_token: await tripoUpload(base, key, imagePath) });
-          }
-          if (files.length) {
-            body.files = files;
-          } else if (imagePath) {
-            const mime = tripoImageType(imagePath) === "png" ? "image/png" : "image/jpeg";
-            body.file = `data:${mime};base64,${readFileSync(imagePath).toString("base64")}`;
-          } else if (renderUrl) {
-            body.file = renderUrl;
+          if (refs.length === 0) {
+            throw new Error("style needs something to work from (model=, taskId= or image=)");
+          } else if (refs.length === 1 && refs[0].kind === "render") {
+            body.file = refs[0].value;
+          } else if (refs.length === 1) {
+            const mime = tripoImageType(refs[0].value) === "png" ? "image/png" : "image/jpeg";
+            body.file = `data:${mime};base64,${readFileSync(refs[0].value).toString("base64")}`;
           } else {
-            throw new Error("style/styleRef needs something to work from (model=, taskId= or image=)");
+            const files: Array<Record<string, string>> = [];
+            for (const r of refs) {
+              if (r.kind === "render") files.push({ type: "png", url: r.value });
+              else files.push({ type: tripoImageType(r.value), file_token: await tripoUpload(base, key, r.value) });
+            }
+            body.files = files;
           }
           const gen = await api("/task", body);
           url = tripoPickUrl((await waitTask(String(gen.task_id))).output);
@@ -298,40 +305,10 @@ export default function (pi: ExtensionAPI) {
       }
       const base = tripoBase(params.region);
 
-      const api = async (path: string, body?: unknown): Promise<any> => {
-        const r = await fetch(base + path, {
-          method: body === undefined ? "GET" : "POST",
-          headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-          body: body === undefined ? undefined : JSON.stringify(body),
-        });
-        const j: any = await r.json().catch(() => ({}));
-        if (j.code !== 0) throw new Error(`Tripo API code=${j.code} ${j.message ?? ""} ${j.suggestion ?? ""}`.trim());
-        return j.data;
-      };
-      const waitTask = async (id: string, label: string): Promise<any> => {
-        const t0 = Date.now();
-        for (;;) {
-          const d = await api(`/task/${id}`);
-          const status = String(d.status);
-          if (status === "success") return d;
-          if (["failed", "banned", "expired", "cancelled"].includes(status))
-            throw new Error(`task ${label} ${status}: ${JSON.stringify(d.task ?? d).slice(0, 300)}`);
-          if (Date.now() - t0 > 900_000) throw new Error(`task ${label} timed out (15 min)`);
-          await new Promise((r) => setTimeout(r, 2000));
-        }
-      };
-      const download = async (url: string, outPath: string): Promise<string> => {
-        const r = await fetch(url);
-        if (!r.ok) throw new Error(`download failed HTTP ${r.status}`);
-        const buf = Buffer.from(await r.arrayBuffer());
-        mkdirSync(dirname(outPath), { recursive: true });
-        writeFileSync(outPath, buf);
-        return `${(buf.length / 1024).toFixed(0)} KB`;
-      };
-      const pickUrl = (output: any): string | null => {
-        for (const v of Object.values(output ?? {})) if (typeof v === "string" && v.startsWith("http")) return v;
-        return null;
-      };
+      const api = (path: string, body?: unknown) => tripoApi(base, key, path, body);
+      const waitTask = (id: string, label: string) => tripoWait(api, id, label);
+      const download = tripoSave;
+      const pickUrl = tripoPickUrl;
 
       try {
         if (params.action === "balance") {
