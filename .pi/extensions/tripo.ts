@@ -192,7 +192,7 @@ export default function (pi: ExtensionAPI) {
       const modelPath = params.model ? (isAbsolute(params.model) ? params.model : resolve(cwd, params.model)) : null;
       const imagePath = params.image ? (isAbsolute(params.image) ? params.image : resolve(cwd, params.image)) : null;
       const styleRefPath = params.styleRef ? (isAbsolute(params.styleRef) ? params.styleRef : resolve(cwd, params.styleRef)) : null;
-      for (const p of [modelPath, imagePath, styleRefPath]) if (p && !existsSync(p)) throw new Error(`not found: ${p}`);
+      for (const p of [modelPath, imagePath, styleRefPath]) if (p && !existsSync(p)) throw new Error(`TRIPO_FILE_NOT_FOUND: ${p}`);
       // 三个"创作输入"（提示词 / 玩家参考图 / 游戏风格参考图）+ 两个"模型指针"（model / taskId）
       // **至少给一个就能发** ✓（只给 model/taskId → 免费渲染图；其余 → 生成新图）
       // 一个都不给则明确报错 ✓（不会默默什么都不做 ✗）
@@ -365,7 +365,7 @@ export default function (pi: ExtensionAPI) {
         let genPath: string;
         if (params.image) {
           const p = isAbsolute(params.image) ? params.image : resolve(cwd, params.image);
-          if (!existsSync(p)) throw new Error(`reference image not found: ${p}`);
+          if (!existsSync(p)) throw new Error(`TRIPO_FILE_NOT_FOUND: ${p}`);
           genPath = "/generation/image-to-model";
           modelParams.file = await tripoFileRef(key, p); // 本地图 → /v3/files → {file_token} ✓
         } else if (params.prompt) {
