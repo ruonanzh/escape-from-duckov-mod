@@ -19,11 +19,10 @@ description: 用户想换某把武器的模型/外观时用（例："把 MP5 换
 
 ### ② 先把 mod 骨架建好（免费，编译几秒）
 
-- **先调 `create_mod_folder`**（建目录 + 把这个会话绑上去；绑定之后才写得动里面的文件）：
-  `create_mod_folder(name="mygun")`
-- 再建骨架：`create_mod(kind="replace-weapon-model", name="mygun", target="MP5", model="gun.glb")`
-  （`model=` 只是写进 config 的文件名，**文件还没有也没关系**；参数表见 §2）
-- ⚠️ **名字只能用小写字母 + 数字、且字母开头**（如 `mygun`）—— 大写会被 `create_mod_folder` 拒，下划线会被 `create_mod` 拒。
+- 先建骨架（**不要等素材** —— 素材工具落盘时会自建目录，之后再调 `create_mod` 就会撞 `already exists`）：
+  `create_mod(kind="replace-weapon-model", name="mygun", target="MP5", model="gun.glb")`
+- `model=` 只是写进 config 的文件名，**文件还没有也没关系**；参数表见 §2
+- ⚠️ 名字只能**小写字母 + 数字、字母开头**（如 `mygun`）—— 它会成为 C# 命名空间，大写/下划线/中文都不行
 - 图标/模型下一步产出来再放进去即可。
 
 ### ③ 风格化预览图（约 5 积分）—— **先给用户看，等他确认**
@@ -89,7 +88,7 @@ create_mod(kind="replace-weapon-model", name="mygun", target="MP5", file="gun.gl
 
 | 参数 | 说明 |
 |---|---|
-| `name` | mod 名：**小写字母+数字、字母开头**（如 `mygun` —— 大写会被 `create_mod_folder` 拒 ✗，下划线会被本工具拒 ✗）；会成为命名空间/程序集名 |
+| `name` | mod 名：**小写字母+数字、字母开头**（如 `mygun`）；会成为命名空间/程序集名，大写/下划线/中文都不行 |
 | `target` | 要换的武器名一段（`MP5` 会匹配 `SMG_MP5_Normal`）；或 `typeIDs=[655]` 精确匹配 |
 | `file` | GLB 文件名（默认 `gun.glb`；先把模型放到它说的目录里 ✓）|
 | `icon` | 图标文件名（默认 `icon.png` ✓）—— 用 `generate_icon` 生成后放在 mod 根 ✓（运行时缩到 256²+PPU50 与游戏图标一致 ✓）；没有这个文件就只换模型不换图标 ✓ |
@@ -128,9 +127,6 @@ create_mod(kind="replace-weapon-model", name="mygun", target="MP5", file="gun.gl
 - `TRIPO_RATE_LIMIT` / `code=2000` → 发得太密，等 30–60 秒再发（别循环重试）。
 - `TRIPO_TASK_FAILED` → 生成失败，改提示词或换参考图重来。
 - `TRIPO_FILE_NOT_FOUND` → 路径不对（`create_mod` 的 `file=` 或 `generate_model` 的 `model=`）。
-- `MOD_NAME_TAKEN` → 这个名字已经被别的会话占了（或目录已存在）→ 换个名字重来（别硬用旧名）。
-- `HELPER_READ_ONLY` → 这是 Game Helper 会话，不能建 mod → 让用户开一个 **mod 会话**。
-- 工具不存在 `create_mod_folder` → 这是在仓库里直接开的开发会话（没经 app）→ 直接 `create_mod` 即可（没有写隔离）。
 - 形状对但**握把偏** → 看日志两侧包围盒；`WeaponModel.Apply(..., extraOffset)` 可微调（一般不用）。
 - **贴图没上** → GLB 里没有 baseColor 贴图（重新 `texture_model` 或直接用带贴图的 GLB）。
 - **模型整块看不见** → 绕序/UV 问题（加载器已按左手系转换）→ 改提示词或换参考图重生成。
