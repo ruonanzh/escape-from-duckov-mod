@@ -45,6 +45,37 @@ function readTripoKey(): string | undefined {
     return undefined;
   }
 }
+/** 区域 → 端点（key 是哪个站的就用哪个站）*/
+function tripoBase(region?: string): string {
+  return region === "global" ? "https://api.tripo3d.ai/v2/openapi" : "https://api.tripo3d.com/v2/openapi";
+}
+
+/** 图片扩展名 → Tripo 认的 type（只有 png/jpg 两种）*/
+function tripoImageType(p: string): string {
+  return extname(p).toLowerCase() === ".png" ? "png" : "jpg";
+}
+
+/**
+ * 上传本地图片 → 返回 token（v2 /upload，multipart 字段名是 file ✓）。
+ * ⚠️ **返回的字段叫 image_token，但使用时要写成 file_token** ✗✓（实测，见 doc 仓 03-tripo-api.md §10.1）
+ * 单张参考图**不需要**上传（data URL 直传就行 ✓）；只有要同时给 2–4 张时才走这里 ✓
+ */
+async function tripoUpload(base: string, key: string, filePath: string): Promise<string> {
+  const buf = readFileSync(filePath);
+  const fd = new FormData();
+  fd.append("file", new Blob([new Uint8Array(buf)]), basename(filePath));
+  const r = await fetch(`${base}/upload`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}` },
+    body: fd,
+  });
+  const j: any = await r.json().catch(() => ({}));
+  if (j.code !== 0) throw new Error(`upload failed code=${j.code} ${j.message ?? ""}`.trim());
+  const token = j.data?.image_token ?? j.data?.file_token;
+  if (!token) throw new Error(`upload returned no token: ${JSON.stringify(j.data ?? {}).slice(0, 200)}`);
+  return String(token);
+}
+
 export default function (pi: ExtensionAPI) {
   const BASES = {
     cn: "https://api.tripo3d.com/v2/openapi",
@@ -169,6 +200,158 @@ export default function (pi: ExtensionAPI) {
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         return { content: [{ type: "text", text: `FAIL: generate_icon: ${msg.slice(0, 600)}` }] };
+      }
+    },
+  });
+
+  // ── generate_preview：把「玩家给的图」→「符合本游戏风格的预览图」────────────────
+  //    为什么单独一个工具（而不是塞进 generate_icon）：**平级功能要独立工具** ✓
+  //    这一步便宜（约 5 积分 ✓）→ 可以反复和玩家确认"就是要这个吗"，确认完再花 ~40 积分做 3D ✓
+  //    两张参考图：① 玩家的图（想要什么）② 游戏内的图（长什么样才对 ✓ 工坊图标/游戏截图都行）
+  //      · 单张 → data URL 直传（已实测 ✓ 最简）
+  //      · 两张 → 先 v2 /upload 拿 token，再用 `files: [{type, file_token}]` ✓
+  pi.registerTool({
+    name: "generate_preview",
+    label: "Generate Preview Image",
+    description:
+      "Turn a reference picture into a style-matched preview image (PNG) saved under .preview/ next to your model. Use it BEFORE generating a 3D model: it is cheap (a few credits), so you can show the user the look and agree on it first. Give image= (the user's picture) and optionally styleRef= (a picture of how the game's own assets look: an existing weapon icon, a screenshot) plus style= (what to aim for). Also accepts model= or taskId= to reuse a model's own render as the reference. Returns PASS with the saved path.",
+    promptSnippet: "Make a style-matched preview image from a reference picture",
+    promptGuidelines: [
+      "Use generate_preview before generate_model when the user gave a picture: show them the preview and get their OK first - the preview costs a few credits, the 3D model costs ~40.",
+      "Pass styleRef= with a picture of the game's own assets (an existing icon or a screenshot) so the result matches the game's look, and put the orientation wish in style= as well (e.g. '... the barrel and muzzle point to the LEFT').",
+      "Previews are intermediate images: they belong under .preview/ and are never installed into the game.",
+    ],
+    parameters: Type.Object({
+      image: Type.Optional(Type.String({ description: "Reference picture (the user's image / screenshot / concept art)." })),
+      styleRef: Type.Optional(Type.String({ description: "Second reference showing how the game's own assets look (existing icon or screenshot)." })),
+      model: Type.Optional(Type.String({ description: "Use this .glb's own render as the reference instead of an image." })),
+      taskId: Type.Optional(Type.String({ description: "Use this Tripo task's render as the reference." })),
+      style: Type.Optional(
+        Type.String({
+          description:
+            'What to aim for, e.g. "clean game asset preview, side profile, plain white background, the barrel and muzzle point to the LEFT".',
+        }),
+      ),
+      out: Type.Optional(Type.String({ description: "Where to save the PNG (default: .preview/<name>.preview.png next to the model)." })),
+      region: Type.Optional(Type.Union([Type.Literal("cn"), Type.Literal("global")], { description: "API region (default cn)." })),
+    }),
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const cwd = ctx.cwd;
+      const key = readTripoKey();
+      if (!key) {
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                'FAIL: no Tripo API key.\nNEXT: ask the user for their Tripo API key, then write it to ~/.gamer-agent-pi/api-keys.json as {"tripo":"tsk_..."}, or set TRIPO_API_KEY.',
+            },
+          ],
+        };
+      }
+      const base = tripoBase(params.region);
+      const api = async (path: string, body?: unknown): Promise<any> => {
+        const r = await fetch(base + path, {
+          method: body === undefined ? "GET" : "POST",
+          headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+          body: body === undefined ? undefined : JSON.stringify(body),
+        });
+        const j: any = await r.json().catch(() => ({}));
+        if (j.code !== 0) throw new Error(`Tripo API code=${j.code} ${j.message ?? ""}`.trim());
+        return j.data;
+      };
+      const waitTask = async (id: string): Promise<any> => {
+        const t0 = Date.now();
+        for (;;) {
+          const d = await api(`/task/${id}`);
+          if (String(d.status) === "success") return d;
+          if (["failed", "banned", "expired", "cancelled"].includes(String(d.status))) throw new Error(`task ${d.status}`);
+          if (Date.now() - t0 > 900_000) throw new Error("task timed out");
+          await new Promise((r) => setTimeout(r, 2000));
+        }
+      };
+      const pickUrl = (o: any): string | null => {
+        for (const v of Object.values(o ?? {})) if (typeof v === "string" && v.startsWith("http")) return v;
+        return null;
+      };
+      const save = async (url: string, outPath: string): Promise<string> => {
+        const r = await fetch(url);
+        if (!r.ok) throw new Error(`download failed HTTP ${r.status}`);
+        const buf = Buffer.from(await r.arrayBuffer());
+        mkdirSync(dirname(outPath), { recursive: true });
+        writeFileSync(outPath, buf);
+        return `${(buf.length / 1024).toFixed(0)} KB`;
+      };
+
+      try {
+        const modelPath = params.model ? (isAbsolute(params.model) ? params.model : resolve(cwd, params.model)) : null;
+        const imagePath = params.image ? (isAbsolute(params.image) ? params.image : resolve(cwd, params.image)) : null;
+        const styleRefPath = params.styleRef ? (isAbsolute(params.styleRef) ? params.styleRef : resolve(cwd, params.styleRef)) : null;
+        for (const p of [modelPath, imagePath, styleRefPath]) if (p && !existsSync(p)) throw new Error(`not found: ${p}`);
+
+        // ① 先把"参考"确定下来：本地图 / 模型渲染图 / task 渲染图
+        let renderUrl: string | null = null;
+        if (params.taskId) {
+          const t = await api(`/task/${params.taskId}`);
+          renderUrl = t.output?.rendered_image ?? pickUrl(t.output);
+        } else if (modelPath) {
+          const sidecar = join(dirname(modelPath), ".preview", `${basename(modelPath).replace(/\.glb$/i, "")}.task`);
+          if (existsSync(sidecar)) {
+            const t = await api(`/task/${readFileSync(sidecar, "utf8").trim()}`);
+            renderUrl = t.output?.rendered_image ?? null;
+          } else {
+            const b64 = `data:model/gltf-binary;base64,${readFileSync(modelPath).toString("base64")}`;
+            const imp = await api("/task", { type: "import_model", file: b64 });
+            renderUrl = (await waitTask(String(imp.task_id))).output?.rendered_image ?? null;
+          }
+        }
+
+        // ② 组装参考：单张走 data URL（已实测 ✓）；两张走 v2 /upload + file_token ✓
+        const body: Record<string, unknown> = { type: "generate_image" };
+        const prompt =
+          params.style ??
+          "clean game asset preview, side profile, plain white background, centered, no hands";
+        body.prompt = prompt;
+
+        const uploads: Array<Record<string, string>> = [];
+        if (styleRefPath) uploads.push({ type: tripoImageType(styleRefPath), file_token: await tripoUpload(base, key, styleRefPath) });
+        if (imagePath && styleRefPath) uploads.unshift({ type: tripoImageType(imagePath), file_token: await tripoUpload(base, key, imagePath) });
+
+        if (uploads.length) {
+          body.files = uploads;
+        } else if (imagePath) {
+          const mime = tripoImageType(imagePath) === "png" ? "image/png" : "image/jpeg";
+          body.file = `data:${mime};base64,${readFileSync(imagePath).toString("base64")}`;
+        } else if (renderUrl) {
+          body.file = renderUrl;
+        } else {
+          throw new Error("nothing to work from: pass image= (a picture) / model= / taskId=");
+        }
+
+        const gen = await api("/task", body);
+        const done = await waitTask(String(gen.task_id));
+        const url = pickUrl(done.output);
+        if (!url) throw new Error("no image returned");
+
+        const defaultName = modelPath ? basename(modelPath).replace(/\.glb$/i, "") : "preview";
+        const defaultOut = modelPath
+          ? join(dirname(modelPath), ".preview", `${defaultName}.preview.png`)
+          : resolve(cwd, ".preview", `${defaultName}.preview.png`);
+        const outPath = params.out ? (isAbsolute(params.out) ? params.out : resolve(cwd, params.out)) : defaultOut;
+        const size = await save(url, outPath);
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                `PASS: preview saved to ${outPath} (${size}).\n` +
+                "NEXT: look at the image yourself (read it) and show it to the user; only after they approve, call generate_model with image= pointing at this preview - the 3D step costs ~40 credits.",
+            },
+          ],
+        };
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        return { content: [{ type: "text", text: `FAIL: generate_preview: ${msg.slice(0, 600)}` }] };
       }
     },
   });
