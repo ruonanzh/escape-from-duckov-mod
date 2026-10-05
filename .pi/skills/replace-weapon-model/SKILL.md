@@ -66,8 +66,7 @@ generate_image(model="your_mods/<mod>/gun.glb", styleRef="<游戏里那把武器
 
 ### 成本一览（合计 ≈ 60 积分）
 
-- 预览图 `generate_image` **5** · 3D 模型 `generate_model` **50**（含转换）· 图标 `generate_image` **5**（用模型自带的渲染图则**免费**）
-- 骨架（②）自己建，不花钱
+预览图 `generate_image` **5** · 3D 模型 `generate_model` **50**（含转换）· 图标 `generate_image` **5**（用模型自带的渲染图则**免费**）
 
 > **Tripo key**：放**单独的文件** `~/.gamer-agent-pi/api-keys.json` → `{ "tripo": "tsk_..." }`
 > （用户级、所有游戏仓库共用、不进 git；**临时方案** —— 将来由 app 的「管理 API keys」界面接管）
