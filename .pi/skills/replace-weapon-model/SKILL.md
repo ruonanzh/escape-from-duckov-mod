@@ -59,11 +59,13 @@ generate_model(action="generate", image=".preview/<名字>.preview.png",
 
 ```
 generate_image(model="your_mods/<mod>/gun.glb", styleRef="<游戏里那把武器的卡片图标>",
-               style="clean game inventory icon, side profile, pure white background, no shadow, centered",
+               style="clean game inventory icon, side profile, centered, the weapon occupies about 80% of the frame width",
                out="your_mods/<mod>/icon.png")
 ```
 
-- **尺寸/抠白/居中由游戏运行时自动处理**（256² + PPU50）→ 不要自己裁
+- 图**原生就是透明的**（工具固定用 `chat_image_2.5_flare` + `background=transparent` + `output_format=png` ✓）；
+  运行时**只做尺寸对齐**（256² + PPU50）✓，**不抠底也不裁方** ✓
+  → 所以**构图必须靠提示词写清楚**：居中 ✓ 占宽约 80% ✓（运行时不会再帮你摆正 ✗）
 - 不写 `style` → 直接用模型自己的渲染图（免费）；没有 `icon.png` 就只换模型、不换图标
 
 ### 成本一览（合计 ≈ 60 积分）

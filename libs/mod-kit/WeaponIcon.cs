@@ -35,24 +35,16 @@ namespace ModelKit
 
             int n = tex.width * tex.height;
             var px = tex.GetPixels32();
-            // Tripo 的图已是透明底 → 这段基本不触发；白底图才会被抠 ✓
-            int keyed = 0;
-            for (int i = 0; i < n; i++)
-            {
-                // Tripo 的渲染图是纯白底 → 近白即透明 ✓；用一点羽化让边缘不生硬 ✓
-                int max = Math.Max(px[i].r, Math.Max(px[i].g, px[i].b));
-                int min = Math.Min(px[i].r, Math.Min(px[i].g, px[i].b));
-                bool nearWhite = min >= 235 && (max - min) <= 12;
-                if (nearWhite) { px[i].a = 0; keyed++; }
-                else if (min >= 200 && (max - min) <= 20) px[i].a = (byte)(255 * (235 - min) / 35);   // 半透过渡
-            }
-            tex.SetPixels32(px);
-            tex.Apply();
-            tex.wrapMode = TextureWrapMode.Clamp;
-            tex.name = "WeaponIcon";
 
-            // ⭐ 构图：按透明包围盒裁成正方形并居中（Tripo 渲染图物体偏下 ✗）→ 与游戏图标构图一致 ✓
-            tex = CenterOnContent(tex);
+            // 背景处理：**不做** ✓
+            //   图标来源现在是 Tripo 的 `chat_image_2.5_flare + background=transparent + output_format=png`
+            //   （或模型的渲染图）→ **原生就带透明** ✓，不需要我们猜背景 ✓。
+            //   曾经的"近白=背景→透明"已删除：主体本身可能有白色（实测那把 AK 的弹匣就是白的 ✗），
+            //   抠白会打穿主体 ✗ → 等真有"白底图"的需求时再按需加（届时也应先判断图里有没有 alpha ✗）。
+
+            // 构图：**暂不裁方/居中** —— 交给提示词让模型自己构图（实测 flare 出图：x 偏 1px、y 偏 28px ✓ 够准）
+            //   tex = CenterOnContent(tex);        // ← 需要时再打开（玩家自带的图构图不可控 ✓ 那时才需要它）
+            // （CenterOnContent 保留着，没删 ✓）
 
             // ⭐ 尺寸对齐游戏自己的物品图标：实测游戏是 **256×256 贴图 + Sprite PPU 50**（MP5 等 158 把武器一致）
             //   我们的来源图是 512² → 缩到 256²（盒式均值 ✓）并同样用 PPU 50 → 显示尺寸与游戏完全一致 ✓
@@ -73,9 +65,9 @@ namespace ModelKit
                     if (SetSpritesEverywhere(other, sprite) > 0) tpl++;
                 }
             }
-            catch (Exception e) { return $"图标已设到实例（{tex.width}x{tex.height}，白底像素 {keyed}），模板扫描失败：{e.Message}"; }
+            catch (Exception e) { return $"图标已设到实例（{tex.width}x{tex.height}），模板扫描失败：{e.Message}"; }
 
-            return $"图标已设置：{tex.width}x{tex.height} @PPU50（白底像素 {keyed}）；实例写入 {(set > 0 ? "成功" : "失败")}，同 typeID 模板 {tpl} 个";
+            return $"图标已设置：{tex.width}x{tex.height} @PPU50；实例写入 {(set > 0 ? "成功" : "失败")}，同 typeID 模板 {tpl} 个";
         }
 
         /// <summary>把 item 上**所有** Sprite 字段/属性都盖上（不猜字段名 ✓）：
@@ -197,21 +189,24 @@ namespace ModelKit
         static Texture2D DownscaleTo(Texture2D src, int target)
         {
             if (src.width <= target) return src;
-            var dst = new Texture2D(target, target, TextureFormat.RGBA32, false);
-            int f = src.width / target;                       // 512→256 即 f=2
-            if (!Mathf.IsPowerOfTwo(f)) f = 2;
+            // ⚠️ 原来 f = src.width / target，"不是 2 的幂就回退成 2" ✗ ——
+            //    单边 2540（CenterOnContent 加 margin 后的常见尺寸）的 f=9 → 回退成 2 ✗
+            //    → **不是缩放、而是只取左上角一块** ✗（实机踩过：图标整块白）。
+            //    改成按浮点比例映射做盒式均值：任意比例都对 ✓
             var sPix = src.GetPixels32();
+            int sw = src.width, sh = src.height;
+            var dst = new Texture2D(target, target, TextureFormat.RGBA32, false);
             var dPix = new Color32[target * target];
             for (int y = 0; y < target; y++)
                 for (int x = 0; x < target; x++)
                 {
+                    int x0 = x * sw / target, x1 = Mathf.Max(x0 + 1, (x + 1) * sw / target);
+                    int y0 = y * sh / target, y1 = Mathf.Max(y0 + 1, (y + 1) * sh / target);
                     int r = 0, g = 0, b = 0, a = 0, n = 0;
-                    for (int dy = 0; dy < f; dy++)
-                        for (int dx = 0; dx < f; dx++)
+                    for (int sy = y0; sy < y1 && sy < sh; sy++)
+                        for (int sx = x0; sx < x1 && sx < sw; sx++)
                         {
-                            int sx = x * f + dx, sy = y * f + dy;
-                            if (sx >= src.width || sy >= src.height) continue;
-                            var c = sPix[sy * src.width + sx];
+                            var c = sPix[sy * sw + sx];
                             r += c.r; g += c.g; b += c.b; a += c.a; n++;
                         }
                     if (n == 0) { dPix[y * target + x] = new Color32(0, 0, 0, 0); continue; }

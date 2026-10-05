@@ -252,6 +252,14 @@ export default function (pi: ExtensionAPI) {
           }
           var path = "/generation/image-to-image";
         }
+        // 生图固定参数：让图**原生带透明** ✓ ——
+        //   · background=transparent 只有 chat_image_2.5_flare / _sunburst 支持（其它模型**忽略**它而非报错 ✗）
+        //   · transparent **必须配 output_format=png** ✗ 否则直接报错
+        //   · 实测：2048² PNG、四角 alpha=0 ✓ 边缘抗锯齿 ✓ 居中偏差 ~1px ✓（纯文字 / 1 张 / 2 张参考图都通过 ✓）
+        //   → 这样运行时就不用猜背景 ✓（WeaponIcon 里已不做背景处理 ✓）
+        body.model = "chat_image_2.5_flare";
+        body.background = "transparent";
+        body.output_format = "png";
         const gen = await api(path, body);
         url = tripoPickUrl((await waitTask(String(gen.task_id))).output);
       }
@@ -333,13 +341,12 @@ export default function (pi: ExtensionAPI) {
       const cwd = ctx.cwd;
       const key = tripoRequireKey(); // 没 key 直接 throw ✓（前置条件不满足）
       const api = (path: string, body?: unknown) => tripoApi(TRIPO_V3, key, path, body);
-      const apiV2 = (path: string, body?: unknown) => tripoApi(TRIPO_V2, key, path, body);
       const waitTask = (id: string, label: string) => tripoWait(api, id, label);
       const download = tripoSave;
       const pickUrl = tripoPickUrl;
 
       if (params.action === "balance") {
-        const d = await apiV2("/user/balance"); // ⚠️ v3 没有 balance 端点 ✗（4001 No endpoint found）→ 走 v2 ✓
+        const d = await api("/account/balance"); // v3 的正确路径 ✓（/user/balance 是 v2 的 ✗ 我试错才误判"v3 没有" ✗）
         return { content: [{ type: "text", text: `PASS: Tripo balance ${d.balance} credits (frozen ${d.frozen ?? 0}).` }] };
       }
 
