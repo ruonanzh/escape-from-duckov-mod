@@ -17,7 +17,7 @@ export interface DotnetProbe {
   /** 例如 "8.0.404" */
   version: string | null;
   major: number | null;
-  /** 实际可执行文件路径；来自 PATH 时为 "dotnet" */
+  /** 实际可执行文件路径（**总是尽量给完整路径** ✓：来自 PATH 的裸名会被解析成绝对路径 ✓）*/
   path: string | null;
 }
 
@@ -34,6 +34,27 @@ export function dotnetCandidates(): string[] {
     out.push("/usr/local/share/dotnet/dotnet");
   }
   return [...new Set(out)];
+}
+
+/**
+ * PATH 里的**裸文件名** → 绝对路径 ✓（自己扫 PATH，**不启子进程** ✓ —— 免得冻住 agent-host 的 event loop ✗）
+ * · Windows 看 `PATHEXT`（.EXE / .CMD / … ✓）；POSIX 直接找同名文件 ✓
+ * · 找不到返回 null ✓（调用方退回裸名 ✓ 行为与以前一致 ✓）
+ */
+export function resolveOnPath(name: string): string | null {
+  const dirs = (process.env.PATH ?? "").split(process.platform === "win32" ? ";" : ":");
+  const exts =
+    process.platform === "win32"
+      ? (process.env.PATHEXT ?? ".EXE;.CMD;.BAT").split(";").filter(Boolean)
+      : [""];
+  for (const dir of dirs) {
+    if (!dir) continue;
+    for (const ext of exts) {
+      const p = join(dir, name + ext);
+      if (existsSync(p)) return p;
+    }
+  }
+  return null;
 }
 
 function runVersion(p: string): string | null {
@@ -60,8 +81,11 @@ function cmpVersion(a: string, b: string): number {
 /** 探一次 .NET SDK：所有候选各跑一次 `--version`，选版本最高的那个。 */
 export function probeDotnet(): DotnetProbe {
   const found: { path: string; version: string }[] = [];
-  for (const c of dotnetCandidates()) {
-    if (c !== "dotnet" && !existsSync(c)) continue;
+  for (const raw of dotnetCandidates()) {
+    // ⭐ 裸名（PATH 候选）先解析成**完整路径** ✓ —— 否则落库成 "dotnet" ✗，
+    //    之后在**不带 PATH** 的进程里 execFile("dotnet") 会跑不起来 ✗（U42 B1 那条 ✓）
+    const c = raw === "dotnet" || raw === "dotnet.exe" ? (resolveOnPath(raw) ?? raw) : raw;
+    if (c !== "dotnet" && c !== "dotnet.exe" && !existsSync(c)) continue;
     const v = runVersion(c);
     if (v) found.push({ path: c, version: v });
   }
