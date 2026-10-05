@@ -180,9 +180,13 @@ export default function (pi: ExtensionAPI) {
         const imagePath = params.image ? (isAbsolute(params.image) ? params.image : resolve(cwd, params.image)) : null;
         const styleRefPath = params.styleRef ? (isAbsolute(params.styleRef) ? params.styleRef : resolve(cwd, params.styleRef)) : null;
         for (const p of [modelPath, imagePath, styleRefPath]) if (p && !existsSync(p)) throw new Error(`not found: ${p}`);
-        // 纯提示词也合法 ✓（text_to_image 那条路 ✓）；但完全空的调用要明确报错 ✓
-        if (!modelPath && !params.taskId && !imagePath && !params.style) {
-          throw new Error("nothing to work from: pass style= (a description) and/or model= / taskId= / image=");
+        // 三个"创作输入"（提示词 / 玩家参考图 / 游戏风格参考图）+ 两个"模型指针"（model / taskId）
+        // **至少给一个就能发** ✓（只给 model/taskId → 免费渲染图；其余 → 生成新图）
+        // 一个都不给则明确报错 ✓（不会默默什么都不做 ✗）
+        if (!modelPath && !params.taskId && !imagePath && !styleRefPath && !params.style) {
+          throw new Error(
+            "nothing to work from: pass at least one of style= (a description), image= (the player's picture), styleRef= (how the game's assets look), model= (a .glb) or taskId=",
+          );
         }
 
         // ① 参考：模型的渲染图（免费 ✓ 从 task 或现算）
