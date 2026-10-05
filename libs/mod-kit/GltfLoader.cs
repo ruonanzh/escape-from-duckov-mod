@@ -211,10 +211,9 @@ namespace ModelKit
             float Lo() => ax == 0 ? mn.x : ax == 1 ? mn.y : mn.z;
             float Hi() => ax == 0 ? mx.x : ax == 1 ? mx.y : mx.z;
             float C(Vector3 v, int a) => a == 0 ? v.x : a == 1 ? v.y : v.z;
-            float Lo1 = ax == 0 ? mn.x : ax == 1 ? mn.y : mn.z, Hi1 = ax == 0 ? mx.x : ax == 1 ? mx.y : mx.z;
-            float sp = Hi1 - Lo1;
+            float sp = Hi() - Lo();
             // 朝向由提示词保证（枪口 +Z）→ 枪托在 −Z ✓ 不需要再判定
-            float stock = Lo1;
+            float stock = Lo();
             float dir = 1f;
             float l2 = stock + dir * sp * 0.08f, h2 = stock + dir * sp * 0.35f;
             if (l2 > h2) { var t = l2; l2 = h2; h2 = t; }
