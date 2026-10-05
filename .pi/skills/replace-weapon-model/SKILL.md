@@ -43,13 +43,13 @@ generate_model(action="generate", image=".preview/<名字>.preview.png",
 - 用户只要一句话、没图 → 用 `prompt="…"` ✓（**提示词里也必须写朝向** ✓）
 - 用户自带 `.glb` → ①②③ 全跳过 ✓ 直接用他的文件 ✓（那时要在 `create_mod` 里声明 `front=` ✓）
 - 工具会把 Tripo 的渲染图存到 `.preview/<名字>.preview.png` ✓ 并记下 task id（供 ④ 免费用 ✓）
-- ⚠️ **别连发**：两次生成之间隔开 —— 平台有限流，会返回 `exceeded the limit of generation` ✗
 
 > **朝向只能靠提示词** ✓（`export_orientation` 参数不可靠 ✗，几何判定对「两端都细」的武器也不可用 ✗）
 > ```
 > …, the barrel and muzzle point to the LEFT, the stock is on the right
 > ```
 > **"to the left" → 枪口落在 +Z = Unity 前向 ✓**（"to the right" → −Z ✗）→ **进游戏不用再转** ✓
+> （完整数据与端点/坑：doc 仓 `docs/unity-3d-assets/03-tripo-api.md` §8.8 / §8.9 / §11 ✓）
 
 ### ④ 图标（约 5 积分；想省钱用 ③ 的渲染图则**免费**）
 
