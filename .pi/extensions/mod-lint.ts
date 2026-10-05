@@ -87,6 +87,29 @@ export default function (pi: ExtensionAPI) {
       if (!existsSync(join(modDir, "ModBehaviour.cs")))
         errors.push("missing ModBehaviour.cs");
 
+      // 2.5 ⭐ 游戏硬规则：游戏用 Assembly.LoadFrom(dll).GetType(<info.ini 的 name> + ".ModBehaviour")
+      //     找入口类 → info.ini 的 name 必须与 ModBehaviour.cs 的 namespace 一致（类名必须是 ModBehaviour）。
+      //     ⚠️ 不一致时**编译照样过** ✗、游戏只是静默不加载 ✗ —— 所以这条必须在这里静态拦下。
+      if (existsSync(join(modDir, "ModBehaviour.cs"))) {
+        const src = readFileSync(join(modDir, "ModBehaviour.cs"), "utf8");
+        const ns = /(?:^|\n)\s*namespace\s+([A-Za-z_][A-Za-z0-9_.]*)/.exec(src)?.[1];
+        const hasClass =
+          /(?:^|\n)\s*(?:public\s+|internal\s+|sealed\s+|abstract\s+|static\s+|partial\s+)*class\s+ModBehaviour\b/.test(
+            src,
+          );
+        if (!hasClass) {
+          errors.push(`ModBehaviour.cs: no "class ModBehaviour" found - the game looks for ${modName}.ModBehaviour`);
+        } else if (!ns) {
+          errors.push(
+            `ModBehaviour.cs: class ModBehaviour is in no namespace - it must be in namespace ${modName} (the game looks for ${modName}.ModBehaviour)`,
+          );
+        } else if (ns !== modName) {
+          errors.push(
+            `info.ini name (${modName}) does not match ModBehaviour.cs namespace (${ns}) - the game looks for ${modName}.ModBehaviour and will silently not load this mod`,
+          );
+        }
+      }
+
       // 3. compile（读状态文件拿 dotnet（check_runtime 写）+ gameDir（路径工具写））
       const staticOk = errors.length === 0;
       let compilation: "skipped" | "passed" | "failed" = "skipped";

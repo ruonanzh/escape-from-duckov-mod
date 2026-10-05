@@ -19,11 +19,11 @@ description: 用户想换某把武器的模型/外观时用（例："把 MP5 换
 
 ### ② 先把 mod 骨架建好（免费，编译几秒）
 
-- 先建骨架（**不要等素材** —— 素材工具落盘时会自建目录，之后再调 `create_mod` 就会撞 `already exists`）：
-  `create_mod(kind="replace-weapon-model", name="mygun", target="MP5", model="gun.glb")`
-- `model=` 只是写进 config 的文件名，**文件还没有也没关系**；参数表见 §2
-- ⚠️ 名字只能**小写字母 + 数字、字母开头**（如 `mygun`）—— 它会成为 C# 命名空间，大写/下划线/中文都不行
-- 图标/模型下一步产出来再放进去即可。
+- 照 **`reference/weapon_model/`**（示例 mod = 正确答案）建你自己的 mod 目录：拷它当起点，或按它自己写
+- 四处名字要一致（**不一致的症状是 mod 静默不加载 ✗**）→ 明细见 §2
+- 建完**先跑一次 `validate_mod`** 确认能编译（它会替你检查 name ↔ namespace 一致 ✓）
+- **先建骨架、别等素材** —— 素材工具落盘时会自建目录，别让它抢在你前面把目录建出来
+- 图标/模型下一步产出来再放进这个目录即可
 
 ### ③ 风格化预览图（约 5 积分）—— **先给用户看，等他确认**
 
@@ -68,7 +68,7 @@ generate_image(model="your_mods/<mod>/gun.glb", styleRef="<游戏里那把武器
 
 | 步 | 工具 | 约 |
 |---|---|---|
-| ② 骨架 | `create_mod` | 0 |
+| ② 骨架 | 自己建（照 `reference/`）| 0 |
 | ③ 预览图 | `generate_image` | 5 |
 | ④ 3D 模型 | `generate_model` | 50 |
 | ⑤ 图标 | `generate_image` | 5（或 0）|
@@ -78,25 +78,36 @@ generate_image(model="your_mods/<mod>/gun.glb", styleRef="<游戏里那把武器
 > 没有 key 时工具会抛 `TRIPO_NO_API_KEY` —— 这时**向用户要一次**，写进去即可。
 > 余额用 `generate_model(action="balance")` 看；**别反复重试刷积分**，不行就改提示词或问用户。
 
-## 2. 做 mod（**一条工具调用**）
+## 2. 建骨架与 config.json
 
-```
-create_mod(kind="replace-weapon-model", name="mygun", target="MP5", file="gun.glb")
-```
-它会：拷模板 → **把四处名字改成一致**（目录 / `info.ini` 的 name / `.csproj` 的 AssemblyName+RootNamespace /
-`ModBehaviour.cs` 的 namespace —— 游戏要求 `<mod名>.ModBehaviour` 类型 ✓）→ 写 `config.json` → 编译 ✓
+**骨架自己建**（照 `reference/weapon_model/` —— 它就是"正确答案"的样例）；工具只负责**校验**（`validate_mod`）与**安装**（`install_mod`）。
 
-| 参数 | 说明 |
+**四处名字必须一致**（不一致的症状是 **mod 静默不加载**，游戏不报错）：
+
+| 位置 | 取值（本例 `mygun`）|
 |---|---|
-| `name` | mod 名：**小写字母+数字、字母开头**（如 `mygun`）；会成为命名空间/程序集名，大写/下划线/中文都不行 |
-| `target` | 要换的武器名一段（`MP5` 会匹配 `SMG_MP5_Normal`）；或 `typeIDs=[655]` 精确匹配 |
-| `file` | GLB 文件名（默认 `gun.glb`；先把模型放到它说的目录里 ✓）|
-| `icon` | 图标文件名（默认 `icon.png` ✓）—— 用 `generate_icon` 生成后放在 mod 根 ✓（运行时缩到 256²+PPU50 与游戏图标一致 ✓）；没有这个文件就只换模型不换图标 ✓ |
-| `front` | **只有用户自带的模型**才需要（声明朝向：`-z`/`+x`/`-x`；`generate_model` 出的不用 ✓）|
-| `build=false` | 不想立刻编译时（默认会编 ✓ 需要已记录游戏目录 ✓）|
+| 目录名 | `your_mods/mygun/` |
+| `info.ini` 的 `name` | `mygun` |
+| `ModBehaviour.cs` 的 `namespace` | `mygun`，且类名必须是 `ModBehaviour` ← **`validate_mod` 会替你拦下这条** ✓ |
+| `.csproj` 的 `AssemblyName` / `RootNamespace` | `mygun`（DLL 名保持一致，卫生）|
 
-> **为什么必须用它**：手抄模板时最容易漏两处 —— ① 四处名字不一致（症状是"mod 静默不加载"✗）
-> ② 模板里指向 `libs/mod-kit` 的 `<Compile Include>` 是按**模板自身的目录**算的相对路径 ✓ → mod 放到别处（或目录层数不同）就编不过 ✗；工具会**按 mod 实际位置重算** ✓
+名字规则：**小写字母 + 数字、字母开头**（它会成为 C# 命名空间 —— 大写/下划线/中文都不行）。
+
+**`config.json`**（运行时读它；键名就是这几个）：
+
+| 字段 | 说明 |
+|---|---|
+| `target` | 要换的武器名的一段（`MP5` 会匹配 `SMG_MP5_Normal`）|
+| `typeIDs` | 或精确匹配，如 `[238]`（与 `target` 二选一）|
+| `model` | GLB 文件名（`gun.glb`，相对 mod 目录）；**文件还没产出也没关系**，后面放进来即可 |
+| `icon` | 图标文件名（默认 `icon.png`）；没有就只换模型、不换图标 |
+| `front` | **只有用户自带的模型**才需要：`-z`/`+x`/`-x` 声明枪口朝向（`generate_model` 出的不用）|
+
+**怎么引 `libs/mod-kit`**（两种都行，你挑）：
+- 抄 `reference/weapon_model/WeaponModelSwap.csproj` 里那几行 `<Compile Include="...">`，路径按**你的 mod 目录**算
+- 或把 `libs/mod-kit/*.cs` **拷进你的 mod 目录**（自包含，路径最省事）
+
+**要用 Harmony**（自己改数值/行为时）：再加 `libs/0Harmony.dll` 的引用 —— 照 `reference/example_mod/ExampleMod.csproj`（它是 `<Private>true</Private>`，会随 mod 自带）。
 
 ## 3. 装进游戏
 
@@ -126,7 +137,7 @@ create_mod(kind="replace-weapon-model", name="mygun", target="MP5", file="gun.gl
 - `code=2008`（内容审核）→ 去掉 `image=` 改用 `style=` 纯文字重试；还不行就换一张图，或用用户自带的 `.glb`（别改措辞反复重试）。
 - `TRIPO_RATE_LIMIT` / `code=2000` → 发得太密，等 30–60 秒再发（别循环重试）。
 - `TRIPO_TASK_FAILED` → 生成失败，改提示词或换参考图重来。
-- `TRIPO_FILE_NOT_FOUND` → 路径不对（`create_mod` 的 `file=` 或 `generate_model` 的 `model=`）。
+- `TRIPO_FILE_NOT_FOUND` → 路径不对（`generate_model` 的 `out=` 或 `config.json` 的 `model`）。
 - 形状对但**握把偏** → 看日志两侧包围盒；`WeaponModel.Apply(..., extraOffset)` 可微调（一般不用）。
 - **贴图没上** → GLB 里没有 baseColor 贴图（重新 `texture_model` 或直接用带贴图的 GLB）。
 - **模型整块看不见** → 绕序/UV 问题（加载器已按左手系转换）→ 改提示词或换参考图重生成。
