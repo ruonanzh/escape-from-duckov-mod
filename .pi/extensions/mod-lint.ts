@@ -171,7 +171,7 @@ export default function (pi: ExtensionAPI) {
         ) {
           errors.push(
             `${modName}.dll looks like an empty stub (no reference to the game assembly and/or no ModBehaviour type). ` +
-              "Common cause: csproj sets OutputPath to the project root, so the SDK excludes the project's own *.cs files and compiles nothing — " +
+              "Common cause: csproj sets OutputPath to the project root, so the SDK excludes the project's own *.cs files and compiles nothing - " +
               "remove that OutputPath (or add EnableDefaultCompileItems=false + an explicit Compile item), then validate again.",
           );
         }

@@ -31,9 +31,9 @@ export default function (pi: ExtensionAPI) {
     promptSnippet: "Inspect game managed DLLs (members/C#/IL) when docs/api is not enough",
     promptGuidelines: [
       "Use inspect_game_api when docs/api does not answer it: private members, the real implementation/behavior, or to confirm the current game version.",
-      "It is read-only (it reads the DLL files, it does not run the game code). start with action=search to find the type, then members/decompile/il on it.",
+      "inspect_game_api is read-only (it reads the DLL files, it does not run the game code). start with action=search to find the type, then members/decompile/il on it.",
       "Prefer docs/api and docs/data first; reach for inspect_game_api when they are insufficient or possibly stale.",
-      "search and strings cap at 500 rows per call. Narrow the target, or page with offset (500, 1000, ...) - paging is the fallback, not the default.",
+      "inspect_game_api search and strings cap at 500 rows per call. Narrow the target, or page with offset (500, 1000, ...) - paging is the fallback, not the default.",
     ],
     parameters: Type.Object({
       action: Type.Union(

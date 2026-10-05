@@ -21,8 +21,8 @@ export default function (pi: ExtensionAPI) {
     promptSnippet: "Record a specific game directory (validates; falls back to locating it)",
     promptGuidelines: [
       "Use set_game_dir when you have a concrete game install directory to record (the player gave one, or you found one): it validates and records it.",
-      "If it returns WARN, the path you passed did not validate and a different one was recorded - tell the player which one is in use.",
-      "If it returns FAIL, nothing was recorded (neither the path you passed nor automatic discovery validated).",
+      "If set_game_dir returns WARN, the path you passed did not validate and a different one was recorded - tell the player which one is in use.",
+      "If set_game_dir returns FAIL, nothing was recorded (neither the path you passed nor automatic discovery validated).",
       "Use try_set_game_dir instead when you have no path: it locates the game and records the derived paths itself.",
     ],
     parameters: Type.Object({

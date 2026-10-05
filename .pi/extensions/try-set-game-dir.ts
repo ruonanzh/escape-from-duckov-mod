@@ -24,8 +24,8 @@ export default function (pi: ExtensionAPI) {
     promptSnippet: "Ensure the game directory is recorded (locates it when needed)",
     promptGuidelines: [
       "Use try_set_game_dir when a task needs the game location (compiling, installing) and you are not sure the paths are recorded or still valid.",
-      "It takes no arguments: it confirms the recorded paths or locates and records them, so you do not have to find the path yourself first.",
-      "It only records paths in .gamer-agent.local.json; it never creates or changes anything inside the game.",
+      "try_set_game_dir takes no arguments: it confirms the recorded paths or locates and records them, so you do not have to find the path yourself first.",
+      "try_set_game_dir only records paths in .gamer-agent.local.json; it never creates or changes anything inside the game.",
     ],
     parameters: Type.Object({}),
     async execute(_id, _params, _s, _u, ctx) {
