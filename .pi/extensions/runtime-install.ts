@@ -47,7 +47,7 @@ export default function (pi: ExtensionAPI) {
         "",
         "Note: we only guide the install; uninstalling is up to you",
         "(delete ~/.dotnet, or `brew uninstall --cask dotnet-sdk` / `winget uninstall Microsoft.DotNet.SDK.8`).",
-        "After installing, call check_runtime again.",
+        "NEXT: after installing, call check_runtime again.",
       );
 
       return {

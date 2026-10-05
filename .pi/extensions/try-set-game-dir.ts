@@ -44,7 +44,7 @@ export default function (pi: ExtensionAPI) {
           content: [
             {
               type: "text",
-              text: `FAIL: gameDir not found - ${r.reason}.\nSee the 'setup-workspace' skill.`,
+              text: `FAIL: gameDir not found - ${r.reason}.\nNEXT: see the 'setup-workspace' skill.`,
             },
           ],
           details: {

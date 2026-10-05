@@ -37,8 +37,8 @@ export default function (pi: ExtensionAPI) {
             {
               type: "text",
               text: dotnet.version
-                ? `FAIL: dotnet SDK ${dotnet.version} is too old (need >= 8.0). Call install_runtime for install instructions.`
-                : "FAIL: dotnet SDK not found. Call install_runtime for install instructions.",
+                ? `FAIL: dotnet SDK ${dotnet.version} is too old (need >= 8.0).\nNEXT: run install_runtime for install instructions.`
+                : "FAIL: dotnet SDK not found.\nNEXT: run install_runtime for install instructions.",
             },
           ],
           details: { ...readState(cwd), ok: false },
