@@ -7,79 +7,76 @@ description: 用户想换某把武器的模型/外观时用（例："把 MP5 换
 
 **目标**：用户手里那把武器（或指定某把武器）的**外观**换成用户提供的模型。不改数值、不改行为。
 
-## 1. 模型从哪来（四步资产流程）
+## 1. 模型从哪来（顺序：先建骨架 → 再产素材 → 最后装）
 
-用户**只说一句话**也能做 ✓ 但**最省积分、最不容易白花钱**的顺序是这四步：
-第 ②④ 步各只要 **5 积分**，只有第 ③ 步贵（约 **50**）→ **先把便宜的做完、和用户确认，再花贵的那步** ✓
+一句话也能做。顺序是「**先把 mod 骨架建好 → 再产素材 → 最后装**」—— 目录先存在、也先绑定好，后面直接往里写。
 
 ### ① 参考图（免费）
 
-- 用户给了图 → 就用它（聊天里发的图会落盘，拿到的是**绝对路径** ✓ 直接传给工具 ✓）
-- 用户只说了句话 → 跳过这步，直接进 ②（② 支持纯提示词 ✓）
-- 给了好几张 → **问用户用哪张** ✓
+- 用户给了图 → 就用它（聊天里发的图会落盘，拿到的是**绝对路径**，直接传给工具）
+- 用户只说了句话 → 跳过这步，直接进 ②
+- 给了好几张 → **问用户用哪张**
 
-### ② 风格化预览图（约 5 积分）—— **先给用户看，等他确认**
+### ② 先把 mod 骨架建好（免费，编译几秒）
+
+- **app 的 mod 会话里有 `create_mod_folder` → 先调它**（建目录 + 绑定这个会话，之后才写得动里面的文件）：
+  `create_mod_folder(name="MyGun")`
+- 再建骨架：`create_mod(kind="replace-weapon-model", name="MyGun", target="MP5", model="gun.glb")`
+  （`model=` 只是写进 config 的文件名，**文件还没有也没关系**；参数表见 §2）
+- 图标/模型下一步产出来再放进去即可。
+
+### ③ 风格化预览图（约 5 积分）—— **先给用户看，等他确认**
 
 ```
 generate_image(
-  image="<用户的图>",                  // 没图就省略 → 纯提示词出图 ✓
-  styleRef="<游戏内武器的图>",           // 强烈建议：一张游戏里已有武器的图（工坊图标/截图）→ 出得像本作 ✓
-  style="…, the barrel and muzzle point to the LEFT, the stock is on the right",
-  out=".preview/<名字>.preview.png")    // 中间图一律进 .preview/ ✓ 不会被装进游戏 ✓
+  image="<用户的图>",                  // 没图就省略 -> 纯提示词出图
+  styleRef="<游戏内武器的图>",           // 强烈建议：游戏里已有武器的图 -> 出得像本作
+  style="..., the barrel and muzzle point to the LEFT, the stock is on the right",
+  out=".preview/<名字>.preview.png")    // 中间图一律进 .preview/，不会被装进游戏
 ```
 
-- 出图后**自己先看**（读这张图 ✓）→ 再**给用户看，问他「就要这个吗」** ✓
-- 不像就改 `style` 再来一次 ✓（每次都便宜 ✓）—— **不要**在没确认前去做 ③ ✓
-- 想更像本作：`image` 给用户的图、`styleRef` 给游戏内的图，**两个都给最准** ✓
+- 出图后**自己先看**（读这张图）→ 再**给用户看，问他「就要这个吗」**
+- 不像就改 `style` 再来一次（每次都便宜）—— **没确认前不要做 ④**
 
-### ③ 3D 模型（约 50 积分，含转换）
+### ④ 3D 模型（约 50 积分，含转换）
 
 ```
 generate_model(action="generate", image=".preview/<名字>.preview.png",
-               out="your_mods/<mod>/gun.glb", faceLimit=3000)
+               out="your_mods/<mod>/gun.glb", faceLimit=3000)   // 目录在 ② 已建好
 ```
 
-- 用 ② 那张**已确认的预览图**做输入 ✓ —— **图 → 3D 比纯文字准得多** ✓（冷门型号尤其 ✓）
-- 用户只要一句话、没图 → 用 `prompt="…"` ✓（**提示词里也必须写朝向** ✓）
-- 用户自带 `.glb` → ①②③ 全跳过 ✓ 直接用他的文件 ✓（那时要在 `create_mod` 里声明 `front=` ✓）
-- 工具会把 Tripo 的渲染图存到 `.preview/<名字>.preview.png` ✓ 并记下 task id（供 ④ 免费用 ✓）
+- 用 ③ 那张**已确认的预览图**做输入 —— **图 → 3D 比纯文字准得多**（冷门型号尤其）
+- 用户只要一句话、没图 → 用 `prompt="…"`（**提示词里也必须写朝向**）
+- 用户自带 `.glb` → ③④⑤ 全跳过，直接把他的文件放进 `your_mods/<mod>/`
 
-> **朝向只能靠提示词** ✓（`export_orientation` 参数不可靠 ✗，几何判定对「两端都细」的武器也不可用 ✗）
-> ```
-> …, the barrel and muzzle point to the LEFT, the stock is on the right
-> ```
-> **"to the left" → 枪口落在 +Z = Unity 前向 ✓**（"to the right" → −Z ✗）→ **进游戏不用再转** ✓
-> （完整数据与端点/坑：doc 仓 `docs/unity-3d-assets/03-tripo-api.md` §8.8 / §8.9 / §11 ✓）
+> **朝向只能靠提示词**：`..., the barrel and muzzle point to the LEFT, the stock is on the right`
+> **"to the left" → 枪口落在 +Z = Unity 前向** → 进游戏不用再转
+> （完整数据：doc 仓 `docs/unity-3d-assets/03-tripo-api.md` §8.8 / §8.9 / §11）
 
-### ④ 图标（约 5 积分；想省钱用 ③ 的渲染图则**免费**）
+### ⑤ 图标（约 5 积分；用 ④ 的渲染图则**免费**）
 
 ```
-generate_image(
-  model="your_mods/<mod>/gun.glb",
-  styleRef="<游戏里那把武器的卡片图标>",
-  style="clean game inventory icon, side profile, pure white background, no shadow, centered",
-  out="your_mods/<mod>/icon.png")
+generate_image(model="your_mods/<mod>/gun.glb", styleRef="<游戏里那把武器的卡片图标>",
+               style="clean game inventory icon, side profile, pure white background, no shadow, centered",
+               out="your_mods/<mod>/icon.png")
 ```
 
-- **尺寸/抠白/居中都不用管** ✓ —— 游戏运行时会自动抠成透明、居中、缩到 **256² + PPU50**（与游戏自带图标一致 ✓）
-  → **不要**自己裁、不要自己缩放 ✗
-- 不写 `style` → 直接拿模型自己的渲染图 ✓（免费 ✓ 形状必然一致 ✓）→ 存成 `icon.png` ✓
-- 背景一定写 **`pure white background, no shadow`** ✓（灰底/阴影会被运行时留下淡淡的边 ✗）
-- 没有 `icon.png` → 只换模型、不换图标 ✓
+- **尺寸/抠白/居中由游戏运行时自动处理**（256² + PPU50）→ 不要自己裁
+- 不写 `style` → 直接用模型自己的渲染图（免费）；没有 `icon.png` 就只换模型、不换图标
 
 ### 成本一览
 
 | 步 | 工具 | 约 |
 |---|---|---|
-| ② 预览图 | `generate_image` | 5 |
-| ③ 3D 模型 | `generate_model` | 50 |
-| ④ 图标 | `generate_image` | 5（或 0 = 用模型的渲染图 ✓）|
-| | 合计 | **≈ 60** ✓ |
+| ② 骨架 | `create_mod` | 0 |
+| ③ 预览图 | `generate_image` | 5 |
+| ④ 3D 模型 | `generate_model` | 50 |
+| ⑤ 图标 | `generate_image` | 5（或 0）|
 
-> **Tripo key**：放**单独的文件** `~/.gamer-agent-pi/api-keys.json` → `{ "tripo": "tsk_…" }`
-> （用户级 ✓ 所有游戏仓库共用 ✓ 不进 git ✓；**临时方案** —— 将来由 app 的「管理 API keys」界面接管 ✓）
-> 没有 key 时工具会返回 FAIL 并说明放哪 —— 这时**向用户要一次**，写进去即可 ✓
-> 余额用 `generate_model(action="balance")` 看 ✓；**别反复重试刷积分** ✗ 不行就改提示词或问用户 ✓
+> **Tripo key**：放**单独的文件** `~/.gamer-agent-pi/api-keys.json` → `{ "tripo": "tsk_..." }`
+> （用户级、所有游戏仓库共用、不进 git；**临时方案** —— 将来由 app 的「管理 API keys」界面接管）
+> 没有 key 时工具会抛 `TRIPO_NO_API_KEY` —— 这时**向用户要一次**，写进去即可。
+> 余额用 `generate_model(action="balance")` 看；**别反复重试刷积分**，不行就改提示词或问用户。
 
 ## 2. 做 mod（**一条工具调用**）
 

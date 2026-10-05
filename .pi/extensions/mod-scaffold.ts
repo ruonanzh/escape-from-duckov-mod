@@ -57,8 +57,20 @@ export default function (pi: ExtensionAPI) {
         return { content: [{ type: "text", text: `FAIL: name must be letters/digits starting with a letter (got "${name}"). It becomes the .NET namespace and assembly name.` }] };
       }
       const modDir = params.dir ? resolve(cwd, params.dir) : join(cwd, "your_mods", name);
-      if (existsSync(modDir) && !params.force) {
-        return { content: [{ type: "text", text: `FAIL: ${modDir} already exists. Pick another name, or pass force=true to overwrite it.` }] };
+      // 空目录放行：app 的写隔离要求先 create_mod_folder（建目录+绑定会话），之后这里才填骨架 ——
+      // 那时目录已存在且为空，不该要求 force=true。只有目录里已经有东西时才要求 force（避免覆盖已有内容）。
+      if (existsSync(modDir)) {
+        const existing = readdirSync(modDir).filter((e) => e !== ".pi-mod.json");
+        if (existing.length > 0 && !params.force) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `FAIL: ${modDir} already exists and is not empty (${existing.slice(0, 5).join(", ")}). Pick another name, or pass force=true to overwrite it.`,
+              },
+            ],
+          };
+        }
       }
 
       // ① 拷模板（跳过构建产物）
