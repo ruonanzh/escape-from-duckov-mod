@@ -14,6 +14,7 @@ description: 用户想换某把武器的模型/外观时用（例："把 MP5 换
 ### ① 参考图（免费）
 
 - 用户给了图 → 就用它（聊天里发的图会落盘，拿到的是**绝对路径**，直接传给工具）
+- 图里带 **logo / 水印 / UI 文字** → **先裁掉再传**（实测：同一张图带 logo 被 `2008` 拒，去掉 logo 就通过）
 - 用户只说了句话 → 跳过这步，直接进 ②
 - 给了好几张 → **问用户用哪张**
 
@@ -143,7 +144,7 @@ generate_image(model="your_mods/<mod>/gun.glb", styleRef="<游戏里那把武器
 ## 5. 常见错误（对照修正）
 
 - `TRIPO_NO_API_KEY` → 向用户要一次 Tripo key，存到 `~/.gamer-agent-pi/api-keys.json`。
-- `code=2008`（内容审核）→ 去掉 `image=` 改用 `style=` 纯文字重试；还不行就换一张图，或用用户自带的 `.glb`（别改措辞反复重试）。
+- `code=2008`（内容审核）→ **先试：把图里的 logo / 水印 / UI 文字裁掉再传**（实测同一张图去掉 logo 就通过）；仍被拒再去掉 `image=` 改用 `style=` 纯文字，或换一张图，或用用户自带的 `.glb`（别改措辞反复重试）。
 - `TRIPO_RATE_LIMIT` / `code=2000` → 发得太密，等 30–60 秒再发（别循环重试）。
 - `TRIPO_TASK_FAILED` → 生成失败，改提示词或换参考图重来。
 - `TRIPO_FILE_NOT_FOUND` → 路径不对（`generate_model` 的 `out=` 或 `config.json` 的 `model`）。
