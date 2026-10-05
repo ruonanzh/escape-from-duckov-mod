@@ -1,6 +1,9 @@
 # 运行时状态（玩家机器特定，不进 git）
 .gamer-agent.local.json
 
+# 中间产物（预览图 / 渲染图 / 概念图）—— 只给人看，不进游戏
+.preview/
+
 # 编译产物
 **/bin/
 **/obj/

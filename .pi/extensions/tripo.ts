@@ -264,6 +264,27 @@ export default function (pi: ExtensionAPI) {
         : resolve(cwd, ".preview", `${name}.preview.png`);
       const outPath = params.out ? (isAbsolute(params.out) ? params.out : resolve(cwd, params.out)) : defaultOut;
       const size = await tripoSave(url, outPath);
+      // 把图直接发到聊天里，让玩家看得见（app 会渲染 type:"image" 的块；当前模型看不了图时
+      // app 会把它标成 deferred -> 不塞给模型，所以这不会让不支持视觉的模型报错）
+      const ext = extname(outPath).toLowerCase();
+      const mimeType = ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
+      let shown = false;
+      try {
+        const buf = readFileSync(outPath);
+        if (buf.length <= 1_500_000) {
+          pi.sendMessage({
+            customType: "pi-desktop-image",
+            content: [
+              { type: "image", data: buf.toString("base64"), mimeType },
+              { type: "text", text: `image: ${outPath}` },
+            ],
+            display: true,
+          });
+          shown = true;
+        }
+      } catch {
+        /* 显示失败不影响主流程（路径仍在返回里） */
+      }
       return {
         content: [
           {
@@ -271,7 +292,10 @@ export default function (pi: ExtensionAPI) {
             text:
               `PASS: image saved to ${outPath} (${size}, square PNG). ` +
               (wantsNew ? "New image generated (a few credits spent)." : "The model's own render - no credits spent.") +
-              "\nNEXT: look at it yourself (read the image) and show the user; for a preview, get their OK before generate_model (~40 credits).",
+              (shown
+                  ? "\nShown in the chat so the player can see it without opening the file."
+                  : "\n(The image is too large to show inline - give the player the path above.)") +
+                "\nNEXT: ask the user to confirm this image; for a preview, get their OK before generate_model (~40 credits).",
           },
         ],
       };

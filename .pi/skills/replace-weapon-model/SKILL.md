@@ -33,10 +33,11 @@ generate_image(
   image="<用户的图>",                  // 没图就省略 -> 纯提示词出图
   styleRef="<游戏内武器的图>",           // 强烈建议：游戏里已有武器的图 -> 出得像本作
   style="..., the barrel and muzzle point to the LEFT, the stock is on the right",
-  out=".preview/<名字>.preview.png")    // 中间图一律进 .preview/，不会被装进游戏
+  out="your_mods/<mod>/.preview/<名字>.preview.png")   // 中间图放 mod 目录下的 .preview/
 ```
 
-- 出图后**自己先看**（读这张图）→ 再**给用户看，问他「就要这个吗」**
+- 出图后工具**会把图显示在聊天里**（玩家直接看到，不用找文件）→ 问他「就要这个吗」
+- `.preview/` 放在 mod 目录下：`install_mod` 会跳过它（不进游戏），也不会把工作区弄脏
 - 不像就改 `style` 再来一次（每次都便宜）—— **没确认前不要做 ④**
 
 ### ④ 3D 模型（约 50 积分，含转换）
