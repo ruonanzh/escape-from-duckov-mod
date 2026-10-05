@@ -131,6 +131,12 @@ generate_image(model="your_mods/<mod>/gun.glb", styleRef="<游戏里那把武器
 
 用 `install_mod`（会校验 + 拷到游戏的 Mods 目录）。装完**按 §4 确认** —— 装好 ≠ 成功。
 
+**装好之后改 `config.json` 不用重启游戏** ✓（mod 会盯着它的写入时间 ✓）：
+- ✓ `target` / `front` 改完存盘 → 立刻生效
+- ✓ `model` 换成**另一个文件名** → 会重新读模型
+- ✗ `model` **同名**换了文件内容（例如重新生成同名 `gun.glb`）→ **不会**重读 → 要重启游戏
+- ✗ **图标**不会重设 → 换图标要重启游戏
+
 ## 4. 怎么确认成功（装好 ≠ 成功）
 
 `install_mod` 返回 PASS 只说明**文件装好了**，不代表游戏里生效。要这样确认：
@@ -146,11 +152,11 @@ generate_image(model="your_mods/<mod>/gun.glb", styleRef="<游戏里那把武器
 
 ## 5. 常见错误（对照修正）
 
-- `TRIPO_NO_API_KEY` → 向用户要一次 Tripo key，存到 `~/.gamer-agent-pi/api-keys.json`。
+> 工具的错误信息里**通常已经带了下一步** ✓ —— **先照它说的做**；下面只列**工具没说**的（能力特有的）✓
+
 - `code=2008`（内容审核）→ **先试：把图里的 logo / 水印 / UI 文字裁掉再传**（实测同一张图去掉 logo 就通过）；仍被拒再去掉 `image=` 改用 `style=` 纯文字，或换一张图，或用用户自带的 `.glb`（别改措辞反复重试）。
-- `TRIPO_RATE_LIMIT` / `code=2000` → 发得太密，等 30–60 秒再发（别循环重试）。
 - `TRIPO_TASK_FAILED` → 生成失败，改提示词或换参考图重来。
-- `TRIPO_FILE_NOT_FOUND` → 路径不对（`generate_model` 的 `out=` 或 `config.json` 的 `model`）。
+- `TRIPO_FILE_NOT_FOUND` → **它指的那个文件不存在**（`image=` / `styleRef=` / `model=` 传进来的路径写错了）。
 - 形状对但**握把偏** → 看日志两侧包围盒；`WeaponModel.Apply(..., extraOffset)` 可微调（一般不用）。
 - **贴图没上** → GLB 里没有 baseColor 贴图（重新 `texture_model` 或直接用带贴图的 GLB）。
 - **模型整块看不见** → 绕序/UV 问题（加载器已按左手系转换）→ 改提示词或换参考图重生成。
