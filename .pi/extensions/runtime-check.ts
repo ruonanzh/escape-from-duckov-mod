@@ -26,7 +26,6 @@ export default function (pi: ExtensionAPI) {
     promptGuidelines: [
       "Use check_runtime when the .NET SDK (>= 8) is needed for compilation, or when the player asks whether the environment is ready.",
       "check_runtime only checks the SDK and records the dotnet path - game/mod paths are not its job: verify them with check_game_paths, ensure or record them with try_set_game_dir / set_game_dir.",
-      "Only SDK problems need install_runtime; a missing game directory is not an SDK problem.",
     ],
     parameters: Type.Object({}),
     async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
