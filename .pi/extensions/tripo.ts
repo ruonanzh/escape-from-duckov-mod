@@ -45,6 +45,16 @@ function readTripoKey(): string | undefined {
     return undefined;
   }
 }
+const NO_KEY_FAIL = {
+  content: [
+    {
+      type: "text" as const,
+      text:
+        'FAIL: no Tripo API key.\nNEXT: ask the user for their Tripo API key, then write it to ~/.gamer-agent-pi/api-keys.json as {"tripo":"tsk_..."}, or set TRIPO_API_KEY.',
+    },
+  ],
+};
+
 /** 区域 → 端点（key 是哪个站的就用哪个站）*/
 function tripoBase(region?: string): string {
   return region === "global" ? "https://api.tripo3d.ai/v2/openapi" : "https://api.tripo3d.com/v2/openapi";
@@ -53,6 +63,49 @@ function tripoBase(region?: string): string {
 /** 图片扩展名 → Tripo 认的 type（只有 png/jpg 两种）*/
 function tripoImageType(p: string): string {
   return extname(p).toLowerCase() === ".png" ? "png" : "jpg";
+}
+
+/** 一次 API 调用（POST/GET，非 0 code 一律抛错）*/
+async function tripoApi(base: string, key: string, path: string, body?: unknown): Promise<any> {
+  const r = await fetch(base + path, {
+    method: body === undefined ? "GET" : "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const j: any = await r.json().catch(() => ({}));
+  if (j.code !== 0) throw new Error(`Tripo API code=${j.code} ${j.message ?? ""}`.trim());
+  return j.data;
+}
+
+/** 轮询任务（2 秒一次；失败状态带上详情 ✓）*/
+async function tripoWait(api: (p: string, b?: unknown) => Promise<any>, id: string, label: string): Promise<any> {
+  const t0 = Date.now();
+  for (;;) {
+    const d = await api(`/task/${id}`);
+    const status = String(d.status);
+    if (status === "success") return d;
+    if (["failed", "banned", "expired", "cancelled"].includes(status)) {
+      throw new Error(`task ${label} ${status}: ${JSON.stringify(d.task ?? d).slice(0, 300)}`);
+    }
+    if (Date.now() - t0 > 900_000) throw new Error(`task ${label} timed out (15 min)`);
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+}
+
+/** 从 output 里取第一个 http 链接（Tripo 各 task 的返回字段名不统一）*/
+function tripoPickUrl(o: any): string | null {
+  for (const v of Object.values(o ?? {})) if (typeof v === "string" && v.startsWith("http")) return v;
+  return null;
+}
+
+/** 下载并落盘（URL 5 分钟过期 → 拿到就立刻下 ✓）*/
+async function tripoSave(url: string, outPath: string): Promise<string> {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`download failed HTTP ${r.status}`);
+  const buf = Buffer.from(await r.arrayBuffer());
+  mkdirSync(dirname(outPath), { recursive: true });
+  writeFileSync(outPath, buf);
+  return `${(buf.length / 1024).toFixed(0)} KB`;
 }
 
 /**
@@ -77,223 +130,65 @@ async function tripoUpload(base: string, key: string, filePath: string): Promise
 }
 
 export default function (pi: ExtensionAPI) {
-  const BASES = {
-    cn: "https://api.tripo3d.com/v2/openapi",
-    global: "https://api.tripo3d.ai/v2/openapi",
-  } as const;
-
-  // ── generate_icon：独立的图标工具（与 generate_model 平级，参数保持通用）────────────────
-  //    做一张方形图标图（PNG，透明底）—— 就是物品卡/背包格子那种图。
-  //    不写 style 时用它自己的渲染图（免费 ✓）；写 style 时按参考图重画一张（约 10 积分 ✓）。
-  //    "存成什么名字、放在哪、给哪个物品用" 属于**具体能力**的事 → 由各自的 SKILL 讲 ✓
+  // ── generate_image：把「模型 / 任务 / 参考图」变成一张方形 PNG ────────────────────────
+  //    一个通用动作 ✓（对应"少暴露"）。**icon 还是 preview 由 SKILL 决定** ✓：
+  //      · preview（给人看风格 ✓ 便宜 ✓ 可反复改）→ out= 写 .preview/xxx.preview.png ✓
+  //      · icon（游戏里那格图 ✓ 会进游戏）      → out= 写 icon.png ✓
+  //    不加 style = 直接拿模型自己的渲染图（**免费** ✓ 形状必然一致 ✓）
+  //    加 style / styleRef = 生成一张新图（约 5 积分 ✓）
+  //    两张参考图（玩家图 + 游戏内风格锚点）→ 先 v2 /upload 拿 token（返回叫 image_token，
+  //    使用时 key 必须写 file_token ✗✓）；单张则 data URL 直传（已实测 ✓ 最简）
   pi.registerTool({
-    name: "generate_icon",
-    label: "Generate Icon",
+    name: "generate_image",
+    label: "Generate Image (Tripo)",
     description:
-      "Make one square icon image (PNG, transparent background) for a 3D model - the kind of picture shown on an item card or inventory slot. Give it a model file (or a Tripo task id, or a reference image), optionally a style direction, and where to save it. Without a style it uses the model's own render (free, shape always matches the model); with one it redraws the icon in that style (costs credits). Saves the file and returns PASS with the path. Needs the Tripo API key (~/.gamer-agent-pi/api-keys.json, key 'tripo').",
-    promptSnippet: "Make a square transparent icon image for a model",
+      "Make one square PNG from a 3D model, a Tripo task id, or a reference picture. Without style you get the model's own render (free, always matches the model); with style (and/or extra references) a new image is generated (a few credits). Saves the PNG where you ask and returns PASS with the path. Needs the Tripo API key (~/.gamer-agent-pi/api-keys.json, key 'tripo').",
+    promptSnippet: "Make a square PNG (preview or icon) from a model or a reference picture",
     promptGuidelines: [
-      "Use generate_icon when something needs an icon image (an item card, a slot picture) for a model you have. Give model= for a .glb file, or taskId= when the model came from generate_model.",
-      "Omit style to get the model's own render for free; pass style= to redraw it in a requested style (e.g. 'clean game inventory icon, 3/4 view') - that costs credits (~10).",
-      "The icon is a plain square PNG with a transparent background; how it must be named, where it goes and which item uses it depends on the mod you are building - follow the capability skill.",
+      "Use style= when you need a new look or a style match (a few credits): a preview to agree on with the user before spending ~40 credits on generate_model, or a stylized icon for an item.",
+      "What to pass as reference, what to write in style=, and where the file must go differ between a preview and an icon - follow the capability skill. Previews belong under .preview/ and are never installed into the game; item icons are the file the game actually shows.",
+      "Pass styleRef= with a picture of the game's own assets (an existing icon, a screenshot) so the result matches the game's look, and put the orientation wish in style= too (e.g. the barrel and muzzle point to the LEFT).",
     ],
     parameters: Type.Object({
-      model: Type.Optional(Type.String({ description: "A .glb file to make the icon for." })),
+      model: Type.Optional(Type.String({ description: "A .glb to work from (its own render, or the base for a styled image)." })),
       taskId: Type.Optional(Type.String({ description: "A Tripo task id (when the model came from generate_model)." })),
-      image: Type.Optional(Type.String({ description: "A reference image to base the icon on (when there is no model)." })),
-      style: Type.Optional(Type.String({ description: "Optional style direction; without it the model's own render is used (free)." })),
-      out: Type.Optional(Type.String({ description: "Where to save the PNG (default: icon.png next to the model)." })),
-      region: Type.Optional(Type.Union([Type.Literal("cn"), Type.Literal("global")], { description: "API region (default cn)." })),
-    }),
-    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-      const cwd = ctx.cwd;
-      const key = readTripoKey();
-      if (!key) {
-        return {
-          content: [
-            {
-              type: "text",
-              text:
-                'FAIL: no Tripo API key.\nNEXT: ask the user for their Tripo API key, then write it to ~/.gamer-agent-pi/api-keys.json as {"tripo":"tsk_..."}, or set TRIPO_API_KEY.',
-            },
-          ],
-        };
-      }
-      const base = BASES[params.region === "global" ? "global" : "cn"];
-      const api = async (path: string, body?: unknown): Promise<any> => {
-        const r = await fetch(base + path, {
-          method: body === undefined ? "GET" : "POST",
-          headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-          body: body === undefined ? undefined : JSON.stringify(body),
-        });
-        const j: any = await r.json().catch(() => ({}));
-        if (j.code !== 0) throw new Error(`Tripo API code=${j.code} ${j.message ?? ""}`.trim());
-        return j.data;
-      };
-      const waitTask = async (id: string): Promise<any> => {
-        const t0 = Date.now();
-        for (;;) {
-          const d = await api(`/task/${id}`);
-          if (String(d.status) === "success") return d;
-          if (["failed", "banned", "expired", "cancelled"].includes(String(d.status))) throw new Error(`task ${d.status}`);
-          if (Date.now() - t0 > 900_000) throw new Error("task timed out");
-          await new Promise((r) => setTimeout(r, 2000));
-        }
-      };
-      const pickUrl = (o: any): string | null => {
-        for (const v of Object.values(o ?? {})) if (typeof v === "string" && v.startsWith("http")) return v;
-        return null;
-      };
-      const save = async (url: string, outPath: string): Promise<string> => {
-        const r = await fetch(url);
-        if (!r.ok) throw new Error(`download failed HTTP ${r.status}`);
-        const buf = Buffer.from(await r.arrayBuffer());
-        mkdirSync(dirname(outPath), { recursive: true });
-        writeFileSync(outPath, buf);
-        return `${(buf.length / 1024).toFixed(0)} KB`;
-      };
-
-      try {
-        const modelPath = params.model ? (isAbsolute(params.model) ? params.model : resolve(cwd, params.model)) : null;
-        let renderUrl: string | null = null;
-
-        if (params.taskId) {
-          const t = await api(`/task/${params.taskId}`);
-          renderUrl = t.output?.rendered_image ?? pickUrl(t.output);
-        } else if (modelPath) {
-          if (!existsSync(modelPath)) throw new Error(`model not found: ${modelPath}`);
-          const sidecar = join(dirname(modelPath), ".preview", `${basename(modelPath).replace(/\.glb$/i, "")}.task`);
-          if (existsSync(sidecar)) {
-            const t = await api(`/task/${readFileSync(sidecar, "utf8").trim()}`);
-            renderUrl = t.output?.rendered_image ?? null;
-          } else {
-            const b64 = `data:model/gltf-binary;base64,${readFileSync(modelPath).toString("base64")}`;
-            const imp = await api("/task", { type: "import_model", file: b64 });
-            const done = await waitTask(String(imp.task_id));
-            renderUrl = done.output?.rendered_image ?? null;
-          }
-        }
-
-        let url: string | null = renderUrl;
-        if (params.style) {
-          const src = renderUrl ?? (params.image ? `data:image/${extname(params.image).toLowerCase() === ".png" ? "png" : "jpeg"};base64,${readFileSync(isAbsolute(params.image) ? params.image : resolve(cwd, params.image)).toString("base64")}` : null);
-          if (!src) throw new Error("style needs a model, taskId or image to work from");
-          const gen = await api("/task", { type: "generate_image", file: src, prompt: params.style });
-          const done = await waitTask(String(gen.task_id));
-          url = pickUrl(done.output);
-        }
-        if (!url) throw new Error("no image to save (no render for this model, and no style/image given)");
-
-        const defaultOut = modelPath ? join(dirname(modelPath), "icon.png") : resolve(cwd, "icon.png");
-        const outPath = params.out ? (isAbsolute(params.out) ? params.out : resolve(cwd, params.out)) : defaultOut;
-        const size = await save(url, outPath);
-        return {
-          content: [
-            {
-              type: "text",
-              text:
-                `PASS: icon saved to ${outPath} (${size}, square PNG with transparent background${params.style ? ", redrawn in the requested style" : ", the model's own render (no credits spent)"}).\n` +
-                `NEXT: place it where your mod expects it and wire it up - see the capability skill (naming and placement are mod-specific).`,
-            },
-          ],
-        };
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        return { content: [{ type: "text", text: `FAIL: generate_icon: ${msg.slice(0, 600)}` }] };
-      }
-    },
-  });
-
-  // ── generate_preview：把「玩家给的图」→「符合本游戏风格的预览图」────────────────
-  //    为什么单独一个工具（而不是塞进 generate_icon）：**平级功能要独立工具** ✓
-  //    这一步便宜（约 5 积分 ✓）→ 可以反复和玩家确认"就是要这个吗"，确认完再花 ~40 积分做 3D ✓
-  //    两张参考图：① 玩家的图（想要什么）② 游戏内的图（长什么样才对 ✓ 工坊图标/游戏截图都行）
-  //      · 单张 → data URL 直传（已实测 ✓ 最简）
-  //      · 两张 → 先 v2 /upload 拿 token，再用 `files: [{type, file_token}]` ✓
-  pi.registerTool({
-    name: "generate_preview",
-    label: "Generate Preview Image",
-    description:
-      "Turn a reference picture into a style-matched preview image (PNG) saved under .preview/ next to your model. Use it BEFORE generating a 3D model: it is cheap (a few credits), so you can show the user the look and agree on it first. Give image= (the user's picture) and optionally styleRef= (a picture of how the game's own assets look: an existing weapon icon, a screenshot) plus style= (what to aim for). Also accepts model= or taskId= to reuse a model's own render as the reference. Returns PASS with the saved path.",
-    promptSnippet: "Make a style-matched preview image from a reference picture",
-    promptGuidelines: [
-      "Use generate_preview before generate_model when the user gave a picture: show them the preview and get their OK first - the preview costs a few credits, the 3D model costs ~40.",
-      "Pass styleRef= with a picture of the game's own assets (an existing icon or a screenshot) so the result matches the game's look, and put the orientation wish in style= as well (e.g. '... the barrel and muzzle point to the LEFT').",
-      "Previews are intermediate images: they belong under .preview/ and are never installed into the game.",
-    ],
-    parameters: Type.Object({
-      image: Type.Optional(Type.String({ description: "Reference picture (the user's image / screenshot / concept art)." })),
-      styleRef: Type.Optional(Type.String({ description: "Second reference showing how the game's own assets look (existing icon or screenshot)." })),
-      model: Type.Optional(Type.String({ description: "Use this .glb's own render as the reference instead of an image." })),
-      taskId: Type.Optional(Type.String({ description: "Use this Tripo task's render as the reference." })),
+      image: Type.Optional(Type.String({ description: "A reference picture (the user's image / screenshot / concept art)." })),
+      styleRef: Type.Optional(
+        Type.String({ description: "A second reference showing how the game's own assets look (existing icon or screenshot)." }),
+      ),
       style: Type.Optional(
         Type.String({
           description:
-            'What to aim for, e.g. "clean game asset preview, side profile, plain white background, the barrel and muzzle point to the LEFT".',
+            'What to aim for. Omit it to just get the model\'s own render (free). Example: "clean game inventory icon, side profile, white background, centered, the barrel and muzzle point to the LEFT".',
         }),
       ),
-      out: Type.Optional(Type.String({ description: "Where to save the PNG (default: .preview/<name>.preview.png next to the model)." })),
+      out: Type.Optional(
+        Type.String({ description: "Where to save the PNG (e.g. icon.png to ship it, or .preview/x.preview.png for a preview)." }),
+      ),
       region: Type.Optional(Type.Union([Type.Literal("cn"), Type.Literal("global")], { description: "API region (default cn)." })),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       const cwd = ctx.cwd;
       const key = readTripoKey();
-      if (!key) {
-        return {
-          content: [
-            {
-              type: "text",
-              text:
-                'FAIL: no Tripo API key.\nNEXT: ask the user for their Tripo API key, then write it to ~/.gamer-agent-pi/api-keys.json as {"tripo":"tsk_..."}, or set TRIPO_API_KEY.',
-            },
-          ],
-        };
-      }
+      if (!key) return NO_KEY_FAIL;
       const base = tripoBase(params.region);
-      const api = async (path: string, body?: unknown): Promise<any> => {
-        const r = await fetch(base + path, {
-          method: body === undefined ? "GET" : "POST",
-          headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-          body: body === undefined ? undefined : JSON.stringify(body),
-        });
-        const j: any = await r.json().catch(() => ({}));
-        if (j.code !== 0) throw new Error(`Tripo API code=${j.code} ${j.message ?? ""}`.trim());
-        return j.data;
-      };
-      const waitTask = async (id: string): Promise<any> => {
-        const t0 = Date.now();
-        for (;;) {
-          const d = await api(`/task/${id}`);
-          if (String(d.status) === "success") return d;
-          if (["failed", "banned", "expired", "cancelled"].includes(String(d.status))) throw new Error(`task ${d.status}`);
-          if (Date.now() - t0 > 900_000) throw new Error("task timed out");
-          await new Promise((r) => setTimeout(r, 2000));
-        }
-      };
-      const pickUrl = (o: any): string | null => {
-        for (const v of Object.values(o ?? {})) if (typeof v === "string" && v.startsWith("http")) return v;
-        return null;
-      };
-      const save = async (url: string, outPath: string): Promise<string> => {
-        const r = await fetch(url);
-        if (!r.ok) throw new Error(`download failed HTTP ${r.status}`);
-        const buf = Buffer.from(await r.arrayBuffer());
-        mkdirSync(dirname(outPath), { recursive: true });
-        writeFileSync(outPath, buf);
-        return `${(buf.length / 1024).toFixed(0)} KB`;
-      };
+      const api = (path: string, body?: unknown) => tripoApi(base, key, path, body);
+      const waitTask = (id: string) => tripoWait(api, id, "image");
 
       try {
         const modelPath = params.model ? (isAbsolute(params.model) ? params.model : resolve(cwd, params.model)) : null;
         const imagePath = params.image ? (isAbsolute(params.image) ? params.image : resolve(cwd, params.image)) : null;
         const styleRefPath = params.styleRef ? (isAbsolute(params.styleRef) ? params.styleRef : resolve(cwd, params.styleRef)) : null;
         for (const p of [modelPath, imagePath, styleRefPath]) if (p && !existsSync(p)) throw new Error(`not found: ${p}`);
+        if (!modelPath && !params.taskId && !imagePath) {
+          throw new Error("nothing to work from: pass model= (a .glb), taskId=, or image= (a picture)");
+        }
 
-        // ① 先把"参考"确定下来：本地图 / 模型渲染图 / task 渲染图
+        // ① 参考：模型的渲染图（免费 ✓ 从 task 或现算）
         let renderUrl: string | null = null;
         if (params.taskId) {
           const t = await api(`/task/${params.taskId}`);
-          renderUrl = t.output?.rendered_image ?? pickUrl(t.output);
+          renderUrl = t.output?.rendered_image ?? tripoPickUrl(t.output);
         } else if (modelPath) {
           const sidecar = join(dirname(modelPath), ".preview", `${basename(modelPath).replace(/\.glb$/i, "")}.task`);
           if (existsSync(sidecar)) {
@@ -306,52 +201,55 @@ export default function (pi: ExtensionAPI) {
           }
         }
 
-        // ② 组装参考：单张走 data URL（已实测 ✓）；两张走 v2 /upload + file_token ✓
-        const body: Record<string, unknown> = { type: "generate_image" };
-        const prompt =
-          params.style ??
-          "clean game asset preview, side profile, plain white background, centered, no hands";
-        body.prompt = prompt;
-
-        const uploads: Array<Record<string, string>> = [];
-        if (styleRefPath) uploads.push({ type: tripoImageType(styleRefPath), file_token: await tripoUpload(base, key, styleRefPath) });
-        if (imagePath && styleRefPath) uploads.unshift({ type: tripoImageType(imagePath), file_token: await tripoUpload(base, key, imagePath) });
-
-        if (uploads.length) {
-          body.files = uploads;
-        } else if (imagePath) {
-          const mime = tripoImageType(imagePath) === "png" ? "image/png" : "image/jpeg";
-          body.file = `data:${mime};base64,${readFileSync(imagePath).toString("base64")}`;
-        } else if (renderUrl) {
-          body.file = renderUrl;
-        } else {
-          throw new Error("nothing to work from: pass image= (a picture) / model= / taskId=");
+        // ② 要不要生成新图：有 style 或 有第二张参考 → 生成 ✓；否则直接给渲染图（免费 ✓）
+        let url: string | null = renderUrl;
+        const wantsNew = Boolean(params.style || styleRefPath);
+        if (wantsNew) {
+          const body: Record<string, unknown> = {
+            type: "generate_image",
+            prompt: params.style ?? "clean game asset image, side profile, plain background, centered, no hands",
+          };
+          const files: Array<Record<string, string>> = [];
+          if (styleRefPath) files.push({ type: tripoImageType(styleRefPath), file_token: await tripoUpload(base, key, styleRefPath) });
+          if (imagePath && styleRefPath) {
+            files.unshift({ type: tripoImageType(imagePath), file_token: await tripoUpload(base, key, imagePath) });
+          }
+          if (files.length) {
+            body.files = files;
+          } else if (imagePath) {
+            const mime = tripoImageType(imagePath) === "png" ? "image/png" : "image/jpeg";
+            body.file = `data:${mime};base64,${readFileSync(imagePath).toString("base64")}`;
+          } else if (renderUrl) {
+            body.file = renderUrl;
+          } else {
+            throw new Error("style/styleRef needs something to work from (model=, taskId= or image=)");
+          }
+          const gen = await api("/task", body);
+          url = tripoPickUrl((await waitTask(String(gen.task_id))).output);
         }
+        if (!url) throw new Error("nothing to save (no render for this model, and no style/styleRef given)");
 
-        const gen = await api("/task", body);
-        const done = await waitTask(String(gen.task_id));
-        const url = pickUrl(done.output);
-        if (!url) throw new Error("no image returned");
-
-        const defaultName = modelPath ? basename(modelPath).replace(/\.glb$/i, "") : "preview";
+        // ③ 落盘：默认放 .preview/（中间图 ✓ 永远不会被装进游戏）；要当图标就让 SKILL 传 out=icon.png ✓
+        const name = modelPath ? basename(modelPath).replace(/\.glb$/i, "") : "preview";
         const defaultOut = modelPath
-          ? join(dirname(modelPath), ".preview", `${defaultName}.preview.png`)
-          : resolve(cwd, ".preview", `${defaultName}.preview.png`);
+          ? join(dirname(modelPath), ".preview", `${name}.preview.png`)
+          : resolve(cwd, ".preview", `${name}.preview.png`);
         const outPath = params.out ? (isAbsolute(params.out) ? params.out : resolve(cwd, params.out)) : defaultOut;
-        const size = await save(url, outPath);
+        const size = await tripoSave(url, outPath);
         return {
           content: [
             {
               type: "text",
               text:
-                `PASS: preview saved to ${outPath} (${size}).\n` +
-                "NEXT: look at the image yourself (read it) and show it to the user; only after they approve, call generate_model with image= pointing at this preview - the 3D step costs ~40 credits.",
+                `PASS: image saved to ${outPath} (${size}, square PNG). ` +
+                (wantsNew ? "New image generated (a few credits spent)." : "The model's own render - no credits spent.") +
+                "\nNEXT: look at it yourself (read the image) and show the user; for a preview, get their OK before generate_model (~40 credits).",
             },
           ],
         };
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        return { content: [{ type: "text", text: `FAIL: generate_preview: ${msg.slice(0, 600)}` }] };
+        return { content: [{ type: "text", text: `FAIL: generate_image: ${msg.slice(0, 600)}` }] };
       }
     },
   });
@@ -398,7 +296,7 @@ export default function (pi: ExtensionAPI) {
           ],
         };
       }
-      const base = BASES[params.region === "global" ? "global" : "cn"];
+      const base = tripoBase(params.region);
 
       const api = async (path: string, body?: unknown): Promise<any> => {
         const r = await fetch(base + path, {
@@ -480,7 +378,7 @@ export default function (pi: ExtensionAPI) {
               await download(done.output.rendered_image, `${shotBase}.preview.png`);
               shots.push(`${shotBase}.preview.png`);
               // 同一张渲染图再存一份到 mod 根做**图标**（背包卡片用 ✓ 白底会被运行时抠成透明 ✓）
-              // 记下 task id（`.preview/<模型名>.task`）→ generate_icon 可直接复用它的渲染图（不花积分 ✓）
+              // 记下 task id（`.preview/<模型名>.task`）→ generate_image 可直接复用它的渲染图（不花积分 ✓）
               writeFileSync(`${shotBase}.task`, String(taskId));
             } catch { /* 预览图/图标下不到不影响主流程 */ }
           }
