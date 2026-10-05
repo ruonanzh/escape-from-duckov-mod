@@ -125,21 +125,16 @@ generate_image(model="your_mods/<mod>/gun.glb", styleRef="<游戏里那把武器
 
 ## 3. 装进游戏
 
-> **图标这步**：`generate_image(model="…/gun.glb", out="…/icon.png")` ✓
-> - 不给 `style` → 直接用模型自己的渲染图 ✓（免费 ✓ 形状与游戏里一致 ✓）
-> - 给 `style` = `styleRef`（游戏内图标）→ 重画一张更像本作的 ✓（约 5 积分 ✓）
-> - **尺寸/抠白/居中由游戏运行时自动处理** ✓（256² + PPU50）→ 不用自己裁 ✗
-
-
-
-用 `install_mod` 工具（会校验 + 装到 Mods 目录）。
+用 `install_mod`（会校验 + 拷到游戏的 Mods 目录）。装完**按 §4 确认** —— 装好 ≠ 成功。
 
 ## 4. 怎么确认成功（装好 ≠ 成功）
 
 `install_mod` 返回 PASS 只说明**文件装好了**，不代表游戏里生效。要这样确认：
 
 - **要用户做**：进游戏 → 背包切到目标武器 → 拿出来（2 秒内模型应换掉）。装的时候游戏如果开着，先退出再进。
-- **你自己做**：读 `~/Library/Logs/TeamSoda/Duckov/Player.log` 里的 `[WeaponModel]` 行 —— 有这两行才算真生效：
+- **你自己做**：读游戏日志里的 `[WeaponModel]` 行 —— 有这两行才算真生效：
+  - macOS：`~/Library/Logs/TeamSoda/Duckov/Player.log`
+  - Windows：`%USERPROFILE%\AppData\LocalLow\TeamSoda\Duckov\Player.log`
   - `手里的物品：'SMG_MP5_Normal' … 命中`
   - `已换模型：隐藏旧零件 N 个；锚点=…；材质=…`
   看不到 = 没生效 → 去 §5 对照。
