@@ -121,14 +121,15 @@ create_mod(kind="replace-weapon-model", name="MyGun", target="MP5", file="gun.gl
    - `已换模型：隐藏旧零件 N 个；锚点=WPN_MP5；材质=…/SodaCraft/SodaLit；我们的包围盒=…；原枪身包围盒=…`
 4. 看画面：**模型形状 ✓ 贴图 ✓ 枪口朝前 ✓ 手握住握把 ✓**
 
-## 5. 出问题时的判据
+## 5. 常见错误（对照修正）
 
-| 现象 | 原因 / 做法 |
-|---|---|
-| **`code=2008` content policy** ✗ | 平台内容审核拒了这次输入（图或文字）→ 去掉 `image=` 改用 `style=` 纯文字重试 ✓；还不行就换一张图，或用用户自带的 `.glb` ✓（**别改措辞反复重试** ✗）|
-| **`TRIPO_RATE_LIMIT` / `code=2000`** ✗ | 发得太密 → 等 30–60 秒再发 ✓（别循环重试 ✗）|
-| 形状对但**握把偏** | 看日志两侧包围盒；`WeaponModel.Apply(..., extraOffset)` 可微调（一般不用 ✓）|
-| **贴图没上** | GLB 里没有 baseColor 贴图（重新 `texture_model` 或直接用带贴图的 GLB）|
-| **模型整块看不见** | 绕序/UV 问题（加载器已按左手系转换 ✓）→ 改提示词或换参考图重生成 ✓ |
-| **前后反了** | 提示词朝向写反了 ✓（写 "left" ✓）；**用户自带的模型**没这个保证 → 在 `config.json` 里写 `"front": "-z"`（或 `+x`/`-x`）✓ |
-| 日志没有 `[WeaponModel]` | mod 没装成功或名字对不上（`<mod名>.ModBehaviour`）→ 用 `validate_mod` / `install_mod` 的返回确认 |
+- `TRIPO_NO_API_KEY` → 向用户要一次 Tripo key，存到 `~/.gamer-agent-pi/api-keys.json`。
+- `code=2008`（内容审核）→ 去掉 `image=` 改用 `style=` 纯文字重试；还不行就换一张图，或用用户自带的 `.glb`（别改措辞反复重试）。
+- `TRIPO_RATE_LIMIT` / `code=2000` → 发得太密，等 30–60 秒再发（别循环重试）。
+- `TRIPO_TASK_FAILED` → 生成失败，改提示词或换参考图重来。
+- `TRIPO_FILE_NOT_FOUND` → 路径不对（`create_mod` 的 `file=` 或 `generate_model` 的 `model=`）。
+- 形状对但**握把偏** → 看日志两侧包围盒；`WeaponModel.Apply(..., extraOffset)` 可微调（一般不用）。
+- **贴图没上** → GLB 里没有 baseColor 贴图（重新 `texture_model` 或直接用带贴图的 GLB）。
+- **模型整块看不见** → 绕序/UV 问题（加载器已按左手系转换）→ 改提示词或换参考图重生成。
+- **前后反了** → 提示词朝向写反了（写 "left"）；**用户自带的模型**没这个保证 → 在 `config.json` 里写 `"front": "-z"`（或 `+x`/`-x`）。
+- 日志没有 `[WeaponModel]` → mod 没装成功或名字对不上（`<mod名>.ModBehaviour`）→ 用 `validate_mod` / `install_mod` 的返回确认。
