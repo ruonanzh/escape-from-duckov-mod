@@ -34,17 +34,22 @@ description: 用户想换某把武器的模型/外观时用（例："把 MP5 换
 
 ```
 generate_image(
-  image="<用户的图>",                  // 没图就省略 -> 纯提示词出图
+  image="<用户的图>",                  // 没图就省略 -> 纯提示词出图（此时 prompt= 就是全部指令 ✓）
   styleRef="<游戏内武器的图>",           // 强烈建议：游戏里已有武器的图 -> 出得像本作
-  style="Keep the exact same weapon design, the same colors and the same surface texture and details as the input, but make the whole gun noticeably BULKIER and THICKER: a chunky barrel, a thick handguard and a stout stock - heavy, sturdy proportions like a stylized low-poly game asset. Keep it a single weapon in the same pose (side view, barrel and muzzle pointing LEFT), perfectly CENTERED in the frame, with a clear margin on all sides.",
+  prompt="Keep the exact same weapon design, the same colors and the same surface texture and details as the input, but make the whole gun noticeably BULKIER and THICKER: a chunky barrel, a thick handguard and a stout stock - heavy, sturdy proportions like a stylized low-poly game asset. Keep it a single weapon in the same pose (side view, barrel and muzzle pointing LEFT), perfectly CENTERED in the frame, with a clear margin on all sides.",
+  userPrompt="<用户自己提的要求，原话>",  // 通常留空 ✓；用户说了具体要求就放这里（不要塞进 prompt= ✗）
   out="your_mods/<mod>/.preview/<名字>.preview.png")   // 中间图放 mod 目录下的 .preview/
 ```
 
+- **`prompt=` 是我们的配方（= 直接送进 API 的 prompt 字段 ✓）、`userPrompt=` 是用户原话 ✓**
+  工具会把两段用空行拼接后一起发 ✓（实测：**两段都不会丢** ✓，配方条款（加粗/居中）仍在 ✓，用户要求也真的落到图上 ✓）
+  ⚠️ 代价：同时给两段时配方会被**轻微稀释**（加粗 0.194 → 0.175 ✓）—— 能接受就别管 ✓，要更壮就把加粗措辞加大一档 ✓
+  ⚠️ **冲突由 agent 裁决** ✗：用户说“要更细”✗ 而配方写着加粗 ✗ → **改配方**（删掉冲突那句 ✓）再拼；不要指望模型自己取舍 ✗
 - **加粗措辞别再往上加码** ✗（再加 “much thicker / fat barrel” 就会过头：枪管变炮管、设计走样）—— 上面这一档实测正好（中厚/长 ≈ 0.19 ✓）
 - 三句都不能省 ✓：**保持原设计/贴图** ✓ · **朝向 LEFT** ✓ · **居中 + 留边** ✗（不写会偏下约 16% ✗）
 - 出图后工具**会把图显示在聊天里**（玩家直接看到，不用找文件）→ 问他「就要这个吗」
 - `.preview/` 放在 mod 目录下：`install_mod` 会跳过它（不进游戏），也不会把工作区弄脏
-- 不像就改 `style` 再来一次（每次都便宜）—— **没确认前不要做 ④**
+- 不像就改 `prompt=` 再来一次（每次都便宜）—— **没确认前不要做 ④**
 - ⚠️ **贴图风格由用户的图决定** ✓：不要用“游戏风格参考图”去**改贴图**（会打破用户给的原有贴图 ✗）
 
 ### ④ 3D 模型（约 50 积分，含转换）
@@ -66,7 +71,7 @@ generate_model(action="generate", image=".preview/<名字>.preview.png",
 
 ```
 generate_image(model="your_mods/<mod>/gun.glb", styleRef="<游戏里那把武器的卡片图标>",
-               style="clean game inventory icon, side profile, centered, the weapon occupies about 80% of the frame width",
+               prompt="clean game inventory icon, side profile, centered, the weapon occupies about 80% of the frame width",
                out="your_mods/<mod>/icon.png")
 ```
 
@@ -161,7 +166,7 @@ generate_image(model="your_mods/<mod>/gun.glb", styleRef="<游戏里那把武器
 
 > 工具的错误信息里**通常已经带了下一步** ✓ —— **先照它说的做**；下面只列**工具没说**的（能力特有的）✓
 
-- `code=2008`（内容审核）→ **先试：把图里的 logo / 水印 / UI 文字裁掉再传**（实测同一张图去掉 logo 就通过）；仍被拒再去掉 `image=` 改用 `style=` 纯文字，或换一张图，或用用户自带的 `.glb`（别改措辞反复重试）。
+- `code=2008`（内容审核）→ **先试：把图里的 logo / 水印 / UI 文字裁掉再传**（实测同一张图去掉 logo 就通过）；仍被拒再去掉 `image=` 改用 `prompt=` 纯文字，或换一张图，或用用户自带的 `.glb`（别改措辞反复重试）。
 - `TRIPO_TASK_FAILED` → 生成失败，改提示词或换参考图重来。
 - `TRIPO_FILE_NOT_FOUND` → **它指的那个文件不存在**（`image=` / `styleRef=` / `model=` 传进来的路径写错了）。
 - 形状对但**握把偏** → 看日志两侧包围盒；`WeaponModel.Apply(..., extraOffset)` 可微调（一般不用）。
