@@ -66,6 +66,18 @@ namespace WeaponModelSwap
                     ? null
                     : (Path.IsPathRooted(IconFile) ? IconFile : Path.Combine(dir, IconFile));
                 Signature = ModelFile + "\n" + Front;
+                // ⭐ 指纹再带上**文件本身**的 mtime+size ✓（旧版只看文件名 ✗ → 同名换内容不重读 ✗、
+                //    而重建 Entry 后又永不重读 ✗ —— 两种毛病都靠这个指纹治 ✓）
+                var mp = ModelPath(dir);
+                try
+                {
+                    if (!string.IsNullOrEmpty(mp) && File.Exists(mp))
+                    {
+                        var fi = new FileInfo(mp);
+                        Signature += "\n" + fi.LastWriteTimeUtc.Ticks + ":" + fi.Length;
+                    }
+                }
+                catch { /* 拿不到指纹就退化成 路径+朝向 ✓（= 旧行为 ✓）*/ }
             }
 
             public string ModelPath(string dir) =>
@@ -78,8 +90,14 @@ namespace WeaponModelSwap
 
         CharacterMainControl _player;
         float _nextFindPlayer;
+        float _nextCfgCheck;              // ⭐ a：限频 —— 每 0.25 秒才查一次 config 的 mtime ✓
         DateTime _cfgStamp = DateTime.MinValue;
         float _nextIconSweep;
+
+        /// <summary>模型缓存（每个路径只留**最新一份** ✓）：路径 → （指纹 ✓, Mesh ✓, 贴图 ✓）
+        /// ⭐ b：指纹 = 路径 + 朝向 + **文件 mtime+size** ✓ → 文件真变了才重解析 ✓✓</summary>
+        sealed class CachedModel { public string Sig; public Mesh Mesh; public Texture2D Texture; }
+        readonly Dictionary<string, CachedModel> _modelCache = new Dictionary<string, CachedModel>();
         readonly Dictionary<int, ModelKit.WeaponModel.Result> _applied = new Dictionary<int, ModelKit.WeaponModel.Result>();   // transformId → 换上的结果（含被禁用的旧零件 ✓ 用于恢复）
         string _lastHeld;
 
@@ -154,6 +172,10 @@ namespace WeaponModelSwap
         /// <summary>config.json 一改存盘就重新生效（不用重启游戏）：重读配置、丢旧实例、必要时重读模型 ✓</summary>
         void ReloadIfChanged()
         {
+            // ⭐ a：**限频** —— 每 0.25 秒才查一次（不是每帧 ✗）：文件 stat 从 ~120 次/秒 降到 4 次/秒 ✓
+            //    人感觉不出 0.25s ✓（“存盘即生效”的手感不变 ✓）
+            if (Time.unscaledTime < _nextCfgCheck) return;
+            _nextCfgCheck = Time.unscaledTime + 0.25f;
             try
             {
                 if (!File.Exists(_configPath)) return;
@@ -168,7 +190,7 @@ namespace WeaponModelSwap
                 foreach (var kv in _applied)
                 {
                     if (kv.Value == null) continue;
-                    kv.Value.RestoreHidden();
+                    kv.Value.Restore();   // 旧零件显示 ✓ + 搬过的挂点位置 ✓ 全部还原 ✓
                     if (kv.Value.Instance != null) UnityEngine.Object.Destroy(kv.Value.Instance);
                 }
                 _applied.Clear();
@@ -197,10 +219,14 @@ namespace WeaponModelSwap
                 var path = e.ModelPath(dir);
                 if (string.IsNullOrEmpty(path)) { Debug.LogWarning($"[WeaponModel] 规则 model='{e.ModelFile}' 是空的 —— 跳过"); continue; }
                 if (!File.Exists(path)) { Debug.LogWarning($"[WeaponModel] 找不到模型文件：{path}"); continue; }
+                // ⭐ b：指纹没变就直接用上次解析好的 ✓✓（改 slots/target/icon 时热重载≈瞬发 ✓）
+                if (_modelCache.TryGetValue(path, out var c) && c != null && c.Sig == e.Signature && c.Mesh != null)
+                { e.Mesh = c.Mesh; e.Texture = c.Texture; continue; }
                 try
                 {
                     var g = GltfLoader.LoadFile(path, e.Front);
                     e.Mesh = g.Mesh; e.Texture = g.MainTexture;
+                    _modelCache[path] = new CachedModel { Sig = e.Signature, Mesh = g.Mesh, Texture = g.MainTexture };
                     Debug.Log($"[WeaponModel] 读到模型 {Path.GetFileName(path)}：" + g.Report);
                 }
                 catch (Exception ex) { Debug.LogError($"[WeaponModel] 读模型失败（{Path.GetFileName(path)}）：{ex.Message}"); }

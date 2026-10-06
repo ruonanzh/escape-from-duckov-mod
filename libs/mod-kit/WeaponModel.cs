@@ -13,6 +13,7 @@
 //
 // 不做的事：不改数值/行为 ✓ 不碰背包里的模板（只动运行时手里那把活实体 ✓）
 
+using System;   // StringComparison / StringComparer ✓
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -31,12 +32,49 @@ namespace ModelKit
             public string AlignSource = "";
             /// <summary>被我们**禁用掉的旧零件**（热重载/卸载时用来恢复 ✗ 否则枪会整个不见 ✗）</summary>
             public readonly List<Renderer> Hidden = new List<Renderer>();
+            /// <summary>被我们**搬过位置**的游戏挂点（`Sockets/<槽位>`）→ 原 localPosition ✓（恢复用 ✓）</summary>
+            public readonly Dictionary<Transform, Vector3> MovedSockets = new Dictionary<Transform, Vector3>();
             /// <summary>把我们禁用过的旧零件**恢复显示** ✓（幂等 ✓）</summary>
             public void RestoreHidden()
             {
                 foreach (var r in Hidden) if (r != null) r.enabled = true;
                 Hidden.Clear();
             }
+            /// <summary>把改过的东西**全部还原** ✓（幂等 ✓）：旧零件显示 ✓ + 搬过的挂点位置 ✓</summary>
+            public void Restore()
+            {
+                RestoreHidden();
+                foreach (var kv in MovedSockets) if (kv.Key != null) kv.Key.localPosition = kv.Value;
+                MovedSockets.Clear();
+            }
+        }
+
+        /// <summary>游戏定的 5 个挂点名 ✓（旧文档实测：prefab 的 `Sockets` 容器下就这 5 个子节点 ✓）</summary>
+        static readonly string[] SlotNames = { "Scope", "Tec", "Muzzle", "Stock", "Grip" };
+        static bool IsSlotName(string n)
+        {
+            foreach (var s in SlotNames) if (string.Equals(s, n, StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }
+
+        /// <summary>找游戏自己的挂点：优先 `Sockets/<槽位>` ✓；没有 `Sockets` 容器就退化成“名字正好等于槽位名的 Transform”✓
+        /// （**不会**误抓 `ShowIf_Scope` / `HideIf_Scope` ✓ —— 那些名字不全等 ✓）</summary>
+        static Dictionary<string, Transform> FindSockets(Transform root)
+        {
+            var map = new Dictionary<string, Transform>(StringComparer.OrdinalIgnoreCase);
+            foreach (var t in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (!IsSlotName(t.gameObject.name)) continue;
+                var p = t.parent;
+                if (p != null && string.Equals(p.gameObject.name, "Sockets", StringComparison.OrdinalIgnoreCase)) map[t.gameObject.name] = t;
+            }
+            if (map.Count == 0)
+                foreach (var t in root.GetComponentsInChildren<Transform>(true))
+                {
+                    var n = t.gameObject.name;
+                    if (IsSlotName(n) && !map.ContainsKey(n)) map[n] = t;
+                }
+            return map;
         }
 
         /// <summary>把手持武器的模型换成给进来的 Mesh+贴图。root 一般是 `itemGraphic.gameObject` 或手持实体的 GameObject。</summary>
@@ -145,10 +183,28 @@ namespace ModelKit
             }
             go.transform.localPosition = extraOffset - target;
 
+            // ⑤ slots → 把**游戏自己的挂点**（`Sockets/<槽位>`）搬到我模型上的对应位置 ✓
+            //    游戏随后会把配件 instance 挂到那个 socket 上 ✓ → 配件就落在**我们模型的形状**上 ✓✓
+            //    ⭐ 只动“挂点” ✗ 不动配件 ✓（不去跟游戏的装配逻辑打架 ✓）
+            int moved = 0;
+            if (res.SlotPoints.Count > 0)
+            {
+                var sockets = FindSockets(root);
+                foreach (var kv in res.SlotPoints)
+                {
+                    if (string.Equals(kv.Key, "pivot", StringComparison.OrdinalIgnoreCase)) continue;   // pivot 不是挂点 ✓（它是手抓位置 ✓）
+                    if (!sockets.TryGetValue(kv.Key, out var sk) || sk == null) continue;
+                    if (!res.MovedSockets.ContainsKey(sk)) res.MovedSockets[sk] = sk.localPosition;      // 记原值 ✓ 便于恢复 ✓
+                    sk.position = go.transform.TransformPoint(kv.Value);   // 用**世界坐标**赋值 → 自动处理缩放/父子 ✓✓
+                    moved++;
+                }
+            }
+
             res.Applied = true; res.Instance = go;
             res.Report = $"已换模型：隐藏旧零件 {hidden} 个（保留 {kept} 个：配件/特效）；锚点={(anchor != null ? anchor.name : "根节点")}；"
                        + $"材质={(one != null ? one.name + "/" + (one.shader != null ? one.shader.name : "?") : "无")}；"
                        + $"对齐={res.AlignSource}；"
+                       + (moved > 0 ? $"挂点已搬 {moved} 个；" : "")
                        + (res.SlotPoints.Count > 0
                            ? $"槽位(局部米)={string.Join(" ", System.Linq.Enumerable.Select(res.SlotPoints, kv => kv.Key + "=" + kv.Value.ToString("F3")))}；"
                            : "")
