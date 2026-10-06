@@ -171,7 +171,7 @@ export default function (pi: ExtensionAPI) {
   //      · preview（给人看风格 ✓ 便宜 ✓ 可反复改）→ out= 写 .preview/xxx.preview.png ✓
   //      · icon（游戏里那格图 ✓ 会进游戏）      → out= 写 icon.png ✓
   //    不加 prompt = 直接拿模型自己的渲染图（**免费** ✓ 形状必然一致 ✓）
-  //    加 prompt / userPrompt / styleRef = 生成一张新图（约 5 积分 ✓）
+  //    加 prompt / styleRef = 生成一张新图（约 5 积分 ✓）
   //    参考图：Tripo 托管 URL 直接用 {url} ✓；本地文件 → POST /v3/files → {file_token} ✓
   //    （v3 的 file 只认 url / file_token / object ✗ —— 不能传 {task_id} ✗）
   pi.registerTool({
@@ -184,7 +184,6 @@ export default function (pi: ExtensionAPI) {
       "Use generate_image when a capability needs a 2D image file: it saves a square PNG to out= and returns PASS with the path.",
       "Use generate_image with prompt= to get a new image (a few credits) drawn from the description, a reference picture, or a model; omit prompt= and pass model= or taskId= to get the model's own render for free.",
       "Use generate_image with styleRef= (a picture of how the game's own assets look) when the result has to match the game's style; what to write in prompt= and where the file must go are described in the capability skill.",
-      "Use generate_image with userPrompt= for extra requirements the user stated in their own words - pass them verbatim, never fold them into prompt= and never rewrite the recipe.",
     ],
     parameters: Type.Object({
       model: Type.Optional(Type.String({ description: "A .glb to work from (its own render, or the base for a styled image)." })),
@@ -199,14 +198,6 @@ export default function (pi: ExtensionAPI) {
         Type.String({
           description:
             'The prompt sent to the API (the main instruction - our recipe from the capability skill). Omit it to just get the model\'s own render (free). Example: "clean game inventory icon, side profile, white background, centered, the barrel and muzzle point to the LEFT".',
-        }),
-      ),
-      // 用户自己提的额外要求（原话 ✓）—— 有就附在 prompt 后面一起发 ✓
-      // （实测：两段都不会丢 ✓ 只是配方强度会被轻微稀释 ✓）
-      userPrompt: Type.Optional(
-        Type.String({
-          description:
-            "The user's own words about this image (optional). Leave it empty when the recipe already covers the request; when given it is appended to prompt= and sent as one prompt.",
         }),
       ),
       out: Type.Optional(
@@ -226,9 +217,9 @@ export default function (pi: ExtensionAPI) {
       // 三个"创作输入"（提示词 / 玩家参考图 / 游戏风格参考图）+ 两个"模型指针"（model / taskId）
       // **至少给一个就能发** ✓（只给 model/taskId → 免费渲染图；其余 → 生成新图）
       // 一个都不给则明确报错 ✓（不会默默什么都不做 ✗）
-      if (!modelPath && !params.taskId && !imagePath && !styleRefPath && !params.prompt && !params.userPrompt) {
+      if (!modelPath && !params.taskId && !imagePath && !styleRefPath && !params.prompt) {
         throw new Error(
-          "nothing to work from: pass at least one of prompt= (a description), userPrompt=, image= (the player's picture), styleRef= (how the game's assets look), model= (a .glb) or taskId=",
+          "nothing to work from: pass at least one of prompt= (a description), image= (the player's picture), styleRef= (how the game's assets look), model= (a .glb) or taskId=",
         );
       }
 
@@ -252,7 +243,7 @@ export default function (pi: ExtensionAPI) {
         }
       }
 
-      // ② 要不要生成新图：给了 prompt / userPrompt / 参考图 才生成 ✓；只给 model/taskId → 直接返回渲染图（免费 ✓）
+      // ② 要不要生成新图：给了 prompt / 参考图 才生成 ✓；只给 model/taskId → 直接返回渲染图（免费 ✓）
       //    参考图按重要性排序：模型的渲染图（它长什么样）→ 玩家给的图 → 游戏内风格锚点
       //    1 张 → `file: {url|file_token}` ✓；≥2 张 → `inputs: [...]` ✓（v3 ✓）
       const refs: Array<{ kind: "render" | "file"; value: string }> = [];
@@ -262,17 +253,16 @@ export default function (pi: ExtensionAPI) {
 
       let url: string | null = renderUrl;
       let genTaskId: string | null = null; // 记下来给模型那步复用 ✓（省一次上传+一次渲染 ✓）
-      const wantsNew = Boolean(params.prompt || params.userPrompt || imagePath || styleRefPath);
+      const wantsNew = Boolean(params.prompt || imagePath || styleRefPath);
       if (wantsNew) {
         // ⭐ v3：没有参考 → /generation/text-to-image（纯提示词 ✓ 已实测）；
         //         1 张参考 → /generation/image-to-image { file: {url|file_token} } ✓；
         //         ≥2 张   → { inputs: [...] } ✓ 并在提示词里指明 image[1] 是主体、后面是风格 ✓
-        // ⭐ prompt = 我们的配方 + 用户原话（两段都有就用空行拼接 ✓）
-        //    实测（2026-10-06，20 积分）：配方条款**不会丢** ✓（加粗/居中仍在 ✓）、用户话也生效 ✓；
-        //    代价：配方强度会被轻微稀释（加粗 0.194 → 0.175 ✓）
+        // ⭐ prompt：SKILL 里那段**实测过的默认配方**（最贴合本作风格 ✓）
+        //    用户只给了图 → 直接用这段话 ✓；
+        //    用户另提了要求（或只给了文字）→ **由 agent 在配方基础上改** ✓（不是工具拼接 ✗）
         let prompt =
-          [params.prompt, params.userPrompt].filter(Boolean).join("\n\n") ||
-          "clean game asset image, side profile, plain background, centered, no hands";
+          params.prompt ?? "clean game asset image, side profile, plain background, centered, no hands";
         const body: Record<string, unknown> = { prompt };
         if (refs.length === 0) {
           var path = "/generation/text-to-image";
@@ -302,7 +292,7 @@ export default function (pi: ExtensionAPI) {
         genTaskId = String(gen.task_id);
         url = tripoPickUrl((await waitTask(genTaskId)).output);
       }
-      if (!url) throw new Error("nothing to save (no render for this model, and no prompt/userPrompt/styleRef given)");
+      if (!url) throw new Error("nothing to save (no render for this model, and no prompt/styleRef given)");
 
       // ③ 落盘：默认放 .preview/（中间图 ✓ 永远不会被装进游戏）；要当图标就让 SKILL 传 out=icon.png ✓
       const name = modelPath ? basename(modelPath).replace(/\.glb$/i, "") : "preview";

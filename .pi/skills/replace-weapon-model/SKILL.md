@@ -32,21 +32,24 @@ description: 用户想换某把武器的模型/外观时用（例："把 MP5 换
 → 只清理不加粗，出来的模型就是“细长”的 ✗（实测中厚/长 0.136，本作原枪 0.226 ✗）。
 所以这一步的提示词必须同时做两件事：**清理/居中 + 加粗**。
 
+**⭐ 下面那段 `prompt=` 是我们实测过、最贴合本作风格的默认配方** —— 它就是基准，使用方式分三种：
+
+| 用户给了什么 | 怎么用这段配方 |
+|---|---|
+| **只给图**（没说别的）| **直接照用 ✓**（一字不改 ✓）|
+| **图 + “再帮我改成…/加点…”** | **在这段配方基础上改** ✓（把用户的要求加进去 / 把冲突那句改掉 ✓）|
+| **只给文字描述**（没图）| **在这段配方基础上改** ✓（改成描述这把枪该长什么样 ✓，朝向/居中/加粗这三件保留 ✓）|
+
 ```
 generate_image(
-  image="<用户的图>",                  // 没图就省略 -> 纯提示词出图（此时 prompt= 就是全部指令 ✓）
+  image="<用户的图>",                  // 只给文字时省略（→ 纯提示词出图 ✓）
   styleRef="<游戏内武器的图>",           // 强烈建议：游戏里已有武器的图 -> 出得像本作
   prompt="Keep the exact same weapon design, the same colors and the same surface texture and details as the input, but make the whole gun noticeably BULKIER and THICKER: a chunky barrel, a thick handguard and a stout stock - heavy, sturdy proportions like a stylized low-poly game asset. Keep it a single weapon in the same pose (side view, barrel and muzzle pointing LEFT), perfectly CENTERED in the frame, with a clear margin on all sides.",
-  userPrompt="<用户自己提的要求，原话>",  // 通常留空 ✓；用户说了具体要求就放这里（不要塞进 prompt= ✗）
   out="your_mods/<mod>/.preview/<名字>.preview.png")   // 中间图放 mod 目录下的 .preview/
 ```
 
-- **`prompt=` 是我们的配方（= 直接送进 API 的 prompt 字段 ✓）、`userPrompt=` 是用户原话 ✓**
-  工具会把两段用空行拼接后一起发 ✓（实测：**两段都不会丢** ✓，配方条款（加粗/居中）仍在 ✓，用户要求也真的落到图上 ✓）
-  ⚠️ 代价：同时给两段时配方会被**轻微稀释**（加粗 0.194 → 0.175 ✓）—— 能接受就别管 ✓，要更壮就把加粗措辞加大一档 ✓
-  ⚠️ **冲突由 agent 裁决** ✗：用户说“要更细”✗ 而配方写着加粗 ✗ → **改配方**（删掉冲突那句 ✓）再拼；不要指望模型自己取舍 ✗
-- **加粗措辞别再往上加码** ✗（再加 “much thicker / fat barrel” 就会过头：枪管变炮管、设计走样）—— 上面这一档实测正好（中厚/长 ≈ 0.19 ✓）
-- 三句都不能省 ✓：**保持原设计/贴图** ✓ · **朝向 LEFT** ✓ · **居中 + 留边** ✗（不写会偏下约 16% ✗）
+- 上面这段是三句：**保持原设计/贴图** ✓ · **朝向 LEFT** ✓ · **居中 + 留边** ✓（不写居中会偏下约 16% ✗）
+- 改配方时**朝向/居中这两件不要弄丢** ✗（用户只说要改颜色，也别顺手把朝向删了 ✓）；如果用户就是要“细一点”，那是**改配方**（把加粗那句改掉 ✓），不是加一句反向要求就完事 ✗
 - 出图后工具**会把图显示在聊天里**（玩家直接看到，不用找文件）→ 问他「就要这个吗」
 - `.preview/` 放在 mod 目录下：`install_mod` 会跳过它（不进游戏），也不会把工作区弄脏
 - 不像就改 `prompt=` 再来一次（每次都便宜）—— **没确认前不要做 ④**
