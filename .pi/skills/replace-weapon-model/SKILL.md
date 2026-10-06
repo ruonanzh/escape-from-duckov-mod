@@ -44,11 +44,12 @@ description: 用户想换某把武器的模型/外观时用（例："把 MP5 换
 generate_image(
   image="<用户的图>",                  // 只给文字时省略（→ 纯提示词出图 ✓）
   styleRef="<游戏内武器的图>",           // 强烈建议：游戏里已有武器的图 -> 出得像本作
-  prompt="Keep the exact same weapon design, the same colors and the same surface texture and details as the input, but make the whole gun noticeably BULKIER and THICKER: a chunky barrel, a thick handguard and a stout stock - heavy, sturdy proportions like a stylized low-poly game asset. Keep it a single weapon in the same pose (side view, barrel and muzzle pointing LEFT), perfectly CENTERED in the frame, with a clear margin on all sides.",
+  prompt="Redraw the weapon from the input as a clean, isolated in-game asset: the whole weapon alone and complete - keep EVERY part of it (stock, pad, magazine, sights, mounts); remove only what is not the weapon (the background, any floating pieces, text, frames). Put it on a plain uniform white background: no scenery, no props, no shadow, no smoke, no hands, no text. Keep the weapon's own design, colors and surface details the same, but make it noticeably BULKIER and THICKER: a chunky barrel, a thick handguard and a stout stock - heavy, sturdy proportions like a stylized low-poly game asset. Side view with the barrel and muzzle pointing LEFT, and perfectly CENTERED in the frame, with a clear margin on all sides.",
   out="your_mods/<mod>/.preview/<名字>.preview.png")   // 中间图放 mod 目录下的 .preview/
 ```
 
-- 上面这段是三句：**保持原设计/贴图** ✓ · **朝向 LEFT** ✓ · **居中 + 留边** ✓（不写居中会偏下约 16% ✗）
+- 这段配方里有 7 件事都**不能丢** ✗：**整把武器都在**（部件一个不少 ✓）· **只移除不是武器的东西**（背景/飘浮物/文字/边框 ✓）· **纯白均一背景 + 无杂物** ✓ · **保持原设计/颜色/贴图** ✓ · **加粗** ✓ · **朝向 LEFT** ✓ · **居中 + 留边** ✓
+- 背景那两句的写法：`plain uniform white background` ✓ 或直接写 `transparent` ✓ **两种都实测有效** ✓（真 alpha、四角透明 ✓；白底那版半透明边缘略窄：0.19% vs 0.39% ✓）
 - 改配方时**朝向/居中这两件不要弄丢** ✗（用户只说要改颜色，也别顺手把朝向删了 ✓）；如果用户就是要“细一点”，那是**改配方**（把加粗那句改掉 ✓），不是加一句反向要求就完事 ✗
 - 出图后**把文件路径给用户**（工具返回里就是绝对路径 ✓）→ 问他「就要这个吗」
   ⚠️ 图大于 1.5MB 时工具**不会**内联显示 ✗（我们的预览图一般 2.5–3.5MB ✓）→ 所以**必须把路径写出来** ✓，
