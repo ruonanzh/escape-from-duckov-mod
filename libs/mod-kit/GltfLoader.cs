@@ -90,7 +90,6 @@ namespace ModelKit
             //    实测（2026-10-04）：Tripo 的模型朝向由**提示词**决定 —— 提示词写
             //    "the muzzle points to the left" → 枪口落在 **+Z**（= Unity 前向 ✓）；
             //    写 "to the right" → 落在 −Z。所以**朝向在生成阶段就定好** ✓
-            //    （详见 doc 仓 docs/unity-3d-assets/03-tripo-api.md §8.9）
             //    用户自己给的 GLB 没有这个保证 → 用 mod 的 `config.json` 的 "front" 声明（下面会转）
 
             ApplyFrontDeclaration(verts, norms, front);

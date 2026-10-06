@@ -8,7 +8,7 @@ import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path
  * generate_model —— 用 Tripo 从「一句话」或「一张图」生成 3D 模型（GLB），存到你正在做的 mod 目录里。
  *
  * 自己实现（不引第三方）：Tripo 就是 HTTP + JSON ✓，Node 自带 fetch ✓ → **零依赖** ✓
- * 为什么主干自己做（判据见 doc 仓 03-tripo-api.md §9.2）：
+ * 为什么主干自己做（判据见设计仓 desktop-gamer-agent-pi 的 docs/unity-3d-assets/03-tripo-api.md §9.2）：
  *   ① **产物一次到位** —— 成功立刻下载（URL 5 分钟过期）+ 存预览图/图标 + 朝向校验，固化成代码才不会漏
  *   ② 零依赖（Node 内置 fetch）；③ 按本仓约定返回 PASS/NEXT + 日志，便于验收
  *   广度（stylize / 分割 / retarget 等我们没用到的能力）可以挂现成 MCP：
@@ -17,7 +17,7 @@ import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path
  *  官方 `tripo-cli` —— 都能用 ✓，但它们要么多一个进程、要么还要自己串"下载 + 转朝向"；
  *  这里一次调用就产出**Unity 就绪**的 GLB ✓。若哪天想走 MCP：`pi mcp add tripo -- npx -y tripo-ai-mcp-server` ✓）
  *
- * 实测要点（doc 仓 docs/unity-3d-assets/03-tripo-api.md）：
+ * 实测要点（设计仓 desktop-gamer-agent-pi 的 docs/unity-3d-assets/03-tripo-api.md）：
  *   · 中国站 api.tripo3d.com（key 是哪个站的就用哪个；--global 用 .ai）
  *   · 模型 URL **5 分钟后过期** → 成功必须**立刻下载** ✓
  *   · 轮询 2 秒一次（官方限流）
@@ -61,7 +61,7 @@ function tripoRequireKey(): string {
 
 /**
  * ⭐ v3 端点（当前 API ✓ 2026-10-05 实测迁移）。
- * 实测确认（doc 仓 03-tripo-api.md §11 + 官方 43 页文档 ✓）：
+ * 实测确认（设计仓 desktop-gamer-agent-pi 的 docs/unity-3d-assets/03-tripo-api.md §11 + 官方 43 页文档 ✓）：
  *   · 建任务：POST /v3/generation/{text-to-model|image-to-model|text-to-image|image-to-image}
  *   · 查任务：GET /v3/tasks/{id} → data.status / data.progress / data.output（键名带 _url 后缀 ✓）
  *   · 余额：GET /v3/account/balance ✓（v3 **有**这个端点 ✓；/user/balance 是 v2 的 ✗）

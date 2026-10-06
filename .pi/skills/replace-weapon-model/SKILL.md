@@ -60,7 +60,7 @@ generate_model(action="generate", image=".preview/<名字>.preview.png",
 
 > **朝向只能靠提示词**：`..., the barrel and muzzle point to the LEFT, the stock is on the right`
 > **"to the left" → 枪口落在 +Z = Unity 前向** → 进游戏不用再转
-> （完整数据：doc 仓 `docs/unity-3d-assets/03-tripo-api.md` §8.8 / §8.9 / §11）
+> （实测：提示词写 "points to the right" → 枪口落在 −Z ✗；用户自带的 GLB 没有这个保证 → 用 `config.json` 的 `front` 兜底 ✓）
 
 ### ⑤ 图标（约 5 积分；用 ④ 的渲染图则**免费**）
 
