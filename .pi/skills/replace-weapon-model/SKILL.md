@@ -83,7 +83,7 @@ generate_image(model="your_mods/<mod>/gun.glb", styleRef="<游戏里那把武器
 - 图**原生就是透明的**（工具固定用 `chat_image_2.5_flare` + `background=transparent` + `output_format=png` ✓）；
   运行时**只做尺寸对齐**（256² + PPU50）✓，**不抠底也不裁方** ✓
   → 所以**构图必须靠提示词写清楚**：居中 ✓ 占宽约 80% ✓（运行时不会再帮你摆正 ✗）
-- 不写 `style` → 直接用模型自己的渲染图（免费）；没有 `icon.png` 就只换模型、不换图标
+- 不写 `prompt` → 直接用模型自己的渲染图（免费）；没有 `icon.png` 就只换模型、不换图标
 
 ### 成本一览（合计 ≈ 60 积分）
 
