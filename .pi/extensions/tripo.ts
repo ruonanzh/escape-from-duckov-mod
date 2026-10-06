@@ -60,13 +60,16 @@ function tripoRequireKey(): string {
 }
 
 /**
- * ⭐ v3 端点（当前 API ✓ 2026-10-05 实测迁移）。**v3 没有 balance 端点** ✗ → 余额走 v2 ✓
- * 实测确认（doc 仓 03-tripo-api.md §11）：
+ * ⭐ v3 端点（当前 API ✓ 2026-10-05 实测迁移）。
+ * 实测确认（doc 仓 03-tripo-api.md §11 + 官方 43 页文档 ✓）：
  *   · 建任务：POST /v3/generation/{text-to-model|image-to-model|text-to-image|image-to-image}
  *   · 查任务：GET /v3/tasks/{id} → data.status / data.progress / data.output（键名带 _url 后缀 ✓）
+ *   · 余额：GET /v3/account/balance ✓（v3 **有**这个端点 ✓；/user/balance 是 v2 的 ✗）
  *   · 转换：POST /v3/models/convert { input: <task_id> }（v2 叫 original_model_task_id ✗）
  *   · 上传：POST /v3/files（multipart 字段 file）→ **file_token**（v2 返回 image_token ✗ 且 v2 token v3 不认 ✗）
- *   · 图片输入：`file: { url | file_token | object }`（**不接受 {task_id}** ✗ —— 链路要传上一张图的 URL ✓）
+ *   · 图片输入（**文档形式**✓）：`input: <string>`（主参考，必选）+ `inputs: [<string>…]`（追加参考）
+ *     每个 string 可以是 公开 URL / file_token / **task_id** ✓（task_id 直传可省一次上传 ✓）
+ *     `file: {url|object|file_token}` 是 v2 形态 ✓ 仍能用 ✓ 但与文档不一致 ✗ 且不接受 task_id ✗
  *   · 限流：code 2000 / HTTP 429 = "exceeded the limit of generation" → 别连发 ✓
  */
 const TRIPO_V3 = "https://openapi.tripo3d.com/v3";
@@ -144,6 +147,22 @@ async function tripoFileRef(key: string, pathOrUrl: string): Promise<Record<stri
   const token = j.data?.file_token ?? j.data?.image_token;
   if (!token) throw new Error(`TRIPO_UPLOAD_NO_TOKEN: ${JSON.stringify(j.data ?? {}).slice(0, 200)}`);
   return { file_token: String(token) };
+}
+
+/** Tripo task id 的形状（实测都是 uuid ✓；用形状判断 ✓ 不会误伤文件路径 ✗）*/
+const TRIPO_TASK_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * v3 **文档形式**的输入引用 → 一个字符串 ✓（给 `input` / `inputs` 用）
+ *   · 公开 URL → 原样 ✓
+ *   · Tripo task id → 原样 ✓（API 自己推断来源 ✓ **省一次上传** ✓ 也不要再下载 ✓）
+ *   · 本地文件 → POST /v3/files → `file_token` 字符串 ✓
+ */
+async function tripoInputRef(key: string, value: string): Promise<string> {
+  if (/^https?:\/\//i.test(value)) return value;
+  if (TRIPO_TASK_RE.test(value)) return value;
+  const ref = await tripoFileRef(key, value);
+  return String(ref.file_token ?? ref.url);
 }
 
 export default function (pi: ExtensionAPI) {
@@ -231,6 +250,7 @@ export default function (pi: ExtensionAPI) {
       if (styleRefPath) refs.push({ kind: "file", value: styleRefPath });
 
       let url: string | null = renderUrl;
+      let genTaskId: string | null = null; // 记下来给模型那步复用 ✓（省一次上传+一次渲染 ✓）
       const wantsNew = Boolean(params.style || imagePath || styleRefPath);
       if (wantsNew) {
         // ⭐ v3：没有参考 → /generation/text-to-image（纯提示词 ✓ 已实测）；
@@ -241,11 +261,13 @@ export default function (pi: ExtensionAPI) {
         if (refs.length === 0) {
           var path = "/generation/text-to-image";
         } else if (refs.length === 1) {
-          body.file = await tripoFileRef(key, refs[0].value);
+          body.input = await tripoInputRef(key, refs[0].value);
           var path = "/generation/image-to-image";
         } else {
+          // ⭐ 文档形式：input = 主参考（必选 ✓）+ inputs = 追加参考（string[] ✓）
+          body.input = await tripoInputRef(key, refs[0].value);
           body.inputs = [];
-          for (const r of refs) (body.inputs as Array<Record<string, string>>).push(await tripoFileRef(key, r.value));
+          for (const r of refs.slice(1)) (body.inputs as string[]).push(await tripoInputRef(key, r.value));
           if (!/image\[/.test(prompt)) {
             prompt = `${prompt} (use image[1] as the subject; later images are the style/look reference)`;
             body.prompt = prompt;
@@ -261,7 +283,8 @@ export default function (pi: ExtensionAPI) {
         body.background = "transparent";
         body.output_format = "png";
         const gen = await api(path, body);
-        url = tripoPickUrl((await waitTask(String(gen.task_id))).output);
+        genTaskId = String(gen.task_id);
+        url = tripoPickUrl((await waitTask(genTaskId)).output);
       }
       if (!url) throw new Error("nothing to save (no render for this model, and no style/styleRef given)");
 
@@ -300,6 +323,7 @@ export default function (pi: ExtensionAPI) {
             text:
               `PASS: image saved to ${outPath} (${size}, square PNG). ` +
               (wantsNew ? "New image generated (a few credits spent)." : "The model's own render - no credits spent.") +
+              (genTaskId ? `\nImage task id: ${genTaskId} (pass it to generate_model as taskId= to skip re-uploading).` : "") +
               (shown
                   ? "\nShown in the chat so the player can see it without opening the file."
                   : "\n(The image is too large to show inline - give the player the path above.)") +
@@ -331,7 +355,7 @@ export default function (pi: ExtensionAPI) {
       ),
       image: Type.Optional(Type.String({ description: "Path to a reference image (png/jpg) for image-to-model." })),
       out: Type.Optional(Type.String({ description: "Where to save the GLB (usually inside your mod folder). Default: model.glb." })),
-      taskId: Type.Optional(Type.String({ description: "For action=convert: task id from an earlier generate." })),
+      taskId: Type.Optional(Type.String({ description: "A Tripo task id: for action=convert (the model to convert), or for action=generate it is used as the image source (an earlier image task)." })),
       faceLimit: Type.Optional(Type.Number({ description: "Max triangles (default 3000). Game assets: 1500-4000." })),
       animated: Type.Optional(Type.Boolean({ description: "Keep skeleton/animation data (default false = static, correct for props and weapons)." })),
       noTexture: Type.Optional(Type.Boolean({ description: "Skip texturing (cheaper, faster)." })),
@@ -367,7 +391,11 @@ export default function (pi: ExtensionAPI) {
           const p = isAbsolute(params.image) ? params.image : resolve(cwd, params.image);
           if (!existsSync(p)) throw new Error(`TRIPO_FILE_NOT_FOUND: ${p}`);
           genPath = "/generation/image-to-model";
-          modelParams.file = await tripoFileRef(key, p); // 本地图 → /v3/files → {file_token} ✓
+          modelParams.input = await tripoInputRef(key, p); // 文档形式：input = 字符串 ✓（URL / file_token / task_id ✓）
+        } else if (params.taskId) {
+          // 直接用上游图片任务的产物 ✓（不重新下载上传 ✓）—— 例如 generate_image 的 taskId
+          genPath = "/generation/image-to-model";
+          modelParams.input = params.taskId;
         } else if (params.prompt) {
           genPath = "/generation/text-to-model";
           modelParams.prompt = params.prompt;

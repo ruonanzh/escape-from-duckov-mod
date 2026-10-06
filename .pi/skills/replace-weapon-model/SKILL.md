@@ -26,19 +26,26 @@ description: 用户想换某把武器的模型/外观时用（例："把 MP5 换
 - **先建骨架、别等素材** —— 素材工具落盘时会自建目录，别让它抢在你前面把目录建出来
 - 图标/模型下一步产出来再放进这个目录即可
 
-### ③ 风格化预览图（约 5 积分）—— **先给用户看，等他确认**
+### ③ 风格化预览图：**清理 + 居中 + 加粗**（约 5 积分）—— **先给用户看，等他确认**
+
+⚠️ **本作的枪偏“厚实”**（枪管粗、机匣壮、枪托结实），而 Tripo 会**严格照图生成** ✗
+→ 只清理不加粗，出来的模型就是“细长”的 ✗（实测中厚/长 0.136，本作原枪 0.226 ✗）。
+所以这一步的提示词必须同时做两件事：**清理/居中 + 加粗**。
 
 ```
 generate_image(
   image="<用户的图>",                  // 没图就省略 -> 纯提示词出图
   styleRef="<游戏内武器的图>",           // 强烈建议：游戏里已有武器的图 -> 出得像本作
-  style="..., the barrel and muzzle point to the LEFT, the stock is on the right",
+  style="Keep the exact same weapon design, the same colors and the same surface texture and details as the input, but make the whole gun noticeably BULKIER and THICKER: a chunky barrel, a thick handguard and a stout stock - heavy, sturdy proportions like a stylized low-poly game asset. Keep it a single weapon in the same pose (side view, barrel and muzzle pointing LEFT), perfectly CENTERED in the frame, with a clear margin on all sides.",
   out="your_mods/<mod>/.preview/<名字>.preview.png")   // 中间图放 mod 目录下的 .preview/
 ```
 
+- **加粗措辞别再往上加码** ✗（再加 “much thicker / fat barrel” 就会过头：枪管变炮管、设计走样）—— 上面这一档实测正好（中厚/长 ≈ 0.19 ✓）
+- 三句都不能省 ✓：**保持原设计/贴图** ✓ · **朝向 LEFT** ✓ · **居中 + 留边** ✗（不写会偏下约 16% ✗）
 - 出图后工具**会把图显示在聊天里**（玩家直接看到，不用找文件）→ 问他「就要这个吗」
 - `.preview/` 放在 mod 目录下：`install_mod` 会跳过它（不进游戏），也不会把工作区弄脏
 - 不像就改 `style` 再来一次（每次都便宜）—— **没确认前不要做 ④**
+- ⚠️ **贴图风格由用户的图决定** ✓：不要用“游戏风格参考图”去**改贴图**（会打破用户给的原有贴图 ✗）
 
 ### ④ 3D 模型（约 50 积分，含转换）
 

@@ -18,3 +18,6 @@ __pycache__/
 # 编辑器
 .vscode/
 .idea/
+
+# 本仓不装 npm 依赖；node_modules 只可能是临时产物（别提交 ✗）
+node_modules/

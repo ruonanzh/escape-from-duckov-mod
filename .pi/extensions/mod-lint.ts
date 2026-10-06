@@ -92,11 +92,12 @@ export default function (pi: ExtensionAPI) {
       //     ⚠️ 不一致时**编译照样过** ✗、游戏只是静默不加载 ✗ —— 所以这条必须在这里静态拦下。
       if (existsSync(join(modDir, "ModBehaviour.cs"))) {
         const src = readFileSync(join(modDir, "ModBehaviour.cs"), "utf8");
-        const ns = /(?:^|\n)\s*namespace\s+([A-Za-z_][A-Za-z0-9_.]*)/.exec(src)?.[1];
-        const hasClass =
-          /(?:^|\n)\s*(?:public\s+|internal\s+|sealed\s+|abstract\s+|static\s+|partial\s+)*class\s+ModBehaviour\b/.test(
-            src,
-          );
+        // 先剥注释再扫 ✓：注释里写 "class ModBehaviour" 不该算通过 ✗
+        const code = src.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+        // ⚠ 不能用「行首」当边界 ✗ —— `namespace X { public class ModBehaviour {} }` 写一行是合法 C# ✓
+        //   → 用「前面不是标识符字符」当边界 ✓；`\b` 保证不匹到 ModBehaviourExtra ✓
+        const ns = /(?:^|[^\w$])namespace\s+([A-Za-z_][A-Za-z0-9_.]*)/.exec(code)?.[1];
+        const hasClass = /(?:^|[^\w$])class\s+ModBehaviour\b/.test(code);
         if (!hasClass) {
           errors.push(`ModBehaviour.cs: no "class ModBehaviour" found - the game looks for ${modName}.ModBehaviour`);
         } else if (!ns) {
