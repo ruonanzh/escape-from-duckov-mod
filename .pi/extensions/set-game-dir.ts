@@ -40,7 +40,7 @@ export default function (pi: ExtensionAPI) {
       }
       const out = setPathWithFallback(cwd, cfg, "gameDir", resolveUserPath(cwd, params.path));
       const { text, ok, status } = formatPathOutcome(out);
-      return { content: [{ type: "text", text }], details: { ok, status, kind: out.kind, given: out.given, recorded: out.recorded, wroteState: status !== "FAIL" } };
+      return { content: [{ type: "text", text }], details: { ok, status, recorded: out.recorded, wroteState: status !== "FAIL" } };
     },
   });
 }
