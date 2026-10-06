@@ -43,6 +43,10 @@ namespace WeaponModelSwap
             public string Front = "auto";
             public string IconFile = "icon.png";
             public string IconPath;          // 解析成绝对路径（相对 mod 目录 ✓）
+            /// <summary>config 里的 `slots`（**比例** ✓ [L,H,D]，L 沿 Z、H 沿 Y、D 沿 X ✓）——
+            /// 目前用来：① 换算成我们模型的局部坐标并打日志 ✓ ② 有 pivot 时用它当对齐基准 ✓
+            /// （step 2 会把保留的配件按这些点重新挂上 ✓）</summary>
+            public readonly Dictionary<string, Vector3> Slots = new Dictionary<string, Vector3>();
             public Mesh Mesh;                // 每个条目各自的模型缓存 ✓
             public Texture2D Texture;
             public string Signature = "";    // model+front 指纹：用来判断热重载后要不要重读 ✓
@@ -136,7 +140,7 @@ namespace WeaponModelSwap
             int id = root.GetInstanceID();
             if (_applied.TryGetValue(id, out var go) && go != null) return;      // 换过、还在
 
-            var r = ModelKit.WeaponModel.Apply(root, entry.Mesh, entry.Texture);
+            var r = ModelKit.WeaponModel.Apply(root, entry.Mesh, entry.Texture, default, entry.Slots);
             if (r.Applied)
             {
                 _applied[id] = r.Instance;
@@ -238,7 +242,24 @@ namespace WeaponModelSwap
             };
             var ids = j["typeIDs"];
             if (ids != null && ids.IsArray) for (int i = 0; i < ids.Count; i++) e.TypeIds.Add(ids[i].AsInt(0));
+            foreach (var kv in ParseSlots(j)) e.Slots[kv.Key] = kv.Value;
             return e;
+        }
+
+        /// <summary>读 config 的 `slots`：{ "Muzzle": [L,H,D], … } —— 每个值必须是≥3 个数的数组 ✓（0~1 比例 ✓）</summary>
+        static Dictionary<string, Vector3> ParseSlots(JsonValue j)
+        {
+            var dict = new Dictionary<string, Vector3>(StringComparer.OrdinalIgnoreCase);
+            var s = j["slots"];
+            if (s == null || !s.IsObject) return dict;
+            foreach (var kv in s.Object)
+            {
+                var a = kv.Value;
+                if (a == null || !a.IsArray || a.Count < 3)
+                { Debug.LogWarning($"[WeaponModel] slots.{kv.Key} 应是 [L,H,D] 三个 0~1 的数 —— 已跳过"); continue; }
+                dict[kv.Key] = new Vector3(a[0].AsFloat(0f), a[1].AsFloat(0f), a[2].AsFloat(0f));
+            }
+            return dict;
         }
 
         static string ModelLoaderDir()

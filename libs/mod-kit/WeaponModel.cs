@@ -25,10 +25,17 @@ namespace ModelKit
             public bool Applied;
             public GameObject Instance;
             public string Report = "";
+            /// <summary>config 里声明的槽位 → 我们模型局部坐标（米）的换算结果 ✓（供 step 2 把配件挂到我们形状上用 ✓）</summary>
+            public readonly Dictionary<string, Vector3> SlotPoints = new Dictionary<string, Vector3>();
+            /// <summary>对齐用到了什么（日志用 ✓）</summary>
+            public string AlignSource = "";
         }
 
         /// <summary>把手持武器的模型换成给进来的 Mesh+贴图。root 一般是 `itemGraphic.gameObject` 或手持实体的 GameObject。</summary>
-        public static Result Apply(Transform root, Mesh mesh, Texture2D texture, Vector3 extraOffset = default)
+        /// <param name="slots">可选：config.json 的槽位（**比例** ✓ 键如 Muzzle/Stock/Scope/Tec/Grip，以及可选的 pivot）；
+        /// 每个值 [L,H,D] 均为 0~1：**L 沿 Z（枪口 +Z ✓）· H 沿 Y · D 沿 X**（= 模型自身包围盒的比例 ✓）。
+        /// 作用：① 换算成我们模型局部坐标（记入 Result.SlotPoints ✓）② 有 `pivot` 就用它当对齐基准（比包围盒映射准 ✓）。</param>
+        public static Result Apply(Transform root, Mesh mesh, Texture2D texture, Vector3 extraOffset = default, Dictionary<string, Vector3> slots = null)
         {
             var res = new Result();
             if (root == null || mesh == null) { res.Report = "缺少 root 或 mesh"; return res; }
@@ -94,8 +101,9 @@ namespace ModelKit
             for (int i = 0; i < subCount; i++) mats[i] = one;
             mr.sharedMaterials = mats;
 
-            // ④ 对齐：以游戏那把枪的局部包围盒为基准（原点在它包围盒里的归一化位置 → 映射到我们包围盒同一位置）
+            // ④ 对齐：默认以游戏那把枪的局部包围盒为基准（原点在它包围盒里的归一化位置 → 映射到我们包围盒同一位置）
             Vector3 target = Vector3.zero;
+            res.AlignSource = "按原枪包围盒归一化映射";
             if (anchor != null)
             {
                 var refB = anchor.localBounds;
@@ -108,11 +116,34 @@ namespace ModelKit
                                      myB.min.y + frac.y * myB.size.y,
                                      myB.min.z + frac.z * myB.size.z);
             }
+
+            // ⭐ slots：先把每个 [L,H,D] 比例换算成“我们模型局部坐标里的点” ✓；
+            //    然后有 pivot → 用它当对齐基准（比包围盒映射准 ✓）；否则 Muzzle+Stock 都给 → 用它们的中点 ✓
+            if (slots != null && slots.Count > 0)
+            {
+                var b = mr.localBounds;
+                foreach (var kv in slots)
+                {
+                    var k = kv.Value;
+                    res.SlotPoints[kv.Key] = new Vector3(
+                        b.min.x + Mathf.Clamp01(k.z) * b.size.x,   // D → X ✓
+                        b.min.y + Mathf.Clamp01(k.y) * b.size.y,   // H → Y ✓
+                        b.min.z + Mathf.Clamp01(k.x) * b.size.z);  // L → Z ✓（枪口 +Z）
+                }
+                if (res.SlotPoints.TryGetValue("pivot", out var pv))
+                { target = pv; res.AlignSource = "slots.pivot"; }
+                else if (res.SlotPoints.TryGetValue("Muzzle", out var mz) && res.SlotPoints.TryGetValue("Stock", out var st))
+                { target = (mz + st) * 0.5f; res.AlignSource = "slots.Muzzle+Stock 中点"; }
+            }
             go.transform.localPosition = extraOffset - target;
 
             res.Applied = true; res.Instance = go;
             res.Report = $"已换模型：隐藏旧零件 {hidden} 个（保留 {kept} 个：配件/特效）；锚点={(anchor != null ? anchor.name : "根节点")}；"
                        + $"材质={(one != null ? one.name + "/" + (one.shader != null ? one.shader.name : "?") : "无")}；"
+                       + $"对齐={res.AlignSource}；"
+                       + (res.SlotPoints.Count > 0
+                           ? $"槽位(局部米)={string.Join(" ", System.Linq.Enumerable.Select(res.SlotPoints, kv => kv.Key + "=" + kv.Value.ToString("F3")))}；"
+                           : "")
                        + $"我们的包围盒={mesh.bounds.size}；原枪身包围盒={(anchor != null ? anchor.localBounds.size.ToString() : "-")}";
             return res;
         }
