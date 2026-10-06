@@ -182,7 +182,7 @@ export default function (pi: ExtensionAPI) {
     promptSnippet: "Make a square PNG (preview or icon) from a model or a reference picture",
     promptGuidelines: [
       "Use generate_image when a capability needs a 2D image file: it saves a square PNG to out= and returns PASS with the path.",
-      "Use generate_image with prompt= to get a new image (a few credits) drawn from the description, a reference picture, or a model; omit prompt= and pass model= or taskId= to get the model's own render for free.",
+      "Use generate_image with prompt= to get a new image (a few credits) drawn from the description, a reference picture, or a model; omit prompt= and pass model= or taskId= to get the model's own render for free (that render is the model's raw view, not a composed icon).",
       "Use generate_image with styleRef= (a picture of how the game's own assets look) when the result has to match the game's style; what to write in prompt= and where the file must go are described in the capability skill.",
     ],
     parameters: Type.Object({
