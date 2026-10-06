@@ -119,6 +119,19 @@ function tripoPickUrl(o: any): string | null {
   return null;
 }
 
+/**
+ * 落盘前的保护：目标文件已存在就**报错** ✓（绝不静默覆盖玩家/自己产出的文件 ✗）
+ * 两种解法都写进错误里：① 换个名字（例如按武器命名 ✓）② 已确认旧文件没用了就先删掉 ✓
+ */
+function guardOutNotExists(outPath: string): void {
+  if (!existsSync(outPath)) return;
+  throw new Error(
+    `OUT_FILE_EXISTS: ${outPath} already exists - nothing was written. ` +
+      `Either pick a different file name (e.g. name files after the weapon: ak103.glb / ak103.preview.png), ` +
+      `or delete that file first if you have checked it is not used any more.`,
+  );
+}
+
 /** 下载并落盘（URL 会过期 → 拿到就立刻下 ✓）*/
 async function tripoSave(url: string, outPath: string): Promise<string> {
   const r = await fetch(url);
@@ -183,7 +196,7 @@ export default function (pi: ExtensionAPI) {
     promptGuidelines: [
       "Use generate_image when a capability needs a 2D image file: it saves a square PNG to out= and returns PASS with the path.",
       "Use generate_image with prompt= to get a new image (a few credits) drawn from the description, a reference picture, or a model; omit prompt= and pass model= or taskId= to get the model's own render for free (that render is the model's raw view, not a composed icon).",
-      "Use generate_image with styleRef= (a picture of how the game's own assets look) when the result has to match the game's style; what to write in prompt= and where the file must go are described in the capability skill.",
+      "Use generate_image with styleRef= only when a picture of the game's own assets is already at hand (the user gave a screenshot, or a file already lives in the workspace); do NOT spend turns hunting for one. What to write in prompt= and where the file must go are described in the capability skill.",
     ],
     parameters: Type.Object({
       model: Type.Optional(Type.String({ description: "A .glb to work from (its own render, or the base for a styled image)." })),
@@ -244,12 +257,21 @@ export default function (pi: ExtensionAPI) {
       }
 
       // ② 要不要生成新图：给了 prompt / 参考图 才生成 ✓；只给 model/taskId → 直接返回渲染图（免费 ✓）
+      //    ⭐ 先把输出路径定下来并检查（已存在就报错 ✗）—— 放在生成前 ✓ 否则白花积分 ✗
       //    参考图按重要性排序：模型的渲染图（它长什么样）→ 玩家给的图 → 游戏内风格锚点
       //    1 张 → `file: {url|file_token}` ✓；≥2 张 → `inputs: [...]` ✓（v3 ✓）
       const refs: Array<{ kind: "render" | "file"; value: string }> = [];
       if (renderUrl) refs.push({ kind: "render", value: renderUrl });
       if (imagePath) refs.push({ kind: "file", value: imagePath });
       if (styleRefPath) refs.push({ kind: "file", value: styleRefPath });
+
+      // ⭐ 输出路径先定好并检查（已存在就报错 ✗）—— 必须在**发起生成之前** ✓ 否则白花积分 ✗
+      const name = modelPath ? basename(modelPath).replace(/\.glb$/i, "") : "preview";
+      const defaultOut = modelPath
+        ? join(dirname(modelPath), ".preview", `${name}.preview.png`)
+        : resolve(cwd, ".preview", `${name}.preview.png`);
+      const outPath = params.out ? (isAbsolute(params.out) ? params.out : resolve(cwd, params.out)) : defaultOut;
+      guardOutNotExists(outPath);
 
       let url: string | null = renderUrl;
       let genTaskId: string | null = null; // 记下来给模型那步复用 ✓（省一次上传+一次渲染 ✓）
@@ -295,11 +317,6 @@ export default function (pi: ExtensionAPI) {
       if (!url) throw new Error("nothing to save (no render for this model, and no prompt/styleRef given)");
 
       // ③ 落盘：默认放 .preview/（中间图 ✓ 永远不会被装进游戏）；要当图标就让 SKILL 传 out=icon.png ✓
-      const name = modelPath ? basename(modelPath).replace(/\.glb$/i, "") : "preview";
-      const defaultOut = modelPath
-        ? join(dirname(modelPath), ".preview", `${name}.preview.png`)
-        : resolve(cwd, ".preview", `${name}.preview.png`);
-      const outPath = params.out ? (isAbsolute(params.out) ? params.out : resolve(cwd, params.out)) : defaultOut;
       const size = await tripoSave(url, outPath);
       // 把图直接发到聊天里，让玩家看得见（app 会渲染 type:"image" 的块；当前模型看不了图时
       // app 会把它标成 deferred -> 不塞给模型，所以这不会让不支持视觉的模型报错）
@@ -382,6 +399,8 @@ export default function (pi: ExtensionAPI) {
 
       let taskId = params.taskId ?? "";
       let firstOut = params.out && !isAbsolute(params.out) ? resolve(cwd, params.out) : params.out ?? resolve(cwd, "model.glb");
+      // ⭐ 已存在就报错 ✓（“绝不静默覆盖” ✓）—— 放在建任务**之前** ✓ 否则白花积分 ✗
+      guardOutNotExists(firstOut);
 
       if (params.action === "generate") {
         // ⭐ v3：文本 → /generation/text-to-model；图片 → /generation/image-to-model
@@ -424,8 +443,8 @@ export default function (pi: ExtensionAPI) {
         const renderKey = done.output?.rendered_image_url ?? done.output?.rendered_image;
         if (renderKey) {
           try {
-            await download(renderKey, `${shotBase}.preview.png`);
-            shots.push(`${shotBase}.preview.png`);
+            await download(renderKey, `${shotBase}.render.png`);   // 叫 .render 而不是 .preview ✗：别覆盖 ③ 那张已确认的预览图 ✓
+            shots.push(`${shotBase}.render.png`);
             // 同一张渲染图再存一份到 mod 根做**图标**（背包卡片用 ✓ 白底会被运行时抠成透明 ✓）
             // 记下 task id（`.preview/<模型名>.task`）→ generate_image 可直接复用它的渲染图（不花积分 ✓）
             writeFileSync(`${shotBase}.task`, String(taskId));

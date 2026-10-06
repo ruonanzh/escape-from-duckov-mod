@@ -43,7 +43,6 @@ description: 用户想换某把武器的模型/外观时用（例："把 MP5 换
 ```
 generate_image(
   image="<用户的图>",                  // 只给文字时省略（→ 纯提示词出图 ✓）
-  styleRef="<游戏内武器的图>",           // 强烈建议：游戏里已有武器的图 -> 出得像本作
   prompt="Redraw the weapon from the input as a clean, isolated in-game asset: the whole weapon alone and complete - keep EVERY part of it (stock, pad, magazine, sights, mounts); remove only what is not the weapon (the background, any floating pieces, text, frames). Put it on a plain uniform white background: no scenery, no props, no shadow, no smoke, no hands, no text. Keep the weapon's own design, colors and surface details the same, but make it noticeably BULKIER and THICKER: a chunky barrel, a thick handguard and a stout stock - heavy, sturdy proportions like a stylized low-poly game asset. Side view with the barrel and muzzle pointing LEFT, and perfectly CENTERED in the frame, with a clear margin on all sides.",
   out="your_mods/<mod>/.preview/<名字>.preview.png")   // 中间图放 mod 目录下的 .preview/
 ```
@@ -62,7 +61,7 @@ generate_image(
 
 ```
 generate_model(action="generate", image=".preview/<名字>.preview.png",
-               out="your_mods/<mod>/gun.glb", faceLimit=3000)   // 目录在 ② 已建好
+               out="your_mods/<mod>/<武器名>.glb", faceLimit=3000)   // 目录在 ② 已建好；**模型名按武器起** ✓（如 ak103.glb ✓，别固定叫 gun.glb ✗）
 ```
 
 - 用 ③ 那张**已确认的预览图**做输入 —— **图 → 3D 比纯文字准得多**（冷门型号尤其）
@@ -76,7 +75,7 @@ generate_model(action="generate", image=".preview/<名字>.preview.png",
 ### ⑤ 图标（约 5 积分；用 ④ 的渲染图则**免费**）
 
 ```
-generate_image(model="your_mods/<mod>/gun.glb", styleRef="<游戏里那把武器的卡片图标>",
+generate_image(model="your_mods/<mod>/<武器名>.glb",
                prompt="clean game inventory icon, side profile, centered, the weapon occupies about 80% of the frame width",
                out="your_mods/<mod>/icon.png")
 ```
@@ -112,7 +111,7 @@ generate_image(model="your_mods/<mod>/gun.glb", styleRef="<游戏里那把武器
 
 ```json
 // ① 一套素材换一批武器（扁平字段 = 一条规则 ✓ 旧写法 ✓）
-{ "target": "MP5", "model": "gun.glb" }
+{ "target": "MP5", "model": "mp5.glb" }
 
 // ② 每把武器各换各的（一个 mod **多条规则** ✓ 按数组顺序匹配，**先命中的生效** ✓）
 { "entries": [
@@ -126,7 +125,7 @@ generate_image(model="your_mods/<mod>/gun.glb", styleRef="<游戏里那把武器
 |---|---|
 | `target` | 要换的武器名的一段（`MP5` 会匹配 `SMG_MP5_Normal`）|
 | `typeIDs` | 或精确匹配，如 `[238, 655]`（与 `target` 二选一 ✓ **数组 ✓**）|
-| `model` | GLB 文件名（相对 mod 目录 ✓ 也可绝对路径）；**文件还没产出也没关系**，后面放进来即可 |
+| `model` | GLB 文件名（**按武器起名** ✓ 如 `ak103.glb` —— 不要固定叫 `gun.glb` ✗；相对 mod 目录 ✓ 也可绝对路径）；**文件还没产出也没关系**，后面放进来即可 |
 | `icon` | 图标文件名（默认 `icon.png`）；没有就只换模型、不换图标 |
 | `front` | **只有用户自带的模型**才需要：`-z`/`+x`/`-x` 声明枪口朝向（`generate_model` 出的不用）|
 
@@ -169,7 +168,7 @@ generate_image(model="your_mods/<mod>/gun.glb", styleRef="<游戏里那把武器
 **装好之后改 `config.json` 不用重启游戏** ✓（mod 会盯着它的写入时间 ✓）：
 - ✓ `target` / `front` 改完存盘 → 立刻生效
 - ✓ `model` 换成**另一个文件名** → 会重新读模型
-- ✗ `model` **同名**换了文件内容（例如重新生成同名 `gun.glb`）→ **不会**重读 → 要重启游戏
+- ✗ `model` **同名**换了文件内容（例如重新生成同名 `ak103.glb`）→ **不会**重读 → 要重启游戏
 - ✗ **图标**不会重设 → 换图标要重启游戏
 
 ## 4. 怎么确认成功（装好 ≠ 成功）
@@ -191,7 +190,8 @@ generate_image(model="your_mods/<mod>/gun.glb", styleRef="<游戏里那把武器
 
 - `code=2008`（内容审核）→ **先试：把图里的 logo / 水印 / UI 文字裁掉再传**（实测同一张图去掉 logo 就通过）；仍被拒再去掉 `image=` 改用 `prompt=` 纯文字，或换一张图，或用用户自带的 `.glb`（别改措辞反复重试）。
 - `TRIPO_TASK_FAILED` → 生成失败，改提示词或换参考图重来。
-- `TRIPO_FILE_NOT_FOUND` → **它指的那个文件不存在**（`image=` / `styleRef=` / `model=` 传进来的路径写错了）。
+- `TRIPO_FILE_NOT_FOUND` → **它指的那个文件不存在**（`image=` / `model=` 传进来的路径写错了）。
+- `OUT_FILE_EXISTS` → **目标文件已存在，工具不覆盖** ✗ —— 换一个文件名 ✓（按武器起名：`ak103.glb` / `ak103.preview.png`），或确认那个旧文件确实没用了再先删掉 ✓。
 - 形状对但**握把偏** → 看日志两侧包围盒；`WeaponModel.Apply(..., extraOffset)` 可微调（一般不用）。
 - **贴图没上** → GLB 里没有 baseColor 贴图（重新 `texture_model` 或直接用带贴图的 GLB）。
 - **模型整块看不见** → 绕序/UV 问题（加载器已按左手系转换）→ 改提示词或换参考图重生成。

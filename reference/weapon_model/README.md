@@ -8,15 +8,15 @@
 WeaponModelSwap/                 ← 装进游戏的目录名要和 info.ini 的 name 一致
   ├─ WeaponModelSwap.dll
   ├─ info.ini
-  ├─ config.json                 ← { "target": "MP5", "model": "gun.glb" }
-  └─ gun.glb                     ← 你的模型（Tripo 导出的 GLB；建议 export_orientation="-x"）
+  ├─ config.json                 ← { "target": "MP5", "model": "mp5.glb" }
+  └─ mp5.glb                     ← 你的模型（**按武器起名** ✓；Tripo 导出的 GLB；建议 export_orientation="-x"）
 ```
 
 `config.json`（两种写法都支持 ✓）：
 
 ```json
 // ① 一套素材换一批武器（扁平字段 = 一条规则 ✓ 旧写法 ✓）
-{ "target": "MP5", "model": "gun.glb" }
+{ "target": "MP5", "model": "mp5.glb" }
 
 // ② 每把武器各换各的（多条规则 ✓ 按顺序匹配，先命中的生效）
 { "entries": [
