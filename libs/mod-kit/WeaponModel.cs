@@ -29,6 +29,14 @@ namespace ModelKit
             public readonly Dictionary<string, Vector3> SlotPoints = new Dictionary<string, Vector3>();
             /// <summary>对齐用到了什么（日志用 ✓）</summary>
             public string AlignSource = "";
+            /// <summary>被我们**禁用掉的旧零件**（热重载/卸载时用来恢复 ✗ 否则枪会整个不见 ✗）</summary>
+            public readonly List<Renderer> Hidden = new List<Renderer>();
+            /// <summary>把我们禁用过的旧零件**恢复显示** ✓（幂等 ✓）</summary>
+            public void RestoreHidden()
+            {
+                foreach (var r in Hidden) if (r != null) r.enabled = true;
+                Hidden.Clear();
+            }
         }
 
         /// <summary>把手持武器的模型换成给进来的 Mesh+贴图。root 一般是 `itemGraphic.gameObject` 或手持实体的 GameObject。</summary>
@@ -59,7 +67,7 @@ namespace ModelKit
             {
                 var n = r.gameObject.name;
                 if (n.StartsWith("ShowIf_") || n.StartsWith("MuzzleFlash") || n.StartsWith("Particle")) { kept++; continue; }
-                if (n.StartsWith("WPN_") || n.StartsWith("HideIf_")) { if (r.enabled) { r.enabled = false; hidden++; } continue; }
+                if (n.StartsWith("WPN_") || n.StartsWith("HideIf_")) { if (r.enabled) { r.enabled = false; hidden++; res.Hidden.Add(r); } continue; }
                 kept++;
             }
 

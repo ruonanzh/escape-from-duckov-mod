@@ -80,7 +80,7 @@ namespace WeaponModelSwap
         float _nextFindPlayer;
         DateTime _cfgStamp = DateTime.MinValue;
         float _nextIconSweep;
-        readonly Dictionary<int, GameObject> _applied = new Dictionary<int, GameObject>();   // transformId → 挂上的实例
+        readonly Dictionary<int, ModelKit.WeaponModel.Result> _applied = new Dictionary<int, ModelKit.WeaponModel.Result>();   // transformId → 换上的结果（含被禁用的旧零件 ✓ 用于恢复）
         string _lastHeld;
 
         void Start()
@@ -138,12 +138,12 @@ namespace WeaponModelSwap
 
             var root = agent.gameObject.transform;
             int id = root.GetInstanceID();
-            if (_applied.TryGetValue(id, out var go) && go != null) return;      // 换过、还在
+            if (_applied.TryGetValue(id, out var prev) && prev != null && prev.Instance != null) return;      // 换过、还在
 
             var r = ModelKit.WeaponModel.Apply(root, entry.Mesh, entry.Texture, default, entry.Slots);
             if (r.Applied)
             {
-                _applied[id] = r.Instance;
+                _applied[id] = r;
                 Debug.Log("[WeaponModel] " + r.Report);
                 // 图标：卡片上那个 Sprite 也换成我们的
                 if (entry.IconPath != null) Debug.Log("[WeaponModel] " + ModelKit.WeaponIcon.Apply(item, entry.IconPath));
@@ -159,16 +159,24 @@ namespace WeaponModelSwap
                 if (!File.Exists(_configPath)) return;
                 var st = File.GetLastWriteTimeUtc(_configPath);
                 if (st == _cfgStamp) return;
-                _cfgStamp = st;
+                _cfgStamp = st;   // 先记时间戳 ✓ 避免下面抛错时反复重试 ✗
 
-                var oldSig = string.Join("|", _entries.Select(e => e.Signature));
-                ReadConfig();
-                var newSig = string.Join("|", _entries.Select(e => e.Signature));
+                ReadConfig();     // ⭐ 这一步不能少 ✗（我差点改丢 ✓）—— 重读 config → _entries
 
-                foreach (var kv in _applied) if (kv.Value != null) UnityEngine.Object.Destroy(kv.Value);
+                // ⭐ 先销毁我们的实例 **并恢复被禁用的旧零件** ✓（否则一旦重挂失败（如模型文件缺失/解析出错 ✗），
+                //    旧零件还关着 → **枪会整个看不见** ✗✓ —— 2026-10-06 实测踩到过 ✓）
+                foreach (var kv in _applied)
+                {
+                    if (kv.Value == null) continue;
+                    kv.Value.RestoreHidden();
+                    if (kv.Value.Instance != null) UnityEngine.Object.Destroy(kv.Value.Instance);
+                }
                 _applied.Clear();
                 _lastHeld = null;
-                if (newSig != oldSig) LoadModels();
+                // ⭐ **每次都重读模型** ✗：热重载会把 Entry 重建（Mesh 变 null ✗），
+                //    而旧代码只在 model/front 指纹变了时才重读 ✗ → 只改 slots/target/icon 时会
+                //    “永远挂不上” ✗✓（同样导致枪不见 ✓）。重读一个 GLB 只要几十毫秒 ✓ 换来正确性 ✓。
+                LoadModels();
                 Debug.Log($"[WeaponModel] 配置已热重载：{_entries.Count} 条规则（旧实例已丢弃，稍后按新配置重挂）");
             }
             catch (Exception e) { Debug.LogWarning($"[WeaponModel] 热重载失败：{e.Message}"); }
