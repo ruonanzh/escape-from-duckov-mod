@@ -1,11 +1,23 @@
-// WeaponModel（示例 mod）—— 把某把武器的模型换成你给的 GLB。
+// WeaponModel（示例 mod）—— 把**一把或多把**武器的模型换成你给的 GLB。
 //
 // 这就是"替换武器模型"的**完整正确做法**：整个 mod 只有这一份配置 + 一句调用。
 //
-// config.json：
-//   { "target": "MP5",  "model": "gun.glb" }
-//     target = 武器名的一段（大小写不敏感；例 MP5 会匹配 SMG_MP5_Normal）；也可用 "typeIDs": [655]
-//     model  = 放在本 mod 目录里的 GLB 文件（相对路径或绝对路径）
+// config.json 支持两种写法（都行 ✓）：
+//
+//   ① 一套素材换一批武器（旧写法 ✓ 仍然有效）
+//      { "target": "MP5", "model": "gun.glb" }
+//
+//   ② 每把武器各换各的（一个 mod 多条规则 ✓ 按数组顺序匹配，**先命中的生效**）
+//      { "entries": [
+//          { "target": "AK",   "model": "ak.glb",  "icon": "ak_icon.png" },
+//          { "typeIDs": [655], "model": "mp5.glb", "front": "-x" } ] }
+//
+//   字段（每条都能用 ✓）：
+//     target  = 武器名的一段（大小写不敏感；例 MP5 会匹配 SMG_MP5_Normal）
+//     typeIDs = 或精确命中（数组 ✓ 例 [238, 655]）
+//     model   = 放在本 mod 目录里的 GLB 文件（相对路径或绝对路径）
+//     icon    = 图标文件名（默认 icon.png；没有就只换模型、不换图标）
+//     front   = 仅"用户自带的模型"需要：auto/+z/-z/+x/-x 声明枪口朝向（Tripo 出的由提示词保证 ✓）
 //
 // 运行时会做（都在 libs/mod-kit 里，见 WeaponModel.cs / GltfLoader.cs / GameApi.cs）：
 //   读 GLB → 建 Mesh+贴图（坐标系/绕序/UV 转换 + 握把归零）
@@ -14,6 +26,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using ModelKit;
 using UnityEngine;
 
@@ -21,31 +34,60 @@ namespace WeaponModelSwap
 {
     public class ModBehaviour : Duckov.Modding.ModBehaviour
     {
-        string _configPath;
-        string _target = "";
-        string _modelFile = "";
-        string _front = "auto";
-        string _iconFile = "icon.png";   // mod 目录里的图标（generate_model 会存 ✓）；没有就跳过 ✓          // 用户自带模型可声明朝向（auto/+z/-z/+x/-x）；Tripo 出的由提示词保证 ✓
-        readonly HashSet<int> _typeIds = new HashSet<int>();
+        /// <summary>一条规则："给哪些武器，换成哪套素材"。一个 mod 可以有多条 ✓</summary>
+        class Entry
+        {
+            public string Target = "";
+            public readonly HashSet<int> TypeIds = new HashSet<int>();
+            public string ModelFile = "";
+            public string Front = "auto";
+            public string IconFile = "icon.png";
+            public string IconPath;          // 解析成绝对路径（相对 mod 目录 ✓）
+            public Mesh Mesh;                // 每个条目各自的模型缓存 ✓
+            public Texture2D Texture;
+            public string Signature = "";    // model+front 指纹：用来判断热重载后要不要重读 ✓
 
-        Mesh _mesh;
-        Texture2D _texture;
+            public bool Matches(ItemStatsSystem.Item item)
+            {
+                if (string.IsNullOrEmpty(Target) && TypeIds.Count == 0) return false;
+                if (TypeIds.Count > 0 && TypeIds.Contains(item.TypeID)) return true;
+                if (!string.IsNullOrEmpty(Target) && item.name != null &&
+                    item.name.IndexOf(Target, StringComparison.OrdinalIgnoreCase) >= 0) return true;
+                return false;
+            }
+
+            public void Resolve(string dir)
+            {
+                IconPath = string.IsNullOrEmpty(IconFile)
+                    ? null
+                    : (Path.IsPathRooted(IconFile) ? IconFile : Path.Combine(dir, IconFile));
+                Signature = ModelFile + "\n" + Front;
+            }
+
+            public string ModelPath(string dir) =>
+                string.IsNullOrEmpty(ModelFile) ? null
+                : (Path.IsPathRooted(ModelFile) ? ModelFile : Path.Combine(dir, ModelFile));
+        }
+
+        string _configPath;
+        readonly List<Entry> _entries = new List<Entry>();
+
         CharacterMainControl _player;
         float _nextFindPlayer;
-        DateTime _cfgStamp;
-        string _iconPath;
+        DateTime _cfgStamp = DateTime.MinValue;
         float _nextIconSweep;
-        readonly Dictionary<int, GameObject> _applied = new Dictionary<int, GameObject>();
+        readonly Dictionary<int, GameObject> _applied = new Dictionary<int, GameObject>();   // transformId → 挂上的实例
         string _lastHeld;
 
         void Start()
         {
             _configPath = Path.Combine(ModelLoaderDir(), "config.json");
             ReadConfig();
-            Debug.Log($"[WeaponModel] 目标='{_target}' typeIDs=[{string.Join(",", _typeIds)}] 模型='{_modelFile}'");
             _cfgStamp = File.Exists(_configPath) ? File.GetLastWriteTimeUtc(_configPath) : DateTime.MinValue;
-            LoadModel();
-            _iconPath = Path.IsPathRooted(_iconFile) ? _iconFile : Path.Combine(ModelLoaderDir(), _iconFile);          // 启动就读好模型 → 玩家掏出枪时能**立刻**换（不然会先看到原模型 ✗）
+            LoadModels();
+            // 启动就读好模型 → 玩家掏出枪时能**立刻**换（不然会先看到原模型 ✗）
+            Debug.Log($"[WeaponModel] 规则 {_entries.Count} 条：" + string.Join(" / ",
+                _entries.Select((e, i) => $"#{i + 1} target='{e.Target}' typeIDs=[{string.Join(",", e.TypeIds)}] model='{e.ModelFile}'")));
         }
 
         void Update()
@@ -53,14 +95,19 @@ namespace WeaponModelSwap
             ReloadIfChanged();
 
             // 图标要**尽早**盖上：背包卡片可能在"掏出武器"之前就建好了 ✗
-            // → 启动后几秒内反复按名字匹配所有（模板 + 实例）并设图标 ✓
-            if (_iconPath != null && Time.unscaledTime < 20f && Time.unscaledTime >= _nextIconSweep)
+            // → 启动后几秒内反复按名字匹配所有（模板 + 实例）并设图标 ✓（每条规则各自扫一遍 ✓）
+            if (Time.unscaledTime < 20f && Time.unscaledTime >= _nextIconSweep)
             {
                 _nextIconSweep = Time.unscaledTime + 2f;
-                var n = ModelKit.WeaponIcon.ApplyToAllMatching(_target, _typeIds, _iconPath);
-                if (n > 0) Debug.Log($"[WeaponModel] 图标预置：按名字/typeID 命中 {n} 个 Item（含模板）");
+                for (int i = 0; i < _entries.Count; i++)
+                {
+                    var e = _entries[i];
+                    if (e.IconPath == null) continue;
+                    var n = ModelKit.WeaponIcon.ApplyToAllMatching(e.Target, e.TypeIds, e.IconPath);
+                    if (n > 0) Debug.Log($"[WeaponModel] 图标预置：规则#{i + 1} 命中 {n} 个 Item（含模板）");
+                }
             }
-            if (_mesh == null) return;
+            if (_entries.Count == 0) return;
 
             // 找玩家较重（FindObjectsOfType）→ 只在没有/每 2 秒找一次；**每帧**只看"手里拿的是什么"（廉价 ✓）
             if (_player == null && Time.unscaledTime >= _nextFindPlayer)
@@ -73,25 +120,29 @@ namespace WeaponModelSwap
             var item = agent != null ? agent.Item : null;
             if (item == null || agent == null || agent.gameObject == null) return;
 
+            int hit = FirstMatch(item);   // 按数组顺序，先命中的生效 ✓
             if (item.name != _lastHeld)
             {
                 _lastHeld = item.name;
-                Debug.Log($"[WeaponModel] 手里的物品：'{item.name}'（typeID={item.TypeID}）→ {(Matches(item) ? "命中 ✓ 会换" : "不命中 —— 不换")}");
+                Debug.Log($"[WeaponModel] 手里的物品：'{item.name}'（typeID={item.TypeID}）→ " +
+                          (hit >= 0 ? $"命中规则#{hit + 1} ✓ 会换" : "没有任何规则命中 —— 不换"));
             }
-            if (!Matches(item)) return;
+            if (hit < 0) return;
+
+            var entry = _entries[hit];
+            if (entry.Mesh == null) return;
 
             var root = agent.gameObject.transform;
             int id = root.GetInstanceID();
             if (_applied.TryGetValue(id, out var go) && go != null) return;      // 换过、还在
 
-            var r = ModelKit.WeaponModel.Apply(root, _mesh, _texture);
+            var r = ModelKit.WeaponModel.Apply(root, entry.Mesh, entry.Texture);
             if (r.Applied)
             {
                 _applied[id] = r.Instance;
                 Debug.Log("[WeaponModel] " + r.Report);
-                // 图标：卡片上那个 Sprite 也换成我们的（白底抠透明）
-                var iconPath = Path.IsPathRooted(_iconFile) ? _iconFile : Path.Combine(ModelLoaderDir(), _iconFile);
-                Debug.Log("[WeaponModel] " + ModelKit.WeaponIcon.Apply(item, iconPath));
+                // 图标：卡片上那个 Sprite 也换成我们的
+                if (entry.IconPath != null) Debug.Log("[WeaponModel] " + ModelKit.WeaponIcon.Apply(item, entry.IconPath));
             }
             else Debug.LogWarning("[WeaponModel] 没换成：" + r.Report);
         }
@@ -105,55 +156,89 @@ namespace WeaponModelSwap
                 var st = File.GetLastWriteTimeUtc(_configPath);
                 if (st == _cfgStamp) return;
                 _cfgStamp = st;
-                var oldModel = _modelFile;
+
+                var oldSig = string.Join("|", _entries.Select(e => e.Signature));
                 ReadConfig();
+                var newSig = string.Join("|", _entries.Select(e => e.Signature));
+
                 foreach (var kv in _applied) if (kv.Value != null) UnityEngine.Object.Destroy(kv.Value);
                 _applied.Clear();
                 _lastHeld = null;
-                if (_modelFile != oldModel) { _mesh = null; _texture = null; LoadModel(); }
-                Debug.Log($"[WeaponModel] 配置已热重载：目标='{_target}' 模型='{_modelFile}' front='{_front}'（旧实例已丢弃，稍后按新配置重挂）");
+                if (newSig != oldSig) LoadModels();
+                Debug.Log($"[WeaponModel] 配置已热重载：{_entries.Count} 条规则（旧实例已丢弃，稍后按新配置重挂）");
             }
             catch (Exception e) { Debug.LogWarning($"[WeaponModel] 热重载失败：{e.Message}"); }
         }
 
-        bool Matches(ItemStatsSystem.Item item)
+        /// <summary>按数组顺序找第一条命中的规则 ✓（找不到返回 -1）</summary>
+        int FirstMatch(ItemStatsSystem.Item item)
         {
-            if (string.IsNullOrEmpty(_target) && _typeIds.Count == 0) return false;
-            if (_typeIds.Count > 0 && _typeIds.Contains(item.TypeID)) return true;
-            if (!string.IsNullOrEmpty(_target) && item.name != null &&
-                item.name.IndexOf(_target, StringComparison.OrdinalIgnoreCase) >= 0) return true;
-            return false;
+            for (int i = 0; i < _entries.Count; i++) if (_entries[i].Matches(item)) return i;
+            return -1;
         }
 
-        void LoadModel()
+        void LoadModels()
         {
-            string path = _modelFile;
-            if (string.IsNullOrEmpty(path)) { Debug.LogWarning("[WeaponModel] config 里没写 model"); return; }
-            if (!Path.IsPathRooted(path)) path = Path.Combine(ModelLoaderDir(), path);
-            if (!File.Exists(path)) { Debug.LogWarning($"[WeaponModel] 找不到模型文件：{path}"); return; }
-            try
+            var dir = ModelLoaderDir();
+            foreach (var e in _entries)
             {
-                var g = GltfLoader.LoadFile(path, _front);
-                _mesh = g.Mesh; _texture = g.MainTexture;
-                Debug.Log("[WeaponModel] " + g.Report);
+                var path = e.ModelPath(dir);
+                if (string.IsNullOrEmpty(path)) { Debug.LogWarning($"[WeaponModel] 规则 model='{e.ModelFile}' 是空的 —— 跳过"); continue; }
+                if (!File.Exists(path)) { Debug.LogWarning($"[WeaponModel] 找不到模型文件：{path}"); continue; }
+                try
+                {
+                    var g = GltfLoader.LoadFile(path, e.Front);
+                    e.Mesh = g.Mesh; e.Texture = g.MainTexture;
+                    Debug.Log($"[WeaponModel] 读到模型 {Path.GetFileName(path)}：" + g.Report);
+                }
+                catch (Exception ex) { Debug.LogError($"[WeaponModel] 读模型失败（{Path.GetFileName(path)}）：{ex.Message}"); }
             }
-            catch (Exception e) { Debug.LogError($"[WeaponModel] 读模型失败：{e.Message}"); }
         }
 
         void ReadConfig()
         {
             try
             {
+                var dir = ModelLoaderDir();
+                _entries.Clear();
                 if (!File.Exists(_configPath)) { Debug.LogWarning($"[WeaponModel] 没有 config.json：{_configPath}"); return; }
                 var cfg = Json.Parse(File.ReadAllText(_configPath));
-                _target = cfg.GetStr("target", "");
-                _modelFile = cfg.GetStr("model", "");
-                _front = cfg.GetStr("front", "auto");
-                _iconFile = cfg.GetStr("icon", "icon.png");
-                var ids = cfg["typeIDs"];
-                if (ids != null && ids.IsArray) for (int i = 0; i < ids.Count; i++) _typeIds.Add(ids[i].AsInt(0));
+
+                // ② 多条目写法（优先 ✓）
+                var arr = cfg["entries"];
+                if (arr != null && arr.IsArray && arr.Count > 0)
+                {
+                    for (int i = 0; i < arr.Count; i++)
+                    {
+                        var j = arr[i];
+                        if (j == null || !j.IsObject) { Debug.LogWarning($"[WeaponModel] entries[{i}] 不是对象 —— 跳过"); continue; }
+                        _entries.Add(EntryFrom(j));
+                    }
+                }
+                // ① 旧写法：扁平字段 = 一条规则 ✓（向后兼容 ✓ 已装的 mod 不用改 ✓）
+                else if (cfg.Has("target") || cfg.Has("typeIDs") || cfg.Has("model"))
+                {
+                    _entries.Add(EntryFrom(cfg));
+                }
+                else Debug.LogWarning("[WeaponModel] config.json 里既没有 entries 也没有 target/typeIDs/model");
+
+                foreach (var e in _entries) e.Resolve(dir);
             }
             catch (Exception e) { Debug.LogError($"[WeaponModel] 读 config 失败：{e.Message}"); }
+        }
+
+        static Entry EntryFrom(JsonValue j)
+        {
+            var e = new Entry
+            {
+                Target = j.GetStr("target", ""),
+                ModelFile = j.GetStr("model", ""),
+                Front = j.GetStr("front", "auto"),
+                IconFile = j.GetStr("icon", "icon.png"),
+            };
+            var ids = j["typeIDs"];
+            if (ids != null && ids.IsArray) for (int i = 0; i < ids.Count; i++) e.TypeIds.Add(ids[i].AsInt(0));
+            return e;
         }
 
         static string ModelLoaderDir()

@@ -12,12 +12,27 @@ WeaponModelSwap/                 ← 装进游戏的目录名要和 info.ini 的
   └─ gun.glb                     ← 你的模型（Tripo 导出的 GLB；建议 export_orientation="-x"）
 ```
 
-`config.json`：
-| 字段 | 说明 |
+`config.json`（两种写法都支持 ✓）：
+
+```json
+// ① 一套素材换一批武器（扁平字段 = 一条规则 ✓ 旧写法 ✓）
+{ "target": "MP5", "model": "gun.glb" }
+
+// ② 每把武器各换各的（多条规则 ✓ 按顺序匹配，先命中的生效）
+{ "entries": [
+    { "target": "AK",   "model": "ak.glb",  "icon": "ak_icon.png" },
+    { "typeIDs": [655], "model": "mp5.glb", "front": "-x" } ] }
+```
+
+| 字段（每条规则都能用） | 说明 |
 |---|---|
 | `target` | 武器名的一段（大小写不敏感 ✓ `MP5` 会匹配 `SMG_MP5_Normal`）|
-| `typeIDs` | 或者直接给 typeID（如 `[655]`；用 `inspect_game_data` 查）|
+| `typeIDs` | 或者直接给 typeID（数组 ✓ 如 `[655, 238]`；用 `inspect_game_data` 查）|
 | `model` | 本目录下的 GLB（相对路径或绝对路径 ✓）|
+| `icon` | 图标文件名（默认 `icon.png` ✓）|
+| `front` | 仅自带模型需要：`auto`/`+z`/`-z`/`+x`/`-x`（Tripo 出的靠提示词 ✓）|
+
+> ⚠️ 给了 `entries` 就**只看 entries**（扁平字段被忽略）；两者不要混用。
 
 ## 能力在库里（`libs/mod-kit`）
 
