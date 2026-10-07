@@ -109,4 +109,3 @@ var res = ModelKit.ItemModel.Apply(item, loaded.Mesh, loaded.MainTexture, handhe
 - **UI 里那张图 / 图标** ✗：物品图标（背包格子 + “使用时”那张图）要用图标那条能力 ✓（本能力只换世界模型 ✓）。
 - **per-item 的尺寸/偏移微调** ✗：目前只有 `front`（朝向 ✓）；某件模型明显偏大/偏位时再加 `scale` / `offset` ✓。
 - **新增物品**（新 typeID / 名字 / 数值）✗：那是**数据层**，属另一个能力（`new-item`）✓。
-- ⚠️ 但**“没有 3D 图形的物品”已经支持** ✓（糖果那类 ✓ 自动走“克隆 + 动态条目” ✓）—— 别再写“纯图标物品换不了” ✗。
