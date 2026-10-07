@@ -482,10 +482,12 @@ namespace ModelKit
             // ⭐ **层要跟着物品走** ✗ —— `Attach` 在 mount==null 时用的是 root 的层 ✓
             //   而 root 是我们 `new GameObject()` 出来的 → **layer = 0（Default）** ✗
             //   游戏显示这个世界模型时按层过滤 → Default 层的 mesh **看不见** ✗（实测：糖果消失 ✓）
-            //   ⚠️ **不能**用"物品自己的层" ✗（实测踩到 ✓）：Item 的 GameObject 平时是给**背包格子 / UI** 用的 ✓
-            //      它的层是 **UI 层** ✗ → 拿它渲染世界模型会 **发白 + 渲染在最前面** ✗
-            //   → 改用**游戏自己显示世界物品时用的层** ✓（`GameApi.DisplayLayer()` 从场上游戏图形里读 ✓）
-            SetLayerDeep(g.gameObject, GameApi.DisplayLayer());
+            //   ⚠️ **层：一律不设** ✗（实测证据 ✓）：游戏**掉落物**的图形 prefab 层就是 **0（Default）** ✓
+            //      而且游戏里这些掉落物**看得见** ✓（`InteractablePickup.CreateGraphic` 里**没有任何设层代码** ✓）
+            //      → 我们造的图形就保持 `new GameObject()` 的默认层（0 ✓）= 和游戏资产完全一致 ✓
+            //   我先后猜过"Default 看不见"✗ / "用物品自己的层"✗（→ 发白+渲染在最前 ✓）/ "用 Character"✗（→ 看不见 ✓）
+            //   —— 三次都错 ✓ 根因是**猜层值** ✗ 而不是照游戏的做法（不设 ✓）
+            SetLayerDeep(g.gameObject, 0);
             if (g.gameObject.GetComponent<Marked>() == null) g.gameObject.AddComponent<Marked>();
 
             if (!WriteGraphic(item, g)) return null;            // 写回 item.ItemGraphic ✓
@@ -576,7 +578,7 @@ namespace ModelKit
             HideOld(g.transform, res);
             res.Instance = Attach(g.transform, mount, mesh, texture, src.name, g.transform.position,
                                   mount != null ? mount.sharedMaterial : BorrowMaterial());
-            SetLayerDeep(g.gameObject, GameApi.DisplayLayer());      // ⭐ 同上：用"世界显示层" ✓（物品自己的层是 UI 层 ✗）
+            SetLayerDeep(g.gameObject, 0);      // ⭐ 同上：层一律不设 ✓（游戏掉落物就是 0 层 ✓ 而它看得见 ✓）
             if (g.gameObject.GetComponent<Marked>() == null) g.gameObject.AddComponent<Marked>();
 
             if (!WriteGraphic(item, g)) { res.Report = "写回克隆的 itemGraphic 失败 ✗"; return res; }   // ⑤
@@ -603,6 +605,22 @@ namespace ModelKit
             try { ok = ItemStatsSystem.ItemAssetsCollection.AddDynamicEntry(item); }   // ⑦ **注册动态条目** ✓
             catch (Exception ex) { res.Report = "注册动态条目抛错 ✗：" + ex.Message; return res; }
             if (!ok) { res.Report = "AddDynamicEntry 返回 false ✗"; return res; }
+
+            // ⚠️ 临时诊断（量完删 ✗ 只读 ✓）：把"我们造的图形/网格"和"游戏自己那份"的实际状态打出来 ✓
+            try
+            {
+                var go = res.Instance;
+                var mr = go != null ? go.GetComponent<MeshRenderer>() : null;
+                var b = mr != null ? mr.bounds : new Bounds();
+                Debug.Log($"[ItemModel] 诊断(临时)：'{src.name}'(typeID={typeID})"
+                        + $"｜我们的图形: layer={g.gameObject.layer} active={g.gameObject.activeInHierarchy}"
+                        + $"｜我们的 mesh: layer={(go != null ? go.layer : -1)} enabled={(mr != null ? mr.enabled : false)}"
+                        + $" size=({b.size.x:F3},{b.size.y:F3},{b.size.z:F3}) 世界中心=({b.center.x:F2},{b.center.y:F2},{b.center.z:F2})"
+                        + $"｜物品自己 layer={item.gameObject.layer}｜原件图形={(src.ItemGraphic != null ? src.ItemGraphic.gameObject.layer.ToString() : "null")}"
+                        + $"｜Character 层号={LayerMask.NameToLayer("Character")}｜SpecialCamera={LayerMask.NameToLayer("SpecialCamera")}"
+                        + $"｜父节点={(go != null && go.transform.parent != null ? go.transform.parent.name : "(无)")}");
+            }
+            catch (Exception ex) { Debug.LogWarning("[ItemModel] 诊断失败: " + ex.Message); }
 
             _dynDone.Add(typeID);                                  // 记下 ✓ 只注册一次 ✓
             _dynGraphic[typeID] = g;                               // 存起来 ✓ 后续实例补写要用它 ✓
