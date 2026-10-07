@@ -84,6 +84,7 @@ namespace ItemModelSwap
         DateTime _cfgStamp = DateTime.MinValue;
         float _nextHeldSweep;                      // ⭐ 手持/装备那条要**反复复查**（物品是后来才被拿起来的 ✓）
         readonly HashSet<int> _diagnosed = new HashSet<int>();   // 诊断每件只打一次 ✓
+        float _nextSceneCheck;                                      // 现场诊断（低频 ✓）
 
         /// <summary>模型缓存：路径 → （指纹, Mesh, 贴图）。指纹 = 路径 + 朝向 + 文件 mtime+size ✓</summary>
         sealed class CachedModel { public string Sig; public Mesh Mesh; public Texture2D Texture; }
@@ -112,6 +113,7 @@ namespace ItemModelSwap
         {
             ReloadIfChanged();
             ApplyAll();
+            SceneCheck();
         }
 
         /// <summary>config.json 存盘即生效（热重载 ✓ 不用重启 ✓）</summary>
@@ -137,6 +139,32 @@ namespace ItemModelSwap
                 Debug.Log("[ItemModel] config 已重载 → 重新挂 " + _entries.Count + " 条规则");
             }
             catch (Exception ex) { Debug.LogWarning("[ItemModel] config 热重载失败：" + ex.Message); }
+        }
+
+        /// <summary>⭐ 现场诊断（每 10 秒一条 ✓）：命中的物品**现在**的 ItemGraphic 是什么 ✓、
+        /// 以及场上有没有我们的图形实例 ✓ —— 用来分清"没写进去 ✗"还是"写进去但画不出来 ✗"</summary>
+        void SceneCheck()
+        {
+            if (Time.unscaledTime < _nextSceneCheck) return;
+            _nextSceneCheck = Time.unscaledTime + 10f;
+            int ours = 0;
+            try
+            {
+                foreach (var g in UnityEngine.Object.FindObjectsByType<ItemGraphicInfo>(FindObjectsSortMode.None))
+                    if (g != null && g.gameObject != null && g.gameObject.name.StartsWith("ModelKit_graphic_")) ours++;
+            }
+            catch { }
+            foreach (var item in GameApi.AllItems())
+            {
+                if (item == null) continue;
+                Entry hit = null;
+                for (int i = 0; i < _entries.Count; i++) if (_entries[i].Matches(item)) { hit = _entries[i]; break; }
+                if (hit == null || !hit.World) continue;
+                var g = item.ItemGraphic;
+                Debug.Log($"[ItemModel] 现场：'{item.name}'(typeID={item.TypeID})｜ItemGraphic="
+                        + (g == null ? "**null** ✗" : (g.gameObject != null ? g.gameObject.name : "(已销毁) ✗"))
+                        + $"｜场上我们的图形实例={ours}");
+            }
         }
 
         /// <summary>对"所有已加载的物品（含模板 + 场上实例 ✓）"逐条匹配并挂上模型 ✓</summary>
