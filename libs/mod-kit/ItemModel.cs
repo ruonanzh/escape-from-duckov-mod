@@ -81,6 +81,55 @@ namespace ModelKit
             catch { return false; }
         }
 
+        static PropertyInfo _graphicProp;
+        static FieldInfo _graphicField;
+        static bool _probed;
+
+        static void ProbeGraphic()
+        {
+            if (_probed) return;
+            _probed = true;
+            var t = typeof(ItemStatsSystem.Item);
+            var prop = t.GetProperty("ItemGraphic", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (prop != null && prop.CanWrite) _graphicProp = prop;
+            if (_graphicProp == null)
+            {
+                var f = t.GetField("itemGraphic", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (f != null && f.FieldType == typeof(ItemGraphicInfo)) _graphicField = f;
+            }
+        }
+
+        /// <summary>把图形写到物品上 ✓（属性优先 ✓ 私有字段兜底 ✓ —— 工坊 mod 也是这两条 ✓）</summary>
+        public static bool WriteGraphic(ItemStatsSystem.Item item, ItemGraphicInfo graphic)
+        {
+            if (item == null || graphic == null) return false;
+            ProbeGraphic();
+            if (_graphicProp != null) { _graphicProp.SetValue(item, graphic); return true; }
+            if (_graphicField != null) { _graphicField.SetValue(item, graphic); return true; }
+            return false;
+        }
+
+        /// <summary>借一份游戏材质（给"本来没有图形"的物品用 ✓）：从**任意**一个游戏网格材质上取 ✓
+        /// —— shader/关键字都是游戏自己的 ✓ 不会像上次那样退回默认材质（粉色 ✗）</summary>
+        static Material _borrowed;
+
+        static Material BorrowMaterial()
+        {
+            if (_borrowed != null) return _borrowed;
+            try
+            {
+                foreach (var g in UnityEngine.Object.FindObjectsByType<ItemGraphicInfo>(FindObjectsSortMode.None))
+                {
+                    if (g == null) continue;
+                    foreach (var r in g.GetComponentsInChildren<Renderer>(true))
+                        if ((r is MeshRenderer || r is SkinnedMeshRenderer) && r.sharedMaterial != null)
+                        { _borrowed = r.sharedMaterial; return _borrowed; }
+                }
+            }
+            catch { }
+            return null;
+        }
+
         // ───────────────────────── 关旧外观 / 挂我们的 ─────────────────────────
 
         /// <summary>取"挂点"：优先**包围盒最大**的渲染器（**任何类型** ✓ 含 SpriteRenderer ✓）；
@@ -285,7 +334,31 @@ namespace ModelKit
             return res;
         }
 
-        // ───────────────────────── 三个入口 ─────────────────────────        // ───────────────────────── 三个入口 ─────────────────────────
+        /// <summary>给"本来没有图形"的物品**造一份世界图形**（用它替换 2D 图片兜底 ✓）：
+        /// 运行时新建一个带 `ItemGraphicInfo` 的物体 ✓ 挂上我们的 mesh ✓ 写回 `item.ItemGraphic` ✓
+        ///
+        /// ⚠️ **不 `DontDestroyOnLoad`** ✗（上次"整件消失"就是踩了 DDOL ✗）：
+        ///    它活在**当前场景** ✓ 换场景后自然失效 → 游戏回退到 2D 图片 ✓（优雅降级 ✓）
+        ///    → mod 每秒的复查会**再造一份** ✓</summary>
+        static ItemGraphicInfo MakeGraphicForItem(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture, Result res)
+        {
+            ItemGraphicInfo g;
+            try
+            {
+                var go = new GameObject("ModelKit_graphic_" + (string.IsNullOrEmpty(item.name) ? "item" : item.name));
+                g = go.AddComponent<ItemGraphicInfo>();
+            }
+            catch (Exception) { return null; }
+
+            var fallback = BorrowMaterial();                    // 借一份游戏材质 ✓（免得上默认材质变粉色 ✗）
+            res.Instance = Attach(g.transform, null, mesh, texture, item.name, g.transform.position, fallback);
+            if (g.gameObject.GetComponent<Marked>() == null) g.gameObject.AddComponent<Marked>();
+
+            if (!WriteGraphic(item, g)) return null;            // 写回 item.ItemGraphic ✓
+            return g;
+        }
+
+        // ───────────────────────── 三个入口 ─────────────────────────
 
         /// <summary>① 按 **typeID** 换（**推荐主入口** ✓ 不用先拿到 Item ✓）：
         /// 改物品模板的图形 → 以后每个实例（掉地上/手里/装备 ✓）都是我们的 ✓</summary>
@@ -309,7 +382,15 @@ namespace ModelKit
             var graphic = item.ItemGraphic;
             if (graphic == null)
             {
-                res.Report = "没有 ItemGraphic ✗（纯图标物品 ✓ 换不了外观）";
+                // ⭐ 这件物品本来没有世界图形（游戏会画一张 **2D 图片** 兜底 ✓）
+                //   → 我们**造一份图形**写进去 ✓ 游戏下次就用我们的 ✓（= **替换**那个兜底 ✓ 不是删它 ✗）
+                var made = MakeGraphicForItem(item, mesh, texture, res);
+                if (made == null) { res.Report = "造图形失败 ✗（这件物品保持 2D 图片兜底 ✓）"; return res; }
+                res.CacheCleared = ClearAgentCache(item);
+                res.AnchorName = "新建图形";
+                res.Applied = true;
+                res.Report = "没有 ItemGraphic → **造了一份世界图形** ✓ 替换掉 2D 图片兜底 ✓"
+                           + $"｜mesh 顶点={mesh.vertexCount}｜清缓存={(res.CacheCleared ? "是" : "否")}";
                 return res;
             }
 
