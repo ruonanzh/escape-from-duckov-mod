@@ -155,9 +155,11 @@ namespace ModelKit
             var res = new Result { TypeID = typeID, ItemName = itemName ?? "" };
             if (root == null || mesh == null) { res.Report = "外观为空或网格为空 ✗"; return res; }
 
-            // 幂等 ✓：同一个外观被调两次（模板 + 实例 ✓ 都是一份 prefab ✓）不要再挂一遍 ✗
-            foreach (Transform ch in root)
-                if (ch.name.StartsWith("ModelKit_")) { res.Applied = true; res.Report = "已经换过了 ✓"; return res; }
+            // 幂等 ✓：**整个子树**里已经有我们的东西就不再挂一遍 ✗
+            //   （模板改过之后，游戏新造出来的实例**天生**就带着它 ✓ → 不判子级会给每个实例重复挂 ✗ 实测）
+            foreach (var r in root.GetComponentsInChildren<Renderer>(true))
+                if (r != null && r.gameObject.name.StartsWith("ModelKit_"))
+                { res.Applied = true; res.Report = "已经换过了 ✓"; return res; }
 
             var mount = PickMount(root);
             res.AnchorName = mount != null ? mount.gameObject.name : "根";
