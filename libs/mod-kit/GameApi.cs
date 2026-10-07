@@ -137,6 +137,43 @@ namespace ModelKit
             HideCharacterSkin(cm, keepUnder);   // 幂等
         }
 
+        /// <summary>把"我们的基础色贴图"套到一份**从游戏材质克隆来的**材质上 ✓，并**清掉其它槽** ✗。
+        /// 武器 ✓ 物品 ✓ **共用同一套** ✓（用户要求一套逻辑 ✓）。
+        ///
+        /// 为什么必须清 ✗：克隆来的材质带着**游戏原来的**发光/法线/遮蔽图 ✗，而我们的 UV 与它不同 ✗
+        ///   → 会采样出一片**脏 / 发光斑** ✗（实测：头盔上出现紫粉色发光斑 ✓）
+        /// ⚠️ 属性名随管线不同 ✓ → 逐个 `HasProperty` 探 ✓（URP `_BaseMap`/`_BaseColor` ✓ 旧 API `_MainTex`/`_Color` ✓）</summary>
+        public static void ApplyOurTexture(Material mat, Texture2D tex)
+        {
+            if (mat == null) return;
+            try
+            {
+                // ① 基础色贴图 ✓
+                if (tex != null)
+                {
+                    if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
+                    else if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", tex);
+                    else mat.mainTexture = tex;                       // 最后兜底 ✓
+                }
+                // ② 基础色 tint 清成白 ✓（两套属性名都试 ✓）
+                if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", Color.white);
+                if (mat.HasProperty("_Color")) mat.SetColor("_Color", Color.white);
+                try { mat.color = Color.white; } catch { }
+
+                // ③ **关发光** ✗（头盔紫斑的来源 ✓）
+                if (mat.HasProperty("_EmissionMap")) mat.SetTexture("_EmissionMap", null);
+                if (mat.HasProperty("_EmissionColor")) mat.SetColor("_EmissionColor", Color.black);
+                mat.DisableKeyword("_EMISSION");
+
+                // ④ **清掉"和我们 UV 对不上"的图** ✗（留着只会脏 ✓）
+                var slots = new string[] { "_BumpMap", "_NormalMap", "_OcclusionMap", "_MetallicGlossMap",
+                                           "_SpecGlossMap", "_DetailMask", "_DetailAlbedoMap", "_ParallaxMap" };
+                for (int i = 0; i < slots.Length; i++)
+                    if (mat.HasProperty(slots[i])) mat.SetTexture(slots[i], null);
+            }
+            catch { /* 材质换不上不该炸 ✓ */ }
+        }
+
         /// <summary>⭐ 游戏**自己声明**的"这套外观用哪些渲染器" ✓ —— 图形根上的 `CharacterSubVisuals.renderers` ✓。
         /// 实测价值 ✓：运行时挂上去的**灯 / 特效不在这个清单里** ✗ → 用它找"本体"最准 ✓（比"取最大"稳 ✓）。
         /// 武器/物品两边都适用 ✓（物品清单通常只有 1 个 = 本体 ✓；武器清单含 枪身+配件 ✓ 需再筛 ✓）</summary>

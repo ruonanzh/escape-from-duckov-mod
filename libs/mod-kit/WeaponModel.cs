@@ -145,12 +145,7 @@ namespace ModelKit
             if (one != null)
             {
                 one.name = "WeaponModel_mat";
-                if (texture != null)
-                {
-                    if (one.HasProperty("_BaseMap")) one.SetTexture("_BaseMap", texture);
-                    else if (one.HasProperty("_MainTex")) one.SetTexture("_MainTex", texture);
-                    if (one.HasProperty("_BaseColor")) one.SetColor("_BaseColor", Color.white);
-                }
+                GameApi.ApplyOurTexture(one, texture);       // ⭐ 换贴图 + **清其它槽** ✓（与物品共用一套 ✓）
             }
             int subCount = Mathf.Max(1, mesh.subMeshCount);
             var mats = new Material[subCount];
