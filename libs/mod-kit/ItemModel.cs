@@ -107,7 +107,8 @@ namespace ModelKit
 
         /// <summary>把我们的 mesh 挂上去（挂在挂点上 ✓ 没有挂点就挂根 ✓）
         /// 缩放补回"世界尺度 = 1" ✓（prefab 的缩放链不一定是 1 ✗）；材质**克隆游戏自己的**再换贴图 ✓</summary>
-        static GameObject Attach(Transform root, Renderer mount, Mesh mesh, Texture2D texture, string itemName)
+        static GameObject Attach(Transform root, Renderer mount, Mesh mesh, Texture2D texture, string itemName,
+                                Vector3 oldCenterWorld)
         {
             var parent = mount != null ? mount.transform : root;
             Vector3 lossy = parent.lossyScale;
@@ -119,7 +120,12 @@ namespace ModelKit
             var go = new GameObject("ModelKit_" + (string.IsNullOrEmpty(itemName) ? "item" : itemName));
             go.layer = mount != null ? mount.gameObject.layer : root.gameObject.layer;
             go.transform.SetParent(parent, false);
-            go.transform.localPosition = Vector3.zero;
+            // ⭐ 让"我们 mesh 的**包围盒中心**"落到"**被替掉的那个外观**的包围盒中心" ✓
+            //   旧零件的原点常常不在自己身上 ✗（比如原点在角色脚下、几何靠自身变换挪上去 ✓）
+            //   → 直接 localPosition = zero 就会摆错 ✗（实测：模型出现在角色脚下 ✗）
+            //   尺度仍保持**真实米制** ✓（不随旧模型大小缩放 ✗）
+            var want = parent.InverseTransformPoint(oldCenterWorld);
+            go.transform.localPosition = want - Vector3.Scale(mesh.bounds.center, inv);
             go.transform.localRotation = Quaternion.identity;
             go.transform.localScale = inv;
 
@@ -163,14 +169,24 @@ namespace ModelKit
 
             var mount = PickMount(root);
             res.AnchorName = mount != null ? mount.gameObject.name : "根";
+            // 旧外观的中心要在**关掉之前**取 ✓（用 localBounds × 矩阵 ✓ 禁用后 AABB 可能不更新 ✗）
+            Vector3 oldCenter = mount != null
+                ? mount.transform.TransformPoint(mount.localBounds.center)
+                : root.position;
             HideOld(root, res);
-            res.Instance = Attach(root, mount, mesh, texture, itemName);
+            res.Instance = Attach(root, mount, mesh, texture, itemName, oldCenter);
             res.Applied = true;
             res.Report = $"关旧外观 {res.Hidden.Count} 个｜挂到 '{res.AnchorName}'"
+                       + (mount != null
+                          ? $"(世界 {Fmt(mount.transform.position)} 缩放 {Fmt(mount.transform.lossyScale)} 旧外观中心 {Fmt(oldCenter)})"
+                          : "(没有可用的挂点 → 挂根 ✓)")
                        + $"｜mesh 顶点={mesh.vertexCount} 子网格={mesh.subMeshCount}"
                        + $"｜材质={(texture != null ? "已换贴图" : "游戏原材质")}";
             return res;
         }
+
+        static string Fmt(Vector3 v)
+            => "(" + v.x.ToString("0.###") + "," + v.y.ToString("0.###") + "," + v.z.ToString("0.###") + ")";
 
         // ───────────────────────── 三个入口 ─────────────────────────
 
