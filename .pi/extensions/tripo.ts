@@ -349,8 +349,7 @@ export default function (pi: ExtensionAPI) {
               (genTaskId ? `\nImage task id: ${genTaskId} (pass it to generate_model as taskId= to skip re-uploading).` : "") +
               (shown
                   ? "\nShown in the chat so the player can see it without opening the file."
-                  : "\n(The image is too large to show inline - give the player the path above.)") +
-                "\nNEXT: ask the user to confirm this image; for a preview, get their OK before generate_model (~40 credits).",
+                  : "\n(The image is too large to show inline - give the player the path above.)"),
           },
         ],
       };
@@ -481,7 +480,7 @@ export default function (pi: ExtensionAPI) {
         content: [
           {
             type: "text",
-            text: `PASS: converted and saved ${firstOut} (${size}) task_id=${taskId}\nNEXT: point the mod's config.json at this file (or call install_mod) - see the capability skill.`,
+            text: `PASS: converted and saved ${firstOut} (${size}) task_id=${taskId}`,
           },
         ],
       };
