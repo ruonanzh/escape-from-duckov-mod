@@ -43,11 +43,11 @@ description: 用户想换某把武器的模型/外观时用（例："把 MP5 换
 ```
 generate_image(
   image="<用户的图>",                  // 只给文字时省略（→ 纯提示词出图 ✓）
-  prompt="Redraw the weapon from the input as a clean, isolated in-game asset: keep ONLY the main item - if the input shows several objects, take the largest, centered one and ignore the rest. The whole weapon alone and complete - keep EVERY part of it (stock, pad, magazine, sights, mounts); remove only what is not the weapon (the background, any floating pieces, text, frames). Put it on a plain uniform white background: no scenery, no props, no shadow, no smoke, no hands, no text. Keep the weapon's own design, colors and surface details the same, but make it noticeably BULKIER and THICKER: a chunky barrel, a thick handguard and a stout stock - heavy, sturdy proportions like a stylized low-poly game asset. Side view with the barrel and muzzle pointing LEFT, and perfectly CENTERED in the frame, with a clear margin on all sides.",
+  prompt="Redraw the weapon from the input as a clean, isolated in-game asset: keep ONLY the main item - if the input shows several objects, take the largest, centered one and ignore the rest. The whole weapon alone and complete - keep EVERY part of it (stock, pad, magazine, sights, mounts); remove only what is not the weapon (the background, any floating pieces, text, frames). Put it on a plain uniform white background: no scenery, no props, no shadow, no smoke, no hands, no text. Keep the weapon's own design and colors the same, but render it in a CARTOON / toon-shaded style like the game's own assets (flat stylized colors, clean shading - not photoreal), and make it noticeably BULKIER and THICKER: a chunky barrel, a thick handguard and a stout stock - heavy, sturdy proportions like a stylized low-poly game asset. Side view with the barrel and muzzle pointing LEFT, and perfectly CENTERED in the frame, with a clear margin on all sides.",
   out="your_mods/<mod>/.preview/<名字>.preview.png")   // 中间图放 mod 目录下的 .preview/
 ```
 
-- 这段配方里有 8 件事都**不能丢** ✗：**只留主物品**（图里有多个物体时取**最大最居中**那个 ✓ 其余全丢 ✗）· **整把武器都在**（部件一个不少 ✓）· **只移除不是武器的东西**（背景/飘浮物/文字/边框 ✓）· **纯白均一背景 + 无杂物** ✓ · **保持原设计/颜色/贴图** ✓ · **加粗** ✓ · **朝向 LEFT** ✓ · **居中 + 留边** ✓
+- 这段配方里有 8 件事都**不能丢** ✗：**只留主物品**（图里有多个物体时取**最大最居中**那个 ✓ 其余全丢 ✗）· **整把武器都在**（部件一个不少 ✓）· **只移除不是武器的东西**（背景/飘浮物/文字/边框 ✓）· **纯白均一背景 + 无杂物** ✓ · **保持原设计/颜色 + 卡通渲染** ✓（不是照片感 ✗） · **加粗** ✓ · **朝向 LEFT** ✓ · **居中 + 留边** ✓
 - 背景那两句的写法：`plain uniform white background` ✓ 或直接写 `transparent` ✓ **两种都实测有效** ✓（真 alpha、四角透明 ✓；白底那版半透明边缘略窄：0.19% vs 0.39% ✓）
 - 改配方时**朝向/居中这两件不要弄丢** ✗（用户只说要改颜色，也别顺手把朝向删了 ✓）；如果用户就是要“细一点”，那是**改配方**（把加粗那句改掉 ✓），不是加一句反向要求就完事 ✗
 - 出图后**把文件路径给用户**（工具返回里就是绝对路径 ✓）→ 问他「就要这个吗」
@@ -83,9 +83,9 @@ generate_image(model="your_mods/<mod>/<武器名>.glb",
 - 图**原生就是透明的** ✓；运行时只做**尺寸对齐**（256² + PPU50 ✓）—— **不抠底、不裁方、也不调构图** ✗
   → 所以构图得自己写进提示词 ✓：**居中大致有效** ✓，**占宽控制不了** ✗（flare 总会顶满 —— 别为此反复重生成 ✗）
 
-### 成本一览（合计 ≈ 60 积分）
+### 成本一览（合计 ≈ 70 积分）
 
-预览图 `generate_image` **5** · 3D 模型 `generate_model` **50**（含转换）· 图标 `generate_image` **5**（用模型自带的渲染图则**免费**）
+预览图 `generate_image` **10** · 3D 模型 `generate_model` **50**（含转换）· 图标 `generate_image` **10**（用模型自带的渲染图则**免费**）
 
 > **Tripo key**：放**单独的文件** `~/.gamer-agent-pi/api-keys.json` → `{ "tripo": "tsk_..." }`
 > （用户级、所有游戏仓库共用、不进 git；**临时方案** —— 将来由 app 的「管理 API keys」界面接管）

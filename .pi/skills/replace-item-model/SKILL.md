@@ -33,11 +33,11 @@ description: 用户想换**物品**（背包 / 防弹衣 / 头盔 / 弹匣 / 任
 ```
 generate_image(
   image="<用户的图>",                       // 只给文字描述时省略（→ 纯提示词出图 ✓）
-  prompt="Redraw the item from the input as a clean, isolated in-game asset: keep ONLY the main item - if the input shows several objects, take the largest, centered one and ignore the rest. The whole item alone and complete - keep EVERY part of it; remove only what is not the item (the background, any floating pieces, text, frames). Put it on a plain uniform white background: no scenery, no props, no shadow, no smoke, no hands, no text. Keep the item's own design, colors and surface details the same, but make it noticeably BULKIER and THICKER: heavy, sturdy proportions like a stylized low-poly game asset, about 0.55 m tall (game scale). Side view, and perfectly CENTERED in the frame, with a clear margin on all sides.",
+  prompt="Redraw the item from the input as a clean, isolated in-game asset: keep ONLY the main item - if the input shows several objects, take the largest, centered one and ignore the rest. The whole item alone and complete - keep EVERY part of it; remove only what is not the item (the background, any floating pieces, text, frames). Put it on a plain uniform white background: no scenery, no props, no shadow, no smoke, no hands, no text. Keep the item's own design and colors the same, but render it in a CARTOON / toon-shaded style like the game's own assets (flat stylized colors, clean shading - not photoreal), and make it noticeably BULKIER and THICKER: heavy, sturdy proportions like a stylized low-poly game asset, about 0.55 m tall (game scale). Show it from the SIDE (a profile view that shows its thickness and depth), NOT a front view, and perfectly CENTERED in the frame, with a clear margin on all sides.",
   out="your_mods/<mod>/.preview/<物品名>.preview.png")   // 中间图放 mod 目录下的 .preview/
 ```
 
-- 这段配方里有 **8 件事都不能丢** ✗：**只留主物品**（图里有多个物体时取**最大最居中**那个 ✓ 其余全丢 ✗）· **整件物品都在** · **只移除不是它的东西** · **纯白均一背景** · **保原设计与贴图** · **加粗** · **侧视** · **居中留边**
+- 这段配方里有 **8 件事都不能丢** ✗：**只留主物品**（图里有多个物体时取**最大最居中**那个 ✓ 其余全丢 ✗）· **整件物品都在** · **只移除不是它的东西** · **纯白均一背景** · **保原设计与颜色 + 卡通渲染**（不是照片感 ✗）· **加粗** · **侧视** · **居中留边**
 - ⚠️ `about 0.55 m tall (game scale)` 那句里的数字**按物品类别换** ✓（见 §1 末尾的尺寸表 ✓）
 - 出图后**把文件路径给用户**（工具返回里就是绝对路径 ✓）→ 问他「就要这个吗」
   ⚠️ 图大于 1.5MB 时工具**不会**内联显示 ✗ → 所以**必须把路径写出来** ✓
@@ -75,9 +75,9 @@ generate_model(action="generate",
 - ⚠️ 这些数**比实物大**（头盔实物 ~0.3 m，游戏里 0.65 m）→ **照游戏那一档** ✓
 - **建模三条** ✓：① **原点随便**（运行时按"包围盒中心"对齐 ✓）② **朝向正着**（Y 上 · Z 前）③ **尽量左右对称** ✓
 
-### 成本一览（合计 ≈ 55 积分）
+### 成本一览（合计 ≈ 60 积分）
 
-预览图 `generate_image` **5** · 3D 模型 `generate_model` **50**（含转换）
+预览图 `generate_image` **10** · 3D 模型 `generate_model` **50**（含转换）
 
 ## 2. 建骨架与 config.json
 
