@@ -1,27 +1,24 @@
-// ItemModel.cs —— 把模型作用到**物品**上（枪、配件、背包、任意 Item）。
+// ItemModel.cs —— **非武器物品**的外观替换（武器走 WeaponModel ✓ 两套互不掺和 ✗）。
 //
-// 物品的模型有**两条独立的路径**（读游戏代码 + 实测得到的结论 ✓），两条都要换：
-//   · **掉落/展示** → `ItemGraphicInfo`：游戏调 `ItemGraphicInfo.CreateAGraphic(item.ItemGraphic, …)` 实例化
-//     ⇒ 所以正解是"改 item.ItemGraphic（或直接改物品模板的 prefab）+ 清掉实体缓存" → 让游戏自己去重建
-//   · **拿在手上** → `ItemAgent`：手里那份是 `item.ActiveAgent`
-//     ⇒ 正解是**就地**换几何（关原渲染器 + 挂我们的 mesh），**不销毁任何游戏持有的对象**
+// 事实（反编译 + 实测 ✓）：
+//   · 物品的世界外观 = 它自己的 `ItemGraphicInfo`（`item.ItemGraphic`）实例化出来的；
+//     没有 `ItemGraphic` 的物品退化成"图标精灵"（`CreateAGraphic`: 用 `spriteGraphicPfb` +
+//     `fallbackSprite.sprite = item.Icon`）→ 那种我们**不动** ✗（换不了外观 ✓ 直接跳过 ✓）
+//   · **非武器物品的图形里常常一个网格都没有** ✗（只有精灵，或者靠 `Setup(item)` 运行时补 ✓）
+//     —— 所以"关旧几何/找锚点"**不能**只认 `MeshRenderer`/`SkinnedMeshRenderer` ✗
+//   · `ItemAgent.AgentTypes = { normal, pickUp, handheld, equipment }` ✓ 与"武器/物品"无关 ✓
+//   · 游戏每次要显示时都 `Instantiate(item.ItemGraphic)` ✓
+//     → **就地改那个 prefab** = 以后每个实例都自动是对的 ✓
 //
-// ⚠️ 实测踩过的坑（照抄，别改）：
-//   · **千万不要用 `ItemAgentUtilities.CreateAgent()` 去"替换"活实体** ✗：它内部会 `ReleaseActiveAgent()`
-//     销毁旧实体，而游戏（ItemAgentHolder 等）还持有旧实体的引用 → 那件武器会"选不中/用不了"，
-//     直到丢地上再捡起来。就地换几何不动游戏持有的对象，所以状态不受影响 ✓
-//   · **模板（克隆出来的那个）千万不要 `SetActive(false)`** ✗：Unity 的 `Instantiate` 会继承激活状态
-//     → 之后所有实例全都不可见（手里看不到、掉地上消失）。模板保持激活 ✓ 但挪到世界外（y = −5000）✓
-//   · **必须 `DontDestroyOnLoad`** ✓：否则换场景（菜单 → 关卡）时模板被销毁
-//     → 物品的 itemGraphic 变成"已销毁"引用（= 空）→ 又变回原样 ✗
-//   · **别把 mesh 锚在"第一个"渲染器上** ✗（可能是个小管子）→ 取**包围盒最大**的那个当锚点 ✓
-//   · **枪上的零件要挑着关** ✓：`WPN_*`（枪身）+ `HideIf_*`（原枪自带的默认件）要关；
-//     `ShowIf_*`（配件自己的模型）与特效（`MuzzleFlash` / `Particle`）**留给游戏按状态开关** ✓
-//     我们碰了就会出现"第一次看不到配件、切换一次才全显示" ✗（实测踩过两次）
-//   · 挂在锚点上要**把缩放补回"世界尺度 = 1"** ✓（prefab 内部缩放链不一定为 1，否则会缩到看不见 ✗）
+// ⚠️ 血泪教训（归档那份从没测过的代码留下的 ✗）
+//   · **绝不把"克隆出来的模板"写回 `item.ItemGraphic`** ✗：
+//     模板被塞进 `DontDestroyOnLoad`，而 Unity 里 `Instantiate` 出来的副本**落在原物体所在的场景**
+//     → 之后每个实例都生在 DDOL 场景里 → **全都看不见** ✗
+//     （实测现象：整件背包连它原来的外观一起消失 ✗）
+//   · 所以这里**不克隆** ✓：直接改游戏自己的 prefab（只在运行时内存里 ✓ 不落盘 ✓ 可 `Restore()` ✓）
 //
-// 写回图形用**反射** ✓（先试可写属性 `ItemGraphic` ✓ 再退私有字段 `itemGraphic` ✓）—— 更能抗游戏更新 ✓
-// （社区 mod 也是这么做的 ✓）
+// 它不管什么：挂点/槽位/枪械零件命名（`WPN_*` / `ShowIf_*` / `HideIf_*` 那套是**武器专用** ✗）。
+// 物品这里只有三件事：**关掉原外观 → 挂上我们的模型 → 让游戏下次重建时也用它** ✓
 
 using System;
 using System.Collections.Generic;
@@ -30,67 +27,39 @@ using UnityEngine;
 
 namespace ModelKit
 {
-    /// <summary>把"我们的 mesh + 贴图"接到某个**物品**上（改图形 prefab + 清实体缓存 + 就地换手持几何）。</summary>
+    /// <summary>把"我们的 mesh + 贴图"接到**非武器物品**上（改它自己的图形 ✓ 不克隆不 DDOL ✗）。</summary>
     public static class ItemModel
     {
         /// <summary>一次替换的结果 ✓（带 `Restore()` ✓ 热重载/卸载时能还原 ✓）</summary>
         public sealed class Result
         {
             public bool Applied;
-            public GameObject Instance;                       // 我们挂上去的那个物体
-            public GameObject Template;                       // 我们克隆出来、藏到世界外的图形模板（可能为 null ✓）
+            public int TypeID;
+            public string ItemName = "";
+            public GameObject Instance;                       // 我们挂上去的子物体
+
+            /// <summary>被我们关掉的旧外观（**任何**渲染器都可能 ✓ 含 SpriteRenderer ✓）</summary>
             public readonly List<Renderer> Hidden = new List<Renderer>();
-            public int KeptRenderers;
-            public string AnchorName = "";
-            public bool PrefabBound;                          // 是否写到了物品模板的 prefab 上
-            public bool HeldSwapped;                          // 是否就地换了手里那个
-            public bool CacheCleared;                         // 是否清了实体缓存
+
+            public string AnchorName = "根";
+            public bool CacheCleared;
             public string Report = "";
 
-            /// <summary>热重载/卸载：恢复被关掉的旧几何 + 抹掉我们挂上去的东西 ✓（幂等 ✓ 可重复调 ✓）</summary>
+            /// <summary>热重载/卸载：把关掉的开回来 + 抹掉我们挂的东西 ✓（幂等 ✓ 可重复调 ✓）</summary>
             public void Restore()
             {
                 for (int i = 0; i < Hidden.Count; i++)
                     if (Hidden[i] != null) Hidden[i].enabled = true;
                 Hidden.Clear();
                 if (Instance != null) { UnityEngine.Object.Destroy(Instance); Instance = null; }
-                if (Template != null) { UnityEngine.Object.Destroy(Template); Template = null; }
                 Applied = false;
             }
         }
 
-        // ───────────────────────── 反射：写回物品的图形 ─────────────────────────
+        // ───────────────────────── 清实体缓存（让游戏下次重建 ✓）─────────────────────────
 
-        static PropertyInfo _graphicProp;
-        static FieldInfo _graphicField;
-        static bool _probed;
-
-        static void ProbeGraphic()
-        {
-            if (_probed) return;
-            _probed = true;
-            var t = typeof(ItemStatsSystem.Item);
-            var prop = t.GetProperty("ItemGraphic", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            if (prop != null && prop.CanWrite) _graphicProp = prop;
-            if (_graphicProp == null)
-            {
-                var f = t.GetField("itemGraphic", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                if (f != null && f.FieldType == typeof(ItemGraphicInfo)) _graphicField = f;
-            }
-        }
-
-        /// <summary>把图形写到物品上 ✓（属性优先 ✓ 私有字段兜底 ✓）；两条都不通返回 false（游戏会退化成"纸片" ✗）</summary>
-        public static bool WriteGraphic(ItemStatsSystem.Item item, ItemGraphicInfo graphic)
-        {
-            if (item == null || graphic == null) return false;
-            ProbeGraphic();
-            if (_graphicProp != null) { _graphicProp.SetValue(item, graphic); return true; }
-            if (_graphicField != null) { _graphicField.SetValue(item, graphic); return true; }
-            return false;
-        }
-
-        /// <summary>清掉物品的"实体缓存"（社区做法 ✓）：让游戏下次创建实体时重新读 `item.ItemGraphic`（= 我们的图形 ✓）。
-        /// ⚠️ 别自己去销毁/替换活着的实体 ✗（见文件头）</summary>
+        /// <summary>清掉"实体缓存"（社区做法 ✓）：游戏下次创建实体时会重新看 `item.ItemGraphic` ✓
+        /// ⚠️ 别自己去销毁/替换活着的实体 ✗（游戏还持有引用 → 那件物品会"选不中/用不了" ✗ 实测踩过）</summary>
         public static bool ClearAgentCache(ItemStatsSystem.Item item)
         {
             var au = item != null ? item.AgentUtilities : null;
@@ -106,74 +75,50 @@ namespace ModelKit
             catch { return false; }
         }
 
-        // ───────────────────────── 找锚点 / 关旧几何 / 挂我们的 mesh ─────────────────────────
+        // ───────────────────────── 关旧外观 / 挂我们的 ─────────────────────────
 
-        /// <summary>属于**旧模型**、要替换掉的零件：枪身（`WPN_*`）+ 原枪自带的默认件（`HideIf_*`）。
-        /// `ShowIf_*`（配件本身的模型）与特效（`MuzzleFlash` / `Particle`）留给游戏管，不能动 ✗</summary>
-        static bool IsOldWeaponPart(Renderer r)
+        /// <summary>取"挂点"：优先**包围盒最大**的渲染器（**任何类型** ✓ 含 SpriteRenderer ✓）；
+        /// 一个都没有（视觉靠 `Setup(item)` 运行时补的那种 ✓）→ 返回 null（挂到根 ✓）</summary>
+        static Renderer PickMount(Transform root)
         {
-            var n = r.gameObject.name;
-            if (n.StartsWith("ShowIf_") || n.StartsWith("MuzzleFlash") || n.StartsWith("Particle")) return false;
-            if (n.StartsWith("WPN_") || n.StartsWith("HideIf_")) return true;
-            return false;   // 其余不认识的零件保守起见也不动 ✓
-        }
-
-        /// <summary>这个 prefab 是不是"武器式"的（有 `WPN_*` / `ShowIf_*` / `HideIf_*` 这类零件命名 ✓）</summary>
-        static bool LooksLikeWeapon(Transform root)
-        {
+            Renderer best = null;
+            float bestSize = -1f;
             foreach (var r in root.GetComponentsInChildren<Renderer>(true))
             {
-                var n = r.gameObject.name;
-                if (n.StartsWith("WPN_") || n.StartsWith("ShowIf_") || n.StartsWith("HideIf_")) return true;
+                if (r == null) continue;
+                if (r.gameObject.name.StartsWith("ModelKit_")) continue;      // 我们自己的不算 ✓
+                float sz;
+                try { sz = r.bounds.size.magnitude; } catch { continue; }
+                if (sz > bestSize && sz < 5f) { bestSize = sz; best = r; }     // < 5m：避开天空盒那类怪东西 ✓
             }
-            return false;
+            return best;
         }
 
-        /// <summary>取"主体"渲染器：`WPN_*` 优先，否则取**包围盒最大**的那个（< 5m，避开天空盒之类的怪东西 ✓）</summary>
-        static Renderer PickAnchor(Transform root)
+        /// <summary>关掉 root 下**所有**旧外观（不限渲染器类型 ✗ 精灵也要关 ✓），记进 res ✓ 可还原 ✓</summary>
+        static void HideOld(Transform root, Result res)
         {
-            Renderer anchor = null;
-            float best = -1f;
             foreach (var r in root.GetComponentsInChildren<Renderer>(true))
             {
-                if (!(r is MeshRenderer || r is SkinnedMeshRenderer)) continue;
-                var n = r.gameObject.name;
-                if (n.StartsWith("ShowIf_") || n.StartsWith("HideIf_")) continue;
-                if (n.StartsWith("WPN_")) return r;                       // 枪身优先 ✓
-                float sz = r.bounds.size.magnitude;
-                if (sz > best && sz < 5f) { best = sz; anchor = r; }
-            }
-            return anchor;
-        }
-
-        /// <summary>把 root 下的旧几何关掉（保留配件槽位/特效 ✓），把关掉的记进 res ✓（能还原 ✓）。
-        /// 武器式命名 → 只关 `WPN_*` / `HideIf_*` ✓；普通物品 → 全关 ✓（它就是整个旧模型 ✓）</summary>
-        static void HideOldGeometry(Transform root, Result res)
-        {
-            bool weapon = LooksLikeWeapon(root);
-            foreach (var r in root.GetComponentsInChildren<Renderer>(true))
-            {
-                if (!(r is MeshRenderer || r is SkinnedMeshRenderer)) continue;
-                bool ours = r.gameObject.name.StartsWith("ModelKit_");
-                if (ours) continue;
-                if (weapon && !IsOldWeaponPart(r)) { res.KeptRenderers++; continue; }
+                if (r == null) continue;
+                if (r.gameObject.name.StartsWith("ModelKit_")) continue;       // 我们自己的不动 ✓
                 if (r.enabled) { r.enabled = false; res.Hidden.Add(r); }
             }
         }
 
-        /// <summary>把我们的 mesh 挂到锚点位置上（同一个变换帧、同一个原点、同一个朝向 ✓）
-        /// + 克隆游戏材质并换上我们的贴图 ✓ + 缩放补回世界尺度 1 ✓</summary>
-        static GameObject AttachOurMesh(Transform root, Renderer anchor, Mesh mesh, Texture2D texture, string name)
+        /// <summary>把我们的 mesh 挂上去（挂在挂点上 ✓ 没有挂点就挂根 ✓）
+        /// 缩放补回"世界尺度 = 1" ✓（prefab 的缩放链不一定是 1 ✗）；材质**克隆游戏自己的**再换贴图 ✓</summary>
+        static GameObject Attach(Transform root, Renderer mount, Mesh mesh, Texture2D texture, string itemName)
         {
-            Vector3 lossy = anchor != null ? anchor.transform.lossyScale : root.lossyScale;
+            var parent = mount != null ? mount.transform : root;
+            Vector3 lossy = parent.lossyScale;
             var inv = new Vector3(
                 Math.Abs(lossy.x) > 1e-6f ? 1f / lossy.x : 1f,
                 Math.Abs(lossy.y) > 1e-6f ? 1f / lossy.y : 1f,
                 Math.Abs(lossy.z) > 1e-6f ? 1f / lossy.z : 1f);
 
-            var go = new GameObject("ModelKit_" + name);
-            go.layer = anchor != null ? anchor.gameObject.layer : root.gameObject.layer;
-            go.transform.SetParent(anchor != null ? anchor.transform : root, false);
+            var go = new GameObject("ModelKit_" + (string.IsNullOrEmpty(itemName) ? "item" : itemName));
+            go.layer = mount != null ? mount.gameObject.layer : root.gameObject.layer;
+            go.transform.SetParent(parent, false);
             go.transform.localPosition = Vector3.zero;
             go.transform.localRotation = Quaternion.identity;
             go.transform.localScale = inv;
@@ -181,129 +126,116 @@ namespace ModelKit
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
             var mr = go.AddComponent<MeshRenderer>();
 
-            // 材质：克隆游戏自己的（shader/关键字/渲染状态都对 ✓）→ 只把贴图换成我们的 ✓
-            var srcMat = anchor != null ? anchor.sharedMaterial : null;
-            if (srcMat == null)
+            // 材质：优先用**网格**渲染器的（武器/装备类 ✓）；只有精灵的话它的材质是 sprite 专用的 ✗
+            // → 那就退而找 root 下任意一个 mesh 材质 ✓ 都没有才用默认 ✓
+            Material src = mount is MeshRenderer || mount is SkinnedMeshRenderer
+                ? (mount != null ? mount.sharedMaterial : null) : null;
+            if (src == null)
                 foreach (var r in root.GetComponentsInChildren<Renderer>(true))
-                    if (r.sharedMaterial != null) { srcMat = r.sharedMaterial; break; }
-            var one = srcMat != null ? new Material(srcMat) : null;
+                {
+                    if (r is MeshRenderer || r is SkinnedMeshRenderer) { src = r.sharedMaterial; break; }
+                }
+            var one = src != null ? new Material(src) : null;
             if (one != null)
             {
                 if (texture != null) one.mainTexture = texture;
                 one.color = Color.white;
             }
             int sub = Mathf.Max(1, mesh.subMeshCount);
-            var mats = new Material[sub];                 // 每个 submesh 一个材质槽（别让 Unity 去猜 ✓）
+            var mats = new Material[sub];                    // 每个 submesh 一个材质槽（别让 Unity 去猜 ✓）
             for (int i = 0; i < sub; i++) mats[i] = one;
             mr.sharedMaterials = mats;
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
             return go;
         }
 
-        // ───────────────────────── 对外：替换 / 新增 ─────────────────────────
-
-        /// <summary>⭐ 复制一个图形模板（源 = 某个物品自己的图形 ✓）→ 换成我们的几何 → 藏到世界外 → 返回它。
-        /// 拿到的这个 `ItemGraphicInfo` 就是物品的 `itemGraphic`（`Item.itemGraphic` 是**数据层与模型层唯一的连接点** ✓）。
-        /// ⚠️ 只造图形，不注册物品 —— 新物品（新 typeID / 名字 / 数值）属**数据层** ✗</summary>
-        public static ItemGraphicInfo BuildGraphicClone(ItemGraphicInfo template, Mesh mesh, Texture2D texture,
-                                                       out GameObject templateGo)
+        /// <summary>核心：**就地**把一个"外观物体"换成我们的（prefab 或场上实例都一样 ✓）</summary>
+        public static Result ApplyToTransform(Transform root, string itemName, int typeID, Mesh mesh, Texture2D texture)
         {
-            templateGo = null;
-            if (template == null) return null;
-            var clone = UnityEngine.Object.Instantiate(template);
-            clone.gameObject.name = "ModelKit_graphic";
-            clone.gameObject.SetActive(true);                          // ⚠️ 不能停用（见文件头）
-            clone.transform.position = new Vector3(0f, -5000f, 0f);    // 模板藏到世界外
-            UnityEngine.Object.DontDestroyOnLoad(clone.gameObject);    // ⚠️ 必须在（见文件头）
-            templateGo = clone.gameObject;
+            var res = new Result { TypeID = typeID, ItemName = itemName ?? "" };
+            if (root == null || mesh == null) { res.Report = "外观为空或网格为空 ✗"; return res; }
 
-            var res = new Result { Template = clone.gameObject };
-            var anchor = PickAnchor(clone.transform);
-            res.AnchorName = anchor != null ? anchor.gameObject.name : "根节点";
-            HideOldGeometry(clone.transform, res);
-            res.Instance = AttachOurMesh(clone.transform, anchor, mesh, texture, "graphic");
-            return clone;
-        }
+            // 幂等 ✓：同一个外观被调两次（模板 + 实例 ✓ 都是一份 prefab ✓）不要再挂一遍 ✗
+            foreach (Transform ch in root)
+                if (ch.name.StartsWith("ModelKit_")) { res.Applied = true; res.Report = "已经换过了 ✓"; return res; }
 
-        /// <summary>把（`BuildGraphicClone` 造出来的）图形写到任意 Item 上 —— 新增物品的最后一步 ✓。
-        /// 失败返回 false（游戏里会退化成"纸片" ✗）</summary>
-        public static bool WriteGraphicTo(ItemStatsSystem.Item item, ItemGraphicInfo graphic)
-            => WriteGraphic(item, graphic);
-
-        /// <summary>就地改**活着的**手持实体（不销毁任何东西 ✓）：
-        /// 已经换过就不重复挂 ✓。返回挂上去的物体（没换则 null ✓）</summary>
-        public static GameObject ReplaceHeld(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture, Result res)
-        {
-            var active = item != null ? item.ActiveAgent : null;
-            if (active == null) return null;
-            var tf = active.transform;
-            foreach (Transform child in tf)
-                if (child.name.StartsWith("ModelKit_")) { res.HeldSwapped = true; return null; }   // 已换 ✓
-
-            if (!LooksLikeWeapon(tf)) return null;   // 普通物品没有"手持实体"这条 ✓
-            var anchor = PickAnchor(tf);
-            HideOldGeometry(tf, res);
-            var go = AttachOurMesh(tf, anchor, mesh, texture, "held");
-            res.HeldSwapped = true;
-            return go;
-        }
-
-        /// <summary>⭐ 主入口：把物品（掉落/展示 + 拿在手里）的模型换成我们的。
-        ///
-        /// 做四件事（缺哪件都会"只换一半" ✗）：
-        ///   ① 克隆物品自己的图形 prefab（保留 sockets / groundPoint / 各种设置 ✓）→ 只换几何 → 写回 `item.ItemGraphic`
-        ///   ② 如果给了 `typeID`：把图形也写到**物品模板**上（`ItemAssetsCollection.GetPrefab` ✓）→ 以后每个实例开局就是对的 ✓
-        ///   ③ 清实体缓存（`ClearAgentCache` ✓）→ 游戏下次创建实体时读我们的图形 ✓
-        ///   ④ 就地换**已经拿在手里**的那个（只影响以后生成的实例，手里那个不会自己变 ✗）
-        /// </summary>
-        public static Result Apply(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture, bool bindPrefab = true)
-        {
-            var res = new Result();
-            if (item == null || mesh == null) { res.Report = "物品或网格为空 ✗"; return res; }
-
-            // ① 克隆它自己的图形
-            var src = item.ItemGraphic;
-            if (src == null) { res.Report = "这件物品没有 itemGraphic ✗（换不了外观）"; return res; }
-            GameObject tmplGo;
-            var clone = BuildGraphicClone(src, mesh, texture, out tmplGo);
-            if (clone == null) { res.Report = "克隆图形 prefab 失败 ✗"; return res; }
-            res.Template = tmplGo;
-            res.Instance = tmplGo.GetComponentInChildren<MeshFilter>() != null
-                ? FindOurChild(tmplGo.transform) : res.Instance;
-
-            bool wrote = WriteGraphic(item, clone);
-            if (!wrote) { res.Report = "写回 item.ItemGraphic 失败 ✗（属性/字段都找不到）"; return res; }
-
-            // ② 写到物品模板（社区做法 ✓ 开局就对 ✓）
-            if (bindPrefab)
-            {
-                try
-                {
-                    var prefab = ItemStatsSystem.ItemAssetsCollection.GetPrefab(item.TypeID);
-                    if (prefab != null && !ReferenceEquals(prefab, item))
-                        res.PrefabBound = WriteGraphic(prefab, clone);
-                }
-                catch { res.PrefabBound = false; }
-            }
-
-            // ④ 就地换手里那个
-            ReplaceHeld(item, mesh, texture, res);
-
-            // ③ 清缓存（放最后 ✓）
-            res.CacheCleared = ClearAgentCache(item);
-
+            var mount = PickMount(root);
+            res.AnchorName = mount != null ? mount.gameObject.name : "根";
+            HideOld(root, res);
+            res.Instance = Attach(root, mount, mesh, texture, itemName);
             res.Applied = true;
-            res.Report = $"锚点='{res.AnchorName}'｜关旧零件 {res.Hidden.Count} 个（保留 {res.KeptRenderers} 个：配件/特效）"
-                       + $"｜写回图形={(wrote ? "成功" : "失败")}｜模板 prefab={(res.PrefabBound ? "已写" : "未写")}"
-                       + $"｜手持就地换={(res.HeldSwapped ? "是" : "否")}｜清实体缓存={(res.CacheCleared ? "是" : "否")}"
-                       + $"｜mesh 顶点={mesh.vertexCount} 子网格={mesh.subMeshCount} 材质={(texture != null ? "已换贴图" : "游戏原材质")}";
+            res.Report = $"关旧外观 {res.Hidden.Count} 个｜挂到 '{res.AnchorName}'"
+                       + $"｜mesh 顶点={mesh.vertexCount} 子网格={mesh.subMeshCount}"
+                       + $"｜材质={(texture != null ? "已换贴图" : "游戏原材质")}";
             return res;
         }
 
-        static GameObject FindOurChild(Transform t)
+        // ───────────────────────── 三个入口 ─────────────────────────
+
+        /// <summary>① 按 **typeID** 换（**推荐主入口** ✓ 不用先拿到 Item ✓）：
+        /// 改物品模板的图形 → 以后每个实例（掉地上/手里/装备 ✓）都是我们的 ✓</summary>
+        public static Result ApplyByTypeID(int typeID, Mesh mesh, Texture2D texture)
         {
-            foreach (Transform c in t) if (c.name.StartsWith("ModelKit_")) return c.gameObject;
-            return null;
+            var res = new Result { TypeID = typeID };
+            ItemStatsSystem.Item prefab = null;
+            try { prefab = ItemStatsSystem.ItemAssetsCollection.GetPrefab(typeID); }
+            catch (Exception ex) { res.Report = "取物品模板失败 ✗：" + ex.Message; return res; }
+            if (prefab == null) { res.Report = $"typeID={typeID} 找不到物品 ✗"; return res; }
+            return Apply(prefab, mesh, texture);
+        }
+
+        /// <summary>② 换一件物品：**它的模板** + **场上已有的实例** 一起换 ✓
+        /// ⚠️ 没有 `ItemGraphic` 的物品（纯图标那种 ✓）会被**跳过** ✓（换不了外观 ✗ 不是失败 ✓）</summary>
+        public static Result Apply(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture)
+        {
+            var res = new Result { TypeID = item != null ? item.TypeID : 0, ItemName = item != null ? item.name : "" };
+            if (item == null) { res.Report = "物品为空 ✗"; return res; }
+
+            var graphic = item.ItemGraphic;
+            if (graphic == null)
+            {
+                res.Report = "没有 ItemGraphic ✗（纯图标物品 ✓ 换不了外观）";
+                return res;
+            }
+
+            // ① 就地改它自己那份图形 ✓（物品实例与模板都适用 ✓ 因为改的都是**同一个 prefab** ✓）
+            res = ApplyToTransform(graphic.transform, item.name, item.TypeID, mesh, texture);
+            res.TypeID = item.TypeID;
+            res.ItemName = item.name ?? "";
+
+            // ② 再确认一次**物品模板**（`GetPrefab` ✓）：实例可能不是模板本身 ✓
+            try
+            {
+                var prefab = ItemStatsSystem.ItemAssetsCollection.GetPrefab(item.TypeID);
+                if (prefab != null && prefab.ItemGraphic != null && !ReferenceEquals(prefab.ItemGraphic, graphic))
+                    ApplyToTransform(prefab.ItemGraphic.transform, prefab.name, prefab.TypeID, mesh, texture);
+                if (prefab != null) res.CacheCleared = ClearAgentCache(prefab);
+            }
+            catch { /* 模板这条失败不影响实例那条 ✓ */ }
+
+            // ③ 场上已经拿在手里/装备着的那一个：就地换 ✓（不销毁任何东西 ✓）
+            ApplyToInstance(item, mesh, texture);
+
+            // ④ 清缓存 → 游戏下次建实体时会读**改过的 prefab** ✓
+            if (!res.CacheCleared) res.CacheCleared = ClearAgentCache(item);
+            return res;
+        }
+
+        /// <summary>③ 只改**场上这一个**实例（不动模板 ✓ 调试/局部用 ✓）：走它的 `ActiveAgent`（手持/装备 ✓）</summary>
+        public static Result ApplyToInstance(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture)
+        {
+            var res = new Result { TypeID = item != null ? item.TypeID : 0, ItemName = item != null ? item.name : "" };
+            if (item == null || mesh == null) { res.Report = "物品或网格为空 ✗"; return res; }
+            var active = item.ActiveAgent;
+            if (active == null) { res.Report = "没有 ActiveAgent ✗（没拿在手里/没装备 ✓）"; return res; }
+
+            // 已经换过就不重复挂 ✓
+            foreach (Transform child in active.transform)
+                if (child.name.StartsWith("ModelKit_")) { res.Report = "这个实例已经换过了 ✓"; return res; }
+
+            var r = ApplyToTransform(active.transform, item.name, item.TypeID, mesh, texture);
+            r.CacheCleared = false;
+            return r;
         }
     }
 }

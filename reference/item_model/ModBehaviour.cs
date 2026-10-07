@@ -159,12 +159,12 @@ namespace ItemModelSwap
 
                 try
                 {
-                    var res = ItemModel.Apply(item, cm.Mesh, cm.Texture, bindPrefab: true);
+                    var res = ItemModel.Apply(item, cm.Mesh, cm.Texture);
                     _applied[id] = res;
                     if (res.Applied)
                         Debug.Log($"[ItemModel] 已换：'{item.name}'(typeID={item.TypeID}) ← {Path.GetFileName(hit.ModelFile)}｜{res.Report}");
                     else
-                        Debug.LogWarning($"[ItemModel] '{item.name}' 没换成 ✗：{res.Report}");
+                        Debug.LogWarning($"[ItemModel] 跳过：'{item.name}' {res.Report}");
                 }
                 catch (Exception ex)
                 {
