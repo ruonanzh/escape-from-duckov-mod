@@ -178,6 +178,9 @@ namespace ItemModelSwap
 
             foreach (var item in all)
             {
+                // ⭐ **跳过我们自己造的克隆物品** ✗（否则会"克隆 → 又被扫到 → 再克隆"自增 ✗ 实测卡死 ✓）
+                if (item.name != null && item.name.StartsWith("ModelKit_item_")) continue;
+
                 int id;
                 try { id = item.GetInstanceID(); } catch { continue; }
                 Entry hit = null;

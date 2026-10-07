@@ -461,10 +461,15 @@ namespace ModelKit
         ///   · 游戏对"占用已有 typeID"会 log 一句警告 ✓（"This will override the main game's item" ✓）→ 是**允许**的用法 ✓
         ///
         /// ⚠️ 只克隆、只改图形 ✓：数值/插槽/图标/变量全部继承原件 ✓（`Object.Instantiate` 是完整拷贝 ✓）</summary>
+        /// <summary>已经注册过的 typeID ✓ —— **同一个只注册一次** ✗ 否则会自增克隆（实测：主界面越来越卡直到卡死 ✗）</summary>
+        static readonly HashSet<int> _dynDone = new HashSet<int>();
+
         public static Result RegisterDynamicOverride(int typeID, Mesh mesh, Texture2D texture)
         {
             var res = new Result { TypeID = typeID };
             if (mesh == null) { res.Report = "网格为空 ✗"; return res; }
+            if (_dynDone.Contains(typeID))
+            { res.NoOp = true; res.Report = "这个 typeID 已经注册过动态条目 ✓"; return res; }   // ⭐ 幂等 ✓ 断循环 ✓
 
             ItemStatsSystem.Item src = null;
             try { src = ItemStatsSystem.ItemAssetsCollection.GetPrefab(typeID); }
@@ -509,6 +514,7 @@ namespace ModelKit
             catch (Exception ex) { res.Report = "注册动态条目抛错 ✗：" + ex.Message; return res; }
             if (!ok) { res.Report = "AddDynamicEntry 返回 false ✗"; return res; }
 
+            _dynDone.Add(typeID);                                  // 记下 ✓ 只注册一次 ✓
             res.CacheCleared = ClearAgentCache(item);
             res.AnchorName = "动态条目（克隆物品）";
             res.Applied = true;
