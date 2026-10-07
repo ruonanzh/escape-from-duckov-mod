@@ -43,6 +43,10 @@ namespace ModelKit
 
             public string AnchorName = "根";
             public bool CacheCleared;
+
+            /// <summary>true = **什么都没做**（已经换过了 ✓ / 本来就换不了 ✓）→ 调用方**别打日志** ✗
+            /// （之前靠比 `Report` 字符串 ✗ → 少一个字段就刷了 5000 行日志 ✓ 实测 ✓）</summary>
+            public bool NoOp;
             public string Report = "";
 
             /// <summary>热重载/卸载：把关掉的开回来 + 抹掉我们挂的东西 ✓（幂等 ✓ 可重复调 ✓）</summary>
@@ -220,7 +224,7 @@ namespace ModelKit
             // 幂等 ✓：**只看这一层自己**有没有标记 ✓（不能扫子树 ✗ —— agent 的子树里含着图形 ✓
             //   扫子树会把"图形已经换过"误判成"agent 也换过" ✗ → agent 自己那层图标精灵永远关不掉 ✗ 实测）
             if (root.GetComponent<Marked>() != null)
-            { res.Applied = true; res.Report = "已经换过了 ✓"; return res; }
+            { res.Applied = false; res.NoOp = true; res.Report = "这一层已经换过了 ✓"; return res; }
 
             var mount = PickMount(root);
             res.AnchorName = mount != null ? mount.gameObject.name : "根";
@@ -283,7 +287,7 @@ namespace ModelKit
             {
                 var cur = item.AgentUtilities != null ? item.AgentUtilities.GetPrefab("Handheld") : null;
                 if (cur != null && cur.gameObject != null && cur.gameObject.name.StartsWith("ModelKit_"))
-                { res.Applied = true; res.Report = "手持已经换过了 ✓"; return res; }
+                { res.Applied = false; res.NoOp = true; res.Report = "手持已经换过了 ✓"; return res; }
             }
             catch { }
 

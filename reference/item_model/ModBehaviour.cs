@@ -175,7 +175,7 @@ namespace ItemModelSwap
                         try
                         {
                             var r = ItemModel.ApplyHandheld(item, cm.Mesh, cm.Texture);
-                            if (r.Applied && r.Report != "已经换过了 ✓")
+                            if (r.Applied)   // ⭐ 只在**真做事**时打 ✓（无操作不再刷屏 ✗ 实测刷了 5200 行 ✗）
                                 Debug.Log($"[ItemModel] 已换：'{item.name}'(typeID={item.TypeID}) ← {Path.GetFileName(hit.ModelFile)}｜{r.Report}");
                         }
                         catch { /* 复查失败不影响已经换好的那条 ✓ */ }
@@ -194,7 +194,7 @@ namespace ItemModelSwap
                         didWorld = res.Applied;
                         if (res.Applied)
                             Debug.Log($"[ItemModel] 已换：'{item.name}'(typeID={item.TypeID}) ← {Path.GetFileName(hit.ModelFile)}｜{res.Report}");
-                        else if (!hit.Handheld)
+                        else if (!hit.Handheld && !res.NoOp)
                             Debug.Log($"[ItemModel] 跳过：'{item.name}' {res.Report}");
                     }
                     else _applied[id] = null;                        // 世界那条不要 ✓（只记一下 ✓）
@@ -202,9 +202,9 @@ namespace ItemModelSwap
                     if (hit.Handheld)                                // 手持那条（会改行为 ✓ 默认关 ✓）
                     {
                         var rh = ItemModel.ApplyHandheld(item, cm.Mesh, cm.Texture);
-                        if (rh.Applied && rh.Report != "已经换过了 ✓")
+                        if (rh.Applied)
                             Debug.Log($"[ItemModel] 已换：'{item.name}'(typeID={item.TypeID}) ← {Path.GetFileName(hit.ModelFile)}｜{rh.Report}");
-                        else if (!rh.Applied)
+                        else if (!rh.NoOp)
                             Debug.Log($"[ItemModel] 跳过：'{item.name}' {rh.Report}");
                     }
                     if (!didWorld && !hit.Handheld && hit.World) { /* 世界那条做不了 ✓ 保持 2D 图片兜底 ✓ 上面已打过日志 ✓ */ }
