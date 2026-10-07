@@ -99,7 +99,12 @@ var res = ModelKit.ItemModel.Apply(item, loaded.Mesh, loaded.MainTexture, handhe
 | 物品变**一片纸/贴图糊** | 模型没有合适 UV 或贴图太大 | 用 `model-check` 看 UV/贴图 ✓ |
 | 模型**穿模 / 悬空** | 模型尺寸/原点不适合（比如把 1 m 的枪装到耳机上 ✓）| 换个尺寸合理的模型 ✓；或等 per-item 的 `scale`/`offset` ✗（还没做 ✓）|
 
-> ⚠️ **别自己去写那套底层** ✗：`ItemModel.Apply` 已经把"克隆 / 动态条目 / 补写实例 / 幂等 / 模板挪到世界外"都做完了 ✓。
-> 已知**错的**做法（别照抄网上或旧代码 ✗）：把克隆图形塞进 `DontDestroyOnLoad` 再写回 `item.ItemGraphic` ✗ ·
-> 把图形挂成**物品的子物体** ✗ · 模板留在原点 ✗ · 注册动态条目后不跳过自己的克隆 ✗ · 每帧扫全场景物品 ✗
-> —— 这四个坑分别会造成：**整件物品消失** / **一把枪跟着玩家** / **载入画面看到游离模型** / **越玩越卡直到卡死** ✓
+### 接口一览 ✓（都在 `libs/mod-kit/ItemModel.cs` ✓ 完整签名：`rg "public static" libs/mod-kit/ItemModel.cs`）
+
+| 调用 | 干什么 · 什么时候用 |
+|---|---|
+| `ItemModel.Apply(item, mesh, tex, handheld)` | **主入口** ✓ 换一件物品：有图形就**就地改** ✓ 没图形就**自动**克隆物品 + 注册动态条目 ✓ 需要调的就这一个 ✓ |
+| `ItemModel.ApplyHandheld(item, mesh, tex)` | 只换"**拿在手里**"那条 ✓（`Apply(..., handheld: true)` 内部会调它 ✓ 一般不用自己调 ✗）|
+| `ItemModel.ClearAgentCache(item)` | 清实体缓存 → 游戏下次会用改过的图形重建实体 ✓（`Apply` 内部已调 ✓ 一般不用自己调 ✗）|
+| `Result` | 返回值 ✓：`Applied`=真换了 ✓ · `NoOp`=已经换过/没得换 ✓（**别打日志** ✗）· `Report`=一句话说明 ✓ · `Restore()`=还原 ✓ |
+| `Result.Hidden` | 被我们关掉的旧外观 ✓（热重载/卸载时 `Restore()` 会把它们开回来 ✓）|
