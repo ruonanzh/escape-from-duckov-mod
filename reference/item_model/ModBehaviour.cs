@@ -47,6 +47,12 @@ namespace ItemModelSwap
             public List<string> Targets = new List<string>();
             public readonly List<int> TypeIds = new List<int>();
             public string ModelFile = "";
+
+            // ⭐ 三层里我们要"往上加"的两层 ✓（第三层 = 游戏自带的 2D 图片 ✓ 永远不动 ✗）
+            //   world    = 世界/展示那条（地上 ✓）     默认 **开** ✓（纯外观 ✓ 不改行为 ✓）
+            //   handheld = 拿在手里那条（会改行为 ✓：可拿/UI 可选中 ✓）→ 默认 **关** ✓ 必须显式开 ✓
+            public bool World = true;
+            public bool Handheld = false;
             public string Front = "auto";
             public string ResolvedPath = "";
 
@@ -163,7 +169,7 @@ namespace ItemModelSwap
                 //   （拿起/放下才需要重做 ✓ 1 秒一次足够 ✓ 幂等 ✓ 已换过的会直接返回 ✓）
                 if (_applied.ContainsKey(id))
                 {
-                    if (Time.unscaledTime >= _nextHeldSweep)
+                    if (hit.Handheld && Time.unscaledTime >= _nextHeldSweep)
                     {
                         _nextHeldSweep = Time.unscaledTime + 1f;
                         try
@@ -179,12 +185,29 @@ namespace ItemModelSwap
 
                 try
                 {
-                    var res = ItemModel.Apply(item, cm.Mesh, cm.Texture);
-                    _applied[id] = res;
-                    if (res.Applied)
-                        Debug.Log($"[ItemModel] 已换：'{item.name}'(typeID={item.TypeID}) ← {Path.GetFileName(hit.ModelFile)}｜{res.Report}");
-                    else
-                        Debug.LogWarning($"[ItemModel] 跳过：'{item.name}' {res.Report}");
+                    // ⭐ 按开关做（三层里的前两层 ✓；第三层 = 游戏自带的 2D 图片 ✓ 我们永远不动 ✗）
+                    bool didWorld = false;
+                    if (hit.World)
+                    {
+                        var res = ItemModel.Apply(item, cm.Mesh, cm.Texture);
+                        _applied[id] = res;
+                        didWorld = res.Applied;
+                        if (res.Applied)
+                            Debug.Log($"[ItemModel] 已换：'{item.name}'(typeID={item.TypeID}) ← {Path.GetFileName(hit.ModelFile)}｜{res.Report}");
+                        else if (!hit.Handheld)
+                            Debug.Log($"[ItemModel] 跳过：'{item.name}' {res.Report}");
+                    }
+                    else _applied[id] = null;                        // 世界那条不要 ✓（只记一下 ✓）
+
+                    if (hit.Handheld)                                // 手持那条（会改行为 ✓ 默认关 ✓）
+                    {
+                        var rh = ItemModel.ApplyHandheld(item, cm.Mesh, cm.Texture);
+                        if (rh.Applied && rh.Report != "已经换过了 ✓")
+                            Debug.Log($"[ItemModel] 已换：'{item.name}'(typeID={item.TypeID}) ← {Path.GetFileName(hit.ModelFile)}｜{rh.Report}");
+                        else if (!rh.Applied)
+                            Debug.Log($"[ItemModel] 跳过：'{item.name}' {rh.Report}");
+                    }
+                    if (!didWorld && !hit.Handheld && hit.World) { /* 世界那条做不了 ✓ 保持 2D 图片兜底 ✓ 上面已打过日志 ✓ */ }
                 }
                 catch (Exception ex)
                 {
@@ -246,6 +269,8 @@ namespace ItemModelSwap
                 Targets = Json.Strings(j, "targets"),
                 ModelFile = j.GetStr("model", ""),
                 Front = j.GetStr("front", "auto"),
+                World = j.GetBool("world", true),        // 世界那条默认开 ✓
+                Handheld = j.GetBool("handheld", false), // 手持那条默认关 ✓（它会改行为 ✓）
             };
             var tids = j["typeIDs"];
             if (tids != null && tids.IsArray)
