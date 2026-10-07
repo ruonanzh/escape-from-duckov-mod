@@ -308,6 +308,19 @@ namespace ModelKit
             return res;
         }
 
+        /// <summary>把 root **整棵子树**的层设成 layer ✓（Unity 的层**不继承** ✗ 必须逐个设 ✓）</summary>
+        static void SetLayerDeep(GameObject root, int layer)
+        {
+            if (root == null || layer < 0) return;
+            try
+            {
+                root.layer = layer;
+                foreach (var t in root.GetComponentsInChildren<Transform>(true))
+                    if (t != null) t.gameObject.layer = layer;
+            }
+            catch { }
+        }
+
         static string Fmt(Vector3 v)
             => "(" + v.x.ToString("0.###") + "," + v.y.ToString("0.###") + "," + v.z.ToString("0.###") + ")";
 
@@ -470,6 +483,11 @@ namespace ModelKit
 
             var fallback = BorrowMaterial();                    // 借一份游戏材质 ✓（免得上默认材质变粉色 ✗）
             res.Instance = Attach(g.transform, null, mesh, texture, item.name, g.transform.position, fallback);
+            // ⭐ **层要跟着物品走** ✗ —— `Attach` 在 mount==null 时用的是 root 的层 ✓
+            //   而 root 是我们 `new GameObject()` 出来的 → **layer = 0（Default）** ✗
+            //   游戏显示这个世界模型时按层过滤 → Default 层的 mesh **看不见** ✗（实测：糖果消失 ✓）
+            //   物品**自己的层是游戏给的** ✓（克隆自原预制体 ✓）→ 用它 ✓
+            SetLayerDeep(g.gameObject, item.gameObject.layer);
             if (g.gameObject.GetComponent<Marked>() == null) g.gameObject.AddComponent<Marked>();
 
             if (!WriteGraphic(item, g)) return null;            // 写回 item.ItemGraphic ✓
@@ -560,6 +578,7 @@ namespace ModelKit
             HideOld(g.transform, res);
             res.Instance = Attach(g.transform, mount, mesh, texture, src.name, g.transform.position,
                                   mount != null ? mount.sharedMaterial : BorrowMaterial());
+            SetLayerDeep(g.gameObject, item.gameObject.layer);      // ⭐ 层跟着物品走 ✓（Default 层看不见 ✗）
             if (g.gameObject.GetComponent<Marked>() == null) g.gameObject.AddComponent<Marked>();
 
             if (!WriteGraphic(item, g)) { res.Report = "写回克隆的 itemGraphic 失败 ✗"; return res; }   // ⑤
