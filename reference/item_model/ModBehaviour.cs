@@ -76,6 +76,7 @@ namespace ItemModelSwap
 
         float _nextCfgCheck;                       // 限频：每 0.25 秒才查一次 config ✓
         DateTime _cfgStamp = DateTime.MinValue;
+        float _nextHeldSweep;                      // ⭐ 手持/装备那条要**反复复查**（物品是后来才被拿起来的 ✓）
 
         /// <summary>模型缓存：路径 → （指纹, Mesh, 贴图）。指纹 = 路径 + 朝向 + 文件 mtime+size ✓</summary>
         sealed class CachedModel { public string Sig; public Mesh Mesh; public Texture2D Texture; }
@@ -144,8 +145,6 @@ namespace ItemModelSwap
             {
                 int id;
                 try { id = item.GetInstanceID(); } catch { continue; }
-                if (_applied.ContainsKey(id)) continue;      // 处理过了 ✓（不重复挂 ✓）
-
                 Entry hit = null;
                 for (int i = 0; i < _entries.Count; i++)
                     if (_entries[i].Matches(item)) { hit = _entries[i]; break; }   // 先命中的生效 ✓
@@ -156,6 +155,25 @@ namespace ItemModelSwap
                 {
                     _applied[id] = null;                     // 记一下，避免每帧重复报错 ✓
                     Debug.LogWarning($"[ItemModel] 规则 '{string.Join(",", hit.Targets)}' 的模型不可用 ✗（{hit.ModelFile}）");
+                    continue;
+                }
+
+                // ⭐ 已经处理过的：**只补做"手持/装备"那条** ✓
+                //   物品是后来才被拿起来的 ✓ 那时代替它的 `ActiveAgent` 才出现 ✓ —— 图形那条早就改好了 ✓
+                //   （拿起/放下才需要重做 ✓ 1 秒一次足够 ✓ 幂等 ✓ 已换过的会直接返回 ✓）
+                if (_applied.ContainsKey(id))
+                {
+                    if (Time.unscaledTime >= _nextHeldSweep)
+                    {
+                        _nextHeldSweep = Time.unscaledTime + 1f;
+                        try
+                        {
+                            var r = ItemModel.ApplyToInstance(item, cm.Mesh, cm.Texture);
+                            if (r.Applied && r.Report != "已经换过了 ✓")
+                                Debug.Log($"[ItemModel] 已换：'{item.name}'(typeID={item.TypeID}) ← {Path.GetFileName(hit.ModelFile)}｜{r.Report}");
+                        }
+                        catch { /* 复查失败不影响已经换好的那条 ✓ */ }
+                    }
                     continue;
                 }
 
