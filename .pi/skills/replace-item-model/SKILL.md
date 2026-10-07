@@ -7,18 +7,77 @@ description: 用户想换**物品**（背包 / 防弹衣 / 头盔 / 弹匣 / 任
 
 **目标**：某件（或某批）**物品在世界里的模型**换成用户提供的模型。不改数值、不改图标、不改行为。
 
-## 1. 模型从哪来
+## 1. 模型从哪来（顺序：先建骨架 → 再产素材 → 最后装）
 
-素材是同一套 Tripo 流程（**参考图 → 预览图 → 3D 模型**），配方与成本见
-`.pi/skills/replace-weapon-model/SKILL.md` §1 —— 那是**唯一一份**，这里不重复 ✓。
+一句话也能做。顺序是「**先把 mod 骨架建好 → 再产素材 → 最后装**」—— 目录先存在、也先绑定好，后面直接往里写。
 
-**落到物品上，按这三点定素材** ✓：
+### ① 参考图（免费）
 
-| 点 | 怎么做 |
+- 用户给了图 → 就直接用（聊天里发的图会落盘，拿到的是**绝对路径**，直接传给工具）
+- 图里带 **logo / 水印 / UI 文字** → **先裁掉再传**
+- 用户只说了句话 → 跳过这步，直接进 ②
+- 给了好几张 → **问用户用哪张**
+
+### ② 先把 mod 骨架建好（免费，编译几秒）
+
+- 照 **`reference/item_model/`**（示例 mod = 正确答案）建你自己的 mod 目录
+- **四处名字要一致**（`info.ini` 的 name / 目录名 / 程序集名 / 命名空间+类 `ModBehaviour`）→ 不一致的症状是 **mod 静默不加载**
+- 建完**先跑一次 `validate_mod`** 确认能编译
+- **先建骨架、别等素材** —— 素材工具落盘时会自建目录，别让它抢在你前面把目录建出来
+
+### ③ 预览图：**清理 + 居中 + 加粗**（约 5 积分）—— **先给用户看，等他确认**
+
+⚠️ 本作的美术**偏厚实**，而 Tripo 会**严格照图生成** ✗ → 只清理不加粗，出来的会偏"细" ✗
+所以这一步的提示词同时做三件事：**清理 + 居中 + 加粗** ✓
+
+```
+generate_image(
+  image="<用户的图>",                       // 只给文字描述时省略（→ 纯提示词出图 ✓）
+  prompt="Redraw the item from the input as a clean, isolated in-game asset: the whole item alone and complete - keep EVERY part of it; remove only what is not the item (the background, any floating pieces, text, frames). Put it on a plain uniform white background: no scenery, no props, no shadow, no smoke, no hands, no text. Keep the item's own design, colors and surface details the same, but make it noticeably BULKIER and THICKER: heavy, sturdy proportions like a stylized low-poly game asset, about 0.55 m tall (game scale). Side view, and perfectly CENTERED in the frame, with a clear margin on all sides.",
+  out="your_mods/<mod>/.preview/<物品名>.preview.png")   // 中间图放 mod 目录下的 .preview/
+```
+
+- 这段配方里有 **7 件事都不能丢** ✗：**整件物品都在** · **只移除不是它的东西** · **纯白均一背景** · **保原设计与贴图** · **加粗** · **侧视** · **居中留边**
+- ⚠️ `about 0.55 m tall (game scale)` 那句里的数字**按物品类别换** ✓（见 §1 末尾的尺寸表 ✓）
+- 出图后**把文件路径给用户**（工具返回里就是绝对路径 ✓）→ 问他「就要这个吗」
+  ⚠️ 图大于 1.5MB 时工具**不会**内联显示 ✗ → 所以**必须把路径写出来** ✓
+- `.preview/` 放在 mod 目录下：`install_mod` 会跳过它（不进游戏）✓
+- 不像就改 `prompt=` 再来一次（每次都便宜）—— **没确认前不要做 ④**
+
+### ④ 3D 模型（约 50 积分，含转换）
+
+```
+generate_model(action="generate",
+               image="your_mods/<mod>/.preview/<物品名>.preview.png",   // 用 ③ 那张**已确认的**预览图 ✓
+               out="your_mods/<mod>/<物品名>.glb",                      // 模型名**按物品起** ✓（backpack.glb ✓）
+               faceLimit=3000)
+```
+
+- **图 → 3D 比纯文字准得多** ✓
+- 用户自带 `.glb` → ③④ 全跳过，直接把他的文件放进 mod 目录 ✓
+- 用户只要了一句话、没图 → 用 `prompt="…"` 出模型 ✓
+
+### ⑤ 图标 —— **本能力不需要** ✗
+
+只换世界里的模型 ✓ **不换图标**（背包格子 / "使用时"那张图是 UI 画的 ✓ 属另一条能力 ✓）
+
+### 尺寸：**照游戏里那一档做** ✓（实测 ✓ **不是实物尺寸** ✗）
+
+| 类别 | 典型最长边 |
 |---|---|
-| **尺寸** | 按**实物**给：背包 ≈ 0.4 m · 头盔 ≈ 0.3 m · 弹匣 ≈ 0.2 m —— 提示词里写清尺寸，别出 1 m 的巨物 ✗ |
-| **朝向** | 一般**不用管** ✓（物品不要求朝向）；摆出来难看再在 config 里加 `front` ✓ |
-| **图标** | **本能力不换图标** ✗（只换世界里的模型 ✓ 图标另做 ✓）|
+| 背包 | **0.55 m** |
+| 防弹衣（身体）| **0.80 m** |
+| 头盔（头部）| **0.65 m** |
+| 面具（面部）| **0.65 m** |
+| 耳机 | **0.78 m** |
+
+- 这行数字**写进 ③ 的 `prompt=` 里** ✓（就是 `about 0.55 m tall (game scale)` 那句 ✓）
+- ⚠️ 这些数**比实物大**（头盔实物 ~0.3 m，游戏里 0.65 m）→ **照游戏那一档** ✓
+- **建模三条** ✓：① **原点随便**（运行时按"包围盒中心"对齐 ✓）② **朝向正着**（Y 上 · Z 前）③ **尽量左右对称** ✓
+
+### 成本一览（合计 ≈ 55 积分）
+
+预览图 `generate_image` **5** · 3D 模型 `generate_model` **50**（含转换）
 
 ## 2. 建骨架与 config.json
 
