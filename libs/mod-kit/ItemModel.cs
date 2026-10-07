@@ -472,7 +472,8 @@ namespace ModelKit
         /// <summary>已经注册过的 typeID ✓ —— **同一个只注册一次** ✗ 否则会自增克隆（实测：主界面越来越卡直到卡死 ✗）</summary>
         static readonly HashSet<int> _dynDone = new HashSet<int>();
 
-        public static Result RegisterDynamicOverride(int typeID, Mesh mesh, Texture2D texture)
+        public static Result RegisterDynamicOverride(int typeID, Mesh mesh, Texture2D texture,
+                                                     ItemStatsSystem.Item alsoFixThisInstance = null)
         {
             var res = new Result { TypeID = typeID };
             if (mesh == null) { res.Report = "网格为空 ✗"; return res; }
@@ -517,6 +518,19 @@ namespace ModelKit
             if (!WriteGraphic(item, g)) { res.Report = "写回克隆的 itemGraphic 失败 ✗"; return res; }   // ⑤
             item.useSpriteForPickup = false;                                      // ⑥ 用模型不用精灵 ✓
 
+            // ⑦ ⭐ **也写到"当前这颗实例"上** ✓ —— 动态条目只影响"以后新实例化的" ✗，
+            //    而玩家手里那颗是**我们换之前就存在的** ✗（`ItemGraphic=null` ✓）→ 丢地上照样是贴图 ✗（实测 ✓）
+            bool instanceFixed = false;
+            if (alsoFixThisInstance != null && !ReferenceEquals(alsoFixThisInstance, item))
+            {
+                try
+                {
+                    instanceFixed = WriteGraphic(alsoFixThisInstance, g);
+                    if (instanceFixed) ClearAgentCache(alsoFixThisInstance);
+                }
+                catch { instanceFixed = false; }
+            }
+
             bool ok = false;
             try { ok = ItemStatsSystem.ItemAssetsCollection.AddDynamicEntry(item); }   // ⑦ **注册动态条目** ✓
             catch (Exception ex) { res.Report = "注册动态条目抛错 ✗：" + ex.Message; return res; }
@@ -527,7 +541,8 @@ namespace ModelKit
             res.AnchorName = "动态条目（克隆物品）";
             res.Applied = true;
             res.Report = "没有 ItemGraphic → **克隆物品预制体 + 注册动态条目**（遮蔽原物品 ✓ 关卡重建冲不掉 ✓）"
-                       + $"｜关旧外观 {res.Hidden.Count} 个｜挂到 '{res.AnchorName}'｜mesh 顶点={mesh.vertexCount}"
+                       + $"｜当前实例也补写了={(instanceFixed ? "是 ✓" : "否 ✗")}"
+                       + $"｜关旧外观 {res.Hidden.Count} 个｜mesh 顶点={mesh.vertexCount}"
                        + $"｜清缓存={(res.CacheCleared ? "是" : "否")}";
             return res;
         }
@@ -559,7 +574,7 @@ namespace ModelKit
                 // ⭐ 这件物品本来没有世界图形（游戏会画一张 **2D 图片** 兜底 ✓）
                 //   → 我们**造一份图形**写进去 ✓ 游戏下次就用我们的 ✓（= **替换**那个兜底 ✓ 不是删它 ✗）
                 // 走"克隆 + 动态条目"那条 ✓（写实例引用会被关卡重建冲掉 ✗ 实测 ✓）
-                var dyn = RegisterDynamicOverride(item.TypeID, mesh, texture);
+                var dyn = RegisterDynamicOverride(item.TypeID, mesh, texture, alsoFixThisInstance: item);
                 res.Report = dyn.Report;
                 res.Applied = dyn.Applied;
                 res.Instance = dyn.Instance;
