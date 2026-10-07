@@ -418,13 +418,17 @@ namespace ModelKit
         /// ⚠️ 游戏会**重建物品预制体** ✗ → 我们写进去的引用会被冲掉 ✓ → 那就把这个**同一个**对象再写回去 ✓</summary>
         static readonly Dictionary<int, ItemGraphicInfo> _made = new Dictionary<int, ItemGraphicInfo>();
 
-        static ItemGraphicInfo MakeGraphicForItem(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture, Result res)
+        static ItemGraphicInfo MakeGraphicForItem(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture, Result res,
+                                                  bool cache = true)
         {
-            // 已经造过 → 直接复用 ✓（Unity 的"已销毁"会当 null ✓ 所以这里能自动重造 ✓）
-            if (_made.TryGetValue(item.TypeID, out var cached) && cached != null) return cached;
-            // 物品当前指向的已经是我们的 → 也直接复用 ✓
-            if (item.ItemGraphic != null && item.ItemGraphic.gameObject != null
-                && item.ItemGraphic.gameObject.name.StartsWith("ModelKit_graphic_")) return item.ItemGraphic;
+            if (cache)
+            {
+                // 已经造过 → 直接复用 ✓（Unity 的"已销毁"会当 null ✓ 所以这里能自动重造 ✓）
+                if (_made.TryGetValue(item.TypeID, out var cached) && cached != null) return cached;
+                // 物品当前指向的已经是我们的 → 也直接复用 ✓
+                if (item.ItemGraphic != null && item.ItemGraphic.gameObject != null
+                    && item.ItemGraphic.gameObject.name.StartsWith("ModelKit_graphic_")) return item.ItemGraphic;
+            }
 
             ItemGraphicInfo g;
             try
@@ -441,8 +445,77 @@ namespace ModelKit
             if (g.gameObject.GetComponent<Marked>() == null) g.gameObject.AddComponent<Marked>();
 
             if (!WriteGraphic(item, g)) return null;            // 写回 item.ItemGraphic ✓
-            _made[item.TypeID] = g;                             // 记住它 ✓ 下次复用 ✓
+            if (cache) _made[item.TypeID] = g;                  // 记住它 ✓ 下次复用 ✓
             return g;
+        }
+
+        // ───────────────── 用"动态条目"覆盖原物品（工坊那条路 ✓ 稳 ✓）─────────────────
+
+        /// <summary>⭐ 给**没有 ItemGraphic** 的物品换成 3D：**克隆它自己的物品预制体** ✓
+        /// → 克隆里的图形换成我们的 ✓ → `useSpriteForPickup=false` ✓ → **`AddDynamicEntry`** 注册 ✓
+        ///
+        /// 为什么必须这样 ✓（反编译实证 ✓）：
+        ///   · 直接往 **实例** 的 `itemGraphic` 写引用 ✗ → 游戏**关卡加载时重建物品预制体**会把引用冲掉 ✗（实测 ✓）
+        ///   · `GetPrefab` / `InstantiateAsync_Local` 都是**先查 `dynamicDic`** ✓ → 注册进去就**遮蔽原物品** ✓
+        ///     而 `dynamicDic` 是游戏自己持有的**运行时字典** ✓ → **重建冲不掉** ✓✓（工坊 mod 就靠这个 ✓）
+        ///   · 游戏对"占用已有 typeID"会 log 一句警告 ✓（"This will override the main game's item" ✓）→ 是**允许**的用法 ✓
+        ///
+        /// ⚠️ 只克隆、只改图形 ✓：数值/插槽/图标/变量全部继承原件 ✓（`Object.Instantiate` 是完整拷贝 ✓）</summary>
+        public static Result RegisterDynamicOverride(int typeID, Mesh mesh, Texture2D texture)
+        {
+            var res = new Result { TypeID = typeID };
+            if (mesh == null) { res.Report = "网格为空 ✗"; return res; }
+
+            ItemStatsSystem.Item src = null;
+            try { src = ItemStatsSystem.ItemAssetsCollection.GetPrefab(typeID); }
+            catch (Exception ex) { res.Report = "取原物品失败 ✗：" + ex.Message; return res; }
+            if (src == null) { res.Report = $"typeID={typeID} 找不到原物品 ✗"; return res; }
+
+            ItemStatsSystem.Item item;
+            try { item = UnityEngine.Object.Instantiate(src); }                  // ① 克隆物品 ✓（完整拷贝 ✓）
+            catch (Exception ex) { res.Report = "克隆物品失败 ✗：" + ex.Message; return res; }
+
+            item.gameObject.name = "ModelKit_item_" + src.name;
+            UnityEngine.Object.DontDestroyOnLoad(item.gameObject);                // ② 它不在场景里 ✓ 工坊也这么做 ✓
+
+            // ③ 图形：原件有就**克隆它**（原件保持干净 ✓ 完全可逆 ✓），没有就造一个 ✓
+            ItemGraphicInfo g = null;
+            if (item.ItemGraphic != null)
+            {
+                var gsrc = item.ItemGraphic;
+                g = UnityEngine.Object.Instantiate(gsrc);                         // ⚠️ 只克隆 ✓ **绝不动原件** ✗
+                g.gameObject.name = "ModelKit_graphic_" + src.name;
+                g.transform.SetParent(item.transform, false);                     // 挂克隆下 ✓ → 跟着 DDOL ✓
+            }
+            else
+            {
+                g = MakeGraphicForItem(item, mesh, texture, res, cache: false);   // 造一个 ✓
+                if (g == null) { res.Report = "造图形失败 ✗"; return res; }
+                g.transform.SetParent(item.transform, false);
+            }
+
+            InitGraphicFields(g);                                                 // ④ 补字段 ✓（否则游戏一用就空引用 ✗）
+            var mount = PickMount(g.transform);
+            HideOld(g.transform, res);
+            res.Instance = Attach(g.transform, mount, mesh, texture, src.name, g.transform.position,
+                                  mount != null ? mount.sharedMaterial : BorrowMaterial());
+            if (g.gameObject.GetComponent<Marked>() == null) g.gameObject.AddComponent<Marked>();
+
+            if (!WriteGraphic(item, g)) { res.Report = "写回克隆的 itemGraphic 失败 ✗"; return res; }   // ⑤
+            item.useSpriteForPickup = false;                                      // ⑥ 用模型不用精灵 ✓
+
+            bool ok = false;
+            try { ok = ItemStatsSystem.ItemAssetsCollection.AddDynamicEntry(item); }   // ⑦ **注册动态条目** ✓
+            catch (Exception ex) { res.Report = "注册动态条目抛错 ✗：" + ex.Message; return res; }
+            if (!ok) { res.Report = "AddDynamicEntry 返回 false ✗"; return res; }
+
+            res.CacheCleared = ClearAgentCache(item);
+            res.AnchorName = "动态条目（克隆物品）";
+            res.Applied = true;
+            res.Report = "没有 ItemGraphic → **克隆物品预制体 + 注册动态条目**（遮蔽原物品 ✓ 关卡重建冲不掉 ✓）"
+                       + $"｜关旧外观 {res.Hidden.Count} 个｜挂到 '{res.AnchorName}'｜mesh 顶点={mesh.vertexCount}"
+                       + $"｜清缓存={(res.CacheCleared ? "是" : "否")}";
+            return res;
         }
 
         // ───────────────────────── 三个入口 ─────────────────────────
@@ -471,13 +544,14 @@ namespace ModelKit
             {
                 // ⭐ 这件物品本来没有世界图形（游戏会画一张 **2D 图片** 兜底 ✓）
                 //   → 我们**造一份图形**写进去 ✓ 游戏下次就用我们的 ✓（= **替换**那个兜底 ✓ 不是删它 ✗）
-                var made = MakeGraphicForItem(item, mesh, texture, res);
-                if (made == null) { res.Report = "造图形失败 ✗（这件物品保持 2D 图片兜底 ✓）"; return res; }
-                res.CacheCleared = ClearAgentCache(item);
-                res.AnchorName = "新建图形";
-                res.Applied = true;
-                res.Report = "没有 ItemGraphic → **造了一份世界图形** ✓ 替换掉 2D 图片兜底 ✓"
-                           + $"｜mesh 顶点={mesh.vertexCount}｜清缓存={(res.CacheCleared ? "是" : "否")}";
+                // 走"克隆 + 动态条目"那条 ✓（写实例引用会被关卡重建冲掉 ✗ 实测 ✓）
+                var dyn = RegisterDynamicOverride(item.TypeID, mesh, texture);
+                res.Report = dyn.Report;
+                res.Applied = dyn.Applied;
+                res.Instance = dyn.Instance;
+                res.Hidden.AddRange(dyn.Hidden);
+                res.CacheCleared = dyn.CacheCleared;
+                res.AnchorName = dyn.AnchorName;
                 return res;
             }
 
