@@ -168,10 +168,9 @@ namespace ItemModelSwap
                     if (agent == null) continue;
                     var pItem = agent.GetType().GetProperty("Item");
                     var item = pItem != null ? pItem.GetValue(agent) : null;
-                    if (item == null) continue;
-                    var itemType = item.GetType();
-                    var nm = itemType.GetProperty("name") != null ? item.name : "?";
-                    var g = item.ItemGraphic;
+                    var it = item as ItemStatsSystem.Item;      // ⭐ 必须转成 Item 才能用那些字段（反射拿到的是 object ✗）
+                    if (it == null) continue;
+                    var g = it.ItemGraphic;
                     var root = (fRoot != null ? fRoot.GetValue(mb) : null) as Transform;
                     int spr = 0, mesh = 0, ours2 = 0;
                     if (root != null)
@@ -182,9 +181,9 @@ namespace ItemModelSwap
                             else if (r is MeshRenderer || r is SkinnedMeshRenderer) mesh++;
                             if (r.gameObject.name.StartsWith("ModelKit_")) ours2++;
                         }
-                    Debug.Log($"[ItemModel] 地上：'{(item as ItemStatsSystem.Item).name}'(typeID={(item as ItemStatsSystem.Item).TypeID})"
+                    Debug.Log($"[ItemModel] 地上：'{it.name}'(typeID={it.TypeID})"
                             + $"｜ItemGraphic={(g == null ? "**null** ✗" : (g.gameObject != null ? g.gameObject.name : "(已销毁) ✗"))}"
-                            + $"｜useSprite={item.useSpriteForPickup}"
+                            + $"｜useSprite={it.useSpriteForPickup}"
                             + $"｜graphicRoot 下: SpriteRenderer={spr} MeshRenderer={mesh} 我们的={ours2}");
                 }
             }
