@@ -137,46 +137,6 @@ namespace ModelKit
             HideCharacterSkin(cm, keepUnder);   // 幂等
         }
 
-        static int _displayLayer = int.MinValue;
-
-        /// <summary>⭐ **世界显示层** ✓ —— 游戏在世界里显示物品/装备时用的那个层 ✓。
-        ///
-        /// 为什么需要它 ✗：我们**自己造**图形时（物品没有 `ItemGraphic` 的那种 ✓），没有"游戏零件"的层可抄 ✗。
-        /// 而**物品预制体自己的层**不能用 ✗ —— 实测（用户报的 ✓）：拿它当层 → 模型**发白** ✗ +
-        /// **渲染在最前面** ✗（那是 **UI 层**的行为 ✓ 因为 Item 的 GameObject 平时是给背包格子/UI 用的 ✓）。
-        ///
-        /// 取法（**按证据** ✓）：① 游戏自己的 `CharacterSubVisuals.InitLayers` 写着 `showLayer = "Character"` ✓
-        /// → 直接用 `LayerMask.NameToLayer("Character")` ✓；② 实在没有 → 才从场上一件游戏图形实例上读 ✓；
-        /// ③ 都不行 → -1（调用方**不动层** ✓）
-        /// ⚠️ 失败**不缓存** ✗（实测踩到 ✓：缓存了 -1 → 之后每次都直接 return → 层停在 Default → 看不见 ✗）</summary>
-        public static int DisplayLayer()
-        {
-            // ⭐ **主来源 = 游戏自己的代码** ✓（铁证 ✓）：`CharacterSubVisuals.InitLayers` 里写着
-            //     showLayer = LayerMask.NameToLayer("**Character**")  ← 游戏显示装备/物品视觉时用的就是它 ✓
-            //    （隐藏时它用 "SpecialCamera" ✓）
-            if (_displayLayer < 0)
-            {
-                int c = LayerMask.NameToLayer("Character");
-                if (c >= 0) _displayLayer = c;
-            }
-            if (_displayLayer >= 0) return _displayLayer;      // ⚠️ **只在成功时缓存** ✓（失败不缓存 ✗）
-
-            // 兜底 ✓：实在没有 Character 层 → 从场上一件**游戏自己的**图形实例上读 ✓
-            try
-            {
-                foreach (var g in UnityEngine.Object.FindObjectsByType<ItemGraphicInfo>(FindObjectsSortMode.None))
-                {
-                    if (g == null || g.gameObject == null) continue;
-                    if (g.gameObject.name.StartsWith("ModelKit_")) continue;      // 我们造的跳过 ✗
-                    foreach (var r in g.GetComponentsInChildren<Renderer>(true))
-                        if ((r is MeshRenderer || r is SkinnedMeshRenderer) && r.gameObject != null && r.gameObject.layer > 0)
-                            return r.gameObject.layer;                            // 成功 → 不缓存也行 ✓（下次照样走前两条 ✓）
-                }
-            }
-            catch { }
-            return -1;                                          // ✗ 不缓存失败 ✓
-        }
-
         /// <summary>把"我们的基础色贴图"套到一份**从游戏材质克隆来的**材质上 ✓，并**清掉其它槽** ✗。
         /// 武器 ✓ 物品 ✓ **共用同一套** ✓（用户要求一套逻辑 ✓）。
         ///

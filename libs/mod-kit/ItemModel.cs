@@ -304,19 +304,6 @@ namespace ModelKit
             return res;
         }
 
-        /// <summary>把 root **整棵子树**的层设成 layer ✓（Unity 的层**不继承** ✗ 必须逐个设 ✓）</summary>
-        static void SetLayerDeep(GameObject root, int layer)
-        {
-            if (root == null || layer < 0) return;
-            try
-            {
-                root.layer = layer;
-                foreach (var t in root.GetComponentsInChildren<Transform>(true))
-                    if (t != null) t.gameObject.layer = layer;
-            }
-            catch { }
-        }
-
         static string Fmt(Vector3 v)
             => "(" + v.x.ToString("0.###") + "," + v.y.ToString("0.###") + "," + v.z.ToString("0.###") + ")";
 
@@ -486,8 +473,8 @@ namespace ModelKit
             //      而且游戏里这些掉落物**看得见** ✓（`InteractablePickup.CreateGraphic` 里**没有任何设层代码** ✓）
             //      → 我们造的图形就保持 `new GameObject()` 的默认层（0 ✓）= 和游戏资产完全一致 ✓
             //   我先后猜过"Default 看不见"✗ / "用物品自己的层"✗（→ 发白+渲染在最前 ✓）/ "用 Character"✗（→ 看不见 ✓）
-            //   —— 三次都错 ✓ 根因是**猜层值** ✗ 而不是照游戏的做法（不设 ✓）
-            SetLayerDeep(g.gameObject, 0);
+            //   —— 三次都错 ✓ 根因是**猜层值** ✗ 而不是照游戏的做法（**不动层** ✓）
+            //   ⇒ **层一律不动** ✓（游戏自己的掉落物图形就是 0 层 ✓ 那个值可见 ✓ 不用我们设 ✗）
             if (g.gameObject.GetComponent<Marked>() == null) g.gameObject.AddComponent<Marked>();
 
             if (!WriteGraphic(item, g)) return null;            // 写回 item.ItemGraphic ✓
@@ -578,7 +565,7 @@ namespace ModelKit
             HideOld(g.transform, res);
             res.Instance = Attach(g.transform, mount, mesh, texture, src.name, g.transform.position,
                                   mount != null ? mount.sharedMaterial : BorrowMaterial());
-            SetLayerDeep(g.gameObject, 0);      // ⭐ 同上：层一律不设 ✓（游戏掉落物就是 0 层 ✓ 而它看得见 ✓）
+            // 层同上：**一律不动** ✓（游戏掉落物图形就是 0 层 ✓ 可见 ✓）
             if (g.gameObject.GetComponent<Marked>() == null) g.gameObject.AddComponent<Marked>();
 
             if (!WriteGraphic(item, g)) { res.Report = "写回克隆的 itemGraphic 失败 ✗"; return res; }   // ⑤
@@ -605,38 +592,6 @@ namespace ModelKit
             try { ok = ItemStatsSystem.ItemAssetsCollection.AddDynamicEntry(item); }   // ⑦ **注册动态条目** ✓
             catch (Exception ex) { res.Report = "注册动态条目抛错 ✗：" + ex.Message; return res; }
             if (!ok) { res.Report = "AddDynamicEntry 返回 false ✗"; return res; }
-
-            // ⚠️ 临时诊断（量完删 ✗ 只读 ✓）：把"我们造的图形/网格"和"游戏自己那份"的实际状态打出来 ✓
-            try
-            {
-                var go = res.Instance;
-                var mr = go != null ? go.GetComponent<MeshRenderer>() : null;
-                var b = mr != null ? mr.bounds : new Bounds();
-                Debug.Log($"[ItemModel] 诊断(临时)：'{src.name}'(typeID={typeID})"
-                        + $"｜我们的图形: layer={g.gameObject.layer} active={g.gameObject.activeInHierarchy}"
-                        + $"｜我们的 mesh: layer={(go != null ? go.layer : -1)} enabled={(mr != null ? mr.enabled : false)}"
-                        + $" size=({b.size.x:F3},{b.size.y:F3},{b.size.z:F3}) 世界中心=({b.center.x:F2},{b.center.y:F2},{b.center.z:F2})"
-                        + $"｜物品自己 layer={item.gameObject.layer}｜原件图形={(src.ItemGraphic != null ? src.ItemGraphic.gameObject.layer.ToString() : "null")}"
-                        + $"｜Character 层号={LayerMask.NameToLayer("Character")}｜SpecialCamera={LayerMask.NameToLayer("SpecialCamera")}"
-                        + $"｜父节点={(go != null && go.transform.parent != null ? go.transform.parent.name : "(无)")}");
-
-                // ⭐ 关键 ✓：把"场上所有图形实例"的真实状态列出来 ✓（含游戏自己造的副本 ✓）
-                var sb = new System.Text.StringBuilder();
-                int cnt = 0;
-                foreach (var inst in UnityEngine.Object.FindObjectsByType<ItemGraphicInfo>(FindObjectsSortMode.None))
-                {
-                    if (inst == null || inst.gameObject == null) continue;
-                    var tr = inst.transform;
-                    sb.Append($"\n      · '{inst.gameObject.name}' layer={inst.gameObject.layer}"
-                            + $" active={inst.gameObject.activeInHierarchy} scene='{inst.gameObject.scene.name}'"
-                            + $" 世界位置=({tr.position.x:F2},{tr.position.y:F2},{tr.position.z:F2})"
-                            + $" 父={(tr.parent != null ? tr.parent.name : "(无)")}"
-                            + $" 渲染器={inst.GetComponentsInChildren<Renderer>(true).Length}");
-                    if (++cnt >= 10) break;
-                }
-                Debug.Log("[ItemModel] 诊断(临时) 场上图形实例：" + (cnt == 0 ? "（一个都没有 ✗）" : sb.ToString()));
-            }
-            catch (Exception ex) { Debug.LogWarning("[ItemModel] 诊断失败: " + ex.Message); }
 
             _dynDone.Add(typeID);                                  // 记下 ✓ 只注册一次 ✓
             _dynGraphic[typeID] = g;                               // 存起来 ✓ 后续实例补写要用它 ✓
