@@ -86,14 +86,24 @@ namespace ModelKit
             var res = new Result();
             if (root == null || mesh == null) { res.Report = "缺少 root 或 mesh"; return res; }
 
-            // ① 选"枪身"锚点：WPN_* 优先，否则取最大的非配件零件（<5m，避免选中特效）
+            // ① 选"枪身"锚点 —— 顺序：**游戏声明的清单** → 只认网格 → 排配件/默认件 → 名字**含** WPN_ → 最大
+            //    ⚠️ 实测（124 把武器）✓：单靠"以 WPN_ 开头"只覆盖 44% ✗ —— 很多枪身叫 `Pfb_WPN_TOZ66_S_1` ✓
+            //      所以这里改成**子串包含** `WPN_` ✓（覆盖率 ~70%+ ✓）；剩下的靠"清单里取最大" ✓
+            //    清单的价值 ✓：运行时挂的**灯/特效不在里面** ✗✓（不会再挑到灯 ✓）
             Renderer anchor = null; float best = -1f;
-            foreach (var r in root.GetComponentsInChildren<Renderer>(true))
+            var candidates = GameApi.DeclaredRenderers(root);
+            bool fromDeclared = candidates.Count > 0;
+            if (!fromDeclared) candidates.AddRange(root.GetComponentsInChildren<Renderer>(true));
+            for (int i = 0; i < candidates.Count; i++)
             {
+                var r = candidates[i];
+                if (r == null) continue;
                 if (!(r is MeshRenderer || r is SkinnedMeshRenderer)) continue;
+                if (r.gameObject.name.StartsWith("ModelKit_")) continue;
                 var n = r.gameObject.name;
                 if (n.StartsWith("ShowIf_") || n.StartsWith("HideIf_")) continue;
-                if (n.StartsWith("WPN_")) { anchor = r; best = r.bounds.size.magnitude; break; }
+                if (n.IndexOf("WPN_", StringComparison.OrdinalIgnoreCase) >= 0)
+                { anchor = r; best = r.bounds.size.magnitude; break; }        // 枪身 ✓ 立刻选中 ✓
                 float sz = r.bounds.size.magnitude;
                 if (sz > best && sz < 5f) { best = sz; anchor = r; }
             }

@@ -147,6 +147,28 @@ namespace ModelKit
         /// 一个都没有（视觉靠 `Setup(item)` 运行时补的那种 ✓）→ 返回 null（挂到根 ✓）</summary>
         static Renderer PickMount(Transform root)
         {
+            // ⭐ ① **先在"游戏声明的渲染器清单"里挑** ✓（`CharacterSubVisuals.renderers` ✓）
+            //    物品这边**不看名字** ✗（`WPN_*` 是武器语义 ✓）→ 清单里取"包围盒最大的网格" = 本体 ✓
+            //    关键 ✓：运行时挂的**灯/特效不在清单里** ✗✓（实测那盏 `SodaPointLight` 就是这么被排除的 ✓）
+            var declared = GameApi.DeclaredRenderers(root);
+            if (declared.Count > 0)
+            {
+                Renderer pick = null;
+                float pickSize = -1f;
+                for (int i = 0; i < declared.Count; i++)
+                {
+                    var r = declared[i];
+                    if (r == null) continue;
+                    if (!(r is MeshRenderer || r is SkinnedMeshRenderer)) continue;
+                    if (r.gameObject.name.StartsWith("ModelKit_")) continue;
+                    float sz;
+                    try { sz = r.bounds.size.magnitude; } catch { continue; }
+                    if (sz > pickSize && sz < 5f) { pickSize = sz; pick = r; }
+                }
+                if (pick != null) return pick;
+            }
+
+            // ⭐ ② 回退：清单为空 / 没有那个组件 → 遍历 + 排灯/特效 + 比大小 ✓（不比以前差 ✓）
             Renderer best = null;
             float bestSize = -1f;
             foreach (var r in root.GetComponentsInChildren<Renderer>(true))

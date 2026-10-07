@@ -137,6 +137,23 @@ namespace ModelKit
             HideCharacterSkin(cm, keepUnder);   // 幂等
         }
 
+        /// <summary>⭐ 游戏**自己声明**的"这套外观用哪些渲染器" ✓ —— 图形根上的 `CharacterSubVisuals.renderers` ✓。
+        /// 实测价值 ✓：运行时挂上去的**灯 / 特效不在这个清单里** ✗ → 用它找"本体"最准 ✓（比"取最大"稳 ✓）。
+        /// 武器/物品两边都适用 ✓（物品清单通常只有 1 个 = 本体 ✓；武器清单含 枪身+配件 ✓ 需再筛 ✓）</summary>
+        public static List<Renderer> DeclaredRenderers(Transform root)
+        {
+            var outp = new List<Renderer>();
+            if (root == null) return outp;
+            try
+            {
+                var sv = root.GetComponent<CharacterSubVisuals>();
+                if (sv != null && sv.renderers != null)
+                    foreach (var r in sv.renderers) if (r != null) outp.Add(r);
+            }
+            catch { /* 老版本/没有这个组件 → 返回空 ✓ 调用方会走回退逻辑 ✓ */ }
+            return outp;
+        }
+
         /// <summary>⭐ 枚举**所有已加载的物品对象**（含物品模板 prefab 与场上实例 ✓）。
         /// 用途：按名字/typeID 找齐"该换模型的物品" ✓（和 <see cref="WeaponIcon.ApplyToAllMatching"/> 同一个枚举方式 ✓）</summary>
         public static IEnumerable<ItemStatsSystem.Item> AllItems()
