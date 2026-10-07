@@ -36,6 +36,16 @@ dotnet run --project tools/data-probe -- \
 
 > `list` / `search` 每次最多 500 条；截断时会提示 `--offset <下一页>`——**优先用更窄的查询（`search --pattern` / `dump --name`），确实要枚举时才翻页**。
 
+### ⚠️ 两个"传错了也不报错"的坑 ✓
+
+- **`--pathid` 要的是资产 pathID，不是游戏 typeID** ✗ —— 两个都是整数，但含义不同 ✓：
+  `list` / `search` 结果里那一列才是 pathID ✓；`--typeid` 是游戏数据的 typeID ✓（按数据查要配 `--class` 一起用 ✓）。
+  传错**不会报错** ✗，会静默 dump 到"同编号的另一个资产"
+  （实测：把 Item 的 `typeID=43` 当 `--pathid` 传 → 拿回来的是一个 `Material` ✓）。
+- **数组要 `--depth ≥ 4~5` 才展开** ✗ —— `--depth`（默认 3）不够时，数组只显示
+  `AssetsTools.NET.AssetTypeArrayInfo` ✓。要顺着 `m_Component` / `renderers` 这类数组里的 `pathID` 继续往下走 ✓，
+  就得给 `--depth 5` ✓。
+
 ## `export` 的路径语法（`--field` / `--match` 共用）
 
 一段一段用 `.` 分隔，**PPtr 自动跟随**：
