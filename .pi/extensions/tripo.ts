@@ -191,7 +191,7 @@ export default function (pi: ExtensionAPI) {
     name: "generate_image",
     label: "Generate Image (Tripo)",
     description:
-      "Make one square PNG from a 3D model, a Tripo task id, a reference picture, or a description alone. With prompt a new image is generated (a few credits); without prompt you get the model's own render for free. Saves the file to out= and returns PASS with the path. Needs the Tripo API key (~/.gamer-agent-pi/api-keys.json, key 'tripo').",
+      "Make one square PNG from a 3D model, a Tripo task id, a reference picture, or a description alone. With prompt a new image is generated (a few credits); with model= or taskId= given and no prompt, you get that model's own render for free. Saves the file to out= and returns PASS with the path. Needs the Tripo API key (~/.gamer-agent-pi/api-keys.json, key 'tripo').",
     promptSnippet: "Make a square PNG (preview or icon) from a model or a reference picture",
     promptGuidelines: [
       "Use generate_image when a capability needs a 2D image file: it saves a square PNG to out= and returns PASS with the path.",
@@ -210,7 +210,7 @@ export default function (pi: ExtensionAPI) {
       prompt: Type.Optional(
         Type.String({
           description:
-            'The prompt sent to the API (the main instruction - our recipe from the capability skill). Omit it to just get the model\'s own render (free). Example: "clean game inventory icon, side profile, white background, centered, the barrel and muzzle point to the LEFT".',
+            'The prompt sent to the API (the main instruction - our recipe from the capability skill). With model= or taskId= given, omit it to just get that model\'s own render (free). Example: "clean game inventory icon, side profile, white background, centered, the barrel and muzzle point to the LEFT".',
         }),
       ),
       out: Type.Optional(
@@ -465,8 +465,7 @@ export default function (pi: ExtensionAPI) {
               type: "text",
               text:
                 `PASS: model saved to ${firstOut} (${size2}, raw also at ${rawPath} ${size}). task_id=${taskId}\n` +
-                (shots.length ? `Preview: ${shots.join(", ")} - read/look at it and show it to the user BEFORE installing: shape is up to the prompt, orientation is already right.\n` : "") +
-                `NEXT: put it in your mod folder and point config.json at it (e.g. {"target":"MP5","model":"${firstOut.split("/").pop()}"}), then build and install the mod.`,
+                (shots.length ? `Preview: ${shots.join(", ")} - read/look at it and show it to the user BEFORE installing: shape is up to the prompt, orientation is already right.\n` : ""),
             },
           ],
         };
