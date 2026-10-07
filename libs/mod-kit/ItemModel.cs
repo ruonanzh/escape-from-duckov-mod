@@ -471,6 +471,8 @@ namespace ModelKit
         /// ⚠️ 只克隆、只改图形 ✓：数值/插槽/图标/变量全部继承原件 ✓（`Object.Instantiate` 是完整拷贝 ✓）</summary>
         /// <summary>已经注册过的 typeID ✓ —— **同一个只注册一次** ✗ 否则会自增克隆（实测：主界面越来越卡直到卡死 ✗）</summary>
         static readonly HashSet<int> _dynDone = new HashSet<int>();
+        /// <summary>已注册动态条目时用的那个图形 ✓ —— 后续给"别的实例"补写时要复用它 ✓</summary>
+        static readonly Dictionary<int, ItemGraphicInfo> _dynGraphic = new Dictionary<int, ItemGraphicInfo>();
 
         public static Result RegisterDynamicOverride(int typeID, Mesh mesh, Texture2D texture,
                                                      ItemStatsSystem.Item alsoFixThisInstance = null)
@@ -478,7 +480,22 @@ namespace ModelKit
             var res = new Result { TypeID = typeID };
             if (mesh == null) { res.Report = "网格为空 ✗"; return res; }
             if (_dynDone.Contains(typeID))
-            { res.NoOp = true; res.Report = "这个 typeID 已经注册过动态条目 ✓"; return res; }   // ⭐ 幂等 ✓ 断循环 ✓
+            {
+                // ⭐ 注册只做一次 ✓（断自增循环 ✓）—— 但**实例补写每次都要做** ✗
+                //   （玩家后来才拿到的每一颗都是"老实例" ✗ 不补写就永远是贴图 ✗ 实测踩到 ✓）
+                if (alsoFixThisInstance != null && _dynGraphic.TryGetValue(typeID, out var g0) && g0 != null)
+                {
+                    if (WriteGraphic(alsoFixThisInstance, g0))
+                    {
+                        alsoFixThisInstance.useSpriteForPickup = false;
+                        ClearAgentCache(alsoFixThisInstance);
+                        res.Applied = true;
+                        res.Report = "已注册过 ✓（这次只补写当前实例 ✓ + 关掉它的 useSpriteForPickup ✓）";
+                        return res;
+                    }
+                }
+                res.NoOp = true; res.Report = "已经注册过动态条目 ✓"; return res;
+            }
 
             ItemStatsSystem.Item src = null;
             try { src = ItemStatsSystem.ItemAssetsCollection.GetPrefab(typeID); }
@@ -526,7 +543,11 @@ namespace ModelKit
                 try
                 {
                     instanceFixed = WriteGraphic(alsoFixThisInstance, g);
-                    if (instanceFixed) ClearAgentCache(alsoFixThisInstance);
+                    if (instanceFixed)
+                    {
+                        alsoFixThisInstance.useSpriteForPickup = false;   // 实例上也要设 ✗ 不然 pickup 还走精灵 ✓
+                        ClearAgentCache(alsoFixThisInstance);
+                    }
                 }
                 catch { instanceFixed = false; }
             }
@@ -537,6 +558,7 @@ namespace ModelKit
             if (!ok) { res.Report = "AddDynamicEntry 返回 false ✗"; return res; }
 
             _dynDone.Add(typeID);                                  // 记下 ✓ 只注册一次 ✓
+            _dynGraphic[typeID] = g;                               // 存起来 ✓ 后续实例补写要用它 ✓
             res.CacheCleared = ClearAgentCache(item);
             res.AnchorName = "动态条目（克隆物品）";
             res.Applied = true;
