@@ -57,12 +57,12 @@ description: 用户想换**物品**（背包 / 防弹衣 / 头盔 / 弹匣 / 任
 ```csharp
 var loaded = ModelKit.GltfLoader.LoadFile(路径, "auto");     // → Mesh + MainTexture
 
-ModelKit.ItemModel.ApplyByTypeID(36, loaded.Mesh, loaded.MainTexture);  // **推荐**：按 typeID ✓（不用先拿到 Item ✓）
-ModelKit.ItemModel.Apply(item, loaded.Mesh, loaded.MainTexture);        // 或按物品：模板 + 场上实例一起换 ✓
-ModelKit.ItemModel.ApplyToInstance(item, loaded.Mesh, loaded.MainTexture);  // 只改场上这一个（不动模板 ✓）
+// 主入口：一件物品（含它的模板 ✓）
+var res = ModelKit.ItemModel.Apply(item, loaded.Mesh, loaded.MainTexture, handheld: 开关);
 
-// res.Report 里有"关旧外观 N 个 / 挂到 哪个挂点 / 清缓存"；res.Restore() 能全还原（热重载用 ✓）
-// ⚠️ 没有 ItemGraphic 的物品（纯图标那种 ✓）会被**跳过** ✓（换不了外观 ✗ 日志里写"跳过" ✓）
+// handheld：要不要**连"拿在手里"那条也换** ✓（⚠️ 它会改行为：变成"可拿在手里 + UI 可选中" ✓ 见 §4）
+// res.Report 里写着做了什么（关旧外观 N 个 / 挂到哪个挂点 / 有没有走"克隆+动态条目"）；
+// res.Restore() 能全还原（热重载用 ✓）
 ```
 
 ## 3. 装进游戏

@@ -141,36 +141,6 @@ namespace ModelKit
             return null;
         }
 
-        /// <summary>只读诊断 ✓：这件物品身上有哪些 agent 键（`normal` / `pickUp` / `handheld` / `equipment`…）
-        /// —— 用来判断"地上 / 手里 / 穿戴"各走哪条路 ✓（键名是游戏自己写进去的 ✓）
-        /// ⚠️ 纯读 ✓ 不写任何东西 ✓</summary>
-        public static string AgentKeys(ItemStatsSystem.Item item)
-        {
-            var sb = new System.Text.StringBuilder();
-            try
-            {
-                var au = item != null ? item.AgentUtilities : null;
-                if (au == null) return "(没有 AgentUtilities ✗)";
-                var f = typeof(ItemStatsSystem.ItemAgentUtilities)
-                    .GetField("agents", BindingFlags.Instance | BindingFlags.NonPublic);
-                var list = f != null ? f.GetValue(au) as System.Collections.IList : null;
-                if (list == null) return "(读不到 agents 列表 ✗)";
-                for (int i = 0; i < list.Count; i++)
-                {
-                    var pair = list[i];
-                    if (pair == null) continue;
-                    var kf = pair.GetType().GetField("key");
-                    var af = pair.GetType().GetField("agentPrefab");
-                    string k = kf != null ? (kf.GetValue(pair) as string) : null;
-                    object a = af != null ? af.GetValue(pair) : null;
-                    if (i > 0) sb.Append(", ");
-                    sb.Append(k).Append(a != null ? "✓" : "✗");
-                }
-            }
-            catch (Exception ex) { return "(读失败 ✗：" + ex.Message + ")"; }
-            return sb.Length == 0 ? "(空 ✓ 没有自带 agent)" : "[" + sb + "]";
-        }
-
         // ───────────────────────── 关旧外观 / 挂我们的 ─────────────────────────
 
         /// <summary>取"挂点"：优先**包围盒最大**的渲染器（**任何类型** ✓ 含 SpriteRenderer ✓）；
@@ -430,19 +400,8 @@ namespace ModelKit
         ///    → mod 每秒的复查会**再造一份** ✓</summary>
         /// <summary>我们**造出来的**图形（按 typeID 缓存 ✓）—— 复用同一个 ✓ 别每次造新的 ✗
         /// ⚠️ 游戏会**重建物品预制体** ✗ → 我们写进去的引用会被冲掉 ✓ → 那就把这个**同一个**对象再写回去 ✓</summary>
-        static readonly Dictionary<int, ItemGraphicInfo> _made = new Dictionary<int, ItemGraphicInfo>();
-
-        static ItemGraphicInfo MakeGraphicForItem(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture, Result res,
-                                                  bool cache = true)
+        static ItemGraphicInfo MakeGraphicForItem(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture, Result res)
         {
-            if (cache)
-            {
-                // 已经造过 → 直接复用 ✓（Unity 的"已销毁"会当 null ✓ 所以这里能自动重造 ✓）
-                if (_made.TryGetValue(item.TypeID, out var cached) && cached != null) return cached;
-                // 物品当前指向的已经是我们的 → 也直接复用 ✓
-                if (item.ItemGraphic != null && item.ItemGraphic.gameObject != null
-                    && item.ItemGraphic.gameObject.name.StartsWith("ModelKit_graphic_")) return item.ItemGraphic;
-            }
 
             ItemGraphicInfo g;
             try
@@ -459,7 +418,6 @@ namespace ModelKit
             if (g.gameObject.GetComponent<Marked>() == null) g.gameObject.AddComponent<Marked>();
 
             if (!WriteGraphic(item, g)) return null;            // 写回 item.ItemGraphic ✓
-            if (cache) _made[item.TypeID] = g;                  // 记住它 ✓ 下次复用 ✓
             return g;
         }
 
@@ -526,7 +484,7 @@ namespace ModelKit
             }
             else
             {
-                g = MakeGraphicForItem(item, mesh, texture, res, cache: false);   // 造一个 ✓
+                g = MakeGraphicForItem(item, mesh, texture, res);                 // 造一个 ✓
                 if (g == null) { res.Report = "造图形失败 ✗"; return res; }
             }
 
@@ -597,21 +555,9 @@ namespace ModelKit
             return res;
         }
 
-        // ───────────────────────── 三个入口 ─────────────────────────
+        // ───────────────────────── 对外入口 ─────────────────────────
 
-        /// <summary>① 按 **typeID** 换（**推荐主入口** ✓ 不用先拿到 Item ✓）：
-        /// 改物品模板的图形 → 以后每个实例（掉地上/手里/装备 ✓）都是我们的 ✓</summary>
-        public static Result ApplyByTypeID(int typeID, Mesh mesh, Texture2D texture)
-        {
-            var res = new Result { TypeID = typeID };
-            ItemStatsSystem.Item prefab = null;
-            try { prefab = ItemStatsSystem.ItemAssetsCollection.GetPrefab(typeID); }
-            catch (Exception ex) { res.Report = "取物品模板失败 ✗：" + ex.Message; return res; }
-            if (prefab == null) { res.Report = $"typeID={typeID} 找不到物品 ✗"; return res; }
-            return Apply(prefab, mesh, texture);
-        }
-
-        /// <summary>② 换一件物品：**它的模板** + **场上已有的实例** 一起换 ✓
+        /// <summary>**主入口**：换一件物品：**它的模板** + **场上已有的实例** 一起换 ✓
         /// ⚠️ 没有 `ItemGraphic` 的物品（纯图标那种 ✓）会被**跳过** ✓（换不了外观 ✗ 不是失败 ✓）</summary>
         public static Result Apply(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture, bool handheld = false)
         {

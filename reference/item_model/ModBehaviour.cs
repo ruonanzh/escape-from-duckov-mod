@@ -83,9 +83,6 @@ namespace ItemModelSwap
         float _nextCfgCheck;                       // 限频：每 0.25 秒才查一次 config ✓
         DateTime _cfgStamp = DateTime.MinValue;
         float _nextHeldSweep;                      // ⭐ 手持/装备那条要**反复复查**（物品是后来才被拿起来的 ✓）
-        readonly HashSet<int> _diagnosed = new HashSet<int>();   // 诊断每件只打一次 ✓
-        readonly HashSet<int> _heldLogged = new HashSet<int>();  // 手持"没成"也每件打一次 ✓（否则看不到原因 ✗）
-        float _nextSceneCheck;                                      // 现场诊断（低频 ✓）
         float _nextApply;                                           // ⭐ 扫描节流：`AllItems()` 是**整场景对象扫描** ✗ 不能每帧做 ✓
 
         /// <summary>模型缓存：路径 → （指纹, Mesh, 贴图）。指纹 = 路径 + 朝向 + 文件 mtime+size ✓</summary>
@@ -116,7 +113,6 @@ namespace ItemModelSwap
         {
             ReloadIfChanged();
             ApplyAll();
-            SceneCheck();
         }
 
         /// <summary>config.json 存盘即生效（热重载 ✓ 不用重启 ✓）</summary>
@@ -142,66 +138,6 @@ namespace ItemModelSwap
                 Debug.Log("[ItemModel] config 已重载 → 重新挂 " + _entries.Count + " 条规则");
             }
             catch (Exception ex) { Debug.LogWarning("[ItemModel] config 热重载失败：" + ex.Message); }
-        }
-
-        /// <summary>⭐ 现场诊断（每 10 秒一条 ✓）：命中的物品**现在**的 ItemGraphic 是什么 ✓、
-        /// 以及场上有没有我们的图形实例 ✓ —— 用来分清"没写进去 ✗"还是"写进去但画不出来 ✗"</summary>
-        void SceneCheck()
-        {
-            if (Time.unscaledTime < _nextSceneCheck) return;
-            _nextSceneCheck = Time.unscaledTime + 10f;
-            int ours = 0;
-            try
-            {
-                foreach (var g in UnityEngine.Object.FindObjectsByType<ItemGraphicInfo>(FindObjectsSortMode.None))
-                    if (g != null && g.gameObject != null && g.gameObject.name.StartsWith("ModelKit_graphic_")) ours++;
-            }
-            catch { }
-            // ⭐ 地上那件东西**到底在画什么** ✓（用反射读 `InteractablePickup` ✓ 零编译依赖 ✓）
-            try
-            {
-                foreach (var mb in UnityEngine.Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
-                {
-                    if (mb == null || mb.GetType().Name != "InteractablePickup") continue;
-                    var t = mb.GetType();
-                    var fAgent = t.GetField("itemAgent", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-                    var fRoot = t.GetField("graphicRoot", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-                    var agent = fAgent != null ? fAgent.GetValue(mb) : null;
-                    if (agent == null) continue;
-                    var pItem = agent.GetType().GetProperty("Item");
-                    var item = pItem != null ? pItem.GetValue(agent) : null;
-                    var it = item as ItemStatsSystem.Item;      // ⭐ 必须转成 Item 才能用那些字段（反射拿到的是 object ✗）
-                    if (it == null) continue;
-                    var g = it.ItemGraphic;
-                    var root = (fRoot != null ? fRoot.GetValue(mb) : null) as Transform;
-                    int spr = 0, mesh = 0, ours2 = 0;
-                    if (root != null)
-                        foreach (var r in root.GetComponentsInChildren<Renderer>(true))
-                        {
-                            if (r == null) continue;
-                            if (r is SpriteRenderer) spr++;
-                            else if (r is MeshRenderer || r is SkinnedMeshRenderer) mesh++;
-                            if (r.gameObject.name.StartsWith("ModelKit_")) ours2++;
-                        }
-                    Debug.Log($"[ItemModel] 地上：'{it.name}'(typeID={it.TypeID})"
-                            + $"｜ItemGraphic={(g == null ? "**null** ✗" : (g.gameObject != null ? g.gameObject.name : "(已销毁) ✗"))}"
-                            + $"｜useSprite={it.useSpriteForPickup}"
-                            + $"｜graphicRoot 下: SpriteRenderer={spr} MeshRenderer={mesh} 我们的={ours2}");
-                }
-            }
-            catch { /* 诊断失败无所谓 ✓ */ }
-
-            foreach (var item in GameApi.AllItems())
-            {
-                if (item == null) continue;
-                Entry hit = null;
-                for (int i = 0; i < _entries.Count; i++) if (_entries[i].Matches(item)) { hit = _entries[i]; break; }
-                if (hit == null || !hit.World) continue;
-                var g = item.ItemGraphic;
-                Debug.Log($"[ItemModel] 现场：'{item.name}'(typeID={item.TypeID})｜ItemGraphic="
-                        + (g == null ? "**null** ✗" : (g.gameObject != null ? g.gameObject.name : "(已销毁) ✗"))
-                        + $"｜useSpriteForPickup={item.useSpriteForPickup}｜场上我们的图形实例={ours}");
-            }
         }
 
         /// <summary>对"所有已加载的物品（含模板 + 场上实例 ✓）"逐条匹配并挂上模型 ✓</summary>
@@ -263,31 +199,11 @@ namespace ItemModelSwap
                             var r = ItemModel.ApplyHandheld(item, cm.Mesh, cm.Texture);
                             if (r.Applied)
                                 Debug.Log($"[ItemModel] 已换：'{item.name}'(typeID={item.TypeID}) ← {Path.GetFileName(hit.ModelFile)}｜{r.Report}");
-                            else if (!_heldLogged.Contains(id))     // 失败/跳过 每件只打一次 ✓（免得刷屏 ✗）
-                            {
-                                _heldLogged.Add(id);
-                                Debug.Log($"[ItemModel] 手持没成：'{item.name}'(typeID={item.TypeID})｜{r.Report}");
-                            }
                         }
                         catch (Exception ex)
-                        {
-                            if (!_heldLogged.Contains(id)) { _heldLogged.Add(id); Debug.LogWarning($"[ItemModel] 手持抛错 ✗：{ex.Message}"); }
-                        }
+                        { Debug.LogWarning($"[ItemModel] 手持抛错 ✗：{ex.Message}"); }
                     }
                     continue;
-                }
-
-                // ⭐ 只读诊断（**每件物品只打一次** ✓ 不要每次扫都打 ✗）：它身上有哪些 agent 键 ✓
-                if (!_applied.ContainsKey(id) && !_diagnosed.Contains(id))
-                {
-                    _diagnosed.Add(id);
-                    // ⚠️ 这一行是**在我们动手之前**打的 ✓ → `能拿=…` 是**原始状态** ✓（关键判据 ✓）
-                    bool canHold = false;
-                    try { canHold = item.HasHandHeldAgent; } catch { }
-                    Debug.Log($"[ItemModel] 诊断：'{item.name}'(typeID={item.TypeID})｜keys={ItemModel.AgentKeys(item)}"
-                            + $"｜ItemGraphic={(item.ItemGraphic != null ? "有 ✓" : "无 ✗")}"
-                            + $"｜能拿(原始)={(canHold ? "**是 ✓**（本来就有 handheld 槽）" : "**否 ✗**（游戏里根本没有[拿着]这回事）")}"
-                            + $"｜maxStack={item.MaxStackCount}");
                 }
 
                 try
