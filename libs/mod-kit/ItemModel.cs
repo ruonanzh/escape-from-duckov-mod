@@ -114,7 +114,7 @@ namespace ModelKit
         /// <summary>把我们的 mesh 挂上去（挂在挂点上 ✓ 没有挂点就挂根 ✓）
         /// 缩放补回"世界尺度 = 1" ✓（prefab 的缩放链不一定是 1 ✗）；材质**克隆游戏自己的**再换贴图 ✓</summary>
         static GameObject Attach(Transform root, Renderer mount, Mesh mesh, Texture2D texture, string itemName,
-                                Vector3 oldCenterWorld)
+                                Vector3 oldCenterWorld, Material fallbackMat = null)
         {
             var parent = mount != null ? mount.transform : root;
             Vector3 lossy = parent.lossyScale;
@@ -147,6 +147,7 @@ namespace ModelKit
                 {
                     if (r is MeshRenderer || r is SkinnedMeshRenderer) { src = r.sharedMaterial; break; }
                 }
+            if (src == null) src = fallbackMat;            // ⭐ 兜底：调用方给的（例如"世界图形上我们刚挂的那份材质" ✓）
             var one = src != null ? new Material(src) : null;
             if (one != null)
             {
@@ -252,7 +253,20 @@ namespace ModelKit
             foreach (Transform c in agent.transform) kids.Add(c);
             foreach (var c in kids) if (c != null) UnityEngine.Object.Destroy(c.gameObject);
 
-            res.Instance = Attach(agent.transform, null, mesh, texture, item.name, agent.transform.position);
+            // ⭐ 材质兜底：agent 模板自己的视觉被我们清掉了 ✗ → 借**世界图形上我们刚挂的那份材质** ✓
+            //   （同一套 shader/贴图 ✓ 不然 Unity 会用默认材质 = **粉色** ✗ 就是刚才那个现象 ✓）
+            Material fallback = null;
+            var g = item.ItemGraphic;
+            if (g != null)
+            {
+                foreach (var r in g.GetComponentsInChildren<MeshRenderer>(true))
+                    if (r.gameObject.name.StartsWith("ModelKit_") && r.sharedMaterial != null) { fallback = r.sharedMaterial; break; }
+                if (fallback == null)
+                    foreach (var r in g.GetComponentsInChildren<Renderer>(true))
+                        if (r is MeshRenderer || r is SkinnedMeshRenderer) { fallback = r.sharedMaterial; break; }
+            }
+
+            res.Instance = Attach(agent.transform, null, mesh, texture, item.name, agent.transform.position, fallback);
             if (agent.gameObject.GetComponent<Marked>() == null) agent.gameObject.AddComponent<Marked>();
 
             try
