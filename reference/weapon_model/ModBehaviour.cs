@@ -5,15 +5,15 @@
 // config.json 支持两种写法（都行 ✓）：
 //
 //   ① 一套素材换一批武器（旧写法 ✓ 仍然有效）
-//      { "target": "MP5", "model": "mp5.glb" }   // 模型名**按武器起** ✓（别固定叫 gun.glb ✗）
+//      { "typeIDs": [655], "model": "mp5.glb" }   // 模型名**按武器起** ✓（别固定叫 gun.glb ✗）
 //
 //   ② 每把武器各换各的（一个 mod 多条规则 ✓ 按数组顺序匹配，**先命中的生效**）
 //      { "entries": [
-//          { "target": "AK",   "model": "ak.glb",  "icon": "ak_icon.png" },
+//          { "targets": ["Item_SMG_MP5_Normal"], "model": "smg.glb", "icon": "smg_icon.png" },
 //          { "typeIDs": [655], "model": "mp5.glb", "front": "-x" } ] }
 //
 //   字段（每条都能用 ✓）：
-//     target  = 武器名的一段（大小写不敏感；例 MP5 会匹配 SMG_MP5_Normal）
+//     targets = 武器**对象名全等**（数组 ✓ 不区分大小写；例 ["Item_SMG_MP5_Normal"] ✓）
 //     typeIDs = 或精确命中（数组 ✓ 例 [238, 655]）
 //     model   = 放在本 mod 目录里的 GLB 文件（相对路径或绝对路径）
 //     icon    = 图标文件名（默认 icon.png；没有就只换模型、不换图标）
@@ -37,7 +37,7 @@ namespace WeaponModelSwap
         /// <summary>一条规则："给哪些武器，换成哪套素材"。一个 mod 可以有多条 ✓</summary>
         class Entry
         {
-            public string Target = "";
+            public List<string> Targets = new List<string>();
             public readonly HashSet<int> TypeIds = new HashSet<int>();
             public string ModelFile = "";
             public string Front = "auto";
@@ -53,10 +53,14 @@ namespace WeaponModelSwap
 
             public bool Matches(ItemStatsSystem.Item item)
             {
-                if (string.IsNullOrEmpty(Target) && TypeIds.Count == 0) return false;
+                if (Targets.Count == 0 && TypeIds.Count == 0) return false;
                 if (TypeIds.Count > 0 && TypeIds.Contains(item.TypeID)) return true;
-                if (!string.IsNullOrEmpty(Target) && item.name != null &&
-                    item.name.IndexOf(Target, StringComparison.OrdinalIgnoreCase) >= 0) return true;
+                // ⭐ 名字是**全等**匹配（不区分大小写 ✓）：子串会误伤 ✗
+                //    （实测 target="MP5" 连 Item_BP_MP5 一起换 ✗、"Backpack" 命中 12 件 ✗）
+                //    → 要一批，就写多个 typeIDs 或 targets ✓
+                if (item.name != null)
+                    for (int i = 0; i < Targets.Count; i++)
+                        if (item.name.Equals(Targets[i], StringComparison.OrdinalIgnoreCase)) return true;
                 return false;
             }
 
@@ -109,7 +113,7 @@ namespace WeaponModelSwap
             LoadModels();
             // 启动就读好模型 → 玩家掏出枪时能**立刻**换（不然会先看到原模型 ✗）
             Debug.Log($"[WeaponModel] 规则 {_entries.Count} 条：" + string.Join(" / ",
-                _entries.Select((e, i) => $"#{i + 1} target='{e.Target}' typeIDs=[{string.Join(",", e.TypeIds)}] model='{e.ModelFile}'")));
+                _entries.Select((e, i) => $"#{i + 1} targets=[{string.Join(",", e.Targets)}] typeIDs=[{string.Join(",", e.TypeIds)}] model='{e.ModelFile}'")));
         }
 
         void Update()
@@ -125,7 +129,7 @@ namespace WeaponModelSwap
                 {
                     var e = _entries[i];
                     if (e.IconPath == null) continue;
-                    var n = ModelKit.WeaponIcon.ApplyToAllMatching(e.Target, e.TypeIds, e.IconPath);
+                    var n = ModelKit.WeaponIcon.ApplyToAllMatching(e.Targets, e.TypeIds, e.IconPath);
                     if (n > 0) Debug.Log($"[WeaponModel] 图标预置：规则#{i + 1} 命中 {n} 个 Item（含模板）");
                 }
             }
@@ -254,11 +258,11 @@ namespace WeaponModelSwap
                     }
                 }
                 // ① 旧写法：扁平字段 = 一条规则 ✓（向后兼容 ✓ 已装的 mod 不用改 ✓）
-                else if (cfg.Has("target") || cfg.Has("typeIDs") || cfg.Has("model"))
+                else if (cfg.Has("targets") || cfg.Has("typeIDs") || cfg.Has("model"))
                 {
                     _entries.Add(EntryFrom(cfg));
                 }
-                else Debug.LogWarning("[WeaponModel] config.json 里既没有 entries 也没有 target/typeIDs/model");
+                else Debug.LogWarning("[WeaponModel] config.json 里既没有 entries 也没有 targets/typeIDs/model");
 
                 foreach (var e in _entries) e.Resolve(dir);
             }
@@ -269,7 +273,7 @@ namespace WeaponModelSwap
         {
             var e = new Entry
             {
-                Target = j.GetStr("target", ""),
+                Targets = Json.Strings(j, "targets"),
                 ModelFile = j.GetStr("model", ""),
                 Front = j.GetStr("front", "auto"),
                 IconFile = j.GetStr("icon", "icon.png"),

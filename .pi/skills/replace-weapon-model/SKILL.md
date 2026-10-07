@@ -111,11 +111,11 @@ generate_image(model="your_mods/<mod>/<武器名>.glb",
 
 ```json
 // ① 一套素材换一批武器（扁平字段 = 一条规则 ✓ 旧写法 ✓）
-{ "target": "MP5", "model": "mp5.glb" }
+{ "typeIDs": [655], "model": "mp5.glb" }
 
 // ② 每把武器各换各的（一个 mod **多条规则** ✓ 按数组顺序匹配，**先命中的生效** ✓）
 { "entries": [
-    { "target": "AK",   "model": "ak.glb",  "icon": "ak_icon.png" },
+    { "targets": ["Item_SMG_MP5_Normal"], "model": "smg.glb", "icon": "smg_icon.png" },
     { "typeIDs": [655], "model": "mp5.glb", "front": "-x" } ] }
 ```
 
@@ -123,8 +123,11 @@ generate_image(model="your_mods/<mod>/<武器名>.glb",
 
 | 字段（每条规则都能用 ✓） | 说明 |
 |---|---|
-| `target` | 要换的武器名的一段（`MP5` 会匹配 `SMG_MP5_Normal`）|
-| `typeIDs` | 或精确匹配，如 `[238, 655]`（与 `target` 二选一 ✓ **数组 ✓**）|
+| `targets` | 要换的武器**对象名全等**（数组 ✓ 不区分大小写，例 `["Item_SMG_MP5_Normal"]`）|
+| `typeIDs` | 或按 typeID（数组 ✓ 例 `[238, 655]`）—— **推荐 ✓**（与 `targets` 二选一 ✓）|
+
+**查准确名字 / typeID**：用 `inspect_game_data`（`class=Item` / `name=…` ✓）→ **建议直接用 `typeIDs`** ✓
+（名字写错一个字符就**什么都不命中** ✗ —— 启动日志会打 `targets=[…] typeIDs=[…]` ✓ 对一眼就知道 ✓）
 | `model` | GLB 文件名（**按武器起名** ✓ 如 `ak103.glb` —— 不要固定叫 `gun.glb` ✗；相对 mod 目录 ✓ 也可绝对路径）；**文件还没产出也没关系**，后面放进来即可 |
 | `icon` | 图标文件名（默认 `icon.png`）；没有就只换模型、不换图标 |
 | `front` | **只有用户自带的模型**才需要：`-z`/`+x`/`-x` 声明枪口朝向（`generate_model` 出的不用）|
@@ -155,7 +158,8 @@ generate_image(model="your_mods/<mod>/<武器名>.glb",
 
 **要换多把武器？先分清是哪种 ✓：**
 
-- **同一套素材**换多把（同族皮肤 ✓）→ 用 `target` 命中一段名字（`AK` 会中 AK102/AK103/AK74U… ✓）或 `typeIDs: [238, 239]` ✓ —— **不用 entries** ✓
+- **同一套素材**换多把（同族皮肤 ✓）→ 写**多个** `typeIDs`（例 `[238, 239]` ✓）或 `targets`（全等名 ✓）✓
+  —— `targets` **只做全等** ✓ **不能命中一批** ✗（原来那套子串匹配会误伤 ✗）—— **不用 entries** ✓
 - **各换各的**（不同模型/图标 ✓）→ 用 `entries` ✓，**一把枪一个 `model` + 一个 `icon`** ✓
   ⚠️ 这意味着素材要做 **N 套** ✓（每套：模型 50~60 积分 + 图标 5 ✓）→ **先跟用户确认要换几把、再开工** ✓
   ⚠️ 各条规则的 `model` 是**同一个 mod 目录里的不同文件名** ✓（`ak.glb` / `mp5.glb` ✓ 互不覆盖 ✓）

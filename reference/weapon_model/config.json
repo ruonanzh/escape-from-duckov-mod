@@ -1,4 +1,4 @@
 {
-  "target": "MP5",
+  "typeIDs": [655],
   "model": "mp5.glb"
 }

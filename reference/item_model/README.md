@@ -12,14 +12,14 @@
 ```
 
 ```json
-{ "target": "Backpack", "model": "item.glb" }
+{ "typeIDs": [36], "model": "backpack.glb" }
 ```
 
 ## config.json 字段（一条规则一份 ✓）
 
 | 字段 | 说明 |
 |---|---|
-| `target` | 物品**对象名**的一段（大小写不敏感 ✓ 例 `Backpack` 命中 `Item_Backpack_Lv_3`）|
+| `targets` | 物品**对象名全等**（数组 ✓ 不区分大小写；例 `["Item_BackpackLV3"]` ✓ 写错一个字符就不命中 ✗）|
 | `typeIDs` | 或精确命中（数组 ✓ 例 `[260]`）—— **更稳 ✓**（对象名是英文的，不受本地化影响 ✓）|
 | `model` | 放在本 mod 目录里的 GLB（相对名或绝对路径 ✓）|
 | `front` | 仅**自带模型**需要：`auto`/`+z`/`-z`/`+x`/`-x` 声明朝向（Tripo 出的靠提示词保证 ✓）|
@@ -29,7 +29,7 @@
 ```json
 { "entries": [
     { "typeIDs": [260], "model": "backpack.glb" },
-    { "target": "Helmet", "model": "helmet.glb" } ] }
+    { "targets": ["Item_BackpackLV3"], "model": "backpack_lv3.glb" } ] }
 ```
 
 > ⚠️ 给了 `entries` 就**只看 entries**（扁平字段被忽略）；两者不要混用。

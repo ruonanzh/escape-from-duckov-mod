@@ -8,7 +8,7 @@
 WeaponModelSwap/                 ← 装进游戏的目录名要和 info.ini 的 name 一致
   ├─ WeaponModelSwap.dll
   ├─ info.ini
-  ├─ config.json                 ← { "target": "MP5", "model": "mp5.glb" }
+  ├─ config.json                 ← { "typeIDs": [655], "model": "mp5.glb" }
   └─ mp5.glb                     ← 你的模型（**按武器起名** ✓；Tripo 导出的 GLB；建议 export_orientation="-x"）
 ```
 
@@ -16,17 +16,17 @@ WeaponModelSwap/                 ← 装进游戏的目录名要和 info.ini 的
 
 ```json
 // ① 一套素材换一批武器（扁平字段 = 一条规则 ✓ 旧写法 ✓）
-{ "target": "MP5", "model": "mp5.glb" }
+{ "typeIDs": [655], "model": "mp5.glb" }
 
 // ② 每把武器各换各的（多条规则 ✓ 按顺序匹配，先命中的生效）
 { "entries": [
-    { "target": "AK",   "model": "ak.glb",  "icon": "ak_icon.png" },
+    { "targets": ["Item_SMG_MP5_Normal"], "model": "smg.glb", "icon": "smg_icon.png" },
     { "typeIDs": [655], "model": "mp5.glb", "front": "-x" } ] }
 ```
 
 | 字段（每条规则都能用） | 说明 |
 |---|---|
-| `target` | 武器名的一段（大小写不敏感 ✓ `MP5` 会匹配 `SMG_MP5_Normal`）|
+| `targets` | 武器**对象名全等**（数组 ✓ 不区分大小写；例 `["Item_SMG_MP5_Normal"]` ✓ 写错一个字符就不命中 ✗）|
 | `typeIDs` | 或者直接给 typeID（数组 ✓ 如 `[655, 238]`；用 `inspect_game_data` 查）|
 | `model` | 本目录下的 GLB（相对路径或绝对路径 ✓）|
 | `icon` | 图标文件名（默认 `icon.png` ✓）|

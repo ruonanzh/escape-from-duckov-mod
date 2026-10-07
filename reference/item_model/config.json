@@ -1,4 +1,4 @@
 {
-  "target": "Backpack",
-  "model": "item.glb"
+  "typeIDs": [36],
+  "model": "backpack.glb"
 }

@@ -120,8 +120,9 @@ namespace ModelKit
             return n;
         }
 
-        /// <summary>按名字片段/typeID 扫所有已加载的 Item（模板 + 实例）设图标 —— 供启动时"尽早预置" ✓</summary>
-        public static int ApplyToAllMatching(string namePart, System.Collections.Generic.HashSet<int> typeIds, string pngPath)
+        /// <summary>按**对象名全等**/typeID 扫所有已加载的 Item（模板 + 实例）设图标 —— 供启动时"尽早预置" ✓
+        /// ⚠️ 名字是**全等**匹配（不区分大小写 ✓）：子串会误伤 ✗ —— 与 ModBehaviour 的匹配规则保持一致 ✓</summary>
+        public static int ApplyToAllMatching(System.Collections.Generic.IEnumerable<string> names, System.Collections.Generic.HashSet<int> typeIds, string pngPath)
         {
             var sprite = BuildSprite(pngPath);
             if (sprite == null) return 0;
@@ -129,9 +130,10 @@ namespace ModelKit
             foreach (var it in Resources.FindObjectsOfTypeAll<ItemStatsSystem.Item>())
             {
                 if (it == null) continue;
-                bool hit = (typeIds != null && typeIds.Contains(it.TypeID))
-                        || (!string.IsNullOrEmpty(namePart) && it.name != null &&
-                            it.name.IndexOf(namePart, StringComparison.OrdinalIgnoreCase) >= 0);
+                bool hit = typeIds != null && typeIds.Contains(it.TypeID);
+                if (!hit && names != null && it.name != null)
+                    foreach (var nm in names)
+                        if (!string.IsNullOrEmpty(nm) && it.name.Equals(nm, StringComparison.OrdinalIgnoreCase)) { hit = true; break; }
                 if (!hit) continue;
                 if (SetSpritesEverywhere(it, sprite) > 0) n++;
             }

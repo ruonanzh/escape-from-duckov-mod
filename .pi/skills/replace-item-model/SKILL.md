@@ -31,18 +31,18 @@ description: 用户想换**物品**（背包 / 防弹衣 / 头盔 / 弹匣 / 任
 
 ```json
 // ① 一套素材换一件物品
-{ "target": "Backpack", "model": "backpack.glb" }
+{ "typeIDs": [36], "model": "backpack.glb" }
 
 // ② 每件物品各换各的（多条规则 ✓ 按数组顺序匹配，**先命中的生效** ✓）
 { "entries": [
     { "typeIDs": [260], "model": "backpack.glb" },
-    { "target": "Helmet", "model": "helmet.glb", "front": "+z" } ] }
+    { "targets": ["Item_BackpackLV3"], "model": "backpack_lv3.glb" } ] }
 ```
 
 | 字段 | 说明 |
 |---|---|
-| `target` | 物品**对象名**的一段（大小写不敏感 ✓ 例 `Backpack` 命中 `Item_Backpack_Lv_1..5`）|
-| `typeIDs` | 或精确命中（数组 ✓）—— **更稳 ✓**（对象名是英文的 ✓；要命中唯一一件时用这个 ✓）|
+| `targets` | 物品**对象名全等**（数组 ✓ 不区分大小写，例 `["Item_BackpackLV3"]`）|
+| `typeIDs` | 或按 typeID（数组 ✓）—— **推荐 ✓**（物品对象名不好记 ✓ 与 `targets` 二选一 ✓）|
 | `model` | 放在本 mod 目录里的 GLB（相对名或绝对路径 ✓）|
 | `front` | 仅**自带模型**需要：`auto`/`+z`/`-z`/`+x`/`-x`（Tripo 出的通常 `auto` 就行 ✓）|
 
@@ -70,7 +70,7 @@ var res = ModelKit.ItemModel.Apply(item, loaded.Mesh, loaded.MainTexture, bindPr
    失败会打 `WARN`（模型不可用 / 没换成 ✓）。
 2. 游戏里：那件物品（**地上 / 手里 / 仓库里** ✓）变成你的模型 ✓。
 3. ⚠️ **别指望"立刻就变"** ✓：物品的实体会被游戏缓存 → **重新实例化一次**（丢地上再捡 / 重进关卡 ✓）才看到。
-4. 没变的话，按顺序查：① `info.ini` 的 `name` 四处一致吗 ② `target` 命中的**对象名**对不对（看日志里那条规则 ✓）
+4. 没变的话，按顺序查：① `info.ini` 的 `name` 四处一致吗 ② **匹配条件**对不对（`typeIDs` ✓ / 对象名**全等** ✓ —— 看日志里那条规则 ✓）
    ③ 日志有没有 `[ItemModel] 规则 N 条`（没有 = mod 没加载 ✗）。
 
 ## 5. 常见错误（对照修正）

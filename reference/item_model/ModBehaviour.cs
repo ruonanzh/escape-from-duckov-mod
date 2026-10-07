@@ -6,15 +6,15 @@
 // config.json 支持两种写法（都行 ✓）：
 //
 //   ① 一套素材换一件物品
-//      { "target": "Backpack", "model": "backpack.glb" }
+//      { "typeIDs": [36], "model": "backpack.glb" }
 //
 //   ② 每件物品各换各的（一个 mod 多条规则 ✓ 按数组顺序匹配，**先命中的生效**）
 //      { "entries": [
 //          { "typeIDs": [260], "model": "backpack.glb" },
-//          { "target": "Helmet", "model": "helmet.glb", "front": "+z" } ] }
+//          { "targets": ["Item_BackpackLV3"], "model": "backpack_lv3.glb" } ] }
 //
 //   字段（每条都能用 ✓）：
-//     target  = 物品**对象名**的一段（大小写不敏感；例 Backpack 会命中 Item_Backpack_Lv_3 ✓）
+//     targets = 物品**对象名全等**（数组 ✓ 不区分大小写；例 ["Item_BackpackLV3"] ✓）
 //     typeIDs = 或精确命中（数组 ✓ 例 [260, 261] —— 更稳 ✓ 名字是英文对象名，[L,H,D] 不受本地化影响 ✓）
 //     model   = 放在本 mod 目录里的 GLB 文件（相对路径或绝对路径）
 //     front   = 仅"用户自带的模型"需要：auto/+z/-z/+x/-x 声明朝向（Tripo 出的由提示词保证 ✓）
@@ -42,7 +42,7 @@ namespace ItemModelSwap
         /// <summary>一条规则："给哪些物品，换成哪个模型" ✓</summary>
         class Entry
         {
-            public string Target = "";
+            public List<string> Targets = new List<string>();
             public readonly List<int> TypeIds = new List<int>();
             public string ModelFile = "";
             public string Front = "auto";
@@ -51,9 +51,14 @@ namespace ItemModelSwap
             public bool Matches(ItemStatsSystem.Item item)
             {
                 if (item == null) return false;
+                if (Targets.Count == 0 && TypeIds.Count == 0) return false;
                 if (TypeIds.Count > 0 && TypeIds.Contains(item.TypeID)) return true;
-                if (!string.IsNullOrEmpty(Target) && item.name != null &&
-                    item.name.IndexOf(Target, StringComparison.OrdinalIgnoreCase) >= 0) return true;
+                // ⭐ 名字是**全等**匹配（不区分大小写 ✓）：子串会误伤 ✗
+                //    （实测 target="MP5" 连 Item_BP_MP5 一起换 ✗、"Backpack" 命中 12 件 ✗）
+                //    → 要一批，就写多个 typeIDs 或 targets ✓
+                if (item.name != null)
+                    for (int i = 0; i < Targets.Count; i++)
+                        if (item.name.Equals(Targets[i], StringComparison.OrdinalIgnoreCase)) return true;
                 return false;
             }
 
@@ -83,7 +88,7 @@ namespace ItemModelSwap
             ReadConfig();
             _cfgStamp = File.Exists(_configPath) ? File.GetLastWriteTimeUtc(_configPath) : DateTime.MinValue;
             Debug.Log($"[ItemModel] 规则 {_entries.Count} 条：" + string.Join(" / ",
-                _entries.Select(e => $"target='{e.Target}' typeIDs=[{string.Join(",", e.TypeIds)}] model='{e.ModelFile}'")));
+                _entries.Select(e => $"targets=[{string.Join(",", e.Targets)}] typeIDs=[{string.Join(",", e.TypeIds)}] model='{e.ModelFile}'")));
         }
 
         /// <summary>本 mod 的目录（DLL 所在处）✓</summary>
@@ -148,7 +153,7 @@ namespace ItemModelSwap
                 if (cm == null || cm.Mesh == null)
                 {
                     _applied[id] = null;                     // 记一下，避免每帧重复报错 ✓
-                    Debug.LogWarning($"[ItemModel] 规则 '{hit.Target}' 的模型不可用 ✗（{hit.ModelFile}）");
+                    Debug.LogWarning($"[ItemModel] 规则 '{string.Join(",", hit.Targets)}' 的模型不可用 ✗（{hit.ModelFile}）");
                     continue;
                 }
 
@@ -218,7 +223,7 @@ namespace ItemModelSwap
             if (j == null || j.Kind != JsonKind.Object) return null;
             var e = new Entry
             {
-                Target = j.GetStr("target", ""),
+                Targets = Json.Strings(j, "targets"),
                 ModelFile = j.GetStr("model", ""),
                 Front = j.GetStr("front", "auto"),
             };
@@ -229,7 +234,7 @@ namespace ItemModelSwap
                     var v = t.AsInt(0);
                     if (v > 0) e.TypeIds.Add(v);
                 }
-            if (e.TypeIds.Count == 0 && string.IsNullOrEmpty(e.Target)) return null;   // 没给匹配条件 ✗
+            if (e.TypeIds.Count == 0 && e.Targets.Count == 0) return null;   // 没给匹配条件 ✗
             return e;
         }
     }

@@ -56,6 +56,23 @@ namespace ModelKit
 
     public static class Json
     {
+        /// <summary>读一个**字符串数组**字段（例 `"targets": ["Item_SMG_MP5_Normal"]` ✓）。
+        /// ⚠️ **只收数组** ✗ —— 写成单个字符串会被忽略 ✓（保持一种写法，避免"有时行有时不行" ✗）；
+        /// 解析结果会在启动日志里打出来 ✓（`targets=[…]`）→ 写错了看得见 ✓</summary>
+        public static System.Collections.Generic.List<string> Strings(JsonValue j, string key)
+        {
+            var outp = new System.Collections.Generic.List<string>();
+            if (j == null || j.Kind != JsonKind.Object) return outp;
+            var v = j[key];
+            if (v == null || !v.IsArray) return outp;
+            for (int i = 0; i < v.Count; i++)
+            {
+                var sv = v[i];
+                if (sv != null && sv.Kind == JsonKind.String && !string.IsNullOrEmpty(sv.Str)) outp.Add(sv.Str);
+            }
+            return outp;
+        }
+
         public static JsonValue Parse(string text)
         {
             int i = 0;
