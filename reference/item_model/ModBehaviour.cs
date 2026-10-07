@@ -19,11 +19,13 @@
 //     model   = 放在本 mod 目录里的 GLB 文件（相对路径或绝对路径）
 //     front   = 仅"用户自带的模型"需要：auto/+z/-z/+x/-x 声明朝向（Tripo 出的由提示词保证 ✓）
 //
-// 运行时对**每一件命中的物品**做四件事（缺哪件都会"只换一半" ✗，见 ItemModel.cs）：
-//   ① 克隆它自己的图形 prefab（保留挂点/groundPoint ✓）→ 只换几何 → 写回 item.ItemGraphic
-//   ② 写到**物品模板**（ItemAssetsCollection.GetPrefab ✓）→ 以后每个实例开局就是对的了 ✓
-//   ③ 清实体缓存（ClearAgentCache ✓）→ 游戏下次建实体时读我们的图形 ✓
-//   ④ 就地换**已经拿在手里**的那个（只影响以后生成的实例，手里那个不会自己变 ✗）
+// 运行时对**每一件命中的物品**做三件事（见 libs/mod-kit/ItemModel.cs ✓）：
+//   ① **就地**改游戏自己的图形 prefab（item.ItemGraphic / ItemAssetsCollection.GetPrefab ✓）
+//      —— ✗ 不克隆模板 ✗ 不 DontDestroyOnLoad：
+//         克隆件放进 DDOL 后写回 item.ItemGraphic，会让之后每个实例都生在 DDOL 场景 → **全都看不见** ✗
+//         （实测现象：整件背包连它原来的外观一起消失 ✗）
+//   ② 关掉它下面**所有**旧外观（不限渲染器类型 ✓ **精灵也要关** ✗ 以前只关网格 ✗）
+//   ③ 挂上我们的 mesh（没有网格挂点就挂根 ✓）+ 清实体缓存 → 游戏下次重建就读到改过的 prefab ✓
 //
 // ⚠️ 物品的"外观"和"图标"是两回事 ✓：这里只换**世界里的模型** ✓（背包卡片上的图标不变 ✗）
 //    图标要另做（见 replace-item-icon 那份 SKILL ✓）

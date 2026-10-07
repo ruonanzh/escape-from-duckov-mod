@@ -55,9 +55,14 @@ description: 用户想换**物品**（背包 / 防弹衣 / 头盔 / 弹匣 / 任
 **接口**（完整签名：`rg "public static" libs/mod-kit/ItemModel.cs`）：
 
 ```csharp
-var loaded = ModelKit.GltfLoader.LoadFile(路径, "auto");        // → Mesh + MainTexture
-var res = ModelKit.ItemModel.Apply(item, loaded.Mesh, loaded.MainTexture, bindPrefab: true);
-// res.Report 里有关了几个零件/写到模板没/清缓存没；res.Restore() 可还原（热重载用）
+var loaded = ModelKit.GltfLoader.LoadFile(路径, "auto");     // → Mesh + MainTexture
+
+ModelKit.ItemModel.ApplyByTypeID(36, loaded.Mesh, loaded.MainTexture);  // **推荐**：按 typeID ✓（不用先拿到 Item ✓）
+ModelKit.ItemModel.Apply(item, loaded.Mesh, loaded.MainTexture);        // 或按物品：模板 + 场上实例一起换 ✓
+ModelKit.ItemModel.ApplyToInstance(item, loaded.Mesh, loaded.MainTexture);  // 只改场上这一个（不动模板 ✓）
+
+// res.Report 里有"关旧外观 N 个 / 挂到 哪个挂点 / 清缓存"；res.Restore() 能全还原（热重载用 ✓）
+// ⚠️ 没有 ItemGraphic 的物品（纯图标那种 ✓）会被**跳过** ✓（换不了外观 ✗ 日志里写"跳过" ✓）
 ```
 
 ## 3. 装进游戏
@@ -78,7 +83,9 @@ var res = ModelKit.ItemModel.Apply(item, loaded.Mesh, loaded.MainTexture, bindPr
 | 症状 | 原因 | 修 |
 |---|---|---|
 | mod 静默不加载（日志啥也没有）| `info.ini` 的 `name` / 目录名 / 程序集名 / 命名空间**不一致** ✗ | 四处改成同一个名字 |
-| 物品变**透明/看不见** ✗ | 我们的 mesh 没挂上，旧几何却已经被关了 | 看日志 `锚点=…`；多半是模型解析失败（顶点/贴图异常）→ 用 `model-check` 查 |
+| 物品**原样没变**（点了没反应）✓ | 命中条件没写对 / 该物品没有 ItemGraphic ✓ | 看日志那条 `[ItemModel] 规则 …`；`typeIDs` 抄错一位就"什么都没命中" ✗ |
+| 物品变**透明/看不见** ✗ | 我们的 mesh 没挂上，而旧外观已经被关了 | 看日志 `挂到 '…'` ✓；多半是模型文件坏（`model-check` ✓）或顶点异常 ✓ |
+| **整件物品连它原来的外观一起消失** ✗ | 以前那版用 DDOL 模板会这样（实例全生在 DDOL 场景 ✗）| **已修** ✓（现在就地改游戏自己的 prefab ✓ 不克隆 ✗ 不 DDOL ✗）|
 | 物品变成**一片纸/贴图糊** | 模型没有合适的 UV 或贴图太大 | 用 `model-check` 看 UV/贴图 |
 | 物品**飘着 / 离地** | 模型原点不在"物体中心" | 物品不要求贴地 ✓；太难看就换模型（或调 `front` ✓）|
 | 手里那件没变、别的都变了 | 手里那个是**旧实例** ✓ | 丢地上再捡起来 ✓（或重进关卡 ✓）|

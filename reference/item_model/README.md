@@ -37,10 +37,10 @@
 ## 运行时会做（缺哪件都会"只换一半" ✗）
 
 ```
-① 克隆那件物品自己的图形 prefab（保留挂点 / groundPoint / 各种设置 ✓）→ 只换几何 → 写回 item.ItemGraphic
-② 写到**物品模板**（ItemAssetsCollection.GetPrefab ✓）→ 以后每个实例开局就是对的了 ✓
-③ 清实体缓存（ClearAgentCache ✓）→ 游戏下次建实体时读我们的图形 ✓
-④ 就地换**已经拿在手里**的那个（只影响以后生成的实例，手里那个不会自己变 ✗）
+① **就地**改游戏自己的图形 prefab（item.ItemGraphic / ItemAssetsCollection.GetPrefab ✓）
+   —— ✗ 不克隆模板 ✗ 不 DontDestroyOnLoad（克隆件放进 DDOL 会让之后每个实例都生在 DDOL 场景 → 全都看不见 ✗）
+② 关掉它下面**所有**旧外观（不限渲染器类型 ✓ **精灵也要关** ✗）+ 挂上我们的 mesh（没有网格挂点就挂根 ✓）
+③ 清实体缓存（ClearAgentCache ✓）→ 游戏下次建实体时读的就是**改过的 prefab** ✓
 ```
 
 ## 两个别搞混的地方 ✓
