@@ -56,6 +56,12 @@ namespace ModelKit
             }
         }
 
+        /// <summary>标记"这一层已经换成我们的了" ✓。
+        /// ⚠️ 必须挂在**被处理的那一层自己身上** ✓ —— 这样才能区分：
+        ///   · 图形层（我们改过 ✓ 它的**克隆**也会带着这个标记 ✓ → 不会重复挂 ✓）
+        ///   · agent 层（手里那层 ✓ 独立处理 ✓ 它自己的图标精灵才会被关掉 ✗ 以前漏了 ✓）</summary>
+        public sealed class Marked : MonoBehaviour { }
+
         // ───────────────────────── 清实体缓存（让游戏下次重建 ✓）─────────────────────────
 
         /// <summary>清掉"实体缓存"（社区做法 ✓）：游戏下次创建实体时会重新看 `item.ItemGraphic` ✓
@@ -161,11 +167,10 @@ namespace ModelKit
             var res = new Result { TypeID = typeID, ItemName = itemName ?? "" };
             if (root == null || mesh == null) { res.Report = "外观为空或网格为空 ✗"; return res; }
 
-            // 幂等 ✓：**整个子树**里已经有我们的东西就不再挂一遍 ✗
-            //   （模板改过之后，游戏新造出来的实例**天生**就带着它 ✓ → 不判子级会给每个实例重复挂 ✗ 实测）
-            foreach (var r in root.GetComponentsInChildren<Renderer>(true))
-                if (r != null && r.gameObject.name.StartsWith("ModelKit_"))
-                { res.Applied = true; res.Report = "已经换过了 ✓"; return res; }
+            // 幂等 ✓：**只看这一层自己**有没有标记 ✓（不能扫子树 ✗ —— agent 的子树里含着图形 ✓
+            //   扫子树会把"图形已经换过"误判成"agent 也换过" ✗ → agent 自己那层图标精灵永远关不掉 ✗ 实测）
+            if (root.GetComponent<Marked>() != null)
+            { res.Applied = true; res.Report = "已经换过了 ✓"; return res; }
 
             var mount = PickMount(root);
             res.AnchorName = mount != null ? mount.gameObject.name : "根";
@@ -175,6 +180,7 @@ namespace ModelKit
                 : root.position;
             HideOld(root, res);
             res.Instance = Attach(root, mount, mesh, texture, itemName, oldCenter);
+            if (root.GetComponent<Marked>() == null) root.gameObject.AddComponent<Marked>();   // 打标记 ✓
             res.Applied = true;
             res.Report = $"关旧外观 {res.Hidden.Count} 个｜挂到 '{res.AnchorName}'"
                        + (mount != null
