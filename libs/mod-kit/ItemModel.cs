@@ -158,9 +158,37 @@ namespace ModelKit
                 if (!(r is MeshRenderer || r is SkinnedMeshRenderer)) continue;
                 if (r == null) continue;
                 if (r.gameObject.name.StartsWith("ModelKit_")) continue;      // 我们自己的不算 ✓
+
+                // ⭐ 排除"灯 / 特效"那类渲染器 ✗ —— 实测踩过：头盔(921) 运行时挂了盏 `SodaPointLight`，
+                //    它的渲染器**也是 MeshRenderer** ✗ → 光靠"只认 mesh"拦不住 ✓ → 它会以"更大"胜出 ✗
+                //    → 真模型被关 + 我们的模型挂到灯上 → **头盔消失** ✗
+                Transform t = r.transform;
+                bool lightish = false;
+                for (int up = 0; up < 6 && t != null && t != root.parent; up++, t = t.parent)
+                {
+                    if (t.GetComponent<Light>() != null) { lightish = true; break; }     // 祖先里有灯 → 排除 ✓
+                    var n2 = t.gameObject.name;
+                    if (n2.IndexOf("Light", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        n2.IndexOf("Glow", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        n2.IndexOf("Point", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        n2.IndexOf("Fx", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        n2.IndexOf("VFX", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        n2.IndexOf("Flash", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        n2.IndexOf("Trail", StringComparison.OrdinalIgnoreCase) >= 0) { lightish = true; break; }
+                }
+                if (lightish) continue;
+
+                // ⭐ 顶点太少的也不像本体 ✗（那些光晕/贴片常常只有几个顶点 ✓）
+                try
+                {
+                    var mf = r.GetComponent<MeshFilter>();
+                    if (mf != null && mf.sharedMesh != null && mf.sharedMesh.vertexCount < 20) continue;
+                }
+                catch { }
+
                 float sz;
                 try { sz = r.bounds.size.magnitude; } catch { continue; }
-                if (sz > bestSize && sz < 5f) { bestSize = sz; best = r; }     // 只在这些**网格**里比大小 ✓
+                if (sz > bestSize && sz < 5f) { bestSize = sz; best = r; }     // 只在"真网格"里比大小 ✓
             }
             return best;
         }
