@@ -516,14 +516,24 @@ namespace ModelKit
                 var gsrc = item.ItemGraphic;
                 g = UnityEngine.Object.Instantiate(gsrc);                         // ⚠️ 只克隆 ✓ **绝不动原件** ✗
                 g.gameObject.name = "ModelKit_graphic_" + src.name;
-                g.transform.SetParent(item.transform, false);                     // 挂克隆下 ✓ → 跟着 DDOL ✓
             }
             else
             {
                 g = MakeGraphicForItem(item, mesh, texture, res, cache: false);   // 造一个 ✓
                 if (g == null) { res.Report = "造图形失败 ✗"; return res; }
-                g.transform.SetParent(item.transform, false);
             }
+
+            // ⚠️⚠️ **绝不能把图形挂成物品的子物体** ✗✗（实测 ✓ 用户一眼指出 ✓）
+            //   物品预制体的 GameObject 是**活的** ✓ → 我们的 mesh 会**跟着那件物品渲染** ✗
+            //     · 玩家身上那颗 → "一把枪跟着玩家" ✗
+            //     · 扔到地上 → "枪跟着糖果到地上" ✗
+            //   游戏自己的图形是**独立资源** ✓ 从不挂在物品下面 ✓ → 所以"就地改"那条没事 ✓
+            //   正解 = **独立**（SetParent(null) ✓）+ **挪到世界外**（y=-5000 ✓）+ DDOL ✓
+            //   （游戏 `CreateAGraphic` 实例化副本之后会 `SetParent(显示位置)` + `localPosition = 0` ✓
+            //     所以 -5000 只影响**模板本身** ✓ 不影响它生成的副本 ✓）
+            g.transform.SetParent(null);
+            g.transform.position = new Vector3(0f, -5000f, 0f);
+            UnityEngine.Object.DontDestroyOnLoad(g.gameObject);
 
             InitGraphicFields(g);                                                 // ④ 补字段 ✓（否则游戏一用就空引用 ✗）
             var mount = PickMount(g.transform);
