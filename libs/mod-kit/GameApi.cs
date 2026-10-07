@@ -56,7 +56,7 @@ namespace ModelKit
         }
 
         /// <summary>往 `ItemAgentUtilities.agents` 里写一项（私有字段 + 嵌套类型 `AgentKeyPair`，都靠反射）。</summary>
-        static bool SetAgentPrefab(ItemStatsSystem.ItemAgentUtilities au, string key, ItemStatsSystem.ItemAgent prefab)
+        public static bool SetAgentPrefab(ItemStatsSystem.ItemAgentUtilities au, string key, ItemStatsSystem.ItemAgent prefab)
         {
             try
             {

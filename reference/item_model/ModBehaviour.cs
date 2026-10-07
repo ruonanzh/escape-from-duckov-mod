@@ -168,7 +168,7 @@ namespace ItemModelSwap
                         _nextHeldSweep = Time.unscaledTime + 1f;
                         try
                         {
-                            var r = ItemModel.ApplyToInstance(item, cm.Mesh, cm.Texture);
+                            var r = ItemModel.ApplyHandheld(item, cm.Mesh, cm.Texture);
                             if (r.Applied && r.Report != "已经换过了 ✓")
                                 Debug.Log($"[ItemModel] 已换：'{item.name}'(typeID={item.TypeID}) ← {Path.GetFileName(hit.ModelFile)}｜{r.Report}");
                         }

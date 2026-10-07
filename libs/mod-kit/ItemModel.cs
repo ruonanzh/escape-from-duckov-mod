@@ -194,7 +194,84 @@ namespace ModelKit
         static string Fmt(Vector3 v)
             => "(" + v.x.ToString("0.###") + "," + v.y.ToString("0.###") + "," + v.z.ToString("0.###") + ")";
 
-        // ───────────────────────── 三个入口 ─────────────────────────
+        // ───────────────────────── 手持 / 装备（agent 那条 ✓ 工坊验证过）─────────────────────────
+
+        /// <summary>拿在手里用哪个模板：① 物品自带的 `agents["Handheld"]` ✓ ② 游戏的通用手持 agent ✓
+        /// （工坊 mod `三角洲模型合集` 就是按这个顺序取的 ✓ r9 验证）</summary>
+        static ItemStatsSystem.ItemAgent HandheldTemplate(ItemStatsSystem.Item item)
+        {
+            try
+            {
+                var t = item.AgentUtilities != null ? item.AgentUtilities.GetPrefab("Handheld") : null;
+                if (t != null) return t;
+            }
+            catch { /* 物品没有就退到通用模板 ✓ */ }
+            try
+            {
+                var p = Duckov.Utilities.GameplayDataSettings.Prefabs;
+                if (p != null) return p.HandheldAgentPrefab;
+            }
+            catch { }
+            return null;
+        }
+
+        /// <summary>⭐ 把"拿在手里/装备"那条也换成我们的模型 ✓
+        ///
+        /// 做法（工坊验证 ✓）：造一个 `ItemAgent` 模板 → **清掉它自带的视觉**（原来那张图标精灵 ✓ 就是你看到的"图片" ✗）
+        /// → 挂上我们的 mesh → 用 `agents["Handheld"]` 写回去 → 清实体缓存 ✓
+        ///
+        /// ⚠️ 这里用 `DontDestroyOnLoad` 是**对的** ✓（工坊也这么做 ✓）：agent 是**模板** ✓，
+        ///    游戏会把实例 `SetParent` 到持有者身上 ✓ → 换场景不受影响 ✓
+        ///    （我上次踩的坑是反的 ✗：DDOL 的是**图形**实例 ✗，游戏只是 `Instantiate` 它 ✗ → 副本留在 DDOL 场景 → 看不见 ✗）</summary>
+        public static Result ApplyHandheld(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture)
+        {
+            var res = new Result { TypeID = item != null ? item.TypeID : 0, ItemName = item != null ? item.name : "" };
+            if (item == null || mesh == null) { res.Report = "物品或网格为空 ✗"; return res; }
+
+            // 已经换过就不重复造（我们造的 agent 名字带前缀 ✓）
+            try
+            {
+                var cur = item.AgentUtilities != null ? item.AgentUtilities.GetPrefab("Handheld") : null;
+                if (cur != null && cur.gameObject != null && cur.gameObject.name.StartsWith("ModelKit_"))
+                { res.Applied = true; res.Report = "手持已经换过了 ✓"; return res; }
+            }
+            catch { }
+
+            var tmpl = HandheldTemplate(item);
+            if (tmpl == null || tmpl.gameObject == null)
+            { res.Report = "找不到手持 agent 模板 ✗（这件物品不能拿在手里 ✓）"; return res; }
+
+            ItemStatsSystem.ItemAgent agent;
+            try { agent = UnityEngine.Object.Instantiate(tmpl); }
+            catch (Exception ex) { res.Report = "克隆手持模板失败 ✗：" + ex.Message; return res; }
+
+            agent.gameObject.name = "ModelKit_Hand_" + (string.IsNullOrEmpty(item.name) ? "item" : item.name);
+            UnityEngine.Object.DontDestroyOnLoad(agent.gameObject);        // ⚠️ 模板要活着 ✓（见上面注释 ✓）
+
+            var kids = new List<Transform>();                              // 先收集再删 ✓（边遍历边删会错 ✗）
+            foreach (Transform c in agent.transform) kids.Add(c);
+            foreach (var c in kids) if (c != null) UnityEngine.Object.Destroy(c.gameObject);
+
+            res.Instance = Attach(agent.transform, null, mesh, texture, item.name, agent.transform.position);
+            if (agent.gameObject.GetComponent<Marked>() == null) agent.gameObject.AddComponent<Marked>();
+
+            try
+            {
+                var au = item.AgentUtilities;
+                if (au == null || !GameApi.SetAgentPrefab(au, "Handheld", agent))
+                { res.Report = "写回 agents[Handheld] 失败 ✗"; return res; }
+                res.CacheCleared = ClearAgentCache(item);
+            }
+            catch (Exception ex) { res.Report = "写回手持 agent 失败 ✗：" + ex.Message; return res; }
+
+            res.Applied = true;
+            res.AnchorName = "手持 agent";
+            res.Report = $"（拿在手里那条 ✓）清掉模板自带视觉 {kids.Count} 个｜挂上我们的 mesh 顶点={mesh.vertexCount}"
+                       + $"｜清缓存={(res.CacheCleared ? "是" : "否")}";
+            return res;
+        }
+
+        // ───────────────────────── 三个入口 ─────────────────────────        // ───────────────────────── 三个入口 ─────────────────────────
 
         /// <summary>① 按 **typeID** 换（**推荐主入口** ✓ 不用先拿到 Item ✓）：
         /// 改物品模板的图形 → 以后每个实例（掉地上/手里/装备 ✓）都是我们的 ✓</summary>
