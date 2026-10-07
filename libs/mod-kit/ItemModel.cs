@@ -619,6 +619,22 @@ namespace ModelKit
                         + $"｜物品自己 layer={item.gameObject.layer}｜原件图形={(src.ItemGraphic != null ? src.ItemGraphic.gameObject.layer.ToString() : "null")}"
                         + $"｜Character 层号={LayerMask.NameToLayer("Character")}｜SpecialCamera={LayerMask.NameToLayer("SpecialCamera")}"
                         + $"｜父节点={(go != null && go.transform.parent != null ? go.transform.parent.name : "(无)")}");
+
+                // ⭐ 关键 ✓：把"场上所有图形实例"的真实状态列出来 ✓（含游戏自己造的副本 ✓）
+                var sb = new System.Text.StringBuilder();
+                int cnt = 0;
+                foreach (var inst in UnityEngine.Object.FindObjectsByType<ItemGraphicInfo>(FindObjectsSortMode.None))
+                {
+                    if (inst == null || inst.gameObject == null) continue;
+                    var tr = inst.transform;
+                    sb.Append($"\n      · '{inst.gameObject.name}' layer={inst.gameObject.layer}"
+                            + $" active={inst.gameObject.activeInHierarchy} scene='{inst.gameObject.scene.name}'"
+                            + $" 世界位置=({tr.position.x:F2},{tr.position.y:F2},{tr.position.z:F2})"
+                            + $" 父={(tr.parent != null ? tr.parent.name : "(无)")}"
+                            + $" 渲染器={inst.GetComponentsInChildren<Renderer>(true).Length}");
+                    if (++cnt >= 10) break;
+                }
+                Debug.Log("[ItemModel] 诊断(临时) 场上图形实例：" + (cnt == 0 ? "（一个都没有 ✗）" : sb.ToString()));
             }
             catch (Exception ex) { Debug.LogWarning("[ItemModel] 诊断失败: " + ex.Message); }
 
