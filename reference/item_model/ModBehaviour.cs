@@ -249,7 +249,7 @@ namespace ItemModelSwap
                     {
                         try
                         {
-                            var rw = ItemModel.Apply(item, cm.Mesh, cm.Texture);
+                            var rw = ItemModel.Apply(item, cm.Mesh, cm.Texture, hit.Handheld);
                             if (rw.Applied)
                                 Debug.Log($"[ItemModel] 已换（被重置后补写）：'{item.name}'(typeID={item.TypeID})｜{rw.Report}");
                         }
@@ -296,7 +296,7 @@ namespace ItemModelSwap
                     bool didWorld = false;
                     if (hit.World)
                     {
-                        var res = ItemModel.Apply(item, cm.Mesh, cm.Texture);
+                        var res = ItemModel.Apply(item, cm.Mesh, cm.Texture, hit.Handheld);
                         _applied[id] = res;
                         didWorld = res.Applied;
                         if (res.Applied)

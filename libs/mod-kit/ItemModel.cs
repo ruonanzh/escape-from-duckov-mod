@@ -475,7 +475,8 @@ namespace ModelKit
         static readonly Dictionary<int, ItemGraphicInfo> _dynGraphic = new Dictionary<int, ItemGraphicInfo>();
 
         public static Result RegisterDynamicOverride(int typeID, Mesh mesh, Texture2D texture,
-                                                     ItemStatsSystem.Item alsoFixThisInstance = null)
+                                                     ItemStatsSystem.Item alsoFixThisInstance = null,
+                                                     bool alsoHandheld = false)
         {
             var res = new Result { TypeID = typeID };
             if (mesh == null) { res.Report = "网格为空 ✗"; return res; }
@@ -569,6 +570,17 @@ namespace ModelKit
 
             _dynDone.Add(typeID);                                  // 记下 ✓ 只注册一次 ✓
             _dynGraphic[typeID] = g;                               // 存起来 ✓ 后续实例补写要用它 ✓
+
+            // ⭐⭐ 关键 ✓：**也要把"手持 agent"写到克隆上** ✗
+            //   `ItemExtensions.CreateHandheldAgent` 是先查 `GetPrefab("Handheld"的hash)` ✓ 拿不到才用游戏通用模板 ✓
+            //     · 大急救箱 ✓ 玩家身上那件被"逐实例补写"过 ✓ → 手里是我们的枪 ✓
+            //     · 糖果 ✗ maxStack>1 → 每用一次会**从预制体造新实例** ✓ → 而克隆上**没有** Handheld ✗
+            //        → 新实例查到的是**游戏通用模板** = 那张图 ✗（这就是"糖果手里还是图片"的根因 ✓）
+            if (alsoHandheld)
+            {
+                try { ApplyHandheld(item, mesh, texture); }
+                catch { /* 写不上不影响世界那条 ✓ */ }
+            }
             res.CacheCleared = ClearAgentCache(item);
             res.AnchorName = "动态条目（克隆物品）";
             res.Applied = true;
@@ -595,7 +607,7 @@ namespace ModelKit
 
         /// <summary>② 换一件物品：**它的模板** + **场上已有的实例** 一起换 ✓
         /// ⚠️ 没有 `ItemGraphic` 的物品（纯图标那种 ✓）会被**跳过** ✓（换不了外观 ✗ 不是失败 ✓）</summary>
-        public static Result Apply(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture)
+        public static Result Apply(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture, bool handheld = false)
         {
             var res = new Result { TypeID = item != null ? item.TypeID : 0, ItemName = item != null ? item.name : "" };
             if (item == null) { res.Report = "物品为空 ✗"; return res; }
@@ -606,7 +618,8 @@ namespace ModelKit
                 // ⭐ 这件物品本来没有世界图形（游戏会画一张 **2D 图片** 兜底 ✓）
                 //   → 我们**造一份图形**写进去 ✓ 游戏下次就用我们的 ✓（= **替换**那个兜底 ✓ 不是删它 ✗）
                 // 走"克隆 + 动态条目"那条 ✓（写实例引用会被关卡重建冲掉 ✗ 实测 ✓）
-                var dyn = RegisterDynamicOverride(item.TypeID, mesh, texture, alsoFixThisInstance: item);
+                var dyn = RegisterDynamicOverride(item.TypeID, mesh, texture, alsoFixThisInstance: item,
+                                                  alsoHandheld: handheld);
                 res.Report = dyn.Report;
                 res.Applied = dyn.Applied;
                 res.Instance = dyn.Instance;
