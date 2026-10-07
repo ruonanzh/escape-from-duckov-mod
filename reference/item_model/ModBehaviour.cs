@@ -84,6 +84,7 @@ namespace ItemModelSwap
         DateTime _cfgStamp = DateTime.MinValue;
         float _nextHeldSweep;                      // ⭐ 手持/装备那条要**反复复查**（物品是后来才被拿起来的 ✓）
         readonly HashSet<int> _diagnosed = new HashSet<int>();   // 诊断每件只打一次 ✓
+        readonly HashSet<int> _heldLogged = new HashSet<int>();  // 手持"没成"也每件打一次 ✓（否则看不到原因 ✗）
         float _nextSceneCheck;                                      // 现场诊断（低频 ✓）
         float _nextApply;                                           // ⭐ 扫描节流：`AllItems()` 是**整场景对象扫描** ✗ 不能每帧做 ✓
 
@@ -100,7 +101,8 @@ namespace ItemModelSwap
             ReadConfig();
             _cfgStamp = File.Exists(_configPath) ? File.GetLastWriteTimeUtc(_configPath) : DateTime.MinValue;
             Debug.Log($"[ItemModel] 规则 {_entries.Count} 条：" + string.Join(" / ",
-                _entries.Select(e => $"targets=[{string.Join(",", e.Targets)}] typeIDs=[{string.Join(",", e.TypeIds)}] model='{e.ModelFile}'")));
+                _entries.Select(e => $"targets=[{string.Join(",", e.Targets)}] typeIDs=[{string.Join(",", e.TypeIds)}]"
+                    + $" world={(e.World ? "开" : "关")} handheld={(e.Handheld ? "开" : "关")} model='{e.ModelFile}'")));
         }
 
         /// <summary>本 mod 的目录（DLL 所在处）✓</summary>
@@ -259,10 +261,18 @@ namespace ItemModelSwap
                         try
                         {
                             var r = ItemModel.ApplyHandheld(item, cm.Mesh, cm.Texture);
-                            if (r.Applied)   // ⭐ 只在**真做事**时打 ✓（无操作不再刷屏 ✗ 实测刷了 5200 行 ✗）
+                            if (r.Applied)
                                 Debug.Log($"[ItemModel] 已换：'{item.name}'(typeID={item.TypeID}) ← {Path.GetFileName(hit.ModelFile)}｜{r.Report}");
+                            else if (!_heldLogged.Contains(id))     // 失败/跳过 每件只打一次 ✓（免得刷屏 ✗）
+                            {
+                                _heldLogged.Add(id);
+                                Debug.Log($"[ItemModel] 手持没成：'{item.name}'(typeID={item.TypeID})｜{r.Report}");
+                            }
                         }
-                        catch { /* 复查失败不影响已经换好的那条 ✓ */ }
+                        catch (Exception ex)
+                        {
+                            if (!_heldLogged.Contains(id)) { _heldLogged.Add(id); Debug.LogWarning($"[ItemModel] 手持抛错 ✗：{ex.Message}"); }
+                        }
                     }
                     continue;
                 }
