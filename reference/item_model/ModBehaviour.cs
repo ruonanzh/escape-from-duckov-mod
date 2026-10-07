@@ -83,6 +83,7 @@ namespace ItemModelSwap
         float _nextCfgCheck;                       // 限频：每 0.25 秒才查一次 config ✓
         DateTime _cfgStamp = DateTime.MinValue;
         float _nextHeldSweep;                      // ⭐ 手持/装备那条要**反复复查**（物品是后来才被拿起来的 ✓）
+        readonly HashSet<int> _diagnosed = new HashSet<int>();   // 诊断每件只打一次 ✓
 
         /// <summary>模型缓存：路径 → （指纹, Mesh, 贴图）。指纹 = 路径 + 朝向 + 文件 mtime+size ✓</summary>
         sealed class CachedModel { public string Sig; public Mesh Mesh; public Texture2D Texture; }
@@ -183,9 +184,13 @@ namespace ItemModelSwap
                     continue;
                 }
 
-                // ⭐ 只读诊断（每个命中的物品一次 ✓）：把它身上有哪些 agent 键打出来 ✓
-                Debug.Log($"[ItemModel] 诊断：'{item.name}'(typeID={item.TypeID})｜keys={ItemModel.AgentKeys(item)}"
-                        + $"｜ItemGraphic={(item.ItemGraphic != null ? "有 ✓" : "无 ✗")}");
+                // ⭐ 只读诊断（**每件物品只打一次** ✓ 不要每次扫都打 ✗）：它身上有哪些 agent 键 ✓
+                if (!_applied.ContainsKey(id) && !_diagnosed.Contains(id))
+                {
+                    _diagnosed.Add(id);
+                    Debug.Log($"[ItemModel] 诊断：'{item.name}'(typeID={item.TypeID})｜keys={ItemModel.AgentKeys(item)}"
+                            + $"｜ItemGraphic={(item.ItemGraphic != null ? "有 ✓" : "无 ✗")}");
+                }
 
                 try
                 {
