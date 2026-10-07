@@ -33,7 +33,7 @@ description: 用户想换**物品**（背包 / 防弹衣 / 头盔 / 弹匣 / 任
 ```
 generate_image(
   image="<用户的图>",                       // 只给文字描述时省略（→ 纯提示词出图 ✓）
-  prompt="Redraw the item from the input as a clean, isolated in-game keep ONLY the main item - if the input shows several objects, take the largest, centered one and ignore the rest. The whole item alone and complete - keep EVERY part of it; remove only what is not the item (the background, any floating pieces, text, frames). Put it on a plain uniform white background: no scenery, no props, no shadow, no smoke, no hands, no text. Keep the item's own design, colors and surface details the same, but make it noticeably BULKIER and THICKER: heavy, sturdy proportions like a stylized low-poly game asset, about 0.55 m tall (game scale). Side view, and perfectly CENTERED in the frame, with a clear margin on all sides.",
+  prompt="Redraw the item from the input as a clean, isolated in-game asset: keep ONLY the main item - if the input shows several objects, take the largest, centered one and ignore the rest. The whole item alone and complete - keep EVERY part of it; remove only what is not the item (the background, any floating pieces, text, frames). Put it on a plain uniform white background: no scenery, no props, no shadow, no smoke, no hands, no text. Keep the item's own design, colors and surface details the same, but make it noticeably BULKIER and THICKER: heavy, sturdy proportions like a stylized low-poly game asset, about 0.55 m tall (game scale). Side view, and perfectly CENTERED in the frame, with a clear margin on all sides.",
   out="your_mods/<mod>/.preview/<物品名>.preview.png")   // 中间图放 mod 目录下的 .preview/
 ```
 
