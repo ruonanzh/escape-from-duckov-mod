@@ -134,6 +134,36 @@ namespace ModelKit
             return null;
         }
 
+        /// <summary>只读诊断 ✓：这件物品身上有哪些 agent 键（`normal` / `pickUp` / `handheld` / `equipment`…）
+        /// —— 用来判断"地上 / 手里 / 穿戴"各走哪条路 ✓（键名是游戏自己写进去的 ✓）
+        /// ⚠️ 纯读 ✓ 不写任何东西 ✓</summary>
+        public static string AgentKeys(ItemStatsSystem.Item item)
+        {
+            var sb = new System.Text.StringBuilder();
+            try
+            {
+                var au = item != null ? item.AgentUtilities : null;
+                if (au == null) return "(没有 AgentUtilities ✗)";
+                var f = typeof(ItemStatsSystem.ItemAgentUtilities)
+                    .GetField("agents", BindingFlags.Instance | BindingFlags.NonPublic);
+                var list = f != null ? f.GetValue(au) as System.Collections.IList : null;
+                if (list == null) return "(读不到 agents 列表 ✗)";
+                for (int i = 0; i < list.Count; i++)
+                {
+                    var pair = list[i];
+                    if (pair == null) continue;
+                    var kf = pair.GetType().GetField("key");
+                    var af = pair.GetType().GetField("agentPrefab");
+                    string k = kf != null ? (kf.GetValue(pair) as string) : null;
+                    object a = af != null ? af.GetValue(pair) : null;
+                    if (i > 0) sb.Append(", ");
+                    sb.Append(k).Append(a != null ? "✓" : "✗");
+                }
+            }
+            catch (Exception ex) { return "(读失败 ✗：" + ex.Message + ")"; }
+            return sb.Length == 0 ? "(空 ✓ 没有自带 agent)" : "[" + sb + "]";
+        }
+
         // ───────────────────────── 关旧外观 / 挂我们的 ─────────────────────────
 
         /// <summary>取"挂点"：优先**包围盒最大**的渲染器（**任何类型** ✓ 含 SpriteRenderer ✓）；

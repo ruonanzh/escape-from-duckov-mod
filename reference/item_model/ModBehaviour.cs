@@ -183,6 +183,10 @@ namespace ItemModelSwap
                     continue;
                 }
 
+                // ⭐ 只读诊断（每个命中的物品一次 ✓）：把它身上有哪些 agent 键打出来 ✓
+                Debug.Log($"[ItemModel] 诊断：'{item.name}'(typeID={item.TypeID})｜keys={ItemModel.AgentKeys(item)}"
+                        + $"｜ItemGraphic={(item.ItemGraphic != null ? "有 ✓" : "无 ✗")}");
+
                 try
                 {
                     // ⭐ 按开关做（三层里的前两层 ✓；第三层 = 游戏自带的 2D 图片 ✓ 我们永远不动 ✗）
