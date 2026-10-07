@@ -122,13 +122,20 @@ namespace ModelKit
             if (_borrowed != null) return _borrowed;
             try
             {
-                foreach (var g in UnityEngine.Object.FindObjectsByType<ItemGraphicInfo>(FindObjectsSortMode.None))
+                // ① 先在**全场景的网格渲染器**里找 ✓（原来只找 ItemGraphicInfo 底下的 ✗ ——
+                //    载入阶段可能一个都还没加载 ✓ → 借不到 → 材质 null → 粉色 ✗ 实测）
+                foreach (var r in UnityEngine.Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
                 {
-                    if (g == null) continue;
-                    foreach (var r in g.GetComponentsInChildren<Renderer>(true))
-                        if ((r is MeshRenderer || r is SkinnedMeshRenderer) && r.sharedMaterial != null)
-                        { _borrowed = r.sharedMaterial; return _borrowed; }
+                    if (r == null || r.sharedMaterial == null) continue;
+                    var sh = r.sharedMaterial.shader;
+                    if (sh == null) continue;
+                    if (sh.name.IndexOf("Sprite", StringComparison.OrdinalIgnoreCase) >= 0) continue;   // 精灵材质不要 ✗
+                    if (sh.name.IndexOf("UI/", StringComparison.OrdinalIgnoreCase) >= 0) continue;        // UI 材质不要 ✗
+                    _borrowed = r.sharedMaterial; return _borrowed;
                 }
+                // ② 退一步：SkinnedMeshRenderer（角色身上的）
+                foreach (var r in UnityEngine.Object.FindObjectsByType<SkinnedMeshRenderer>(FindObjectsSortMode.None))
+                    if (r != null && r.sharedMaterial != null) { _borrowed = r.sharedMaterial; return _borrowed; }
             }
             catch { }
             return null;
@@ -231,6 +238,7 @@ namespace ModelKit
                     if (r is MeshRenderer || r is SkinnedMeshRenderer) { src = r.sharedMaterial; break; }
                 }
             if (src == null) src = fallbackMat;            // ⭐ 兜底：调用方给的（例如"世界图形上我们刚挂的那份材质" ✓）
+            if (src == null) UnityEngine.Debug.LogWarning("[ItemModel] ⚠️ 借不到游戏材质 ✗ → 会用 Unity 默认材质（**粉色** ✗）");
             var one = src != null ? new Material(src) : null;
             if (one != null)
             {

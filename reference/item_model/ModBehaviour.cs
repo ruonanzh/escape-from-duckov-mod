@@ -164,7 +164,7 @@ namespace ItemModelSwap
                 var g = item.ItemGraphic;
                 Debug.Log($"[ItemModel] 现场：'{item.name}'(typeID={item.TypeID})｜ItemGraphic="
                         + (g == null ? "**null** ✗" : (g.gameObject != null ? g.gameObject.name : "(已销毁) ✗"))
-                        + $"｜场上我们的图形实例={ours}");
+                        + $"｜useSpriteForPickup={item.useSpriteForPickup}｜场上我们的图形实例={ours}");
             }
         }
 
