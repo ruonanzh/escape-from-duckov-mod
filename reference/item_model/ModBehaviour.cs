@@ -281,8 +281,13 @@ namespace ItemModelSwap
                 if (!_applied.ContainsKey(id) && !_diagnosed.Contains(id))
                 {
                     _diagnosed.Add(id);
+                    // ⚠️ 这一行是**在我们动手之前**打的 ✓ → `能拿=…` 是**原始状态** ✓（关键判据 ✓）
+                    bool canHold = false;
+                    try { canHold = item.HasHandHeldAgent; } catch { }
                     Debug.Log($"[ItemModel] 诊断：'{item.name}'(typeID={item.TypeID})｜keys={ItemModel.AgentKeys(item)}"
-                            + $"｜ItemGraphic={(item.ItemGraphic != null ? "有 ✓" : "无 ✗")}");
+                            + $"｜ItemGraphic={(item.ItemGraphic != null ? "有 ✓" : "无 ✗")}"
+                            + $"｜能拿(原始)={(canHold ? "**是 ✓**（本来就有 handheld 槽）" : "**否 ✗**（游戏里根本没有[拿着]这回事）")}"
+                            + $"｜maxStack={item.MaxStackCount}");
                 }
 
                 try
