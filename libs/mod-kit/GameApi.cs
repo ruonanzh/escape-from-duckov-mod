@@ -136,5 +136,16 @@ namespace ModelKit
         {
             HideCharacterSkin(cm, keepUnder);   // 幂等
         }
+
+        /// <summary>⭐ 枚举**所有已加载的物品对象**（含物品模板 prefab 与场上实例 ✓）。
+        /// 用途：按名字/typeID 找齐"该换模型的物品" ✓（和 <see cref="WeaponIcon.ApplyToAllMatching"/> 同一个枚举方式 ✓）</summary>
+        public static IEnumerable<ItemStatsSystem.Item> AllItems()
+            => Resources.FindObjectsOfTypeAll<ItemStatsSystem.Item>().Where(i => i != null);
+
+        /// <summary>名字匹配（大小写不敏感的子串 ✓）：`target` 就是拿它去匹配物品的**对象名**。
+        /// 例：`"Backpack"` 会命中 `Item_Backpack_Lv_3` ✓</summary>
+        public static bool NameMatches(ItemStatsSystem.Item item, string target)
+            => !string.IsNullOrEmpty(target) && item != null && item.name != null
+               && item.name.IndexOf(target, System.StringComparison.OrdinalIgnoreCase) >= 0;
     }
 }

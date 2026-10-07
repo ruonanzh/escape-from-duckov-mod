@@ -4,8 +4,8 @@
     <Nullable>disable</Nullable>
     <LangVersion>latest</LangVersion>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <AssemblyName>WeaponModelSwap</AssemblyName>
-    <RootNamespace>WeaponModelSwap</RootNamespace>
+    <AssemblyName>ItemModelSwap</AssemblyName>
+    <RootNamespace>ItemModelSwap</RootNamespace>
 
     <!-- 游戏目录：export DUCKOV_DIR=<游戏安装目录>（或跑 validate_mod，它会带上） -->
     <DuckovDir Condition="'$(DUCKOV_DIR)' != ''">$(DUCKOV_DIR)</DuckovDir>
@@ -30,8 +30,6 @@
     <Compile Include="../../libs/mod-kit/Json.cs" />
     <Compile Include="../../libs/mod-kit/GltfLoader.cs" />
     <Compile Include="../../libs/mod-kit/GameApi.cs" />
-    <Compile Include="../../libs/mod-kit/WeaponModel.cs" />
-    <Compile Include="../../libs/mod-kit/WeaponIcon.cs" />
     <Compile Include="../../libs/mod-kit/ItemModel.cs" />
   </ItemGroup>
 </Project>
