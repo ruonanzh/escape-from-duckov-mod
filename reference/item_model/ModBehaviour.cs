@@ -85,6 +85,7 @@ namespace ItemModelSwap
         float _nextHeldSweep;                      // ⭐ 手持/装备那条要**反复复查**（物品是后来才被拿起来的 ✓）
         readonly HashSet<int> _diagnosed = new HashSet<int>();   // 诊断每件只打一次 ✓
         float _nextSceneCheck;                                      // 现场诊断（低频 ✓）
+        float _nextApply;                                           // ⭐ 扫描节流：`AllItems()` 是**整场景对象扫描** ✗ 不能每帧做 ✓
 
         /// <summary>模型缓存：路径 → （指纹, Mesh, 贴图）。指纹 = 路径 + 朝向 + 文件 mtime+size ✓</summary>
         sealed class CachedModel { public string Sig; public Mesh Mesh; public Texture2D Texture; }
@@ -171,6 +172,10 @@ namespace ItemModelSwap
         void ApplyAll()
         {
             if (_entries.Count == 0) return;
+            // ⭐ 节流 0.5 秒 ✓：`GameApi.AllItems()` 内部是 `FindObjectsOfTypeAll<Item>` ✗
+            //   （**整场景对象扫描** ✓）→ 每帧做一次会明显拖慢游戏 ✗（实测：越玩越卡 ✓）
+            if (Time.unscaledTime < _nextApply) return;
+            _nextApply = Time.unscaledTime + 0.5f;
 
             List<ItemStatsSystem.Item> all;
             try { all = GameApi.AllItems().ToList(); }
