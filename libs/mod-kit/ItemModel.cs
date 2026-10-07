@@ -368,6 +368,46 @@ namespace ModelKit
             return res;
         }
 
+        /// <summary>⚠️ 把 `AddComponent` 出来的 `ItemGraphicInfo` 的**必需字段初始化好** ✗
+        ///
+        /// 反编译依据 ✓：游戏 `CreateAGraphic` → `Setup(item)` → `RefreshSubGraphics()`，里面**必然**执行
+        ///   `foreach (ItemGraphicSocket socket in sockets)` ✓ + 用 `subGraphics` / `socketsDictionary` ✓
+        /// 而 `AddComponent` 造出来的这些字段**全是 null** ✗ → 必抛空引用 ✗ → 游戏就用不了我们的图形 ✗
+        /// （工坊 mod 用 AssetBundle 里的**正经 prefab** ✓ 所以它碰不到这个坑 ✓；我们只能自己补 ✓）</summary>
+        static void InitGraphicFields(ItemGraphicInfo g)
+        {
+            const BindingFlags F = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+            var t = typeof(ItemGraphicInfo);
+            try
+            {
+                var fSockets = t.GetField("sockets", F);
+                if (fSockets != null && fSockets.GetValue(g) == null)
+                    fSockets.SetValue(g, new List<ItemGraphicInfo.ItemGraphicSocket>());
+
+                var fSub = t.GetField("subGraphics", F);
+                if (fSub != null && fSub.GetValue(g) == null)
+                    fSub.SetValue(g, new List<ItemGraphicInfo>());
+
+                var fDic = t.GetField("socketsDictionary", F);
+                if (fDic != null && fDic.GetValue(g) == null)
+                    fDic.SetValue(g, new Dictionary<string, ItemGraphicInfo.ItemGraphicSocket>());
+
+                var fBuilt = t.GetField("dicBuilt", F);
+                if (fBuilt != null) fBuilt.SetValue(g, true);       // 别让它再去建一次 ✗
+
+                // groundPoint：给一个空子物体 ✓（SnapGroundPointToParent 会用到 ✓）
+                var fGp = t.GetField("groundPoint", F);
+                if (fGp != null && fGp.GetValue(g) == null)
+                {
+                    var gp = new GameObject("groundPoint");
+                    gp.transform.SetParent(g.transform, false);
+                    gp.transform.localPosition = Vector3.zero;
+                    fGp.SetValue(g, gp.transform);
+                }
+            }
+            catch { /* 补不上也别炸 ✓ 大不了这件换不成 ✓ */ }
+        }
+
         /// <summary>给"本来没有图形"的物品**造一份世界图形**（用它替换 2D 图片兜底 ✓）：
         /// 运行时新建一个带 `ItemGraphicInfo` 的物体 ✓ 挂上我们的 mesh ✓ 写回 `item.ItemGraphic` ✓
         ///
@@ -383,6 +423,8 @@ namespace ModelKit
                 g = go.AddComponent<ItemGraphicInfo>();
             }
             catch (Exception) { return null; }
+
+            InitGraphicFields(g);                               // ⭐ 先把它缺的字段补齐 ✓（否则游戏一用就空引用 ✗）
 
             var fallback = BorrowMaterial();                    // 借一份游戏材质 ✓（免得上默认材质变粉色 ✗）
             res.Instance = Attach(g.transform, null, mesh, texture, item.name, g.transform.position, fallback);
