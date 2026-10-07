@@ -151,11 +151,16 @@ namespace ModelKit
             float bestSize = -1f;
             foreach (var r in root.GetComponentsInChildren<Renderer>(true))
             {
+                // ⭐ **只认真网格** ✓（跟武器那份 `WeaponModel` 同一句 ✓ 用户定的规矩 ✓）
+                //     ✗ 别把 Sprite / 灯光光晕 / 粒子 / 拖尾 之类算进来 ——
+                //     实测踩过：头盔图形上运行时挂了一盏 `SodaPointLight`，它的光晕 Sprite 比头盔还大 ✗
+                //     → "取最大的"就选中了灯 ✗ → 真模型被关、我们的模型挂到灯上 → **头盔消失** ✗
+                if (!(r is MeshRenderer || r is SkinnedMeshRenderer)) continue;
                 if (r == null) continue;
                 if (r.gameObject.name.StartsWith("ModelKit_")) continue;      // 我们自己的不算 ✓
                 float sz;
                 try { sz = r.bounds.size.magnitude; } catch { continue; }
-                if (sz > bestSize && sz < 5f) { bestSize = sz; best = r; }     // < 5m：避开天空盒那类怪东西 ✓
+                if (sz > bestSize && sz < 5f) { bestSize = sz; best = r; }     // 只在这些**网格**里比大小 ✓
             }
             return best;
         }
