@@ -137,6 +137,41 @@ namespace ModelKit
             HideCharacterSkin(cm, keepUnder);   // 幂等
         }
 
+        static int _displayLayer = int.MinValue;
+
+        /// <summary>⭐ **世界显示层** ✓ —— 游戏在世界里显示物品/装备时用的那个层 ✓。
+        ///
+        /// 为什么需要它 ✗：我们**自己造**图形时（物品没有 `ItemGraphic` 的那种 ✓），没有"游戏零件"的层可抄 ✗。
+        /// 而**物品预制体自己的层**不能用 ✗ —— 实测（用户报的 ✓）：拿它当层 → 模型**发白** ✗ +
+        /// **渲染在最前面** ✗（那是 **UI 层**的行为 ✓ 因为 Item 的 GameObject 平时是给背包格子/UI 用的 ✓）。
+        ///
+        /// 取法（证据优先 ✓）：① 场上一件**游戏自己的**图形实例（`ItemGraphicInfo` ✓ 不是我们造的 `ModelKit_*` ✓）
+        /// → 从它的网格渲染器读层 ✓；② 退而用 `VisibleLayer`（Character ✓）；③ 都不行 → -1（调用方保持原样 ✓）</summary>
+        public static int DisplayLayer()
+        {
+            if (_displayLayer != int.MinValue) return _displayLayer;
+            _displayLayer = -1;
+            try
+            {
+                foreach (var g in UnityEngine.Object.FindObjectsByType<ItemGraphicInfo>(FindObjectsSortMode.None))
+                {
+                    if (g == null || g.gameObject == null) continue;
+                    if (g.gameObject.name.StartsWith("ModelKit_")) continue;      // 我们造的跳过 ✗
+                    foreach (var r in g.GetComponentsInChildren<Renderer>(true))
+                        if ((r is MeshRenderer || r is SkinnedMeshRenderer) && r.gameObject != null)
+                        { _displayLayer = r.gameObject.layer; break; }
+                    if (_displayLayer >= 0) break;
+                }
+            }
+            catch { }
+            if (_displayLayer < 0)
+            {
+                int v = VisibleLayer;                                             // "Character" ✓
+                if (v >= 0) _displayLayer = v;
+            }
+            return _displayLayer;
+        }
+
         /// <summary>把"我们的基础色贴图"套到一份**从游戏材质克隆来的**材质上 ✓，并**清掉其它槽** ✗。
         /// 武器 ✓ 物品 ✓ **共用同一套** ✓（用户要求一套逻辑 ✓）。
         ///

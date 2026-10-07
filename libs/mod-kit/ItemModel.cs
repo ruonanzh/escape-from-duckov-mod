@@ -482,8 +482,10 @@ namespace ModelKit
             // ⭐ **层要跟着物品走** ✗ —— `Attach` 在 mount==null 时用的是 root 的层 ✓
             //   而 root 是我们 `new GameObject()` 出来的 → **layer = 0（Default）** ✗
             //   游戏显示这个世界模型时按层过滤 → Default 层的 mesh **看不见** ✗（实测：糖果消失 ✓）
-            //   物品**自己的层是游戏给的** ✓（克隆自原预制体 ✓）→ 用它 ✓
-            SetLayerDeep(g.gameObject, item.gameObject.layer);
+            //   ⚠️ **不能**用"物品自己的层" ✗（实测踩到 ✓）：Item 的 GameObject 平时是给**背包格子 / UI** 用的 ✓
+            //      它的层是 **UI 层** ✗ → 拿它渲染世界模型会 **发白 + 渲染在最前面** ✗
+            //   → 改用**游戏自己显示世界物品时用的层** ✓（`GameApi.DisplayLayer()` 从场上游戏图形里读 ✓）
+            SetLayerDeep(g.gameObject, GameApi.DisplayLayer());
             if (g.gameObject.GetComponent<Marked>() == null) g.gameObject.AddComponent<Marked>();
 
             if (!WriteGraphic(item, g)) return null;            // 写回 item.ItemGraphic ✓
@@ -574,7 +576,7 @@ namespace ModelKit
             HideOld(g.transform, res);
             res.Instance = Attach(g.transform, mount, mesh, texture, src.name, g.transform.position,
                                   mount != null ? mount.sharedMaterial : BorrowMaterial());
-            SetLayerDeep(g.gameObject, item.gameObject.layer);      // ⭐ 层跟着物品走 ✓（Default 层看不见 ✗）
+            SetLayerDeep(g.gameObject, GameApi.DisplayLayer());      // ⭐ 同上：用"世界显示层" ✓（物品自己的层是 UI 层 ✗）
             if (g.gameObject.GetComponent<Marked>() == null) g.gameObject.AddComponent<Marked>();
 
             if (!WriteGraphic(item, g)) { res.Report = "写回克隆的 itemGraphic 失败 ✗"; return res; }   // ⑤
