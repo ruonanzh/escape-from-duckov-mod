@@ -360,6 +360,12 @@ namespace ModelKit
             res.Instance = Attach(agent.transform, null, mesh, texture, item.name, agent.transform.position, fallback);
             if (agent.gameObject.GetComponent<Marked>() == null) agent.gameObject.AddComponent<Marked>();
 
+            // ⚠️ **agent 模板也要挪到世界外** ✗（跟图形那条同理 ✓ 实测：载入画面里又看到一把枪 ✗）
+            //   游戏拿它时会 `Instantiate` 副本 ✓ → `ChangeHoldItem` 里 `SetParent(手部 socket)` + `localPosition = 0` ✓
+            //   → 所以挪到 -5000 只影响**模板本身** ✓ 不影响它生成的副本 ✓
+            agent.transform.SetParent(null);
+            agent.transform.position = new Vector3(0f, -5000f, 0f);
+
             try
             {
                 var au = item.AgentUtilities;
