@@ -414,8 +414,18 @@ namespace ModelKit
         /// ⚠️ **不 `DontDestroyOnLoad`** ✗（上次"整件消失"就是踩了 DDOL ✗）：
         ///    它活在**当前场景** ✓ 换场景后自然失效 → 游戏回退到 2D 图片 ✓（优雅降级 ✓）
         ///    → mod 每秒的复查会**再造一份** ✓</summary>
+        /// <summary>我们**造出来的**图形（按 typeID 缓存 ✓）—— 复用同一个 ✓ 别每次造新的 ✗
+        /// ⚠️ 游戏会**重建物品预制体** ✗ → 我们写进去的引用会被冲掉 ✓ → 那就把这个**同一个**对象再写回去 ✓</summary>
+        static readonly Dictionary<int, ItemGraphicInfo> _made = new Dictionary<int, ItemGraphicInfo>();
+
         static ItemGraphicInfo MakeGraphicForItem(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture, Result res)
         {
+            // 已经造过 → 直接复用 ✓（Unity 的"已销毁"会当 null ✓ 所以这里能自动重造 ✓）
+            if (_made.TryGetValue(item.TypeID, out var cached) && cached != null) return cached;
+            // 物品当前指向的已经是我们的 → 也直接复用 ✓
+            if (item.ItemGraphic != null && item.ItemGraphic.gameObject != null
+                && item.ItemGraphic.gameObject.name.StartsWith("ModelKit_graphic_")) return item.ItemGraphic;
+
             ItemGraphicInfo g;
             try
             {
@@ -431,6 +441,7 @@ namespace ModelKit
             if (g.gameObject.GetComponent<Marked>() == null) g.gameObject.AddComponent<Marked>();
 
             if (!WriteGraphic(item, g)) return null;            // 写回 item.ItemGraphic ✓
+            _made[item.TypeID] = g;                             // 记住它 ✓ 下次复用 ✓
             return g;
         }
 

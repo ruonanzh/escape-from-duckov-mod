@@ -198,6 +198,19 @@ namespace ItemModelSwap
                 //   （拿起/放下才需要重做 ✓ 1 秒一次足够 ✓ 幂等 ✓ 已换过的会直接返回 ✓）
                 if (_applied.ContainsKey(id))
                 {
+                    // ⭐ 游戏会**重建物品预制体** ✗ → 我们写的 ItemGraphic 会被冲掉 ✓
+                    //   （实测：糖果预制体的 ItemGraphic 变回 null ✗ → 掉地上那件就从预制体实例化出 2D 图 ✗）
+                    //   → 每秒复查：**一旦发现被重置，就把它写回去** ✓（复用同一个图形对象 ✓ 不漏 ✓）
+                    if (hit.World && item.ItemGraphic == null)
+                    {
+                        try
+                        {
+                            var rw = ItemModel.Apply(item, cm.Mesh, cm.Texture);
+                            if (rw.Applied)
+                                Debug.Log($"[ItemModel] 已换（被重置后补写）：'{item.name}'(typeID={item.TypeID})｜{rw.Report}");
+                        }
+                        catch { /* 补写失败不影响别的 ✓ */ }
+                    }
                     if (hit.Handheld && Time.unscaledTime >= _nextHeldSweep)
                     {
                         _nextHeldSweep = Time.unscaledTime + 1f;
