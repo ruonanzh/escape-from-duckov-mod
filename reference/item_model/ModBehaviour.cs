@@ -155,6 +155,41 @@ namespace ItemModelSwap
                     if (g != null && g.gameObject != null && g.gameObject.name.StartsWith("ModelKit_graphic_")) ours++;
             }
             catch { }
+            // ⭐ 地上那件东西**到底在画什么** ✓（用反射读 `InteractablePickup` ✓ 零编译依赖 ✓）
+            try
+            {
+                foreach (var mb in UnityEngine.Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+                {
+                    if (mb == null || mb.GetType().Name != "InteractablePickup") continue;
+                    var t = mb.GetType();
+                    var fAgent = t.GetField("itemAgent", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                    var fRoot = t.GetField("graphicRoot", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                    var agent = fAgent != null ? fAgent.GetValue(mb) : null;
+                    if (agent == null) continue;
+                    var pItem = agent.GetType().GetProperty("Item");
+                    var item = pItem != null ? pItem.GetValue(agent) : null;
+                    if (item == null) continue;
+                    var itemType = item.GetType();
+                    var nm = itemType.GetProperty("name") != null ? item.name : "?";
+                    var g = item.ItemGraphic;
+                    var root = (fRoot != null ? fRoot.GetValue(mb) : null) as Transform;
+                    int spr = 0, mesh = 0, ours2 = 0;
+                    if (root != null)
+                        foreach (var r in root.GetComponentsInChildren<Renderer>(true))
+                        {
+                            if (r == null) continue;
+                            if (r is SpriteRenderer) spr++;
+                            else if (r is MeshRenderer || r is SkinnedMeshRenderer) mesh++;
+                            if (r.gameObject.name.StartsWith("ModelKit_")) ours2++;
+                        }
+                    Debug.Log($"[ItemModel] 地上：'{(item as ItemStatsSystem.Item).name}'(typeID={(item as ItemStatsSystem.Item).TypeID})"
+                            + $"｜ItemGraphic={(g == null ? "**null** ✗" : (g.gameObject != null ? g.gameObject.name : "(已销毁) ✗"))}"
+                            + $"｜useSprite={item.useSpriteForPickup}"
+                            + $"｜graphicRoot 下: SpriteRenderer={spr} MeshRenderer={mesh} 我们的={ours2}");
+                }
+            }
+            catch { /* 诊断失败无所谓 ✓ */ }
+
             foreach (var item in GameApi.AllItems())
             {
                 if (item == null) continue;
