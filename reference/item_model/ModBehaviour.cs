@@ -153,8 +153,9 @@ namespace ItemModelSwap
                 foreach (var kv in _applied)
                     if (kv.Value != null) kv.Value.Restore();
                 _applied.Clear();
+                int marks = ItemModel.ClearMarks();   // ⭐ 关键 ✓：摘掉 `Marked` ✗ → 不然幂等闸会阻止重挂 ✗（物品会退回原模型 ✓）
 
-                Debug.Log("[ItemModel] config 已重载 → 重新挂 " + _entries.Count + " 条规则");
+                Debug.Log("[ItemModel] config 已重载 → 重新挂 " + _entries.Count + " 条规则（摘掉旧标记 " + marks + " 个 ✓）");
             }
             catch (Exception ex) { Debug.LogWarning("[ItemModel] config 热重载失败：" + ex.Message); }
         }

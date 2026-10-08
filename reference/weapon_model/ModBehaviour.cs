@@ -175,6 +175,14 @@ namespace WeaponModelSwap
             {
                 _applied[id] = r;
                 Debug.Log("[WeaponModel] " + r.Report);
+                // ⭐ 掉落/展示那条 ✓：枪在**地上**时游戏用的是 `item.ItemGraphic` ✓（跟手里那套 agent 无关 ✗）
+                //    → 顺手用**物品那条路**把它也换掉 ✓（handheld:false = 不动手里 ✓ 手里由上面那套管 ✓）
+                try
+                {
+                    var rw = ModelKit.ItemModel.Apply(item, entry.Mesh, entry.Texture, false, entry.Size);
+                    if (rw.Applied) Debug.Log("[WeaponModel] 世界/掉落图形：" + rw.Report);
+                }
+                catch (Exception ex) { Debug.LogWarning("[WeaponModel] 世界/掉落图形抛错 ✗：" + ex.Message); }
                 // 图标：卡片上那个 Sprite 也换成我们的
                 if (entry.IconPath != null) Debug.Log("[WeaponModel] " + ModelKit.WeaponIcon.Apply(item, entry.IconPath));
             }
@@ -207,6 +215,9 @@ namespace WeaponModelSwap
                 }
                 _applied.Clear();
                 _lastHeld = null;
+                // ⭐ 顺手把**物品侧**的 `Marked` 标记也摘了 ✓ —— 下面会给每把枪也换"世界/掉落图形" ✓
+                //    不摘的话：物品侧的幂等闸会阻止重挂 ✗ → 枪掉在地上会退回原模型 ✗
+                int marks = ModelKit.ItemModel.ClearMarks();
                 // ⭐ **每次都重读模型** ✗：热重载会把 Entry 重建（Mesh 变 null ✗），
                 //    而旧代码只在 model/front 指纹变了时才重读 ✗ → 只改 slots/target/icon 时会
                 //    “永远挂不上” ✗✓（同样导致枪不见 ✓）。重读一个 GLB 只要几十毫秒 ✓ 换来正确性 ✓。

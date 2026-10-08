@@ -66,6 +66,22 @@ namespace ModelKit
         ///   · agent 层（手里那层 ✓ 独立处理 ✓ 它自己的图标精灵才会被关掉 ✗ 以前漏了 ✓）</summary>
         public sealed class Marked : MonoBehaviour { }
 
+        /// <summary>⭐ **热重载专用** ✓：把我们打的 `Marked` 标记全摘掉 ✓（+ 允许重新注册动态条目 ✓）。
+        /// <para>不摘的话：`Apply` 的幂等闸会认为"已经换过" ✗ → 重挂被跳过 ✗ →
+        /// 物品**退回游戏原模型** ✗（实测 ✓ 用户报的：改 config 后头盔变回原样 ✓ 重启才好 ✓）</para></summary>
+        public static int ClearMarks()
+        {
+            int n = 0;
+            foreach (var m in UnityEngine.Resources.FindObjectsOfTypeAll<Marked>())
+            {
+                if (m == null) continue;
+                n++;
+                UnityEngine.Object.DestroyImmediate(m);        // 立即摘 ✓（不是销毁物体 ✓ 只摘标记 ✓）
+            }
+            _dynDone.Clear();                                  // 动态条目也允许重新注册 ✓
+            return n;
+        }
+
         // ───────────────────────── 清实体缓存（让游戏下次重建 ✓）─────────────────────────
 
         /// <summary>清掉"实体缓存"（社区做法 ✓）：游戏下次创建实体时会重新看 `item.ItemGraphic` ✓
