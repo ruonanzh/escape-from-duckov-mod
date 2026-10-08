@@ -229,7 +229,7 @@ namespace ModelKit
         /// <summary>把我们的 mesh 挂上去（挂在挂点上 ✓ 没有挂点就挂根 ✓）
         /// 缩放补回"世界尺度 = 1" ✓（prefab 的缩放链不一定是 1 ✗）；材质**克隆游戏自己的**再换贴图 ✓</summary>
         static GameObject Attach(Transform root, Renderer mount, Mesh mesh, Texture2D texture, string itemName,
-                                Vector3 oldCenterWorld, Material fallbackMat = null)
+                                Vector3 oldCenterWorld, Material fallbackMat = null, float scale = 1f)
         {
             var parent = mount != null ? mount.transform : root;
             Vector3 lossy = parent.lossyScale;
@@ -248,7 +248,7 @@ namespace ModelKit
             var want = parent.InverseTransformPoint(oldCenterWorld);
             go.transform.localPosition = want - Vector3.Scale(mesh.bounds.center, inv);
             go.transform.localRotation = Quaternion.identity;
-            go.transform.localScale = inv;
+            go.transform.localScale = inv * scale;   // 抵消挂点缩放 ✓ × 适配系数（⭐ 由 localScale 承担 ✓ 不改 mesh 顶点 ✗）
 
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
             var mr = go.AddComponent<MeshRenderer>();
@@ -275,7 +275,7 @@ namespace ModelKit
         }
 
         /// <summary>核心：**就地**把一个"外观物体"换成我们的（prefab 或场上实例都一样 ✓）</summary>
-        public static Result ApplyToTransform(Transform root, string itemName, int typeID, Mesh mesh, Texture2D texture)
+        public static Result ApplyToTransform(Transform root, string itemName, int typeID, Mesh mesh, Texture2D texture, float scale = 1f)
         {
             var res = new Result { TypeID = typeID, ItemName = itemName ?? "" };
             if (root == null || mesh == null) { res.Report = "外观为空或网格为空 ✗"; return res; }
@@ -292,7 +292,7 @@ namespace ModelKit
                 ? mount.transform.TransformPoint(mount.localBounds.center)
                 : root.position;
             HideOld(root, res);
-            res.Instance = Attach(root, mount, mesh, texture, itemName, oldCenter);
+            res.Instance = Attach(root, mount, mesh, texture, itemName, oldCenter, null, scale);
             if (root.GetComponent<Marked>() == null) root.gameObject.AddComponent<Marked>();   // 打标记 ✓
             res.Applied = true;
             res.Report = $"关旧外观 {res.Hidden.Count} 个｜挂到 '{res.AnchorName}'"
@@ -336,7 +336,7 @@ namespace ModelKit
         /// ⚠️ 这里用 `DontDestroyOnLoad` 是**对的** ✓（工坊也这么做 ✓）：agent 是**模板** ✓，
         ///    游戏会把实例 `SetParent` 到持有者身上 ✓ → 换场景不受影响 ✓
         ///    （我上次踩的坑是反的 ✗：DDOL 的是**图形**实例 ✗，游戏只是 `Instantiate` 它 ✗ → 副本留在 DDOL 场景 → 看不见 ✗）</summary>
-        public static Result ApplyHandheld(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture)
+        public static Result ApplyHandheld(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture, float scale = 1f)
         {
             var res = new Result { TypeID = item != null ? item.TypeID : 0, ItemName = item != null ? item.name : "" };
             if (item == null || mesh == null) { res.Report = "物品或网格为空 ✗"; return res; }
@@ -378,7 +378,7 @@ namespace ModelKit
                         if (r is MeshRenderer || r is SkinnedMeshRenderer) { fallback = r.sharedMaterial; break; }
             }
 
-            res.Instance = Attach(agent.transform, null, mesh, texture, item.name, agent.transform.position, fallback);
+            res.Instance = Attach(agent.transform, null, mesh, texture, item.name, agent.transform.position, fallback, scale);
             if (agent.gameObject.GetComponent<Marked>() == null) agent.gameObject.AddComponent<Marked>();
 
             // ⚠️ **agent 模板也要挪到世界外** ✗（跟图形那条同理 ✓ 实测：载入画面里又看到一把枪 ✗）
@@ -603,7 +603,7 @@ namespace ModelKit
             //        → 新实例查到的是**游戏通用模板** = 那张图 ✗（这就是"糖果手里还是图片"的根因 ✓）
             if (alsoHandheld)
             {
-                try { ApplyHandheld(item, mesh, texture); }
+                try { ApplyHandheld(item, mesh, texture, ModelSize.FactorFor(typeID, 0f, mesh)); }
                 catch { /* 写不上不影响世界那条 ✓ */ }
             }
             res.CacheCleared = ClearAgentCache(item);
@@ -620,10 +620,12 @@ namespace ModelKit
 
         /// <summary>**主入口**：换一件物品：**它的模板** + **场上已有的实例** 一起换 ✓
         /// ⚠️ 没有 `ItemGraphic` 的物品（纯图标那种 ✓）会被**跳过** ✓（换不了外观 ✗ 不是失败 ✓）</summary>
-        public static Result Apply(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture, bool handheld = false)
+        public static Result Apply(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture, bool handheld = false, float size = 0f)
         {
             var res = new Result { TypeID = item != null ? item.TypeID : 0, ItemName = item != null ? item.name : "" };
             if (item == null) { res.Report = "物品为空 ✗"; return res; }
+            // ⭐ 适配系数（**只武器有** ✓：按 `GunType_*` tag ✓；config 的 `size` 可覆盖 ✓）
+            float scale = ModelSize.Factor(mesh, ModelSize.For(item.TypeID, size > 0f ? (float?)size : null));
 
             var graphic = item.ItemGraphic;
             if (graphic == null)
@@ -643,7 +645,7 @@ namespace ModelKit
             }
 
             // ① 就地改它自己那份图形 ✓（物品实例与模板都适用 ✓ 因为改的都是**同一个 prefab** ✓）
-            res = ApplyToTransform(graphic.transform, item.name, item.TypeID, mesh, texture);
+            res = ApplyToTransform(graphic.transform, item.name, item.TypeID, mesh, texture, scale);
             res.TypeID = item.TypeID;
             res.ItemName = item.name ?? "";
 
@@ -652,13 +654,14 @@ namespace ModelKit
             {
                 var prefab = ItemStatsSystem.ItemAssetsCollection.GetPrefab(item.TypeID);
                 if (prefab != null && prefab.ItemGraphic != null && !ReferenceEquals(prefab.ItemGraphic, graphic))
-                    ApplyToTransform(prefab.ItemGraphic.transform, prefab.name, prefab.TypeID, mesh, texture);
+                    ApplyToTransform(prefab.ItemGraphic.transform, prefab.name, prefab.TypeID, mesh, texture,
+                                     ModelSize.Factor(mesh, ModelSize.For(prefab.TypeID, null)));
                 if (prefab != null) res.CacheCleared = ClearAgentCache(prefab);
             }
             catch { /* 模板这条失败不影响实例那条 ✓ */ }
 
             // ③ 场上已经拿在手里/装备着的那一个：就地换 ✓（不销毁任何东西 ✓）
-            ApplyToInstance(item, mesh, texture);
+            ApplyToInstance(item, mesh, texture, scale);
 
             // ④ 清缓存 → 游戏下次建实体时会读**改过的 prefab** ✓
             if (!res.CacheCleared) res.CacheCleared = ClearAgentCache(item);
@@ -666,7 +669,7 @@ namespace ModelKit
         }
 
         /// <summary>③ 只改**场上这一个**实例（不动模板 ✓ 调试/局部用 ✓）：走它的 `ActiveAgent`（手持/装备 ✓）</summary>
-        public static Result ApplyToInstance(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture)
+        public static Result ApplyToInstance(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture, float scale = 1f)
         {
             var res = new Result { TypeID = item != null ? item.TypeID : 0, ItemName = item != null ? item.name : "" };
             if (item == null || mesh == null) { res.Report = "物品或网格为空 ✗"; return res; }
@@ -677,7 +680,7 @@ namespace ModelKit
             foreach (Transform child in active.transform)
                 if (child.name.StartsWith("ModelKit_")) { res.Report = "这个实例已经换过了 ✓"; return res; }
 
-            var r = ApplyToTransform(active.transform, item.name, item.TypeID, mesh, texture);
+            var r = ApplyToTransform(active.transform, item.name, item.TypeID, mesh, texture, scale);
             r.CacheCleared = false;
             return r;
         }

@@ -81,7 +81,7 @@ namespace ModelKit
         /// <param name="slots">可选：config.json 的槽位（**比例** ✓ 键如 Muzzle/Stock/Scope/Tec/Grip，以及可选的 pivot）；
         /// 每个值 [L,H,D] 均为 0~1：**L 沿 Z（枪口 +Z ✓）· H 沿 Y · D 沿 X**（= 模型自身包围盒的比例 ✓）。
         /// 作用：① 换算成我们模型局部坐标（记入 Result.SlotPoints ✓）② 有 `pivot` 就用它当对齐基准（比包围盒映射准 ✓）。</param>
-        public static Result Apply(Transform root, Mesh mesh, Texture2D texture, Vector3 extraOffset = default, Dictionary<string, Vector3> slots = null)
+        public static Result Apply(Transform root, Mesh mesh, Texture2D texture, Vector3 extraOffset = default, Dictionary<string, Vector3> slots = null, float scale = 1f)
         {
             var res = new Result();
             if (root == null || mesh == null) { res.Report = "缺少 root 或 mesh"; return res; }
@@ -128,7 +128,7 @@ namespace ModelKit
                 Mathf.Abs(lossy.x) > 1e-6f ? 1f / lossy.x : 1f,
                 Mathf.Abs(lossy.y) > 1e-6f ? 1f / lossy.y : 1f,
                 Mathf.Abs(lossy.z) > 1e-6f ? 1f / lossy.z : 1f);
-            go.transform.localScale = inv;
+            go.transform.localScale = inv * scale;   // 抵消挂点缩放 ✓ × 适配系数（⭐ 由 localScale 承担 ✓ 不改 mesh 顶点 ✗）
             go.transform.localRotation = Quaternion.identity;
 
             var mf = go.AddComponent<MeshFilter>();

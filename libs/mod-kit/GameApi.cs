@@ -213,11 +213,11 @@ namespace ModelKit
     {
         static readonly string[] GunTags = { "GunType_PST", "GunType_SMG", "GunType_AR", "GunType_BR", "GunType_SHT", "GunType_SNP", "GunType_MAG" };
         static readonly float[] GunSizes = { 0.44f, 0.85f, 1.00f, 1.25f, 1.05f, 1.35f, 1.45f };
-        static readonly string[] EquipTags = { "Helmat", "Backpack", "FaceMask", "Headset", "Equipment" };
-        static readonly float[] EquipSizes = { 0.65f, 0.55f, 0.65f, 0.78f, 0.80f };
+        // ⭐ 装备/物品 **一律不缩放** ✓（用户定稿：实测头盔按 0.65 缩完太小 ✗ → 除武器外 scale = 1 ✓）
 
-        /// <summary>该物品的目标最长边（米 ✓）；null = 不缩放 ✓。
-        /// <paramref name="explicitSize"/> 是 config 的 `size`（≤0 = 没填 ✓ → 用自动档位 ✓）</summary>
+        /// <summary>该物品的**目标最长边**（米 ✓）；null = 不缩放（scale 保持 1 ✓）。
+        /// <para>⭐ 只有**武器**有档位 ✓（按游戏自己的 `GunType_*` tag ✓）；装备/物品一律 null ✓。</para>
+        /// <paramref name="explicitSize"/> 是 config 的 `size`（≤0 = 没填 ✓）—— 任何物品都能用它手动指定 ✓</summary>
         public static float? For(int typeID, float? explicitSize)
         {
             if (explicitSize.HasValue && explicitSize.Value > 0f) return explicitSize;   // 玩家填了 → 听玩家的 ✓
@@ -234,27 +234,17 @@ namespace ModelKit
                     if (tags.Contains("Gun")) return 1.00f;
                     return null;                       // 近战等 ✓ 先不管 ✓
                 }
-                for (int i = 0; i < EquipTags.Length; i++) if (tags.Contains(EquipTags[i])) return EquipSizes[i];
+                // ⭐ 装备（头盔/背包/耳机/面具 ✓）与普通物品（糖果/医疗 ✓）→ **不缩放** ✓（定稿 ✓）
             }
             catch { }
-            return null;                               // 普通物品（糖果 / 医疗 ✓）→ 不缩放 ✓
+            return null;
         }
 
-        /// <summary>把 mesh **等比**缩放到"最长边 = target"（米 ✓）；target 为空/离谱 → 原样不动 ✓</summary>
-        public static void Normalize(Mesh mesh, float? target)
-        {
-            if (mesh == null || !target.HasValue) return;
-            float longest = Longest(mesh);
-            if (longest < 1e-4f) return;
-            float f = target.Value / longest;
-            if (f <= 0.01f || f >= 100f || Mathf.Abs(f - 1f) < 1e-4f) return;   // 防御 + 免无谓改动 ✓
-            var verts = mesh.vertices;
-            for (int i = 0; i < verts.Length; i++) verts[i] *= f;
-            mesh.vertices = verts;
-            mesh.RecalculateBounds();                  // 顶点变了 ✓ 包围盒要重算 ✓（法线/UV 不受等比影响 ✓）
-        }
+        /// <summary>一步到位（mod 侧用 ✓）：`For(typeID, size)` → `Factor(mesh, ·)` ✓（`size` ≤0 = 没填 ✓）</summary>
+        public static float FactorFor(int typeID, float size, Mesh mesh)
+            => Factor(mesh, For(typeID, size > 0f ? (float?)size : null));
 
-        /// <summary>模型当前的最长边（米 ✓）——用来打日志看"缩了多少" ✓</summary>
+        /// <summary>模型当前的最长边（米 ✓）——用来算"该乘多少 scale" ✓</summary>
         public static float Longest(Mesh mesh)
         {
             if (mesh == null) return 0f;
@@ -262,7 +252,7 @@ namespace ModelKit
             return Mathf.Max(s.x, Mathf.Max(s.y, s.z));
         }
 
-        /// <summary>缩放系数（日志用 ✓）：target / 当前最长边 ✓</summary>
+        /// <summary>该乘的 scale 系数 ✓（= target / 当前最长边 ✓；没目标或离谱 → 1 ✓）—— **不碰 mesh 顶点** ✓
         public static float Factor(Mesh mesh, float? target)
         {
             float longest = Longest(mesh);

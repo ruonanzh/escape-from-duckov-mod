@@ -204,7 +204,7 @@ namespace ItemModelSwap
                     {
                         try
                         {
-                            var rw = ItemModel.Apply(item, cm.Mesh, cm.Texture, hit.Handheld);
+                            var rw = ItemModel.Apply(item, cm.Mesh, cm.Texture, hit.Handheld, hit.Size);
                             if (rw.Applied)
                                 Debug.Log($"[ItemModel] 已换（被重置后补写）：'{item.name}'(typeID={item.TypeID})｜{rw.Report}");
                         }
@@ -215,7 +215,8 @@ namespace ItemModelSwap
                         _nextHeldSweep = Time.unscaledTime + 1f;
                         try
                         {
-                            var r = ItemModel.ApplyHandheld(item, cm.Mesh, cm.Texture);
+                            var r = ItemModel.ApplyHandheld(item, cm.Mesh, cm.Texture,
+                                                ModelSize.FactorFor(item.TypeID, hit.Size, cm.Mesh));
                             if (r.Applied)
                                 Debug.Log($"[ItemModel] 已换：'{item.name}'(typeID={item.TypeID}) ← {Path.GetFileName(hit.ModelFile)}｜{r.Report}");
                         }
@@ -231,7 +232,7 @@ namespace ItemModelSwap
                     bool didWorld = false;
                     if (hit.World)
                     {
-                        var res = ItemModel.Apply(item, cm.Mesh, cm.Texture, hit.Handheld);
+                        var res = ItemModel.Apply(item, cm.Mesh, cm.Texture, hit.Handheld, hit.Size);
                         _applied[id] = res;
                         didWorld = res.Applied;
                         if (res.Applied)
@@ -243,7 +244,8 @@ namespace ItemModelSwap
 
                     if (hit.Handheld)                                // 手持那条（会改行为 ✓ 默认关 ✓）
                     {
-                        var rh = ItemModel.ApplyHandheld(item, cm.Mesh, cm.Texture);
+                        var rh = ItemModel.ApplyHandheld(item, cm.Mesh, cm.Texture,
+                                                  ModelSize.FactorFor(item.TypeID, hit.Size, cm.Mesh));
                         if (rh.Applied)
                             Debug.Log($"[ItemModel] 已换：'{item.name}'(typeID={item.TypeID}) ← {Path.GetFileName(hit.ModelFile)}｜{rh.Report}");
                         else if (!rh.NoOp)
@@ -270,14 +272,13 @@ namespace ItemModelSwap
             if (_modelCache.TryGetValue(e.ResolvedPath, out c) && c != null && c.Sig == sig) return c;
 
             var loaded = GltfLoader.LoadFile(e.ResolvedPath, e.Front);
-            // ⭐ 尺寸：把 mesh **等比**缩到"游戏里那一档"（按 tag 自动判 ✓ 可在 config 里用 size 覆盖 ✓）
-            var sizeTarget = ModelSize.For(e.TypeIds.Count > 0 ? e.TypeIds.First() : 0, e.Size > 0f ? (float?)e.Size : null);
-            float sizeBefore = ModelSize.Longest(loaded.Mesh);
-            ModelSize.Normalize(loaded.Mesh, sizeTarget);
             c = new CachedModel { Sig = sig, Mesh = loaded.Mesh, Texture = loaded.MainTexture };
             _modelCache[e.ResolvedPath] = c;
+            // ⭐ 尺寸：**只算系数** ✓（不改 mesh 顶点 ✗）；由挂载时的 `localScale` 承担 ✓
+            //    只有武器会 ≠1 ✓（按 `GunType_*` tag ✓）→ 装备/物品 = 1 ✓；config `size` 可覆盖 ✓
+            float scaleFactor = ModelSize.FactorFor(e.TypeIds.Count > 0 ? e.TypeIds.First() : 0, e.Size, loaded.Mesh);
             Debug.Log($"[ItemModel] 模型已解析：{Path.GetFileName(e.ResolvedPath)}｜{loaded.Report}"
-                      + $"｜尺寸：{(sizeTarget.HasValue ? $"最长边 {sizeBefore:0.###} → {sizeTarget.Value:0.###} m" : "不缩放（无匹配档位 ✓ 或本来就是 1 m ✓）")}");
+                      + $"｜尺寸：{(scaleFactor != 1f ? $"scale={scaleFactor:0.###} ✓" : "scale=1（不缩放 ✓）")}");
             return c;
         }
 

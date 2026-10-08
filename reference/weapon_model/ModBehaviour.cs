@@ -44,8 +44,12 @@ namespace WeaponModelSwap
             public string IconFile = "icon.png";
             /// <summary>config 的 `size`（**米** ✓、可选 ✓）—— 目标最长边 ✓。
             /// ≤0 = 没填 ✓ → 用 <see cref="ModelSize.For"/> 的自动档位 ✓
-            /// ⚠️ **武器/装备一般不用填** ✓（已按游戏里那一档自动对齐 ✓）；只想特意做大/做小时才填 ✓</summary>
+            /// ⚠️ **武器一般不用填** ✓（已按游戏里那一档自动对齐 ✓）；只想特意做大/做小时才填 ✓</summary>
             public float Size;
+            /// <summary>算出来的目标最长边（米 ✓）；null = 不缩放（scale = 1 ✓）</summary>
+            public float? SizeTarget;
+            /// <summary>⭐ 最终乘在 `localScale` 上的适配系数 ✓（抵消挂点缩放那部分另算 ✓）</summary>
+            public float Scale = 1f;
             public string IconPath;          // 解析成绝对路径（相对 mod 目录 ✓）
             /// <summary>config 里的 `slots`（**比例** ✓ [L,H,D]，L 沿 Z、H 沿 Y、D 沿 X ✓）——
             /// 目前用来：① 换算成我们模型的局部坐标并打日志 ✓ ② 有 pivot 时用它当对齐基准 ✓
@@ -166,7 +170,7 @@ namespace WeaponModelSwap
             int id = root.GetInstanceID();
             if (_applied.TryGetValue(id, out var prev) && prev != null && prev.Instance != null) return;      // 换过、还在
 
-            var r = ModelKit.WeaponModel.Apply(root, entry.Mesh, entry.Texture, default, entry.Slots);
+            var r = ModelKit.WeaponModel.Apply(root, entry.Mesh, entry.Texture, default, entry.Slots, entry.Scale);
             if (r.Applied)
             {
                 _applied[id] = r;
@@ -233,14 +237,15 @@ namespace WeaponModelSwap
                 try
                 {
                     var g = GltfLoader.LoadFile(path, e.Front);
-                    // ⭐ 尺寸：把 mesh **等比**缩到"游戏里那一档"（按 tag 自动判 ✓ 可在 config 里用 size 覆盖 ✓）
-                    var sizeTarget = ModelSize.For(e.TypeIds.Count > 0 ? e.TypeIds.First() : 0, e.Size > 0f ? (float?)e.Size : null);
-                    float sizeBefore = ModelSize.Longest(g.Mesh);
-                    ModelSize.Normalize(g.Mesh, sizeTarget);
                     e.Mesh = g.Mesh; e.Texture = g.MainTexture;
+                    // ⭐ 尺寸：**只算一个系数** ✓（不改 mesh 顶点 ✗）；由挂载时的 `localScale` 承担 ✓
+                    //    优先 config `size`（玩家/agent 覆盖 ✓）→ 否则按游戏 `GunType_*` tag ✓ → 否则 1 ✓
+                    e.SizeTarget = ModelSize.For(e.TypeIds.Count > 0 ? e.TypeIds.First() : 0, e.Size > 0f ? (float?)e.Size : null);
+                    e.Scale = ModelSize.Factor(g.Mesh, e.SizeTarget);
+                    float sizeBefore = ModelSize.Longest(g.Mesh);
                     _modelCache[path] = new CachedModel { Sig = e.Signature, Mesh = g.Mesh, Texture = g.MainTexture };
                     Debug.Log($"[WeaponModel] 读到模型 {Path.GetFileName(path)}：" + g.Report
-                              + $"｜尺寸：{(sizeTarget.HasValue ? $"最长边 {sizeBefore:0.###} → {sizeTarget.Value:0.###} m" : "不缩放（无匹配档位 ✓ 或本来就是 1 m ✓）")}");
+                              + $"｜尺寸：{(e.SizeTarget.HasValue ? $"最长边 {sizeBefore:0.###} → {e.SizeTarget.Value:0.###} m（scale={e.Scale:0.###} ✓）" : "不缩放（scale=1 ✓）")}");
                 }
                 catch (Exception ex) { Debug.LogError($"[WeaponModel] 读模型失败（{Path.GetFileName(path)}）：{ex.Message}"); }
             }
