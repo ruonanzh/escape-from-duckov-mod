@@ -726,31 +726,29 @@ namespace ModelKit
                 return res;
             }
 
-            // ① 就地改它自己那份图形 ✓（物品实例与模板都适用 ✓ 因为改的都是**同一个 prefab** ✓）
-            res = ApplyToTransform(graphic.transform, item.name, item.TypeID, mesh, texture, scale);
+            // ⭐⭐ **不再改共享 prefab** ✗ —— 今天两条 bug 的**共同根因** ✓（实测 ✓）：
+            //   · 给 prefab 加 mesh ✓ → 之后**新建**的实例会**继承**一份 ✓
+            //     扫描又挂一份 ✓ → **同一层两个 mesh** ✓（实测 `同门兄弟数=2` ✓）
+            //     视觉上大的盖住小的 ✓ = "**改小看不见**" ✓ + "先小后大" ✓
+            //   · 而且两条路还各用不同名字（`item.name` ✗ / `owner.name+"(Clone)"` ✓）→ 极难查 ✓
+            //   ⇒ 统一成：**只改实例** ✓ = `ApplyToInstance`（立刻 ✓）+ 扫描（≤0.5 秒 ✓）
+            //     共享 prefab **原封不动** ✓（更安全 ✓ 更好还原 ✓ 也不会再"遗传" ✗）
+
+            // ① 场上已经拿在手里 / 装备着的那一个：就地换 ✓（唯一"立即生效"的那条 ✓）
+            var ri = ApplyToInstance(item, mesh, texture, scale);
             res.TypeID = item.TypeID;
             res.ItemName = item.name ?? "";
-
-            // ② 再确认一次**物品模板**（`GetPrefab` ✓）：实例可能不是模板本身 ✓
-            try
+            if (ri != null)
             {
-                var prefab = ItemStatsSystem.ItemAssetsCollection.GetPrefab(item.TypeID);
-                if (prefab != null && prefab.ItemGraphic != null && !ReferenceEquals(prefab.ItemGraphic, graphic))
-                {
-                    // ⭐ 这里的结果**必须入册** ✗ —— 它是"物品模板的图形"（用**物品名**命名 ✓）
-                    //   丢掉的话：那个 mesh **永远不会被 Restore 销毁** ✗
-                    //   → 热重载后**新旧两份 mesh 同时存在** ✓ → 视觉上就是
-                    //     "改小时看不出 ✗" / "改大时先看到旧的再被新的盖住 ✓"（实测报过 ✓）
-                    var rp = ApplyToTransform(prefab.ItemGraphic.transform, prefab.name, prefab.TypeID, mesh, texture,
-                                              ModelSize.Factor(mesh, ModelSize.For(prefab.TypeID, null)));
-                    if (rp != null) res.Nested.Add(rp);
-                }
-                if (prefab != null) res.CacheCleared = ClearAgentCache(prefab);
+                res.Nested.Add(ri);                 // ⭐ 入册 ✓（有借有还 ✓）
+                res.Applied = ri.Applied;           // ⭐ 让调用方看到"实例那条"的结果 ✓
+                res.NoOp = ri.NoOp;
+                res.Instance = ri.Instance;
+                res.AnchorName = ri.AnchorName;
+                res.Hidden.AddRange(ri.Hidden);
+                res.Report = "（只改实例 ✓）" + ri.Report;
             }
-            catch { /* 模板这条失败不影响实例那条 ✓ */ }
-
-            // ③ 场上已经拿在手里/装备着的那一个：就地换 ✓（不销毁任何东西 ✓）
-            { var ri = ApplyToInstance(item, mesh, texture, scale); if (ri != null) res.Nested.Add(ri); }   // ⭐ 结果入册 ✓
+            else res.Report = "没有 ActiveAgent ✗（没拿在手里/没装备 ✓）—— 稍后由扫描补 ✓";
 
             // ④ 清缓存 → 游戏下次建实体时会读**改过的 prefab** ✓
             if (!res.CacheCleared) res.CacheCleared = ClearAgentCache(item);
