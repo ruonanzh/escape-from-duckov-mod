@@ -736,8 +736,13 @@ namespace ModelKit
             {
                 var prefab = ItemStatsSystem.ItemAssetsCollection.GetPrefab(item.TypeID);
                 if (prefab != null && prefab.ItemGraphic != null && !ReferenceEquals(prefab.ItemGraphic, graphic))
-                    ApplyToTransform(prefab.ItemGraphic.transform, prefab.name, prefab.TypeID, mesh, texture,
-                                     ModelSize.Factor(mesh, ModelSize.For(prefab.TypeID, null)));
+                    // ⭐ 这里的结果**必须入册** ✗ —— 它是"物品模板的图形"（用**物品名**命名 ✓）
+                    //   丢掉的话：那个 mesh **永远不会被 Restore 销毁** ✗
+                    //   → 热重载后**新旧两份 mesh 同时存在** ✓ → 视觉上就是
+                    //     "改小时看不出 ✗" / "改大时先看到旧的再被新的盖住 ✓"（实测报过 ✓）
+                    var rp = ApplyToTransform(prefab.ItemGraphic.transform, prefab.name, prefab.TypeID, mesh, texture,
+                                              ModelSize.Factor(mesh, ModelSize.For(prefab.TypeID, null)));
+                    if (rp != null) res.Nested.Add(rp);
                 if (prefab != null) res.CacheCleared = ClearAgentCache(prefab);
             }
             catch { /* 模板这条失败不影响实例那条 ✓ */ }
