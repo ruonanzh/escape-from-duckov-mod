@@ -41,6 +41,11 @@ namespace ModelKit
             /// <summary>被我们关掉的旧外观（**任何**渲染器都可能 ✓ 含 SpriteRenderer ✓）</summary>
             public readonly List<Renderer> Hidden = new List<Renderer>();
 
+            /// <summary>我们在这层打过 `Marked` 的对象 ✓（`Restore()` 时**精确摘掉这一层** ✓）。
+            /// ⭐ 绝不用"全局扫描摘标记" ✗ —— 那会把**游戏对象上的标记**也摘掉 ✓
+            ///   → 下一轮 `Apply` 会去重处理**原物品模板** ✗ → 走成另一条分支 ✗（实测报过 ✓）</summary>
+            public GameObject MarkedOn;
+
             public string AnchorName = "根";
             public bool CacheCleared;
 
@@ -52,6 +57,12 @@ namespace ModelKit
             /// <summary>热重载/卸载：把关掉的开回来 + 抹掉我们挂的东西 ✓（幂等 ✓ 可重复调 ✓）</summary>
             public void Restore()
             {
+                if (MarkedOn != null)
+                {
+                    var mk = MarkedOn.GetComponent<Marked>();
+                    if (mk != null) UnityEngine.Object.DestroyImmediate(mk);   // 摘掉我们打的标记 ✓ → 下次 Apply 才能重挂 ✓
+                    MarkedOn = null;
+                }
                 for (int i = 0; i < Hidden.Count; i++)
                     if (Hidden[i] != null) Hidden[i].enabled = true;
                 Hidden.Clear();
@@ -66,21 +77,6 @@ namespace ModelKit
         ///   · agent 层（手里那层 ✓ 独立处理 ✓ 它自己的图标精灵才会被关掉 ✗ 以前漏了 ✓）</summary>
         public sealed class Marked : MonoBehaviour { }
 
-        /// <summary>⭐ **热重载专用** ✓：把我们打的 `Marked` 标记全摘掉 ✓（+ 允许重新注册动态条目 ✓）。
-        /// <para>不摘的话：`Apply` 的幂等闸会认为"已经换过" ✗ → 重挂被跳过 ✗ →
-        /// 物品**退回游戏原模型** ✗（实测 ✓ 用户报的：改 config 后头盔变回原样 ✓ 重启才好 ✓）</para></summary>
-        public static int ClearMarks()
-        {
-            int n = 0;
-            foreach (var m in UnityEngine.Resources.FindObjectsOfTypeAll<Marked>())
-            {
-                if (m == null) continue;
-                n++;
-                UnityEngine.Object.DestroyImmediate(m);        // 立即摘 ✓（不是销毁物体 ✓ 只摘标记 ✓）
-            }
-            _dynDone.Clear();                                  // 动态条目也允许重新注册 ✓
-            return n;
-        }
 
         // ───────────────────────── 清实体缓存（让游戏下次重建 ✓）─────────────────────────
 
@@ -310,6 +306,7 @@ namespace ModelKit
             HideOld(root, res);
             res.Instance = Attach(root, mount, mesh, texture, itemName, oldCenter, null, scale);
             if (root.GetComponent<Marked>() == null) root.gameObject.AddComponent<Marked>();   // 打标记 ✓
+            res.MarkedOn = root.gameObject;
             res.Applied = true;
             res.Report = $"关旧外观 {res.Hidden.Count} 个｜挂到 '{res.AnchorName}'"
                        + (mount != null
@@ -396,6 +393,7 @@ namespace ModelKit
 
             res.Instance = Attach(agent.transform, null, mesh, texture, item.name, agent.transform.position, fallback, scale);
             if (agent.gameObject.GetComponent<Marked>() == null) agent.gameObject.AddComponent<Marked>();
+            res.MarkedOn = agent.gameObject;
 
             // ⚠️ **agent 模板也要挪到世界外** ✗（跟图形那条同理 ✓ 实测：载入画面里又看到一把枪 ✗）
             //   游戏拿它时会 `Instantiate` 副本 ✓ → `ChangeHoldItem` 里 `SetParent(手部 socket)` + `localPosition = 0` ✓
@@ -492,6 +490,7 @@ namespace ModelKit
             //   —— 三次都错 ✓ 根因是**猜层值** ✗ 而不是照游戏的做法（**不动层** ✓）
             //   ⇒ **层一律不动** ✓（游戏自己的掉落物图形就是 0 层 ✓ 那个值可见 ✓ 不用我们设 ✗）
             if (g.gameObject.GetComponent<Marked>() == null) g.gameObject.AddComponent<Marked>();
+            res.MarkedOn = g.gameObject;
 
             if (!WriteGraphic(item, g)) return null;            // 写回 item.ItemGraphic ✓
             return g;
@@ -583,6 +582,7 @@ namespace ModelKit
                                   mount != null ? mount.sharedMaterial : BorrowMaterial());
             // 层同上：**一律不动** ✓（游戏掉落物图形就是 0 层 ✓ 可见 ✓）
             if (g.gameObject.GetComponent<Marked>() == null) g.gameObject.AddComponent<Marked>();
+            res.MarkedOn = g.gameObject;
 
             if (!WriteGraphic(item, g)) { res.Report = "写回克隆的 itemGraphic 失败 ✗"; return res; }   // ⑤
             item.useSpriteForPickup = false;                                      // ⑥ 用模型不用精灵 ✓

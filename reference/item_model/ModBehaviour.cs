@@ -153,9 +153,9 @@ namespace ItemModelSwap
                 foreach (var kv in _applied)
                     if (kv.Value != null) kv.Value.Restore();
                 _applied.Clear();
-                int marks = ItemModel.ClearMarks();   // ⭐ 关键 ✓：摘掉 `Marked` ✗ → 不然幂等闸会阻止重挂 ✗（物品会退回原模型 ✓）
-
-                Debug.Log("[ItemModel] config 已重载 → 重新挂 " + _entries.Count + " 条规则（摘掉旧标记 " + marks + " 个 ✓）");
+                // ⭐ 标记不在这里"全局摘" ✗ —— 由 `Result.Restore()` **精确摘掉自己那一层** ✓（上面那个循环里 ✓）
+                //   全局摘会把**游戏对象上的标记**也摘掉 ✗ → 下一轮 Apply 会去重处理原物品模板 ✗ → 走成另一条分支 ✓
+                Debug.Log("[ItemModel] config 已重载 → 重新挂 " + _entries.Count + " 条规则");
             }
             catch (Exception ex) { Debug.LogWarning("[ItemModel] config 热重载失败：" + ex.Message); }
         }
@@ -308,6 +308,11 @@ namespace ItemModelSwap
                 var e = ReadEntry(root);
                 if (e != null) _entries.Add(e);
             }
+            // ⭐ 顶层 `"size": <米>` = 所有条目的默认值 ✓（条目自己写了就听条目 ✓）
+            //    用户实测报过 ✓：写在顶层却只认条目 → 以为"size 无效" ✗
+            float topSize = root.GetFloat("size", 0f);
+            if (topSize > 0f)
+                foreach (var e in _entries) if (e.Size <= 0f) e.Size = topSize;
             foreach (var e in _entries) e.Resolve(ModLoaderDir());
         }
 
