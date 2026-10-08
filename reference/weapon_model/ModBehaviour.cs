@@ -209,7 +209,7 @@ namespace WeaponModelSwap
 
             if (_graphicSrc.Count == 0) return;
 
-            if (Time.unscaledTime < _nextCloneSweep) return;      // 1 秒一次 ✓
+            if (Time.unscaledTime < _nextCloneSweep) return;      // 0.5 秒一次 ✓（掉落后半秒内换好 ✓）
 
             _nextCloneSweep = Time.unscaledTime + 0.5f;
 

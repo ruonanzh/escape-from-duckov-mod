@@ -184,9 +184,9 @@ namespace ItemModelSwap
 
             if (_graphicSrc.Count == 0) return;
 
-            if (Time.unscaledTime < _nextCloneSweep) return;      // 1 秒一次 ✓（全场景扫 ✗ 要节流 ✓）
+            if (Time.unscaledTime < _nextCloneSweep) return;      // 0.5 秒一次 ✓（全场景扫 ✗ 要节流 ✓）
 
-            _nextCloneSweep = Time.unscaledTime + 1f;
+            _nextCloneSweep = Time.unscaledTime + 0.5f;
 
             List<ItemGraphicInfo> all;
 
