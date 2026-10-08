@@ -27,9 +27,7 @@
 
   <!-- 运行时库（libs/mod-kit）：这个示例 mod 只写配置，能力都在库里 -->
   <ItemGroup>
-    <Compile Include="../../libs/mod-kit/Json.cs" />
-    <Compile Include="../../libs/mod-kit/GltfLoader.cs" />
-    <Compile Include="../../libs/mod-kit/GameApi.cs" />
-    <Compile Include="../../libs/mod-kit/ItemModel.cs" />
+    <!-- 运行时库（libs/mod-kit）：**通配** ✓ —— kit 加文件不用再改 csproj ✗ -->
+    <Compile Include="../../libs/mod-kit/*.cs" />
   </ItemGroup>
 </Project>

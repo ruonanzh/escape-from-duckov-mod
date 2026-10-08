@@ -108,7 +108,6 @@ namespace WeaponModelSwap
 
         /// <summary>模型缓存（每个路径只留**最新一份** ✓）：路径 → （指纹 ✓, Mesh ✓, 贴图 ✓）
         /// ⭐ b：指纹 = 路径 + 朝向 + **文件 mtime+size** ✓ → 文件真变了才重解析 ✓✓</summary>
-        sealed class CachedModel { public string Sig; public Mesh Mesh; public Texture2D Texture; }
         readonly Dictionary<string, CachedModel> _modelCache = new Dictionary<string, CachedModel>();
         readonly Dictionary<int, ModelKit.WeaponModel.Result> _applied = new Dictionary<int, ModelKit.WeaponModel.Result>();   // transformId → 换上的结果（含被禁用的旧零件 ✓ 用于恢复）
         /// <summary>⭐ 枪图形 prefab 名 → 条目 ✓（给"场上克隆"补挂用 ✓）</summary>
@@ -384,10 +383,6 @@ namespace WeaponModelSwap
             return dict;
         }
 
-        static string ModelLoaderDir()
-        {
-            try { return Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location); }
-            catch { return "."; }
-        }
+        static string ModelLoaderDir() => ModelCache.ModDir();   // ⭐ 搬到 kit（ModelCache.ModDir ✓）
     }
 }

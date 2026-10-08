@@ -90,7 +90,6 @@ namespace ItemModelSwap
         float _nextApply;                                           // ⭐ 扫描节流：`AllItems()` 是**整场景对象扫描** ✗ 不能每帧做 ✓
 
         /// <summary>模型缓存：路径 → （指纹, Mesh, 贴图）。指纹 = 路径 + 朝向 + 文件 mtime+size ✓</summary>
-        sealed class CachedModel { public string Sig; public Mesh Mesh; public Texture2D Texture; }
         readonly Dictionary<string, CachedModel> _modelCache = new Dictionary<string, CachedModel>();
 
         /// <summary>已经处理过的物品（实例 ID → 我们的结果）✓ 用来避免每帧重复挂 ✓ + 还原 ✓</summary>
@@ -111,11 +110,7 @@ namespace ItemModelSwap
         }
 
         /// <summary>本 mod 的目录（DLL 所在处）✓</summary>
-        static string ModLoaderDir()
-        {
-            try { return Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "."; }
-            catch { return "."; }
-        }
+        static string ModLoaderDir() => ModelCache.ModDir();   // ⭐ 搬到 kit（ModelCache.ModDir ✓）
 
         void Update()
         {
