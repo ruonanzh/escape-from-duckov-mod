@@ -77,7 +77,7 @@ namespace WeaponModelSwap
                 IconPath = string.IsNullOrEmpty(IconFile)
                     ? null
                     : (Path.IsPathRooted(IconFile) ? IconFile : Path.Combine(dir, IconFile));
-                Signature = ModelFile + "\n" + Front + "\n" + Size;
+                Signature = ModelFile + "\n" + Front;   // ⭐ 不含 Size ✓（size 只影响挂载时的 scale ✓ 不影响 mesh ✓ 热重载不必重读 ✗）
                 // ⭐ 指纹再带上**文件本身**的 mtime+size ✓（旧版只看文件名 ✗ → 同名换内容不重读 ✗、
                 //    而重建 Entry 后又永不重读 ✗ —— 两种毛病都靠这个指纹治 ✓）
                 var mp = ModelPath(dir);

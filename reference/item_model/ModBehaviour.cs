@@ -266,7 +266,8 @@ namespace ItemModelSwap
         {
             if (string.IsNullOrEmpty(e.ResolvedPath) || !File.Exists(e.ResolvedPath)) return null;
             var fi = new FileInfo(e.ResolvedPath);
-            string sig = e.ResolvedPath + "|" + e.Front + "|" + e.Size + "|" + fi.LastWriteTimeUtc.Ticks + ":" + fi.Length;
+            // ⭐ 指纹**不含 Size** ✓（size 只影响挂载时的 scale ✓ 不改 mesh ✓ → 改 size 热重载不必重读模型 ✓）
+            string sig = e.ResolvedPath + "|" + e.Front + "|" + fi.LastWriteTimeUtc.Ticks + ":" + fi.Length;
 
             CachedModel c;
             if (_modelCache.TryGetValue(e.ResolvedPath, out c) && c != null && c.Sig == sig) return c;
