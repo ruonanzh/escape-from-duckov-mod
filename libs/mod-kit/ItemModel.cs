@@ -821,7 +821,7 @@ namespace ModelKit
                       .Append($"｜祖先链={AncestorChain(t)}")
                       // ⭐ 关键指标 ✓：**同一个父级下**我们挂的 mesh 有几个 ✓
                       //    >1 就是"旧实例没销毁 ✗"（视觉上大的盖小的 ✓ = 改小看不见 ✓）
-                      .Append($"｜同门兄弟数={SiblingCount(t)}")
+                      .Append($"｜同门兄弟数={SiblingCount(t)}");
                     foreach (var r in go.GetComponentsInChildren<Renderer>(true))
                         sb.Append($"｜{r.GetType().Name}'{r.name}':层={r.gameObject.layer},开={r.enabled},"
                                 + $"材质='{(r.sharedMaterial != null ? r.sharedMaterial.name : "null")}',世界包围盒={r.bounds.size}");
