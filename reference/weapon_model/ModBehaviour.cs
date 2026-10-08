@@ -111,6 +111,9 @@ namespace WeaponModelSwap
         sealed class CachedModel { public string Sig; public Mesh Mesh; public Texture2D Texture; }
         readonly Dictionary<string, CachedModel> _modelCache = new Dictionary<string, CachedModel>();
         readonly Dictionary<int, ModelKit.WeaponModel.Result> _applied = new Dictionary<int, ModelKit.WeaponModel.Result>();   // transformId → 换上的结果（含被禁用的旧零件 ✓ 用于恢复）
+        /// <summary>⭐ 世界/掉落那条（`item.ItemGraphic` ✓）用的**物品侧**结果 ✓ —— **必须一起恢复** ✗
+        /// （不然它关掉的零件没人开回来 ✗：实测热重载几次后配件全消失 ✓）</summary>
+        readonly List<ModelKit.ItemModel.Result> _appliedWorld = new List<ModelKit.ItemModel.Result>();
         string _lastHeld;
 
         void Start()
@@ -175,10 +178,15 @@ namespace WeaponModelSwap
             {
                 _applied[id] = r;
                 Debug.Log("[WeaponModel] " + r.Report);
-                // ⭐ 掉落/展示那条 ✗：**不能**用物品那条路来挂 ✗（实测踩到 ✓ 用户报"配件全消失" ✗）
-                //   `ItemModel.Apply` 会关掉 7 个零件 ✓ 而它的结果**不在** `_applied` 里 ✗
-                //   → 本 mod 的 `Restore()` 永远不会把它们开回来 ✗ → 每次热重载又关一批 ✗ → 累积到配件全没 ✓
-                //   ⇒ 枪的**掉落/展示**图形保持原样 ✓（已知缺口 ✓ 要做得单独设计 ✓）
+                // ⭐ 掉落/展示那条 ✓：枪在地上用的是 `item.ItemGraphic` ✓（跟手里那套 agent 无关 ✗）
+                //   ⚠️ 关键 ✗：它的 Result **必须存进 `_appliedWorld`** ✓ —— 否则热重载恢复不到它关掉的零件 ✗
+                //       （上一版就是漏了这一步 ✓ → 每次重载关一批 ✓ 累积到配件全没 ✓）
+                try
+                {
+                    var rw = ModelKit.ItemModel.Apply(item, entry.Mesh, entry.Texture, false, entry.Size);
+                    if (rw.Applied) { _appliedWorld.Add(rw); Debug.Log("[WeaponModel] 世界/掉落图形：✓ " + rw.Report); }
+                }
+                catch (Exception ex) { Debug.LogWarning("[WeaponModel] 世界/掉落图形抛错 ✗：" + ex.Message); }
                 // 图标：卡片上那个 Sprite 也换成我们的
                 if (entry.IconPath != null) Debug.Log("[WeaponModel] " + ModelKit.WeaponIcon.Apply(item, entry.IconPath));
             }
@@ -211,6 +219,9 @@ namespace WeaponModelSwap
                 }
                 _applied.Clear();
                 _lastHeld = null;
+                // ⭐ 世界/掉落那条（物品侧 ✓）也要**有借有还** ✓（它关掉的零件必须开回来 ✗）
+                foreach (var w in _appliedWorld) if (w != null) w.Restore();
+                _appliedWorld.Clear();
                 // ⭐ **每次都重读模型** ✗：热重载会把 Entry 重建（Mesh 变 null ✗），
                 //    而旧代码只在 model/front 指纹变了时才重读 ✗ → 只改 slots/target/icon 时会
                 //    “永远挂不上” ✗✓（同样导致枪不见 ✓）。重读一个 GLB 只要几十毫秒 ✓ 换来正确性 ✓。

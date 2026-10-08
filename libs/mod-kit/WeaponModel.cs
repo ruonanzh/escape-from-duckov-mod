@@ -213,7 +213,8 @@ namespace ModelKit
                        + (res.SlotPoints.Count > 0
                            ? $"槽位(局部米)={string.Join(" ", System.Linq.Enumerable.Select(res.SlotPoints, kv => kv.Key + "=" + kv.Value.ToString("F3")))}；"
                            : "")
-                       + $"我们的包围盒={mesh.bounds.size}；原枪身包围盒={(anchor != null ? anchor.localBounds.size.ToString() : "-")}";
+                       + $"我们的包围盒={mesh.bounds.size}；原枪身包围盒={(anchor != null ? anchor.localBounds.size.ToString() : "-")}"
+                       + $"；scale={scale:0.###}" + (scale != 1f ? $"（⭐ 由 config `size` 或 `GunType_*` 档位得出 ✓）" : "（无适配 ✓）");
             return res;
         }
     }
