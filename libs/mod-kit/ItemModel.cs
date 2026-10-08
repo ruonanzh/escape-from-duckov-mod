@@ -727,6 +727,15 @@ namespace ModelKit
         public static bool DebugOn;
         static readonly HashSet<int> _dumpSeen = new HashSet<int>();
 
+        /// <summary>祖先链 ✓（最多 6 层 ✓）—— 看"这是挂在角色身上还是掉在地上" ✓</summary>
+        static string AncestorChain(Transform t)
+        {
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < 6 && t != null; i++, t = t.parent)
+            { if (i > 0) sb.Append(" ← "); sb.Append(t.name); }
+            return sb.ToString();
+        }
+
         /// <summary>把场上"我们造的物体"逐个打一行 ✓（名字/层/激活/场景/世界位置/世界缩放/父节点 ✓
         /// + 每个渲染器的层/开关/材质/世界包围盒 ✓）。
         /// 用途：排查"某条路看不见"（比如掉在地上没了 ✓）—— **先量 ✓ 别猜 ✗**</summary>
@@ -744,7 +753,9 @@ namespace ModelKit
                     var sb = new System.Text.StringBuilder();
                     sb.Append($"[ItemModel][诊断] {go.name}｜层={go.layer}｜激活={go.activeInHierarchy}｜场景='{go.scene.name}'")
                       .Append($"｜世界位置={t.position}｜世界缩放={t.lossyScale}｜父='{(t.parent != null ? t.parent.name : "null")}'")
-                      .Append($"｜子物体={t.childCount}");
+                      .Append($"｜子物体={t.childCount}")
+                      // ⭐ 祖先链 ✓（区分"拿在手里/穿在身上"和"掉在地上"用 ✓ 一次就能定案 ✓）
+                      .Append($"｜祖先链={AncestorChain(t)}");
                     foreach (var r in go.GetComponentsInChildren<Renderer>(true))
                         sb.Append($"｜{r.GetType().Name}'{r.name}':层={r.gameObject.layer},开={r.enabled},"
                                 + $"材质='{(r.sharedMaterial != null ? r.sharedMaterial.name : "null")}',世界包围盒={r.bounds.size}");
