@@ -779,6 +779,17 @@ namespace ModelKit
         public static bool DebugOn;
         static readonly HashSet<int> _dumpSeen = new HashSet<int>();
 
+        /// <summary>同一个父级下"名字以 `ModelKit_` 开头"的兄弟有几个 ✓（含自己 ✓）
+        /// —— **>1 就说明我们挂重了** ✗（旧实例没被销毁 ✓ 实测发现 ✓）</summary>
+        static int SiblingCount(Transform t)
+        {
+            if (t == null || t.parent == null) return t == null ? 0 : 1;
+            int n = 0;
+            for (int i = 0; i < t.parent.childCount; i++)
+                if (t.parent.GetChild(i).name.StartsWith("ModelKit_")) n++;
+            return n;
+        }
+
         /// <summary>祖先链 ✓（最多 6 层 ✓）—— 看"这是挂在角色身上还是掉在地上" ✓</summary>
         static string AncestorChain(Transform t)
         {
@@ -807,7 +818,10 @@ namespace ModelKit
                       .Append($"｜世界位置={t.position}｜世界缩放={t.lossyScale}｜父='{(t.parent != null ? t.parent.name : "null")}'")
                       .Append($"｜子物体={t.childCount}")
                       // ⭐ 祖先链 ✓（区分"拿在手里/穿在身上"和"掉在地上"用 ✓ 一次就能定案 ✓）
-                      .Append($"｜祖先链={AncestorChain(t)}");
+                      .Append($"｜祖先链={AncestorChain(t)}")
+                      // ⭐ 关键指标 ✓：**同一个父级下**我们挂的 mesh 有几个 ✓
+                      //    >1 就是"旧实例没销毁 ✗"（视觉上大的盖小的 ✓ = 改小看不见 ✓）
+                      .Append($"｜同门兄弟数={SiblingCount(t)}")
                     foreach (var r in go.GetComponentsInChildren<Renderer>(true))
                         sb.Append($"｜{r.GetType().Name}'{r.name}':层={r.gameObject.layer},开={r.enabled},"
                                 + $"材质='{(r.sharedMaterial != null ? r.sharedMaterial.name : "null")}',世界包围盒={r.bounds.size}");
