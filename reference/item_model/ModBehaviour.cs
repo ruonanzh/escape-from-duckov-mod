@@ -100,6 +100,7 @@ namespace ItemModelSwap
         {
             _configPath = Path.Combine(ModLoaderDir(), "config.json");
             ReadConfig();
+            ItemModel.DebugOn = ReadDebugFlag();     // config 顶层 "debug": true ✓（只读诊断 ✓ 默认关 ✗）
             _cfgStamp = File.Exists(_configPath) ? File.GetLastWriteTimeUtc(_configPath) : DateTime.MinValue;
             Debug.Log($"[ItemModel] 规则 {_entries.Count} 条：" + string.Join(" / ",
                 _entries.Select(e => $"targets=[{string.Join(",", e.Targets)}] typeIDs=[{string.Join(",", e.TypeIds)}]"
@@ -117,6 +118,20 @@ namespace ItemModelSwap
         {
             ReloadIfChanged();
             ApplyAll();
+            ItemModel.DumpNewObjects();              // 只读诊断 ✓（DebugOn 为 false 时直接返回 ✓）
+        }
+
+        /// <summary>config 顶层的 `debug`（只读诊断开关 ✓ 默认关 ✓）</summary>
+        static bool ReadDebugFlag()
+        {
+            try
+            {
+                var p = Path.Combine(ModLoaderDir(), "config.json");
+                if (!File.Exists(p)) return false;
+                var j = Json.Parse(File.ReadAllText(p));
+                return j != null && j.GetBool("debug", false);
+            }
+            catch { return false; }
         }
 
         /// <summary>config.json 存盘即生效（热重载 ✓ 不用重启 ✓）</summary>

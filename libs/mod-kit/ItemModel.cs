@@ -681,5 +681,36 @@ namespace ModelKit
             r.CacheCleared = false;
             return r;
         }
+
+        // ───────────── 只读诊断（config 顶层 `"debug": true` 打开 ✓ 默认关 ✓）─────────────
+        /// <summary>调试开关 ✓（mod 从 config 读 ✓）</summary>
+        public static bool DebugOn;
+        static readonly HashSet<int> _dumpSeen = new HashSet<int>();
+
+        /// <summary>把场上"我们造的物体"逐个打一行 ✓（名字/层/激活/场景/世界位置/世界缩放/父节点 ✓
+        /// + 每个渲染器的层/开关/材质/世界包围盒 ✓）。
+        /// 用途：排查"某条路看不见"（比如掉在地上没了 ✓）—— **先量 ✓ 别猜 ✗**</summary>
+        public static void DumpNewObjects()
+        {
+            if (!DebugOn) return;
+            try
+            {
+                foreach (var go in UnityEngine.Resources.FindObjectsOfTypeAll<GameObject>())
+                {
+                    if (go == null || !go.name.StartsWith("ModelKit_")) continue;
+                    if (!_dumpSeen.Add(go.GetInstanceID())) continue;      // 只打"新出现"的 ✓ 不刷屏 ✓
+                    var t = go.transform;
+                    var sb = new System.Text.StringBuilder();
+                    sb.Append($"[ItemModel][诊断] {go.name}｜层={go.layer}｜激活={go.activeInHierarchy}｜场景='{go.scene.name}'")
+                      .Append($"｜世界位置={t.position}｜世界缩放={t.lossyScale}｜父='{(t.parent != null ? t.parent.name : "null")}'")
+                      .Append($"｜子物体={t.childCount}");
+                    foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+                        sb.Append($"｜{r.GetType().Name}'{r.name}':层={r.gameObject.layer},开={r.enabled},"
+                                + $"材质='{(r.sharedMaterial != null ? r.sharedMaterial.name : "null")}',世界包围盒={r.bounds.size}");
+                    Debug.Log(sb.ToString());
+                }
+            }
+            catch (Exception ex) { Debug.LogWarning("[ItemModel] 诊断抛错：" + ex.Message); }
+        }
     }
 }
