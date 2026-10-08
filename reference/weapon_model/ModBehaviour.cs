@@ -340,7 +340,14 @@ namespace WeaponModelSwap
                 if (!File.Exists(path)) { Debug.LogWarning($"[WeaponModel] 找不到模型文件：{path}"); continue; }
                 // ⭐ b：指纹没变就直接用上次解析好的 ✓✓（改 slots/target/icon 时热重载≈瞬发 ✓）
                 if (_modelCache.TryGetValue(path, out var c) && c != null && c.Sig == e.Signature && c.Mesh != null)
-                { e.Mesh = c.Mesh; e.Texture = c.Texture; continue; }
+                {
+                        e.Mesh = c.Mesh; e.Texture = c.Texture;
+                        // ⭐ 缓存命中时也要**重算尺寸系数** ✗ —— 以前这里直接 `continue` ✓ → 改 `size` 无效 ✓
+                        //    （实测报过 ✓：热重载后 `e.Scale` 停在默认 1 ✗ 而模型根本不重读 ✓ → 看着像 size 坏了 ✓）
+                        e.SizeTarget = ModelSize.For(e.TypeIds.Count > 0 ? e.TypeIds.First() : 0, e.Size > 0f ? (float?)e.Size : null);
+                        e.Scale = ModelSize.Factor(c.Mesh, e.SizeTarget);
+                        continue;
+                    }
                 try
                 {
                     var g = GltfLoader.LoadFile(path, e.Front);
