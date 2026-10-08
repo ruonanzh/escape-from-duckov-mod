@@ -306,7 +306,11 @@ namespace ModelKit
                 Math.Abs(lossy.z) > 1e-6f ? 1f / lossy.z : 1f);
 
             var go = new GameObject("ModelKit_" + (string.IsNullOrEmpty(itemName) ? "item" : itemName));
-            go.layer = mount != null ? mount.gameObject.layer : root.gameObject.layer;
+            // ⭐ 层：**默认用 `Default(0)`** ✓（我们的既定结论：层一律不动 ✓ 用 0 ✓）
+//   ⚠️ 只有一种例外 ✓：挂点在 `Character(9)` 上（穿戴/手里 ✓ 游戏自己设好的 ✓）→ 继承它 ✓
+//   否则（含 `UI(5)` ✗）一律 `0` ✓ —— `UI` 层会**发白 + 渲染在最前** ✗
+{ int wantLayer = mount != null ? mount.gameObject.layer : root.gameObject.layer;
+  if (wantLayer != 9) wantLayer = 0; go.layer = wantLayer; }
             go.transform.SetParent(parent, false);
             // ⭐ 让"我们 mesh 的**包围盒中心**"落到"**被替掉的那个外观**的包围盒中心" ✓
             //   旧零件的原点常常不在自己身上 ✗（比如原点在角色脚下、几何靠自身变换挪上去 ✓）
