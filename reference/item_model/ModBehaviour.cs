@@ -202,7 +202,13 @@ namespace ItemModelSwap
 
                 if (!gi.name.EndsWith("(Clone)")) continue;                     // ⭐ 只认克隆 ✓
 
-                if (gi.GetComponent<ItemModel.Marked>() != null) continue;      // 改过的 ✓ 幂等 ✓
+                // ⭐ 幂等判据改成"这一层下面有没有我们的 mesh" ✗ —— 不能看 `Marked` ✓
+        //   原因 ✓：我们 patch 过的 **prefab** 会把 `Marked` **遗传给它的所有实例** ✓
+        //   → 用 Marked 判断，会把"**早于 patch 创建**的旧实例"（= 身上正穿着那顶 ✓）误跳过 ✗
+        //   → 表现：**热更不生效，丢掉再捡才生效** ✓（实测报过 ✓）
+        bool already = false;
+        foreach (Transform c in gi.transform) if (c.name.StartsWith("ModelKit_")) { already = true; break; }
+        if (already) continue;
 
                 string src = gi.name.Substring(0, gi.name.Length - "(Clone)".Length);
 

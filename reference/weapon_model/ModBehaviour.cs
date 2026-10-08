@@ -231,7 +231,11 @@ namespace WeaponModelSwap
         //   ⚠️ 手里那把的图形**也是** `(Clone)` ✗（游戏给 agent 克隆的 ✓）→ 少了这一条就会误伤 ✓
         //      实测：配件看不见 ✓（配件是挂点的子物体 ✓ 挂点长在那些零件里 ✓）
         if (!HasAncestorNamed(gi.transform, "GraphicRoot")) continue;
-        if (gi.GetComponent<ModelKit.ItemModel.Marked>() != null) continue; // 改过的 ✓
+        // ⭐ 幂等判据同上 ✗：看"这一层下面有没有我们的 mesh" ✓ 而不是 `Marked` ✓
+        //   （prefab 上的 `Marked` 会遗传给实例 ✓ → 早于 patch 创建的旧副本会被误跳过 ✗）
+        bool already = false;
+        foreach (Transform c in gi.transform) if (c.name.StartsWith("ModelKit_")) { already = true; break; }
+        if (already) continue;
 
                 string src = gi.name.Substring(0, gi.name.Length - "(Clone)".Length);
 
