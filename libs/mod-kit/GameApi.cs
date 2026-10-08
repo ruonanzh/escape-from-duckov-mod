@@ -202,4 +202,71 @@ namespace ModelKit
             => !string.IsNullOrEmpty(target) && item != null && item.name != null
                && item.name.IndexOf(target, System.StringComparison.OrdinalIgnoreCase) >= 0;
     }
+
+    /// <summary>目标尺寸（米）✓：把模型**等比**缩放到"游戏里那一档" ✓
+    /// <para>优先级：config 的 `size`（玩家显式 ✓）&gt; 游戏 tag 推断 ✓ &gt; null（**不缩放** ✓）。</para>
+    /// <para>表里的数字全部来自**离线实测**（游戏自己那些模型的最长边 ✓）：
+    /// 枪按 `GunType_*` 分档 ✓；装备按 `Helmat`/`Backpack`/`FaceMask`/`Headset`/`Equipment` ✓；
+    /// 普通物品（糖果/医疗 ✓）与近战/弓弩 → **不缩放** ✓。</para>
+    /// <para>⚠️ 缩放是在**加载期**对 mesh 顶点做一次 ✓ → 世界/手持/实例三条路自动一致 ✓。</para></summary>
+    public static class ModelSize
+    {
+        static readonly string[] GunTags = { "GunType_PST", "GunType_SMG", "GunType_AR", "GunType_BR", "GunType_SHT", "GunType_SNP", "GunType_MAG" };
+        static readonly float[] GunSizes = { 0.44f, 0.85f, 1.00f, 1.25f, 1.05f, 1.35f, 1.45f };
+        static readonly string[] EquipTags = { "Helmat", "Backpack", "FaceMask", "Headset", "Equipment" };
+        static readonly float[] EquipSizes = { 0.65f, 0.55f, 0.65f, 0.78f, 0.80f };
+
+        /// <summary>该物品的目标最长边（米 ✓）；null = 不缩放 ✓。
+        /// <paramref name="explicitSize"/> 是 config 的 `size`（≤0 = 没填 ✓ → 用自动档位 ✓）</summary>
+        public static float? For(int typeID, float? explicitSize)
+        {
+            if (explicitSize.HasValue && explicitSize.Value > 0f) return explicitSize;   // 玩家填了 → 听玩家的 ✓
+            try
+            {
+                var item = GameApi.AllItems().FirstOrDefault(i => i != null && i.TypeID == typeID);
+                if (item == null) return null;
+                var tags = item.Tags;
+                if (tags == null) return null;
+                if (tags.Contains("Weapon"))
+                {
+                    for (int i = 0; i < GunTags.Length; i++) if (tags.Contains(GunTags[i])) return GunSizes[i];
+                    // 有 `Gun` 但没细分枪种（例如弓弩 ✓）→ 1.00 m 兜底 ✓（= 与现状一致 ✓ 不缩放 ✓）
+                    if (tags.Contains("Gun")) return 1.00f;
+                    return null;                       // 近战等 ✓ 先不管 ✓
+                }
+                for (int i = 0; i < EquipTags.Length; i++) if (tags.Contains(EquipTags[i])) return EquipSizes[i];
+            }
+            catch { }
+            return null;                               // 普通物品（糖果 / 医疗 ✓）→ 不缩放 ✓
+        }
+
+        /// <summary>把 mesh **等比**缩放到"最长边 = target"（米 ✓）；target 为空/离谱 → 原样不动 ✓</summary>
+        public static void Normalize(Mesh mesh, float? target)
+        {
+            if (mesh == null || !target.HasValue) return;
+            float longest = Longest(mesh);
+            if (longest < 1e-4f) return;
+            float f = target.Value / longest;
+            if (f <= 0.01f || f >= 100f || Mathf.Abs(f - 1f) < 1e-4f) return;   // 防御 + 免无谓改动 ✓
+            var verts = mesh.vertices;
+            for (int i = 0; i < verts.Length; i++) verts[i] *= f;
+            mesh.vertices = verts;
+            mesh.RecalculateBounds();                  // 顶点变了 ✓ 包围盒要重算 ✓（法线/UV 不受等比影响 ✓）
+        }
+
+        /// <summary>模型当前的最长边（米 ✓）——用来打日志看"缩了多少" ✓</summary>
+        public static float Longest(Mesh mesh)
+        {
+            if (mesh == null) return 0f;
+            var s = mesh.bounds.size;
+            return Mathf.Max(s.x, Mathf.Max(s.y, s.z));
+        }
+
+        /// <summary>缩放系数（日志用 ✓）：target / 当前最长边 ✓</summary>
+        public static float Factor(Mesh mesh, float? target)
+        {
+            float longest = Longest(mesh);
+            return (longest < 1e-4f || !target.HasValue) ? 1f : target.Value / longest;
+        }
+    }
 }

@@ -42,6 +42,10 @@ namespace WeaponModelSwap
             public string ModelFile = "";
             public string Front = "auto";
             public string IconFile = "icon.png";
+            /// <summary>config 的 `size`（**米** ✓、可选 ✓）—— 目标最长边 ✓。
+            /// ≤0 = 没填 ✓ → 用 <see cref="ModelSize.For"/> 的自动档位 ✓
+            /// ⚠️ **武器/装备一般不用填** ✓（已按游戏里那一档自动对齐 ✓）；只想特意做大/做小时才填 ✓</summary>
+            public float Size;
             public string IconPath;          // 解析成绝对路径（相对 mod 目录 ✓）
             /// <summary>config 里的 `slots`（**比例** ✓ [L,H,D]，L 沿 Z、H 沿 Y、D 沿 X ✓）——
             /// 目前用来：① 换算成我们模型的局部坐标并打日志 ✓ ② 有 pivot 时用它当对齐基准 ✓
@@ -69,7 +73,7 @@ namespace WeaponModelSwap
                 IconPath = string.IsNullOrEmpty(IconFile)
                     ? null
                     : (Path.IsPathRooted(IconFile) ? IconFile : Path.Combine(dir, IconFile));
-                Signature = ModelFile + "\n" + Front;
+                Signature = ModelFile + "\n" + Front + "\n" + Size;
                 // ⭐ 指纹再带上**文件本身**的 mtime+size ✓（旧版只看文件名 ✗ → 同名换内容不重读 ✗、
                 //    而重建 Entry 后又永不重读 ✗ —— 两种毛病都靠这个指纹治 ✓）
                 var mp = ModelPath(dir);
@@ -229,9 +233,14 @@ namespace WeaponModelSwap
                 try
                 {
                     var g = GltfLoader.LoadFile(path, e.Front);
+                    // ⭐ 尺寸：把 mesh **等比**缩到"游戏里那一档"（按 tag 自动判 ✓ 可在 config 里用 size 覆盖 ✓）
+                    var sizeTarget = ModelSize.For(e.TypeIds.Count > 0 ? e.TypeIds.First() : 0, e.Size > 0f ? (float?)e.Size : null);
+                    float sizeBefore = ModelSize.Longest(g.Mesh);
+                    ModelSize.Normalize(g.Mesh, sizeTarget);
                     e.Mesh = g.Mesh; e.Texture = g.MainTexture;
                     _modelCache[path] = new CachedModel { Sig = e.Signature, Mesh = g.Mesh, Texture = g.MainTexture };
-                    Debug.Log($"[WeaponModel] 读到模型 {Path.GetFileName(path)}：" + g.Report);
+                    Debug.Log($"[WeaponModel] 读到模型 {Path.GetFileName(path)}：" + g.Report
+                              + $"｜尺寸：{(sizeTarget.HasValue ? $"最长边 {sizeBefore:0.###} → {sizeTarget.Value:0.###} m" : "不缩放（无匹配档位 ✓ 或本来就是 1 m ✓）")}");
                 }
                 catch (Exception ex) { Debug.LogError($"[WeaponModel] 读模型失败（{Path.GetFileName(path)}）：{ex.Message}"); }
             }
@@ -277,6 +286,7 @@ namespace WeaponModelSwap
                 ModelFile = j.GetStr("model", ""),
                 Front = j.GetStr("front", "auto"),
                 IconFile = j.GetStr("icon", "icon.png"),
+                Size = j.GetFloat("size", 0f),
             };
             var ids = j["typeIDs"];
             if (ids != null && ids.IsArray) for (int i = 0; i < ids.Count; i++) e.TypeIds.Add(ids[i].AsInt(0));

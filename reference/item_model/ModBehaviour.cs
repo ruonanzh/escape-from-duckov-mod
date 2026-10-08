@@ -55,6 +55,10 @@ namespace ItemModelSwap
             public bool Handheld = false;
             public string Front = "auto";
             public string ResolvedPath = "";
+            /// <summary>config 的 `size`（**米** ✓、可选 ✓）—— 目标最长边 ✓。
+            /// ≤0 = 没填 ✓ → 用 <see cref="ModelSize.For"/> 的自动档位 ✓
+            /// ⚠️ **武器/装备一般不用填** ✓（已按游戏里那一档自动对齐 ✓）；只想特意做大/做小时才填 ✓</summary>
+            public float Size;
 
             public bool Matches(ItemStatsSystem.Item item)
             {
@@ -245,15 +249,20 @@ namespace ItemModelSwap
         {
             if (string.IsNullOrEmpty(e.ResolvedPath) || !File.Exists(e.ResolvedPath)) return null;
             var fi = new FileInfo(e.ResolvedPath);
-            string sig = e.ResolvedPath + "|" + e.Front + "|" + fi.LastWriteTimeUtc.Ticks + ":" + fi.Length;
+            string sig = e.ResolvedPath + "|" + e.Front + "|" + e.Size + "|" + fi.LastWriteTimeUtc.Ticks + ":" + fi.Length;
 
             CachedModel c;
             if (_modelCache.TryGetValue(e.ResolvedPath, out c) && c != null && c.Sig == sig) return c;
 
             var loaded = GltfLoader.LoadFile(e.ResolvedPath, e.Front);
+            // ⭐ 尺寸：把 mesh **等比**缩到"游戏里那一档"（按 tag 自动判 ✓ 可在 config 里用 size 覆盖 ✓）
+            var sizeTarget = ModelSize.For(e.TypeIds.Count > 0 ? e.TypeIds.First() : 0, e.Size > 0f ? (float?)e.Size : null);
+            float sizeBefore = ModelSize.Longest(loaded.Mesh);
+            ModelSize.Normalize(loaded.Mesh, sizeTarget);
             c = new CachedModel { Sig = sig, Mesh = loaded.Mesh, Texture = loaded.MainTexture };
             _modelCache[e.ResolvedPath] = c;
-            Debug.Log($"[ItemModel] 模型已解析：{Path.GetFileName(e.ResolvedPath)}｜{loaded.Report}");
+            Debug.Log($"[ItemModel] 模型已解析：{Path.GetFileName(e.ResolvedPath)}｜{loaded.Report}"
+                      + $"｜尺寸：{(sizeTarget.HasValue ? $"最长边 {sizeBefore:0.###} → {sizeTarget.Value:0.###} m" : "不缩放（无匹配档位 ✓ 或本来就是 1 m ✓）")}");
             return c;
         }
 
@@ -294,6 +303,7 @@ namespace ItemModelSwap
                 Front = j.GetStr("front", "auto"),
                 World = j.GetBool("world", true),        // 世界那条默认开 ✓
                 Handheld = j.GetBool("handheld", false), // 手持那条默认关 ✓（它会改行为 ✓）
+                Size = j.GetFloat("size", 0f),
             };
             var tids = j["typeIDs"];
             if (tids != null && tids.IsArray)
