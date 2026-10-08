@@ -299,10 +299,12 @@ namespace ModelKit
             var res = new Result { TypeID = typeID, ItemName = itemName ?? "" };
             if (root == null || mesh == null) { res.Report = "外观为空或网格为空 ✗"; return res; }
 
-            // 幂等 ✓：**只看这一层自己**有没有标记 ✓（不能扫子树 ✗ —— agent 的子树里含着图形 ✓
-            //   扫子树会把"图形已经换过"误判成"agent 也换过" ✗ → agent 自己那层图标精灵永远关不掉 ✗ 实测）
-            if (root.GetComponent<Marked>() != null)
-            { res.Applied = false; res.NoOp = true; res.Report = "这一层已经换过了 ✓"; return res; }
+            // 幂等 ✓：判据是“这**一层自己**下边有没有我们的 mesh” ✗ —— **不能看 `Marked`** ✗：
+            //   ⭐ 我们 patch 过的 **prefab** 会把 `Marked` **遗传给它的所有实例** ✓
+            //   → 看 `Marked` 会把"带遗传标记、但自己没挂过"的副本（掉落物 ✓ / 早于 patch 创建的穿戴实例 ✓）误跳过 ✗
+            //   → 表现：**它们永远是旧模型 / 热更不生效** ✗（实测报过两次 ✓）
+            foreach (Transform c in root)
+                if (c.name.StartsWith("ModelKit_")) { res.Applied = false; res.NoOp = true; res.Report = "这一层已经换过了 ✓"; return res; }
 
             var mount = PickMount(root);
             res.AnchorName = mount != null ? mount.gameObject.name : "根";
