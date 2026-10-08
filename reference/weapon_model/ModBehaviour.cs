@@ -211,7 +211,7 @@ namespace WeaponModelSwap
 
             if (Time.unscaledTime < _nextCloneSweep) return;      // 1 秒一次 ✓
 
-            _nextCloneSweep = Time.unscaledTime + 1f;
+            _nextCloneSweep = Time.unscaledTime + 0.5f;
 
             List<ItemGraphicInfo> all;
 
@@ -227,7 +227,11 @@ namespace WeaponModelSwap
 
                 if (!gi.name.EndsWith("(Clone)")) continue;                       // ⭐ 只认克隆 ✓
 
-                if (gi.GetComponent<ModelKit.ItemModel.Marked>() != null) continue; // 改过的 ✓
+                // ⭐⭐ 只碰"**掉落/展示**"那条 ✗ —— 判据：祖先里有游戏自己的显示挂点 `GraphicRoot` ✓
+        //   ⚠️ 手里那把的图形**也是** `(Clone)` ✗（游戏给 agent 克隆的 ✓）→ 少了这一条就会误伤 ✓
+        //      实测：配件看不见 ✓（配件是挂点的子物体 ✓ 挂点长在那些零件里 ✓）
+        if (!HasAncestorNamed(gi.transform, "GraphicRoot")) continue;
+        if (gi.GetComponent<ModelKit.ItemModel.Marked>() != null) continue; // 改过的 ✓
 
                 string src = gi.name.Substring(0, gi.name.Length - "(Clone)".Length);
 
@@ -258,6 +262,28 @@ namespace WeaponModelSwap
             }
 
         }
+
+
+        /// <summary>祖先里有叫 `name` 的吗 ✓（用来区分"掉落/展示"和"拿在手里" ✗）</summary>
+
+
+        static bool HasAncestorNamed(Transform t, string name)
+
+
+        {
+
+
+            for (int i = 0; t != null && i < 12; i++, t = t.parent)
+
+
+                if (t.name == name) return true;
+
+
+            return false;
+
+
+        }
+
 
 
         /// <summary>config.json 一改存盘就重新生效（不用重启游戏）：重读配置、丢旧实例、必要时重读模型 ✓</summary>
