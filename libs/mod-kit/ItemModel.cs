@@ -63,7 +63,7 @@ namespace ModelKit
             {
                 if (MarkedOn != null)
                 {
-                    _patchedLayers.Remove(MarkedOn.GetInstanceID());   // ⭐ 注销 ✓ → 之后能重新挂 ✓
+                    _patchedLayers.Remove(MarkedOn);                   // ⭐ 注销 ✓ → 之后能重新挂 ✓
                     var mk = MarkedOn.GetComponent<Marked>();
                     if (mk != null) UnityEngine.Object.DestroyImmediate(mk);   // 摘掉我们打的标记 ✓ → 下次 Apply 才能重挂 ✓
                     MarkedOn = null;
@@ -91,7 +91,18 @@ namespace ModelKit
         /// 下面 ✗，**不是**这一层的直接子物体 ✓ → 子物体扫描同样会漏 ✓ → 变成**每轮重复挂** ✗
         /// （诊断日志实锤 ✓：同名 mesh 每 0.5 秒多一个 ✓）。</para>
         /// <para>⇒ 唯一可靠做法 = **登记表** ✓：挂上时记下这一层 ✓，`Restore()` 时注销 ✓</para></summary>
-        static readonly HashSet<int> _patchedLayers = new HashSet<int>();
+        static readonly HashSet<GameObject> _patchedLayers = new HashSet<GameObject>();
+        static int _patchedPruneAt;
+
+        /// <summary>⚠️ 为什么存 **GameObject 引用**而不是 `instanceID` ✗：
+        /// Unity 对象销毁后，它的 instanceID **可能被新对象复用** ✗ → 按 id 存会"认错人" ✓
+        /// （新对象被当成"已挂过" ✗ → 永远不挂 ✗）。按引用存：新对象是**另一个引用** ✓ 不受影响 ✓。</summary>
+        static void PrunePatched()
+        {
+            if (_patchedLayers.Count < 256 || Time.frameCount < _patchedPruneAt) return;
+            _patchedPruneAt = Time.frameCount + 300;                 // 别每帧数 ✗
+            _patchedLayers.RemoveWhere(g => g == null);              // 被游戏销毁的（掉落物被捡走 ✓）清掉 ✓
+        }
 
 
         // ───────────────────────── 清实体缓存（让游戏下次重建 ✓）─────────────────────────
@@ -319,8 +330,8 @@ namespace ModelKit
             //   ⭐ 我们 patch 过的 **prefab** 会把 `Marked` **遗传给它的所有实例** ✓
             //   → 看 `Marked` 会把"带遗传标记、但自己没挂过"的副本（掉落物 ✓ / 早于 patch 创建的穿戴实例 ✓）误跳过 ✗
             //   → 表现：**它们永远是旧模型 / 热更不生效** ✗（实测报过两次 ✓）
-            int layerId = root.gameObject.GetInstanceID();
-            if (_patchedLayers.Contains(layerId))
+            PrunePatched();
+            if (_patchedLayers.Contains(root.gameObject))
             { res.Applied = false; res.NoOp = true; res.Report = "这一层已经换过了 ✓"; return res; }
 
             var mount = PickMount(root);
@@ -332,7 +343,7 @@ namespace ModelKit
             HideOld(root, res);
             res.Instance = Attach(root, mount, mesh, texture, itemName, oldCenter, null, scale);
             if (root.GetComponent<Marked>() == null) root.gameObject.AddComponent<Marked>();   // 打标记（调试用 ✓）
-            _patchedLayers.Add(layerId);                                                        // ⭐ 真正可靠的登记 ✓
+            _patchedLayers.Add(root.gameObject);                                                // ⭐ 真正可靠的登记（引用 ✓）
             res.MarkedOn = root.gameObject;
             res.Applied = true;
             res.Report = $"关旧外观 {res.Hidden.Count} 个｜挂到 '{res.AnchorName}'"
