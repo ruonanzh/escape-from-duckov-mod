@@ -160,6 +160,11 @@ namespace ItemModelSwap
                 _appliedClone.Clear();
                 // ⭐ 标记不在这里"全局摘" ✗ —— 由 `Result.Restore()` **精确摘掉自己那一层** ✓（上面那个循环里 ✓）
                 //   全局摘会把**游戏对象上的标记**也摘掉 ✗ → 下一轮 Apply 会去重处理原物品模板 ✗ → 走成另一条分支 ✓
+                // ⭐ **热重载后立刻重挂** ✓：把三个节流计时器清零 ✓
+                //   否则要等下一个 0.5 秒才挂回来 ✓ → 视觉上会"先退回原样、等一会儿才变" ✓（实测报过 ✓）
+                //   清零后同一帧就 `ApplyAll` + `SweepGraphicClones` ✓ → 空档从 ≤0.5 秒降到 ~1 帧 ✓
+                _nextApply = 0f; _nextCloneSweep = 0f; _nextHeldSweep = 0f;
+
                 Debug.Log("[ItemModel] config 已重载 → 重新挂 " + _entries.Count + " 条规则");
             }
             catch (Exception ex) { Debug.LogWarning("[ItemModel] config 热重载失败：" + ex.Message); }
