@@ -112,7 +112,6 @@ namespace WeaponModelSwap
         readonly Dictionary<string, CachedModel> _modelCache = new Dictionary<string, CachedModel>();
         readonly Dictionary<int, ModelKit.WeaponModel.Result> _applied = new Dictionary<int, ModelKit.WeaponModel.Result>();   // transformId → 换上的结果（含被禁用的旧零件 ✓ 用于恢复）
         /// <summary>⭐ 枪图形 prefab 名 → 条目 ✓（给"场上克隆"补挂用 ✓）</summary>
-        readonly Dictionary<string, Entry> _graphicSrc = new Dictionary<string, Entry>();
         /// <summary>⭐ 场上克隆（掉落/展示 ✓）的补挂结果 ✓ —— 热重载一起恢复 ✓（有借有还 ✓）</summary>
         readonly Dictionary<int, ModelKit.ItemModel.Result> _appliedClone = new Dictionary<int, ModelKit.ItemModel.Result>();
         float _nextCloneSweep;
@@ -179,8 +178,6 @@ namespace WeaponModelSwap
             if (r.Applied)
             {
                 _applied[id] = r;
-                // ⭐ 记下枪图形 prefab 名 → 条目 ✓（场上克隆扫描直接查表 ✓）
-                try { if (item.ItemGraphic != null) _graphicSrc[item.ItemGraphic.name] = entry; } catch { }
                 Debug.Log("[WeaponModel] " + r.Report);
                 // ⛔ **不要**用物品那条路来挂枪的掉落/展示图形 ✗（2026-10-08 两次实测都坏 ✓）
                 //   `ItemModel.Apply` 会关掉枪身一批零件 ✓ **而配件（挂在 Sockets 下的子物体 ✓）会跟着一起看不见** ✗
@@ -203,92 +200,45 @@ namespace WeaponModelSwap
 
         /// ⇒ 只动"名字带 `(Clone)`"的那份 ✓ —— 每个副本独立 ✓ 动它**绝不影响**手里那把 ✓</para></summary>
 
+                /// <summary>祖先里有叫 `name` 的吗 ✓（用来区分"掉落/展示"和"拿在手里" ✗）</summary>
+
+
+                /// <summary>⭐ 给"场上**已经存在**的枪图形实例"补挂 ✓（掉落 ✓ 手里 ✓ 一个扫描全覆盖 ✓）
+        /// <para>判据 = 游戏自带的**反向索引** ✓：`ItemGraphicInfo.ItemRefrence`（`Setup(item)` 里写的 ✓）
+        /// —— 源码实锤 ✓：`CreateAGraphic` 会调 `itemGraphicInfo.Setup(item)` ✓
+        /// ⇒ **每个实例都知道自己属于哪件物品** ✓ → 不再猜名字 ✗ 不再判祖先 ✗</para>
+        /// <para>⚠️ 手里那把的 agent **已由 `WeaponModel.Apply` 挂过并登记** ✓ → 登记表会挡掉 ✓ 不会重复挂 ✓</para></summary>
         void SweepGraphicClones()
-
         {
-
-            if (_graphicSrc.Count == 0) return;
-
+            if (_entries.Count == 0) return;
             if (Time.unscaledTime < _nextCloneSweep) return;      // 0.5 秒一次 ✓（掉落后半秒内换好 ✓）
-
             _nextCloneSweep = Time.unscaledTime + 0.5f;
 
             List<ItemGraphicInfo> all;
-
             try { all = UnityEngine.Resources.FindObjectsOfTypeAll<ItemGraphicInfo>().ToList(); }
-
             catch { return; }
 
             foreach (var gi in all)
-
             {
-
                 if (gi == null || gi.gameObject == null) continue;
-
-                if (!gi.name.EndsWith("(Clone)")) continue;                       // ⭐ 只认克隆 ✓
-
-                // ⭐⭐ 只碰"**掉落/展示**"那条 ✗ —— 判据：祖先里有游戏自己的显示挂点 `GraphicRoot` ✓
-        //   ⚠️ 手里那把的图形**也是** `(Clone)` ✗（游戏给 agent 克隆的 ✓）→ 少了这一条就会误伤 ✓
-        //      实测：配件看不见 ✓（配件是挂点的子物体 ✓ 挂点长在那些零件里 ✓）
-        if (!HasAncestorNamed(gi.transform, "GraphicRoot")) continue;
-        // ⭐ 幂等判据同上 ✗：看"这一层下面有没有我们的 mesh" ✓ 而不是 `Marked` ✓
-        //   （prefab 上的 `Marked` 会遗传给实例 ✓ → 早于 patch 创建的旧副本会被误跳过 ✗）
-        bool already = false;
-        foreach (Transform c in gi.transform) if (c.name.StartsWith("ModelKit_")) { already = true; break; }
-        if (already) continue;
-
-                string src = gi.name.Substring(0, gi.name.Length - "(Clone)".Length);
-
-                if (!_graphicSrc.TryGetValue(src, out var e) || e == null) continue;
-
-                if (e.Mesh == null) continue;
-
+                var owner = gi.ItemRefrence;                       // ⭐ 反向索引 ✓
+                if (owner == null) continue;                       // 共享 prefab 没 owner ✓ → 跳过 ✓
+                Entry e = null;
+                for (int i = 0; i < _entries.Count; i++) if (_entries[i].Matches(owner)) { e = _entries[i]; break; }
+                if (e == null || e.Mesh == null) continue;
+                if (ModelKit.ItemModel.IsPatched(gi.gameObject)) continue;   // ⭐ 唯一判据（登记表）✓
                 try
-
                 {
-
-                    var rc = ModelKit.ItemModel.ApplyToGraphicClone(gi, src, 0, e.Mesh, e.Texture, e.Scale);
-
+                    var rc = ModelKit.ItemModel.ApplyToGraphicClone(gi, owner.name, owner.TypeID, e.Mesh, e.Texture, e.Scale);
                     if (rc.Applied)
-
                     {
-
-                        _appliedClone[gi.GetInstanceID()] = rc;
-
-                        Debug.Log($"[WeaponModel] 已换（场上副本 ✓ 掉落/展示）：{gi.name}｜{rc.Report}");
-
+                        _appliedClone[gi.gameObject.GetInstanceID()] = rc;
+                        Debug.Log($"[WeaponModel] 已换（场上实例 ✓）：{gi.name}（属于 '{owner.name}'）｜{rc.Report}");
                     }
-
                 }
-
-                catch (Exception ex) { Debug.LogWarning($"[WeaponModel] 场上副本补挂抛错 ✗：{ex.Message}"); }
-
+                catch (Exception ex) { Debug.LogWarning($"[WeaponModel] 场上实例补挂抛错 ✗：{ex.Message}"); }
             }
-
         }
-
-
-        /// <summary>祖先里有叫 `name` 的吗 ✓（用来区分"掉落/展示"和"拿在手里" ✗）</summary>
-
-
-        static bool HasAncestorNamed(Transform t, string name)
-
-
-        {
-
-
-            for (int i = 0; t != null && i < 12; i++, t = t.parent)
-
-
-                if (t.name == name) return true;
-
-
-            return false;
-
-
-        }
-
-
 
         /// <summary>config.json 一改存盘就重新生效（不用重启游戏）：重读配置、丢旧实例、必要时重读模型 ✓</summary>
         void ReloadIfChanged()

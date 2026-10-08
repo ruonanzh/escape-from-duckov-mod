@@ -97,6 +97,9 @@ namespace ModelKit
         /// <summary>⚠️ 为什么存 **GameObject 引用**而不是 `instanceID` ✗：
         /// Unity 对象销毁后，它的 instanceID **可能被新对象复用** ✗ → 按 id 存会"认错人" ✓
         /// （新对象被当成"已挂过" ✗ → 永远不挂 ✗）。按引用存：新对象是**另一个引用** ✓ 不受影响 ✓。</summary>
+        /// <summary>⭐ 这一层我们挂过没有 ✓（给"场上实例补挂"用 ✓ 判据唯一 ✓）</summary>
+        public static bool IsPatched(GameObject layer) => layer != null && _patchedLayers.Contains(layer);
+
         static void PrunePatched()
         {
             if (_patchedLayers.Count < 256 || Time.frameCount < _patchedPruneAt) return;
