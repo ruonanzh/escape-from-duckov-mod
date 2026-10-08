@@ -37,6 +37,10 @@ namespace ModelKit
             public int TypeID;
             public string ItemName = "";
             public GameObject Instance;                       // 我们挂上去的子物体
+            /// <summary>⭐ "顺手一起做的那些"的结果 ✓（手持 / 场上实例两条 ✓）—— `Restore()` 要一起还原 ✗
+            /// <para>不还原会怎样 ✓（实测报过 ✓）：热重载后**旧的我们的 mesh 还在** ✗
+            /// → **改小时被旧的大的包住** ✗（看着"没生效" ✓）；登记也不注销 ✗ → **只能热更一次** ✗</para></summary>
+            public readonly List<Result> Nested = new List<Result>();
 
             /// <summary>被我们关掉的旧外观（**任何**渲染器都可能 ✓ 含 SpriteRenderer ✓）</summary>
             public readonly List<Renderer> Hidden = new List<Renderer>();
@@ -68,6 +72,8 @@ namespace ModelKit
                     if (Hidden[i] != null) Hidden[i].enabled = true;
                 Hidden.Clear();
                 if (Instance != null) { UnityEngine.Object.Destroy(Instance); Instance = null; }
+                for (int i = 0; i < Nested.Count; i++) if (Nested[i] != null) Nested[i].Restore();   // ⭐ 顺手做的一起还原 ✓
+                Nested.Clear();
                 Applied = false;
             }
         }
@@ -640,7 +646,7 @@ namespace ModelKit
             //        → 新实例查到的是**游戏通用模板** = 那张图 ✗（这就是"糖果手里还是图片"的根因 ✓）
             if (alsoHandheld)
             {
-                try { ApplyHandheld(item, mesh, texture, ModelSize.FactorFor(typeID, 0f, mesh)); }
+                try { var rh = ApplyHandheld(item, mesh, texture, ModelSize.FactorFor(typeID, 0f, mesh)); if (rh != null) res.Nested.Add(rh); }   // ⭐ 结果入册 ✓
                 catch { /* 写不上不影响世界那条 ✓ */ }
             }
             res.CacheCleared = ClearAgentCache(item);
@@ -698,7 +704,7 @@ namespace ModelKit
             catch { /* 模板这条失败不影响实例那条 ✓ */ }
 
             // ③ 场上已经拿在手里/装备着的那一个：就地换 ✓（不销毁任何东西 ✓）
-            ApplyToInstance(item, mesh, texture, scale);
+            { var ri = ApplyToInstance(item, mesh, texture, scale); if (ri != null) res.Nested.Add(ri); }   // ⭐ 结果入册 ✓
 
             // ④ 清缓存 → 游戏下次建实体时会读**改过的 prefab** ✓
             if (!res.CacheCleared) res.CacheCleared = ClearAgentCache(item);
