@@ -59,6 +59,7 @@ namespace ModelKit
             {
                 if (MarkedOn != null)
                 {
+                    _patchedLayers.Remove(MarkedOn.GetInstanceID());   // ⭐ 注销 ✓ → 之后能重新挂 ✓
                     var mk = MarkedOn.GetComponent<Marked>();
                     if (mk != null) UnityEngine.Object.DestroyImmediate(mk);   // 摘掉我们打的标记 ✓ → 下次 Apply 才能重挂 ✓
                     MarkedOn = null;
@@ -76,6 +77,15 @@ namespace ModelKit
         ///   · 图形层（我们改过 ✓ 它的**克隆**也会带着这个标记 ✓ → 不会重复挂 ✓）
         ///   · agent 层（手里那层 ✓ 独立处理 ✓ 它自己的图标精灵才会被关掉 ✗ 以前漏了 ✓）</summary>
         public sealed class Marked : MonoBehaviour { }
+
+        /// <summary>⭐ 已经挂过的**层**（按该层自己的 `instanceID` ✓）。
+        /// <para>为什么不看 `Marked` ✗：我们 patch 过的 **prefab** 会把标记**遗传给所有实例** ✓
+        /// → 看标记会把"带遗传标记、但没挂过"的副本误跳过 ✗（掉落物 / 穿戴实例 ✓）。</para>
+        /// <para>为什么不看"这一层下的 `ModelKit_*`" ✗：我们的 mesh 是挂在**挂点**（`PickMount` 的结果 ✓）
+        /// 下面 ✗，**不是**这一层的直接子物体 ✓ → 子物体扫描同样会漏 ✓ → 变成**每轮重复挂** ✗
+        /// （诊断日志实锤 ✓：同名 mesh 每 0.5 秒多一个 ✓）。</para>
+        /// <para>⇒ 唯一可靠做法 = **登记表** ✓：挂上时记下这一层 ✓，`Restore()` 时注销 ✓</para></summary>
+        static readonly HashSet<int> _patchedLayers = new HashSet<int>();
 
 
         // ───────────────────────── 清实体缓存（让游戏下次重建 ✓）─────────────────────────
@@ -303,8 +313,9 @@ namespace ModelKit
             //   ⭐ 我们 patch 过的 **prefab** 会把 `Marked` **遗传给它的所有实例** ✓
             //   → 看 `Marked` 会把"带遗传标记、但自己没挂过"的副本（掉落物 ✓ / 早于 patch 创建的穿戴实例 ✓）误跳过 ✗
             //   → 表现：**它们永远是旧模型 / 热更不生效** ✗（实测报过两次 ✓）
-            foreach (Transform c in root)
-                if (c.name.StartsWith("ModelKit_")) { res.Applied = false; res.NoOp = true; res.Report = "这一层已经换过了 ✓"; return res; }
+            int layerId = root.gameObject.GetInstanceID();
+            if (_patchedLayers.Contains(layerId))
+            { res.Applied = false; res.NoOp = true; res.Report = "这一层已经换过了 ✓"; return res; }
 
             var mount = PickMount(root);
             res.AnchorName = mount != null ? mount.gameObject.name : "根";
@@ -314,7 +325,8 @@ namespace ModelKit
                 : root.position;
             HideOld(root, res);
             res.Instance = Attach(root, mount, mesh, texture, itemName, oldCenter, null, scale);
-            if (root.GetComponent<Marked>() == null) root.gameObject.AddComponent<Marked>();   // 打标记 ✓
+            if (root.GetComponent<Marked>() == null) root.gameObject.AddComponent<Marked>();   // 打标记（调试用 ✓）
+            _patchedLayers.Add(layerId);                                                        // ⭐ 真正可靠的登记 ✓
             res.MarkedOn = root.gameObject;
             res.Applied = true;
             res.Report = $"关旧外观 {res.Hidden.Count} 个｜挂到 '{res.AnchorName}'"
