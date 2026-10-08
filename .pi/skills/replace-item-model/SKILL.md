@@ -105,6 +105,7 @@ generate_model(action="generate",
 | `targets` | — | 物品**对象名全等**（数组 ✓ 不区分大小写，例 `["Item_BackpackLV3"]`）|
 | `typeIDs` | — | 或按 typeID（数组 ✓）—— **推荐 ✓**（物品对象名不好记 ✓ 与 `targets` 可同时给 ✓ 任一命中即可 ✓）|
 | `model` | — | 放在本 mod 目录里的 GLB（相对名或绝对路径 ✓）|
+| `size` | — | 修改大小（可选）。不写就不改大小 |
 | `front` | `auto` | 仅**自带模型**需要：`auto`/`+z`/`-z`/`+x`/`-x`（Tripo 出的通常 `auto` 就行 ✓）|
 
 > **三层模型** ✓：① 世界（`world` ✓）② 拿在手里（`handheld` ✓）③ **2D 图标**（游戏自带 ✓ 我们从不删 ✗ 但可以替换 ✓）。
@@ -132,6 +133,7 @@ var res = ModelKit.ItemModel.Apply(item, loaded.Mesh, loaded.MainTexture, handhe
 ## 3. 装进游戏
 
 `install_mod` 装好即可 —— **不用重启游戏去改配置** ✓（mod 盯着 `config.json` 的写入时间 ✓ 0.25 秒内热重载 ✓）。
+改 `size` 也一样当场生效 ✓。
 
 ## 4. 怎么确认成功（装好 ≠ 成功）
 
