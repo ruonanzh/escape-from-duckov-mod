@@ -100,6 +100,31 @@ namespace ModelKit
         /// <summary>⭐ 这一层我们挂过没有 ✓（给"场上实例补挂"用 ✓ 判据唯一 ✓）</summary>
         public static bool IsPatched(GameObject layer) => layer != null && _patchedLayers.Contains(layer);
 
+        /// <summary>⭐ 登记"我们在这层挂过" ✓（**别的能力**（如武器侧）挂完也要调它 ✓
+        /// —— 否则共用登记表里没有它 ✓ → 扫描会把同一个实例**再挂一次** ✗ 实测：配件消失 ✓）</summary>
+        public static void MarkPatched(GameObject layer) { if (layer != null) _patchedLayers.Add(layer); }
+
+        /// <summary>注销 ✓（`Restore()` 时用 ✓ 有借有还 ✓）</summary>
+        public static void UnmarkPatched(GameObject layer) { if (layer != null) _patchedLayers.Remove(layer); }
+
+        /// <summary>⭐ 这一层（含**整棵子树**）里有没有我们挂的 mesh ✓。
+        /// <para>用途 ✓：跳过"**我们自己造的/已经带我们 mesh 的**图形" ✗
+        /// （糖果那种"我们造的图形" ✓ 它的实例天生带我们的 mesh ✓ → 不能再补一次 ✗
+        ///  否则 `PickMount` 会把**我们的 mesh** 当成"旧外观"关掉 ✓ → 物品直接消失 ✓ 实测 ✓）
+        /// ⚠️ 只对"图形实例"用 ✓：agent 身上我们挂的 mesh 叫 `WeaponModel` ✗ 不是 `ModelKit_*` ✓
+        ///   → 所以 agent 不会被这条误跳过 ✓（它靠登记表 ✓）</para></summary>
+        public static bool HasOurMeshUnder(Transform t)
+        {
+            if (t == null) return false;
+            for (int i = 0; i < t.childCount; i++)
+            {
+                var c = t.GetChild(i);
+                if (c.name.StartsWith("ModelKit_")) return true;
+                if (HasOurMeshUnder(c)) return true;
+            }
+            return false;
+        }
+
         static void PrunePatched()
         {
             if (_patchedLayers.Count < 256 || Time.frameCount < _patchedPruneAt) return;

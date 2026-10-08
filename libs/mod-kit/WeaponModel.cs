@@ -25,6 +25,8 @@ namespace ModelKit
         {
             public bool Applied;
             public GameObject Instance;
+        /// <summary>⭐ 我们挂在哪一层 ✓（登记/注销共用表用 ✗ 否则扫描会重复挂 ✓）</summary>
+        public GameObject MarkedOn;
             public string Report = "";
             /// <summary>config 里声明的槽位 → 我们模型局部坐标（米）的换算结果 ✓（供 step 2 把配件挂到我们形状上用 ✓）</summary>
             public readonly Dictionary<string, Vector3> SlotPoints = new Dictionary<string, Vector3>();
@@ -46,6 +48,8 @@ namespace ModelKit
                 RestoreHidden();
                 foreach (var kv in MovedSockets) if (kv.Key != null) kv.Key.localPosition = kv.Value;
                 MovedSockets.Clear();
+                ItemModel.UnmarkPatched(MarkedOn);   // ⭐ 注销 ✓（有借有还 ✓）
+                MarkedOn = null;
             }
         }
 
@@ -128,7 +132,8 @@ namespace ModelKit
                 Mathf.Abs(lossy.x) > 1e-6f ? 1f / lossy.x : 1f,
                 Mathf.Abs(lossy.y) > 1e-6f ? 1f / lossy.y : 1f,
                 Mathf.Abs(lossy.z) > 1e-6f ? 1f / lossy.z : 1f);
-            go.transform.localScale = inv * scale;   // 抵消挂点缩放 ✓ × 适配系数（⭐ 由 localScale 承担 ✓ 不改 mesh 顶点 ✗）
+            go.transform.localScale = inv * scale;
+            ItemModel.MarkPatched(root.gameObject);   // ⭐ 登记 ✓（与物品侧共用同一张表 ✓）   // 抵消挂点缩放 ✓ × 适配系数（⭐ 由 localScale 承担 ✓ 不改 mesh 顶点 ✗）
             go.transform.localRotation = Quaternion.identity;
 
             var mf = go.AddComponent<MeshFilter>();
@@ -205,7 +210,7 @@ namespace ModelKit
                 }
             }
 
-            res.Applied = true; res.Instance = go;
+            res.Applied = true; res.MarkedOn = root.gameObject; res.Instance = go;
             res.Report = $"已换模型：隐藏旧零件 {hidden} 个（保留 {kept} 个：配件/特效）；锚点={(anchor != null ? anchor.name : "根节点")}；"
                        + $"材质={(one != null ? one.name + "/" + (one.shader != null ? one.shader.name : "?") : "无")}；"
                        + $"对齐={res.AlignSource}；"

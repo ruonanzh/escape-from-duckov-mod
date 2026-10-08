@@ -199,7 +199,8 @@ namespace ItemModelSwap
                 Entry hit = null;
                 for (int i = 0; i < _entries.Count; i++) if (_entries[i].Matches(owner)) { hit = _entries[i]; break; }
                 if (hit == null) continue;
-                if (ItemModel.IsPatched(gi.gameObject)) continue;    // ⭐ 唯一判据（登记表）✓
+                if (ItemModel.IsPatched(gi.gameObject)) continue;
+                if (ItemModel.HasOurMeshUnder(gi.transform)) continue;   // ⭐ 已经带我们 mesh 的（我们自己造的图形 ✓）→ 不能再补 ✗    // ⭐ 唯一判据（登记表）✓
                 var cm = GetModel(hit);
                 if (cm == null || cm.Mesh == null) continue;
                 try

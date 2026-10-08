@@ -226,7 +226,8 @@ namespace WeaponModelSwap
                 Entry e = null;
                 for (int i = 0; i < _entries.Count; i++) if (_entries[i].Matches(owner)) { e = _entries[i]; break; }
                 if (e == null || e.Mesh == null) continue;
-                if (ModelKit.ItemModel.IsPatched(gi.gameObject)) continue;   // ⭐ 唯一判据（登记表）✓
+                if (ModelKit.ItemModel.IsPatched(gi.gameObject)) continue;
+                if (ModelKit.ItemModel.HasOurMeshUnder(gi.transform)) continue;   // ⭐ 已经带我们 mesh 的（我们自己造的图形 ✓）→ 不能再补 ✗   // ⭐ 唯一判据（登记表）✓
                 try
                 {
                     var rc = ModelKit.ItemModel.ApplyToGraphicClone(gi, owner.name, owner.TypeID, e.Mesh, e.Texture, e.Scale);
