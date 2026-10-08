@@ -84,6 +84,10 @@ namespace ItemModelSwap
         string _configPath;
         readonly List<Entry> _entries = new List<Entry>();
 
+        /// <summary>⭐ 我们目标物品/图形的名字 ✓（`Set` 里是 `名字 + "(Clone)"` ✓）
+        /// 用途 ✓：装备显示那条路**不给** `ItemRefrence` ✗（实测 ✓）→ 名字兜底 ✓</summary>
+        readonly HashSet<string> _ourCloneNames = new HashSet<string>();
+
         float _nextCfgCheck;                       // 限频：每 0.25 秒才查一次 config ✓
         DateTime _cfgStamp = DateTime.MinValue;
         float _nextHeldSweep;                      // ⭐ 手持/装备那条要**反复复查**（物品是后来才被拿起来的 ✓）
@@ -190,9 +194,19 @@ namespace ItemModelSwap
             {
                 if (gi == null || gi.gameObject == null) continue;
                 var owner = gi.ItemRefrence;                        // ⭐ 反向索引 ✓
-                if (owner == null) continue;                        // prefab / 未绑定 → 跳过 ✓
+                // ⭐ owner 为空时用**名字兜底** ✓：装备显示那条路不给 `ItemRefrence` ✗（实测 ✓）
+                //   （判据仍是"是我们目标的图形副本 ✓"；登记表会挡住重复挂 ✓）
+                bool byName = _ourCloneNames.Contains(gi.name);
+                if (owner == null && !byName) continue;          // prefab 本身名字不带 (Clone) ✓ → 仍然跳过 ✓
                 Entry hit = null;
-                for (int i = 0; i < _entries.Count; i++) if (_entries[i].Matches(owner)) { hit = _entries[i]; break; }
+                if (owner != null)
+                    for (int i = 0; i < _entries.Count; i++) if (_entries[i].Matches(owner)) { hit = _entries[i]; break; }
+                if (hit == null && byName)
+                    foreach (var e2 in _entries)
+                    {
+                        var m2 = GetModel(e2);
+                        if (m2 != null && (_ourCloneNames.Contains(gi.name))) { hit = e2; break; }
+                    }
                 if (hit == null) continue;
                 if (ItemModel.IsPatched(gi.gameObject)) continue;
                 if (ItemModel.HasOurMeshUnder(gi.transform)) continue;   // ⭐ 已经带我们 mesh 的（我们自己造的图形 ✓）→ 不能再补 ✗    // ⭐ 唯一判据（登记表）✓
@@ -200,12 +214,14 @@ namespace ItemModelSwap
                 if (cm == null || cm.Mesh == null) continue;
                 try
                 {
-                    var rc = ItemModel.ApplyToGraphicClone(gi, owner.name, owner.TypeID, cm.Mesh, cm.Texture,
-                                                           ModelSize.FactorFor(owner.TypeID, hit.Size, cm.Mesh));
+                    string who = owner != null ? owner.name : gi.name;
+                    int tid = owner != null ? owner.TypeID : (hit.TypeIds.Count > 0 ? hit.TypeIds[0] : 0);
+                    var rc = ItemModel.ApplyToGraphicClone(gi, who, tid, cm.Mesh, cm.Texture,
+                                                           ModelSize.FactorFor(tid, hit.Size, cm.Mesh));
                     if (rc.Applied)
                     {
                         _appliedClone[gi.gameObject.GetInstanceID()] = rc;
-                        Debug.Log($"[ItemModel] 已换（场上实例 ✓）：{gi.name}（属于 '{owner.name}'）｜{rc.Report}");
+                        Debug.Log($"[ItemModel] 已换（场上实例 ✓）：{gi.name}（属于 '{who}'）｜{rc.Report}");
                     }
                 }
                 catch (Exception ex) { Debug.LogWarning($"[ItemModel] 场上实例补挂抛错 ✗：{ex.Message}"); }
@@ -237,6 +253,12 @@ namespace ItemModelSwap
                 for (int i = 0; i < _entries.Count; i++)
                     if (_entries[i].Matches(item)) { hit = _entries[i]; break; }   // 先命中的生效 ✓
                 if (hit == null) continue;
+                try
+                {
+                    if (item.name != null) _ourCloneNames.Add(item.name + "(Clone)");
+                    if (item.ItemGraphic != null) _ourCloneNames.Add(item.ItemGraphic.name + "(Clone)");
+                }
+                catch { }
 
                 var cm = GetModel(hit);
                 if (cm == null || cm.Mesh == null)

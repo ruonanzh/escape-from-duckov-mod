@@ -222,6 +222,12 @@ namespace WeaponModelSwap
                 if (gi == null || gi.gameObject == null) continue;
                 var owner = gi.ItemRefrence;                       // ⭐ 反向索引 ✓
                 if (owner == null) continue;                       // 共享 prefab 没 owner ✓ → 跳过 ✓
+
+                // ⭐ **跳过"手里那把 agent"** ✗：它也是 `ItemGraphicInfo` 实例 ✓ 也带 `ItemRefrence` ✓
+                //    → 会被这个扫描抢在 `WeaponModel.Apply` **登记之前**补挂 ✗（0.5 秒竞态 ✓ 实测踩到 ✓）
+                //    → 结果：**两个模型** ✗ + 又关一批枪身零件（配件没了 ✗）
+                //   判据 ✓：带 `ItemAgent_Gun` 组件的就是"手里那把" ✓（掉落/展示那份没有 ✓）
+                if (gi.GetComponent("ItemAgent_Gun") != null) continue;
                 Entry e = null;
                 for (int i = 0; i < _entries.Count; i++) if (_entries[i].Matches(owner)) { e = _entries[i]; break; }
                 if (e == null || e.Mesh == null) continue;
