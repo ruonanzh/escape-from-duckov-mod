@@ -693,6 +693,7 @@ namespace ModelKit
         public static void DumpNewObjects()
         {
             if (!DebugOn) return;
+            if (Time.frameCount % 30 != 0) return;      // ⚠️ 节流：全场景扫描很贵 ✗ → 每 ~0.5 秒一次
             try
             {
                 foreach (var go in UnityEngine.Resources.FindObjectsOfTypeAll<GameObject>())
