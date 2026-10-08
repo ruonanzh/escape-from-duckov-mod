@@ -111,6 +111,11 @@ namespace WeaponModelSwap
         sealed class CachedModel { public string Sig; public Mesh Mesh; public Texture2D Texture; }
         readonly Dictionary<string, CachedModel> _modelCache = new Dictionary<string, CachedModel>();
         readonly Dictionary<int, ModelKit.WeaponModel.Result> _applied = new Dictionary<int, ModelKit.WeaponModel.Result>();   // transformId → 换上的结果（含被禁用的旧零件 ✓ 用于恢复）
+        /// <summary>⭐ 枪图形 prefab 名 → 条目 ✓（给"场上克隆"补挂用 ✓）</summary>
+        readonly Dictionary<string, Entry> _graphicSrc = new Dictionary<string, Entry>();
+        /// <summary>⭐ 场上克隆（掉落/展示 ✓）的补挂结果 ✓ —— 热重载一起恢复 ✓（有借有还 ✓）</summary>
+        readonly Dictionary<int, ModelKit.ItemModel.Result> _appliedClone = new Dictionary<int, ModelKit.ItemModel.Result>();
+        float _nextCloneSweep;
         string _lastHeld;
 
         void Start()
@@ -126,7 +131,7 @@ namespace WeaponModelSwap
 
         void Update()
         {
-            ReloadIfChanged();
+            ReloadIfChanged();            SweepGraphicClones();          // ⭐ 场上的枪图形克隆也补一遍 ✓（掉落/展示 ✗）
 
             // 图标要**尽早**盖上：背包卡片可能在"掏出武器"之前就建好了 ✗
             // → 启动后几秒内反复按名字匹配所有（模板 + 实例）并设图标 ✓（每条规则各自扫一遍 ✓）
@@ -174,6 +179,8 @@ namespace WeaponModelSwap
             if (r.Applied)
             {
                 _applied[id] = r;
+                // ⭐ 记下枪图形 prefab 名 → 条目 ✓（场上克隆扫描直接查表 ✓）
+                try { if (item.ItemGraphic != null) _graphicSrc[item.ItemGraphic.name] = entry; } catch { }
                 Debug.Log("[WeaponModel] " + r.Report);
                 // ⛔ **不要**用物品那条路来挂枪的掉落/展示图形 ✗（2026-10-08 两次实测都坏 ✓）
                 //   `ItemModel.Apply` 会关掉枪身一批零件 ✓ **而配件（挂在 Sockets 下的子物体 ✓）会跟着一起看不见** ✗
@@ -185,6 +192,73 @@ namespace WeaponModelSwap
             }
             else Debug.LogWarning("[WeaponModel] 没换成：" + r.Report);
         }
+
+        /// <summary>⭐ 给"**场上的图形克隆**"补挂 ✓ —— 枪**掉在地上**那条 ✗
+
+        /// <para>为什么必须这样 ✓：`ItemGraphicInfo.CreateAGraphic` = `Instantiate(item.ItemGraphic)` ✓
+
+        /// → 掉落物 = **游戏当场克隆的 prefab 副本** ✓。
+
+        /// 直接改共享 prefab 会把**手里那把**的零件一起关掉 ✗（配件是挂点的子物体 ✓ 实测两次都坏 ✓）。
+
+        /// ⇒ 只动"名字带 `(Clone)`"的那份 ✓ —— 每个副本独立 ✓ 动它**绝不影响**手里那把 ✓</para></summary>
+
+        void SweepGraphicClones()
+
+        {
+
+            if (_graphicSrc.Count == 0) return;
+
+            if (Time.unscaledTime < _nextCloneSweep) return;      // 1 秒一次 ✓
+
+            _nextCloneSweep = Time.unscaledTime + 1f;
+
+            List<ItemGraphicInfo> all;
+
+            try { all = UnityEngine.Resources.FindObjectsOfTypeAll<ItemGraphicInfo>().ToList(); }
+
+            catch { return; }
+
+            foreach (var gi in all)
+
+            {
+
+                if (gi == null || gi.gameObject == null) continue;
+
+                if (!gi.name.EndsWith("(Clone)")) continue;                       // ⭐ 只认克隆 ✓
+
+                if (gi.GetComponent<ModelKit.ItemModel.Marked>() != null) continue; // 改过的 ✓
+
+                string src = gi.name.Substring(0, gi.name.Length - "(Clone)".Length);
+
+                if (!_graphicSrc.TryGetValue(src, out var e) || e == null) continue;
+
+                if (e.Mesh == null) continue;
+
+                try
+
+                {
+
+                    var rc = ModelKit.ItemModel.ApplyToGraphicClone(gi, src, 0, e.Mesh, e.Texture, e.Scale);
+
+                    if (rc.Applied)
+
+                    {
+
+                        _appliedClone[gi.GetInstanceID()] = rc;
+
+                        Debug.Log($"[WeaponModel] 已换（场上副本 ✓ 掉落/展示）：{gi.name}｜{rc.Report}");
+
+                    }
+
+                }
+
+                catch (Exception ex) { Debug.LogWarning($"[WeaponModel] 场上副本补挂抛错 ✗：{ex.Message}"); }
+
+            }
+
+        }
+
 
         /// <summary>config.json 一改存盘就重新生效（不用重启游戏）：重读配置、丢旧实例、必要时重读模型 ✓</summary>
         void ReloadIfChanged()
@@ -211,6 +285,8 @@ namespace WeaponModelSwap
                     if (kv.Value.Instance != null) UnityEngine.Object.Destroy(kv.Value.Instance);
                 }
                 _applied.Clear();
+                foreach (var kv in _appliedClone) if (kv.Value != null) kv.Value.Restore();
+                _appliedClone.Clear();
                 _lastHeld = null;
                 // ⭐ **每次都重读模型** ✗：热重载会把 Entry 重建（Mesh 变 null ✗），
                 //    而旧代码只在 model/front 指纹变了时才重读 ✗ → 只改 slots/target/icon 时会

@@ -95,6 +95,11 @@ namespace ItemModelSwap
 
         /// <summary>已经处理过的物品（实例 ID → 我们的结果）✓ 用来避免每帧重复挂 ✓ + 还原 ✓</summary>
         readonly Dictionary<int, ItemModel.Result> _applied = new Dictionary<int, ItemModel.Result>();
+        /// <summary>⭐ prefab 名 → 条目 ✓（给"场上克隆"补挂用 ✓ 避免嵌套全扫 ✗）</summary>
+        readonly Dictionary<string, Entry> _graphicSrc = new Dictionary<string, Entry>();
+        /// <summary>⭐ 场上克隆的补挂结果 ✓（热重载一起恢复 ✓ 有借有还 ✓）</summary>
+        readonly Dictionary<int, ItemModel.Result> _appliedClone = new Dictionary<int, ItemModel.Result>();
+        float _nextCloneSweep;
 
         void Start()
         {
@@ -118,6 +123,7 @@ namespace ItemModelSwap
         {
             ReloadIfChanged();
             ApplyAll();
+            SweepGraphicClones();        // ⭐ 场上的图形克隆也补一遍 ✓（掉落/展示那条 ✗）
             ItemModel.DumpNewObjects();              // 只读诊断 ✓（DebugOn 为 false 时直接返回 ✓）
         }
 
@@ -153,12 +159,83 @@ namespace ItemModelSwap
                 foreach (var kv in _applied)
                     if (kv.Value != null) kv.Value.Restore();
                 _applied.Clear();
+                foreach (var kv in _appliedClone) if (kv.Value != null) kv.Value.Restore();
+                _appliedClone.Clear();
                 // ⭐ 标记不在这里"全局摘" ✗ —— 由 `Result.Restore()` **精确摘掉自己那一层** ✓（上面那个循环里 ✓）
                 //   全局摘会把**游戏对象上的标记**也摘掉 ✗ → 下一轮 Apply 会去重处理原物品模板 ✗ → 走成另一条分支 ✓
                 Debug.Log("[ItemModel] config 已重载 → 重新挂 " + _entries.Count + " 条规则");
             }
             catch (Exception ex) { Debug.LogWarning("[ItemModel] config 热重载失败：" + ex.Message); }
         }
+
+        /// <summary>⭐ 给"**场上的图形克隆**"补挂 ✓（掉落/展示 / 换场景遗留 ✓）
+
+        /// <para>原理 ✓：`ItemGraphicInfo.CreateAGraphic` = `Instantiate(item.ItemGraphic)` ✓
+
+        /// —— 已经在场上的副本**不会**跟着 prefab 变 ✗ → 逐个补 ✓。</para>
+
+        /// <para>⚠️ 只动名字带 `(Clone)` 的 ✗ **绝不碰共享 prefab** ✗
+
+        /// （碰了就会像上次那样：手里那把枪的配件被一起关掉 ✗）</para></summary>
+
+        void SweepGraphicClones()
+
+        {
+
+            if (_graphicSrc.Count == 0) return;
+
+            if (Time.unscaledTime < _nextCloneSweep) return;      // 1 秒一次 ✓（全场景扫 ✗ 要节流 ✓）
+
+            _nextCloneSweep = Time.unscaledTime + 1f;
+
+            List<ItemGraphicInfo> all;
+
+            try { all = UnityEngine.Resources.FindObjectsOfTypeAll<ItemGraphicInfo>().ToList(); }
+
+            catch (Exception ex) { Debug.LogWarning("[ItemModel] 克隆扫描失败 ✗：" + ex.Message); return; }
+
+            foreach (var gi in all)
+
+            {
+
+                if (gi == null || gi.gameObject == null) continue;
+
+                if (!gi.name.EndsWith("(Clone)")) continue;                     // ⭐ 只认克隆 ✓
+
+                if (gi.GetComponent<ItemModel.Marked>() != null) continue;      // 改过的 ✓ 幂等 ✓
+
+                string src = gi.name.Substring(0, gi.name.Length - "(Clone)".Length);
+
+                if (!_graphicSrc.TryGetValue(src, out var hit) || hit == null) continue;
+
+                var cm = GetModel(hit);
+
+                if (cm == null || cm.Mesh == null) continue;
+
+                try
+
+                {
+
+                    var rc = ItemModel.ApplyToGraphicClone(gi, src, 0, cm.Mesh, cm.Texture, ModelSize.FactorFor(0, hit.Size, cm.Mesh));
+
+                    if (rc.Applied)
+
+                    {
+
+                        _appliedClone[gi.GetInstanceID()] = rc;
+
+                        Debug.Log($"[ItemModel] 已换（场上副本 ✓）：{gi.name}｜{rc.Report}");
+
+                    }
+
+                }
+
+                catch (Exception ex) { Debug.LogWarning($"[ItemModel] 场上副本补挂抛错 ✗：{ex.Message}"); }
+
+            }
+
+        }
+
 
         /// <summary>对"所有已加载的物品（含模板 + 场上实例 ✓）"逐条匹配并挂上模型 ✓</summary>
         void ApplyAll()
@@ -186,6 +263,10 @@ namespace ItemModelSwap
                 if (hit == null) continue;
 
                 var cm = GetModel(hit);
+
+                // ⭐ 记下"这个 prefab 名属于哪个条目" ✓ → 场上克隆扫描直接查表 ✓
+
+                try { if (hit.World && item.ItemGraphic != null) _graphicSrc[item.ItemGraphic.name] = hit; } catch { }
                 if (cm == null || cm.Mesh == null)
                 {
                     _applied[id] = null;                     // 记一下，避免每帧重复报错 ✓

@@ -287,6 +287,13 @@ namespace ModelKit
         }
 
         /// <summary>核心：**就地**把一个"外观物体"换成我们的（prefab 或场上实例都一样 ✓）</summary>
+        /// <summary>⭐ 只对"**场上的图形克隆**"补挂 ✓（掉落/展示那条 ✗ 不能只改共享 prefab ✗）。
+        /// <para>原理 ✓：游戏 `ItemGraphicInfo.CreateAGraphic` = `Instantiate(item.ItemGraphic)` ✓
+        /// —— **已经在场上的副本**不会跟着 prefab 变 ✗（掉落物 / 换场景遗留 ✓）→ 逐个补 ✓。</para>
+        /// <para>⚠️ 只传**克隆**进来 ✓（调用方筛过 ✓）；共享 prefab **绝不要**走这里 ✗</para></summary>
+        public static Result ApplyToGraphicClone(ItemGraphicInfo clone, string itemName, int typeID, Mesh mesh, Texture2D texture, float scale = 1f)
+            => clone == null ? new Result { Report = "克隆为空 ✗" } : ApplyToTransform(clone.transform, itemName, typeID, mesh, texture, scale);
+
         public static Result ApplyToTransform(Transform root, string itemName, int typeID, Mesh mesh, Texture2D texture, float scale = 1f)
         {
             var res = new Result { TypeID = typeID, ItemName = itemName ?? "" };
