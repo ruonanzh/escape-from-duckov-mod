@@ -182,16 +182,13 @@ generate_image(model="your_mods/<mod>/<武器名>.glb",
 
 ## 4. 怎么确认成功（装好 ≠ 成功）
 
-`install_mod` 返回 PASS 只说明**文件装好了**，不代表游戏里生效。要这样确认：
+`validate_mod` / `install_mod` 已经替你查了**名字 / 类名 / 目录** ✓ —— 剩下的只有一件事：**让用户看** ✓
 
-- **要用户做**：进游戏 → 背包切到目标武器 → 拿出来（2 秒内模型应换掉）。装的时候游戏如果开着，先退出再进。
-- **你自己做**：读游戏日志里的 `[WeaponModel]` 行 —— 有这两行才算真生效：
-  - macOS：`~/Library/Logs/TeamSoda/Duckov/Player.log`
-  - Windows：`%USERPROFILE%\AppData\LocalLow\TeamSoda\Duckov\Player.log`
-  - `手里的物品：'SMG_MP5_Normal' … 命中`
-  - `已换模型：隐藏旧零件 N 个；锚点=…；材质=…`
-  看不到 = 没生效 → 去 §5 对照。
-- **要用户看**：模型形状、贴图、枪口朝前、手握住握把。
+- **让用户做**：进游戏 → 背包切到目标武器 → **拿出来** ✓（模型应立刻变 ✓）
+  ⚠️ 装的时候游戏开着的话，先退出再进 ✓
+  要看 ✓：形状对 ✓ 贴图在 ✓ **枪口朝前** ✓ 手握在握把 ✓
+- **用户说“变了、对的”** ✓ → 完 ✓
+- **用户说“没变 / 不对”** ✗ → 先问清**哪儿不对**（没变？形状？贴图？朝向？）→ 对 §5 表 ✓
 
 ## 5. 常见错误（对照修正）
 
@@ -200,8 +197,8 @@ generate_image(model="your_mods/<mod>/<武器名>.glb",
 - `code=2008`（内容审核）→ **先试：把图里的 logo / 水印 / UI 文字裁掉再传**（实测同一张图去掉 logo 就通过）；仍被拒再去掉 `image=` 改用 `prompt=` 纯文字，或换一张图，或用用户自带的 `.glb`（别改措辞反复重试）。
 - `TRIPO_TASK_FAILED` → 生成失败，改提示词或换参考图重来。
 - `TRIPO_FILE_NOT_FOUND` → **它指的那个文件不存在**（`image=` / `model=` 传进来的路径写错了）。
-- 形状对但**握把偏** → 看日志两侧包围盒；`WeaponModel.Apply(..., extraOffset)` 可微调（一般不用）。
+- 形状对但**握把偏** → 让用户说偏多少 ✓；`WeaponModel.Apply(..., extraOffset)` 可微调（一般不用 ✓）。
 - **贴图没上** → GLB 里没有 baseColor 贴图（重新 `texture_model` 或直接用带贴图的 GLB）。
 - **模型整块看不见** → 绕序/UV 问题（加载器已按左手系转换）→ 改提示词或换参考图重生成。
 - **前后反了** → 提示词朝向写反了（写 "left"）；**用户自带的模型**没这个保证 → 在 `config.json` 里写 `"front": "-z"`（或 `+x`/`-x`）。
-- 日志没有 `[WeaponModel]` → mod 没装成功或名字对不上（`<mod名>.ModBehaviour`）→ 用 `validate_mod` / `install_mod` 的返回确认。
+- **什么都没变化** → 看 `validate_mod` / `install_mod` 的返回（名字 / 类名那条它们会拦 ✓）。
