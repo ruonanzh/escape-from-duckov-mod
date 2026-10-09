@@ -72,7 +72,7 @@ generate_model(action="generate", image=".preview/<名字>.preview.png",
 > **"to the left" → 枪口落在 +Z = Unity 前向** → 进游戏不用再转
 > （实测：提示词写 "points to the right" → 枪口落在 −Z ✗；用户自带的 GLB 没有这个保证 → 用 `config.json` 的 `front` 兜底 ✓）
 
-### ⑤ 图标（约 5 积分；用 ④ 的渲染图则**免费**）
+### ⑤ 图标
 
 ```
 generate_image(model="your_mods/<mod>/<武器名>.glb",
@@ -85,7 +85,7 @@ generate_image(model="your_mods/<mod>/<武器名>.glb",
 
 ### 成本一览（合计 ≈ 70 积分）
 
-预览图 `generate_image` **10** · 3D 模型 `generate_model` **50**（含转换）· 图标 `generate_image` **10**（用模型自带的渲染图则**免费**）
+预览图 `generate_image` **10** · 3D 模型 `generate_model` **50**（含转换）· 图标 `generate_image` **10**（用 ④ 的**模型渲染图**则**免费**）
 
 > **Tripo key**：放**单独的文件** `~/.gamer-agent-pi/api-keys.json` → `{ "tripo": "tsk_..." }`
 > （用户级、所有游戏仓库共用、不进 git；**临时方案** —— 将来由 app 的「管理 API keys」界面接管）
@@ -96,16 +96,9 @@ generate_image(model="your_mods/<mod>/<武器名>.glb",
 
 **骨架自己建**（照 `reference/weapon_model/` —— 它就是"正确答案"的样例）；工具只负责**校验**（`validate_mod`）与**安装**（`install_mod`）。
 
-**四处名字必须一致**（不一致的症状是 **mod 静默不加载**，游戏不报错）：
-
-| 位置 | 取值（本例 `mygun`）|
-|---|---|
-| 目录名 | `your_mods/mygun/` |
-| `info.ini` 的 `name` | `mygun` |
-| `ModBehaviour.cs` 的 `namespace` | `mygun`，且类名必须是 `ModBehaviour` ← **`validate_mod` 会替你拦下这条** ✓ |
-| `.csproj` 的 `AssemblyName` / `RootNamespace` | `mygun`（DLL 名保持一致，卫生）|
-
-名字规则：**小写字母 + 数字、字母开头**（它会成为 C# 命名空间 —— 大写/下划线/中文都不行）。
+**四处名字必须一致**（目录名 ✓ `info.ini` 的 `name` ✓ 命名空间 + 类名 `ModBehaviour` ✓ `AssemblyName`/`RootNamespace` ✓）
+—— 它们会成为 C# 命名空间 ✓ 必须**小写字母 + 数字、字母开头** ✓（大写/下划线/中文不行 ✗）
+不一致的症状 = **mod 静默不加载** ✗（游戏不报错 ✓；类名那条 `validate_mod` 会替你拦下 ✓）↳ 照 `reference/weapon_model/` 抄最省事 ✓
 
 **`config.json`**（运行时读它 ✓；两种写法，旧写法仍然有效 ✓）：
 
@@ -154,16 +147,6 @@ generate_image(model="your_mods/<mod>/<武器名>.glb",
 - **各换各的**（不同模型/图标 ✓）→ 用 `entries` ✓，**一把枪一个 `model` + 一个 `icon`** ✓
   ⚠️ 这意味着素材要做 **N 套** ✓（每套：模型 50~60 积分 + 图标 5 ✓）→ **先跟用户确认要换几把、再开工** ✓
   ⚠️ 各条规则的 `model` 是**同一个 mod 目录里的不同文件名** ✓（`ak.glb` / `mp5.glb` ✓ 互不覆盖 ✓）
-
-**这个能力要引的 mod-kit 文件（5 个都要）**：
-
-| 文件 | 干嘛的 |
-|---|---|
-| `libs/mod-kit/GltfLoader.cs` | 读 GLB → `Mesh` + `Texture2D`（坐标/绕序/UV 转换、握把归零、按 `front` 转朝向）|
-| `libs/mod-kit/WeaponModel.cs` | 把模型换到**手持武器**上（选锚点 / 藏旧零件 / 对齐 / 克隆游戏材质换贴图）|
-| `libs/mod-kit/WeaponIcon.cs` | 换武器图标（抠白底 + 居中 + 缩 256² + PPU50）|
-| `libs/mod-kit/GameApi.cs` | 找玩家与手持物（`FindMainCharacter` / `EnsureHandheldAgent` …）|
-| `libs/mod-kit/Json.cs` | 读 `config.json`（不用引第三方 JSON 库）|
 
 两种引法（挑一种）：
 - **csproj 加一行通配**：`<Compile Include="../../libs/mod-kit/*.cs" />`（照 `reference/weapon_model/` 就行 ✓
