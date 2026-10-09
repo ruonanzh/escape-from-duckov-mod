@@ -157,8 +157,6 @@ var res = ModelKit.ItemModel.Apply(item, loaded.Mesh, loaded.MainTexture, handhe
 | **地上变了、手里没变** ✓ | 这条物品的 `handheld` 没开 ✓（默认关 ✓）| 加上 `"handheld": true` ✓（⚠️ 会改行为 ✓ 先问玩家 ✓）|
 | **手里还是那张 2D 图** | 这件物品本来没有"拿着"的模型 ✓，而 `handheld` **默认是关的** ✗ | 加 `"handheld": true` ✓（⚠️ 会改行为 ✓ 先问玩家 ✓）|
 | 模型**巨大/极小** | Tripo 会把**最长边归一到 ≈1 m** ✓ —— 不等于游戏那一档 ✗ | 先用 config 的 **`size`**（米 ✓：武器不写自动分档 ✓ / 物品不写则不缩放 ✓）；不够再重生成 ✓ |
-| 物品变**一片纸/贴图糊** | 模型没有合适 UV 或贴图太大 | 用 `model-check` 看 UV/贴图 ✓ |
-| 模型**穿模 / 悬空** | 模型尺寸/原点不适合（比如把 1 m 的枪装到耳机上 ✓）| 换个尺寸合理的模型 ✓；或等 per-item 的 `scale`/`offset` ✗（还没做 ✓）|
 
 ### 接口一览 ✓（⭐ **完整清单见 [`docs/mod-kit-api.md`](../../docs/mod-kit-api.md)** ✓ —— 签名用 `rg "public static" libs/mod-kit/ItemModel.cs` 现查 ✓）
 
