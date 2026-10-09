@@ -117,7 +117,7 @@ generate_model(action="generate",
 **这个能力要引的 mod-kit 文件（4 个都要 ✓）**：
 `Json.cs` · `GltfLoader.cs` · `GameApi.cs` · `ItemModel.cs`
 
-**接口**（完整签名：`rg "public static" libs/mod-kit/ItemModel.cs`）：
+**接口**（⭐ **完整清单见 [`docs/mod-kit-api.md`](../../docs/mod-kit-api.md)** ✓ —— 签名用 `rg "public static" libs/mod-kit/ItemModel.cs` 现查 ✓）：
 
 ```csharp
 var loaded = ModelKit.GltfLoader.LoadFile(路径, "auto");     // → Mesh + MainTexture
@@ -160,7 +160,7 @@ var res = ModelKit.ItemModel.Apply(item, loaded.Mesh, loaded.MainTexture, handhe
 | 物品变**一片纸/贴图糊** | 模型没有合适 UV 或贴图太大 | 用 `model-check` 看 UV/贴图 ✓ |
 | 模型**穿模 / 悬空** | 模型尺寸/原点不适合（比如把 1 m 的枪装到耳机上 ✓）| 换个尺寸合理的模型 ✓；或等 per-item 的 `scale`/`offset` ✗（还没做 ✓）|
 
-### 接口一览 ✓（都在 `libs/mod-kit/ItemModel.cs` ✓ 完整签名：`rg "public static" libs/mod-kit/ItemModel.cs`）
+### 接口一览 ✓（⭐ **完整清单见 [`docs/mod-kit-api.md`](../../docs/mod-kit-api.md)** ✓ —— 签名用 `rg "public static" libs/mod-kit/ItemModel.cs` 现查 ✓）
 
 | 调用 | 干什么 · 什么时候用 |
 |---|---|

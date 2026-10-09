@@ -166,10 +166,11 @@ generate_image(model="your_mods/<mod>/<武器名>.glb",
 | `libs/mod-kit/Json.cs` | 读 `config.json`（不用引第三方 JSON 库）|
 
 两种引法（挑一种）：
-- 抄 `reference/weapon_model/WeaponModelSwap.csproj` 里那 5 行 `<Compile Include="...">`，路径按**你的 mod 目录**算
-- 或把这 5 个文件**拷进你的 mod 目录**（自包含，路径最省事）
+- **csproj 加一行通配**：`<Compile Include="../../libs/mod-kit/*.cs" />`（照 `reference/weapon_model/` 就行 ✓
+  以后 kit 加文件也不用再改 csproj ✓）
+- 或把这些文件**拷进你的 mod 目录**（自包含，路径最省事）
 
-**接口**（完整签名：`rg "public static" libs/mod-kit/`）：
+**接口**（⭐ **完整清单见 [`docs/mod-kit-api.md`](../../docs/mod-kit-api.md)** ✓ —— 签名用 `rg "public static" libs/mod-kit/` 现查 ✓）：
 
 | 调用 | 作用 |
 |---|---|
