@@ -125,13 +125,13 @@ generate_image(model="your_mods/<mod>/<武器名>.glb",
 |---|---|
 | `targets` | 要换的武器**对象名全等**（数组 ✓ 不区分大小写，例 `["Item_SMG_MP5_Normal"]`）|
 | `typeIDs` | 或按 typeID（数组 ✓ 例 `[238, 655]`）—— **推荐 ✓**（与 `targets` 二选一 ✓）|
-
-**查准确名字 / typeID**：用 `inspect_game_data`（`class=Item` / `name=…` ✓）→ **建议直接用 `typeIDs`** ✓
-（名字写错一个字符就**什么都不命中** ✗ —— 启动日志会打 `targets=[…] typeIDs=[…]` ✓ 对一眼就知道 ✓）
 | `model` | GLB 文件名（**按武器起名** ✓ 如 `ak103.glb` —— 不要固定叫 `gun.glb` ✗；相对 mod 目录 ✓ 也可绝对路径）；**文件还没产出也没关系**，后面放进来即可 |
 | `icon` | 图标文件名（默认 `icon.png`）；没有就只换模型、不换图标 |
 | `front` | **只有用户自带的模型**才需要：`-z`/`+x`/`-x` 声明枪口朝向（`generate_model` 出的不用）|
 | `size` | 修改大小（可选）。不写就用默认：手枪 0.44 ／ SMG 0.85 ／ 步枪 1.00 ／ 霰弹 1.05 ／ 战斗步枪 1.25 ／ 狙 1.35 ／ 机枪 1.45 |
+
+**查准确名字 / typeID**：用 `inspect_game_data`（`class=Item` / `name=…` ✓）→ **建议直接用 `typeIDs`** ✓
+（名字写错一个字符就**什么都不命中** ✗ —— 启动日志会打 `targets=[…] typeIDs=[…]` ✓ 对一眼就知道 ✓）
 
 **`slots` / `pivot`（**可选** ✓ 默认不写 ✓ —— 留给**玩家自己调**）**
 
