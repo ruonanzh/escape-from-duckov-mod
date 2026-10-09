@@ -21,7 +21,7 @@ description: 用户想换某把武器的模型/外观时用（例："把 MP5 换
 ### ② 先把 mod 骨架建好（免费，编译几秒）
 
 - 照 **`reference/weapon_model/`**（示例 mod = 正确答案）建你自己的 mod 目录：拷它当起点，或按它自己写
-- 四处名字要一致（**不一致的症状是 mod 静默不加载 ✗**）→ 明细见 §2
+- 四处名字要一致（**不一致的症状是 mod 静默不加载 ✗**）→ 明细见 §5
 - 建完**先跑一次 `validate_mod`** 确认能编译（它会替你检查 name ↔ namespace 一致 ✓）
 - **先建骨架、别等素材** —— 素材工具落盘时会自建目录，别让它抢在你前面把目录建出来
 - 图标/模型下一步产出来再放进这个目录即可
@@ -101,9 +101,7 @@ generate_image(model="your_mods/<mod>/<武器名>.glb",
 
 **骨架自己建**（照 `reference/weapon_model/` —— 它就是"正确答案"的样例）；工具只负责**校验**（`validate_mod`）与**安装**（`install_mod`）。
 
-**四处名字必须一致**（目录名 ✓ `info.ini` 的 `name` ✓ 命名空间 + 类名 `ModBehaviour` ✓ `AssemblyName`/`RootNamespace` ✓）
-—— 它们会成为 C# 命名空间 ✓ 必须**小写字母 + 数字、字母开头** ✓（大写/下划线/中文不行 ✗）
-不一致的症状 = **mod 静默不加载** ✗（游戏不报错 ✓；类名那条 `validate_mod` 会替你拦下 ✓）↳ 照 `reference/weapon_model/` 抄最省事 ✓
+⚠️ 名字 / 类名那几条不一致会**静默不加载** ✗ → 明细见 §5 ✓
 
 **`config.json`**（运行时读它 ✓；两种写法，旧写法仍然有效 ✓）：
 
@@ -201,4 +199,4 @@ generate_image(model="your_mods/<mod>/<武器名>.glb",
 - **贴图没上** → GLB 里没有 baseColor 贴图（重新 `texture_model` 或直接用带贴图的 GLB）。
 - **模型整块看不见** → 绕序/UV 问题（加载器已按左手系转换）→ 改提示词或换参考图重生成。
 - **前后反了** → 提示词朝向写反了（写 "left"）；**用户自带的模型**没这个保证 → 在 `config.json` 里写 `"front": "-z"`（或 `+x`/`-x`）。
-- **什么都没变化** → 看 `validate_mod` / `install_mod` 的返回（名字 / 类名那条它们会拦 ✓）。
+- **什么都没变化** → 四处名字**不一致** ✗（`info.ini` 的 name ✓ 目录名 ✓ 程序集名 = csproj 的 `AssemblyName` ✓ 命名空间 + 类 `ModBehaviour` ✓）→ 改成同一个名字 ✓（`validate_mod` 会拦 ✓；它们会成为 C# 命名空间 ✓ 必须**小写字母 + 数字、字母开头** ✓）↳ 照 `reference/weapon_model/` 抄最省事 ✓

@@ -21,7 +21,8 @@ description: 用户想换**物品**（背包 / 防弹衣 / 头盔 / 弹匣 / 任
 ### ② 先把 mod 骨架建好（免费，编译几秒）
 
 - 照 **`reference/item_model/`**（示例 mod = 正确答案）建你自己的 mod 目录
-- **四处名字要一致**（`info.ini` 的 name / 目录名 / 程序集名 / 命名空间+类 `ModBehaviour`）→ 不一致的症状是 **mod 静默不加载**
+- 四处名字要一致（**不一致的症状是 mod 静默不加载 ✗**）→ 明细见 §5
+- 建完**先跑一次 `validate_mod`** 确认能编译 ✓（它会替你检查 name ↔ namespace 一致 ✓）
 - 建完**先跑一次 `validate_mod`** 确认能编译
 - **先建骨架、别等素材** —— 素材工具落盘时会自建目录，别让它抢在你前面把目录建出来
 
@@ -86,9 +87,7 @@ generate_model(action="generate",
 ## 2. 建骨架与 config.json
 
 **骨架照 `reference/item_model/`**（它就是"正确答案"的样例 ✓）；工具只负责**校验**（`validate_mod`）与**安装**（`install_mod`）。
-
-**四处名字必须一致**（不一致的症状 = **mod 静默不加载**，游戏不报错 ✗）：
-`info.ini` 的 `name` · 目录名 · 程序集名（csproj 的 `AssemblyName`）· 命名空间 + 类 `ModBehaviour`
+⚠️ 名字 / 类名那几条不一致会**静默不加载** ✗ → 明细见 §5 ✓
 
 **`config.json`**（两种写法 ✓）：
 
@@ -153,7 +152,7 @@ var res = ModelKit.ItemModel.Apply(item, loaded.Mesh, loaded.MainTexture, handhe
 
 | 症状 | 原因 | 修 |
 |---|---|---|
-| **什么都没变化** | `info.ini` 的 `name` / 目录名 / 程序集名 / 命名空间**不一致** ✗ | 四处改成同一个名字 ✓（`validate_mod` 会拦 ✓）|
+| **什么都没变化** | 四处名字**不一致** ✗（`info.ini` 的 name ✓ 目录名 ✓ 程序集名 = csproj 的 `AssemblyName` ✓ 命名空间 + 类 `ModBehaviour` ✓）| 改成同一个名字 ✓（`validate_mod` 会拦 ✓；它们会成为 C# 命名空间 ✓ 必须**小写字母 + 数字、字母开头** ✓）↳ 照 `reference/item_model/` 抄最省事 ✓ |
 | 物品**原样没变** ✓ | 匹配条件写错 / 规则里 `world=关` ✗ | 确认 `typeIDs` 抄对了 ✓（抄错一位就“什么都没命中”✗）· 确认 `world` 没关 ✓ |
 | **地上变了、手里没变** ✓ | 这条物品的 `handheld` 没开 ✓（默认关 ✓）| 加上 `"handheld": true` ✓（⚠️ 会改行为 ✓ 先问玩家 ✓）|
 | **手里还是那张 2D 图**（开了 handheld 也一样）✗ | 该物品**没有“拿着”这个表示** ✗ —— 它“使用时”那张图是 **UI 画的** ✓ | 本能力做不到 ✗ → 要变只能**改图标** ✓（另一条能力 ✓）|
