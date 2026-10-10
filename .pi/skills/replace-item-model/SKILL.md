@@ -111,7 +111,7 @@ generate_model(action="generate",
 | `size` | — | 修改大小（可选）。不写就不改大小 |
 | `front` | `auto` | 仅**自带模型**需要：`auto`/`+z`/`-z`/`+x`/`-x`（Tripo 出的通常 `auto` 就行 ✓）|
 
-> **三层模型** ✓：① 世界（`world` ✓）② 拿在手里（`handheld` ✓ —— **只针对非装备** ✓）③ **2D 图标**（游戏自带 ✓ 我们从不删 ✗ 但可以替换 ✓）。
+> **三层模型** ✓：① 世界（`world` ✓）② 拿在手里（`handheld` ✓）③ **2D 图标**（游戏自带 ✓ 我们从不删 ✗ 但可以替换 ✓）。
 > 第 ③ 层那张图（背包格子 / “使用时”出现的图）是游戏自带的 ✓ **我们不删** ✗。
 
 **查物品名 / typeID**：`docs/data/Items.csv`（`对象名, 英文名, 中文名` ✓ 例 `Item_BackpackLV1`）；
@@ -142,7 +142,7 @@ var res = ModelKit.ItemModel.Apply(item, loaded.Mesh, loaded.MainTexture, handhe
 
 `validate_mod` / `install_mod` 已经替你查了**名字 / 类名 / 目录** ✓ —— 剩下的只有一件事：**让用户看** ✓
 
-- **让用户做**：进游戏 → 背包切到目标 → 看**地上 / 穿戴 / 手里**（**手里**那条只有**非装备**才有 ✓）变成你的模型了没 ✓
+- **让用户做**：进游戏 → 背包切到目标 → 看**地上 / 穿戴 / 手里**（开了 `handheld` 才有手里 ✓）变成你的模型了没 ✓
   ⚠️ 装的时候游戏开着的话，先退出再进 ✓
   ⚠️ 物品会被游戏缓存 ✓ → 要**重新实例化一次**（丢地上再捡 ✓ / 换下来再穿上 ✓ / 重进关卡 ✓）才看到 ✓
 - **用户说“变了、对的”** ✓ → 完 ✓
@@ -154,8 +154,8 @@ var res = ModelKit.ItemModel.Apply(item, loaded.Mesh, loaded.MainTexture, handhe
 |---|---|---|
 | **什么都没变化** | 四处名字**不一致** ✗（`info.ini` 的 name ✓ 目录名 ✓ 程序集名 = csproj 的 `AssemblyName` ✓ 命名空间 + 类 `ModBehaviour` ✓）| 改成同一个名字 ✓（`validate_mod` 会拦 ✓；它们会成为 C# 命名空间 ✓ 必须**小写字母 + 数字、字母开头** ✓）↳ 照 `reference/item_model/` 抄最省事 ✓ |
 | 物品**原样没变** ✓ | 匹配条件写错 / 规则里 `world=关` ✗ | 确认 `typeIDs` 抄对了 ✓（抄错一位就“什么都没命中”✗）· 确认 `world` 没关 ✓ |
-| **地上变了、手里没变** ✓（**非装备**才看这条 ✓）| 这条物品的 `handheld` 没开 ✓（默认关 ✓）| 加上 `"handheld": true` ✓（⚠️ 会改行为 ✓ 先问玩家 ✓）|
-| **手里还是那张 2D 图**（**非装备**才看这条 ✓）| 这件物品本来没有"拿着"的模型 ✓，而 `handheld` **默认是关的** ✗ | 加 `"handheld": true` ✓（⚠️ 会改行为 ✓ 先问玩家 ✓）|
+| **地上变了、手里没变** ✓ | 这条物品的 `handheld` 没开 ✓（默认关 ✓）| 加上 `"handheld": true` ✓（⚠️ 会改行为 ✓ 先问玩家 ✓）|
+| **手里还是那张 2D 图** | 这件物品本来没有"拿着"的模型 ✓，而 `handheld` **默认是关的** ✗ | 加 `"handheld": true` ✓（⚠️ 会改行为 ✓ 先问玩家 ✓）|
 | 模型**巨大/极小** | Tripo 会把**最长边归一到 ≈1 m** ✓ —— 不等于游戏那一档 ✗ | 先用 config 的 **`size`**（米 ✓：武器不写自动分档 ✓ / 物品不写则不缩放 ✓）；不够再重生成 ✓ |
 
 ### 接口一览 ✓（⭐ **完整清单见 [`docs/mod-kit-api.md`](../../docs/mod-kit-api.md)** ✓ —— 签名用 `rg "public static" libs/mod-kit/ItemModel.cs` 现查 ✓）
