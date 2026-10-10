@@ -186,9 +186,14 @@ namespace ModelKit
         /// <para>⇒ 所以“不碰两个数值”✗ = “油光”✗（就是现在这版 ✓）；
         /// 要让观感“**干净**”✓（用户实测过的那组值 ✓）就得把这两个数压下来 ✓。</para>
         /// <para>默认 **开** ✓：不接 ORM 贴图 ✗，但把金属/光滑压到下面这两个值 ✓。</para></summary>
-        public static bool ApplyMatte = true;
+        public static bool ApplyMatte = false;
         public static float MatteMetallic = 0f;
         public static float MatteSmoothness = 0.25f;
+
+        /// <summary>⭐ **法线开关** ✓：要不要接 Tripo 的**法线图** ✓。
+        /// <para>用户要求做“**只换 baseColor**”的基线对比 ✓（“把法线去掉 ✗ 以及把哑光去掉 ✗”）⇒ 默认 **关** ✗。</para>
+        /// <para>开着时 ✓：有 `_BumpMap`/`_NormalMap` 就接 ✓（glTF 与 Unity 同为 OpenGL 约定 +Y ✓ 不翻转 ✓）。</para></summary>
+        public static bool ApplyNormal = false;
 
         /// <summary>⭐⭐ **通用策略**：把 Tripo 的两张贴图按目标 shader 的**能力**接上 ✓。
         /// <para>用户口径 ✓：“应该 generic 地从 tripo 的结果设置这两个数值” ✓ /
@@ -207,7 +212,11 @@ namespace ModelKit
             {
                 string info = "";
                 // ── ① 法线 ──
-                if (normal != null)
+                if (!ApplyNormal)
+                {
+                    info += "法线→**本次不接** ✗（开关关 ✓）";
+                }
+                else if (normal != null)
                 {
                     if (mat.HasProperty("_BumpMap")) { mat.SetTexture("_BumpMap", normal); mat.EnableKeyword("_NORMALMAP"); info += "法线✓"; }
                     else if (mat.HasProperty("_NormalMap")) { mat.SetTexture("_NormalMap", normal); mat.EnableKeyword("_NORMALMAP"); info += "法线✓(URP)"; }
