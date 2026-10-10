@@ -214,7 +214,7 @@
   // ── 组装（顺序与游戏一致） ─────────────────────────────────────────────────
   var opts = {
     kind: "gun",        // gun（长轴→+Z） | up（长轴→+Y） | raw
-    muzzle: "auto",     // auto | +z | -z
+    muzzle: "auto",     // ⭐ 固定"自动"（`MuzzleAtPositiveZ`：两端各看 6%/15%，细的那端是枪管）—— 不给选择
     grip: true,         // 握把归零
     mirror: true,       // ⭐ 固定开：Unity 镜像（X 取反）= 游戏里看到的样子 —— 不做 ⇒ 预览与游戏左右相反 ✗
     grid: true,         // ⭐ 固定开：网格（每格 10cm）
@@ -254,8 +254,8 @@
     state.flip.rotation.set(0, 0, 0);
     if (opts.kind === "gun") {
       state.orient.updateMatrixWorld(true);
-      var want = opts.muzzle === "auto" ? (muzzleAtPositiveZ(samplePoints(state.orient)) ? "+z" : "-z") : opts.muzzle;
-      if (want === "-z") state.flip.rotation.y = Math.PI;
+      // 规定就是"枪口朝 +Z"：判据同游戏（`MuzzleAtPositiveZ`）⇒ 在 −Z 就绕 Y 转 180°
+      if (!muzzleAtPositiveZ(samplePoints(state.orient))) state.flip.rotation.y = Math.PI;
     }
 
     // ④ 握把归零（顶点级：把握把点移到原点）
@@ -341,7 +341,6 @@
       setView(a.dataset.dir.split(",").map(Number));
     });
     document.getElementById("kind").addEventListener("change", function (e) { opts.kind = e.target.value; build(); });
-    document.getElementById("muzzle").addEventListener("change", function (e) { opts.muzzle = e.target.value; build(); });
     document.getElementById("grip").addEventListener("change", function (e) { opts.grip = e.target.checked; build(); });
     document.getElementById("size").addEventListener("change", function (e) {
       opts.size = parseFloat(e.target.value) || 0; build();
