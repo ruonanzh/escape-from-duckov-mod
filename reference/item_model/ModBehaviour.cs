@@ -217,6 +217,8 @@ namespace ItemModelSwap
                 if (ItemModel.HasOurMeshUnder(gi.transform)) continue;   // ⭐ 已经带我们 mesh 的（我们自己造的图形 ✓）→ 不能再补 ✗    // ⭐ 唯一判据（登记表）✓
                 var cm = GetModel(hit);
                 if (cm == null || cm.Mesh == null) continue;
+                ItemModel.CurrentNormalMap = cm.NormalTexture;        // ⭐ Tripo 的 normal + ORM ✓（只给物品 ✓ 武器不设 ✗）
+                ItemModel.CurrentMetalGlossMap = cm.MetalGlossMap;
                 try
                 {
                     string who = owner != null ? owner.name : gi.name;
@@ -272,6 +274,8 @@ namespace ItemModelSwap
                     Debug.LogWarning($"[ItemModel] 规则 '{string.Join(",", hit.Targets)}' 的模型不可用 ✗（{hit.ModelFile}）");
                     continue;
                 }
+                ItemModel.CurrentNormalMap = cm.NormalTexture;        // ⭐ Tripo 的 normal + ORM ✓（只给物品 ✓ 武器不设 ✗）
+                ItemModel.CurrentMetalGlossMap = cm.MetalGlossMap;
 
                 // ⭐ 已经处理过的：**只补做"手持/装备"那条** ✓
                 //   物品是后来才被拿起来的 ✓ 那时代替它的 `ActiveAgent` 才出现 ✓ —— 图形那条早就改好了 ✓
@@ -354,7 +358,8 @@ namespace ItemModelSwap
             if (_modelCache.TryGetValue(e.ResolvedPath, out c) && c != null && c.Sig == sig) return c;
 
             var loaded = GltfLoader.LoadFile(e.ResolvedPath, e.Front);
-            c = new CachedModel { Sig = sig, Mesh = loaded.Mesh, Texture = loaded.MainTexture };
+            c = new CachedModel { Sig = sig, Mesh = loaded.Mesh, Texture = loaded.MainTexture,
+                                 NormalTexture = loaded.NormalTexture, MetalGlossMap = loaded.MetallicGlossMap };
             _modelCache[e.ResolvedPath] = c;
             // ⭐ 尺寸：**只算系数** ✓（不改 mesh 顶点 ✗）；由挂载时的 `localScale` 承担 ✓
             //    只有武器会 ≠1 ✓（按 `GunType_*` tag ✓）→ 装备/物品 = 1 ✓；config `size` 可覆盖 ✓

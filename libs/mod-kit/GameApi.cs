@@ -194,14 +194,49 @@ namespace ModelKit
                 if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", 0f);
                 if (mat.HasProperty("_Glossiness")) mat.SetFloat("_Glossiness", 0.25f);
                 if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 0.25f);
-                // 高光/反射的开关（Standard shader ✓ 两套名字都试 ✓）
-                if (mat.HasProperty("_SpecularHighlights")) mat.SetFloat("_SpecularHighlights", 0f);
-                if (mat.HasProperty("_GlossyReflections")) mat.SetFloat("_GlossyReflections", 0f);
+                // ⭐ 高光/反射：Standard shader 里**真正的开关是关键字** ✗（设 float 没用 ✗ —— 实测“边缘怪光”就是它们 ✓）
+                mat.EnableKeyword("_SPECULARHIGHLIGHTS_OFF");
+                mat.EnableKeyword("_GLOSSYREFLECTIONS_OFF");
 
                 string sh = mat.shader != null ? mat.shader.name : "?";
                 UnityEngine.Debug.Log($"[MakeMatte] {tag}｜金属 {oldM:0.##}→0｜光滑 {oldG:0.##}→0.25｜shader={sh}");
             }
             catch { /* 数值改不上不该炸 ✓ */ }
+        }
+        /// <summary>⭐⭐ 把 Tripo 那两张图接上 ✓（用户要求：“用 tripo 发来的图试试吧”✓）。
+        ///
+        /// <para>`normal` ✓ → `_BumpMap` ✓（glTF 与 Unity 同为 OpenGL 约定 +Y ✓ ⇒ **不用翻转** ✓）</para>
+        /// <para>`metalGloss` ✓ → `_MetallicGlossMap` ✓ + `_OcclusionMap`（后者只读 **G** ✓ 所以两张图**共用一张** ✓）；
+        /// 同时把 `_Metallic`/`_Glossiness` 置 **1** ✓ 让**贴图接管** ✓（否则数值会把图盖掉 ✗）</para>
+        /// <para>⚠️ 图必须是**线性**读出来的 ✗（加载器已处理 ✓）。</para></summary>
+        public static void ApplyTripoMaps(Material mat, Texture2D normal, Texture2D metalGloss, string tag = null)
+        {
+            if (mat == null) return;
+            try
+            {
+                string info = "";
+                if (normal != null)
+                {
+                    if (mat.HasProperty("_BumpMap")) { mat.SetTexture("_BumpMap", normal); mat.EnableKeyword("_NORMALMAP"); info += "法线✓"; }
+                    else if (mat.HasProperty("_NormalMap")) { mat.SetTexture("_NormalMap", normal); mat.EnableKeyword("_NORMALMAP"); info += "法线✓(URP)"; }
+                    else info += "法线✗（shader 没这个槽）";
+                }
+                else info += "法线（GLB 里没有）";
+
+                if (metalGloss != null)
+                {
+                    if (mat.HasProperty("_MetallicGlossMap")) { mat.SetTexture("_MetallicGlossMap", metalGloss); mat.EnableKeyword("_METALLICGLOSSMAP"); info += "｜ORM✓"; }
+                    else info += "｜ORM✗（shader 没这个槽）";
+                    if (mat.HasProperty("_OcclusionMap")) mat.SetTexture("_OcclusionMap", metalGloss);   // 它**只读 G** ✓ 同一张图 ✓
+                    if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", 1f);
+                    if (mat.HasProperty("_Glossiness")) mat.SetFloat("_Glossiness", 1f);
+                    if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 1f);
+                }
+
+                string sh = mat.shader != null ? mat.shader.name : "?";
+                UnityEngine.Debug.Log($"[ApplyTripoMaps] {tag}｜{info}｜shader={sh}");
+            }
+            catch { /* 图接不上不该炸 ✓ */ }
         }
 
         /// <summary>⭐ 游戏**自己声明**的"这套外观用哪些渲染器" ✓ —— 图形根上的 `CharacterSubVisuals.renderers` ✓。

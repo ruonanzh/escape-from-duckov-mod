@@ -30,6 +30,16 @@ namespace ModelKit
     /// <summary>把"我们的 mesh + 贴图"接到**非武器物品**上（改它自己的图形 ✓ 不克隆不 DDOL ✗）。</summary>
     public static class ItemModel
     {
+        /// <summary>⭐ **当前模型的“另两张图”** ✓ —— 由调用方在 `Apply*` 之前设一次 ✓。
+        /// <para>为什么要用字段 ✗：这两个参数要穿过 `Apply`→`ApplyToInstance`→`ApplyToTransform`→`Attach`
+        /// （以及 `ApplyHandheld` / `MakeGraphicForItem` ✓）**10+ 个签名** ✗ —— 穿参改动面大、容易漏 ✓；
+        /// Unity 主线程单线程 ✓ 无并发问题 ✓。</para>
+        /// <para>⚠️ **只给物品用** ✗ —— 武器不设 ✓（用户实测武器看着没问题 ✓ 保持原样 ✗）。
+        /// Tripo 出的 GLB 自带：`normalTexture` ✓ 与 `metallicRoughnessTexture`（ORM ✓）——
+        /// 两张都是**数据** ✗ 必须按**线性**读 ✓（加载器已处理 ✓）；ORM 的通道已重排为
+        /// Unity 格式：`R=metal` ✓ `G=AO` ✓ `A=smoothness` ✓。</para></summary>
+        public static Texture2D CurrentNormalMap;
+        public static Texture2D CurrentMetalGlossMap;
         /// <summary>一次替换的结果 ✓（带 `Restore()` ✓ 热重载/卸载时能还原 ✓）</summary>
         public sealed class Result
         {
@@ -336,7 +346,12 @@ namespace ModelKit
             if (src == null) src = fallbackMat;            // ⭐ 兜底：调用方给的（例如"世界图形上我们刚挂的那份材质" ✓）
             if (src == null) UnityEngine.Debug.LogWarning("[ItemModel] ⚠️ 借不到游戏材质 ✗ → 会用 Unity 默认材质（**粉色** ✗）");
             var one = src != null ? new Material(src) : null;
-            if (one != null) { GameApi.ApplyOurTexture(one, texture); GameApi.MakeMatte(one, "物品"); }   // ⭐ 换贴图 + 清其它槽 ✓ + **哑光化** ✗（武器不调 ✗）
+            if (one != null)
+            {
+                GameApi.ApplyOurTexture(one, texture);
+                GameApi.ApplyTripoMaps(one, CurrentNormalMap, CurrentMetalGlossMap, "物品");   // ⭐ Tripo 的 normal + ORM ✓
+                if (CurrentMetalGlossMap == null) GameApi.MakeMatte(one, "物品");              // 没 ORM 才哑光兜底 ✓
+            }
             int sub = Mathf.Max(1, mesh.subMeshCount);
             var mats = new Material[sub];                    // 每个 submesh 一个材质槽（别让 Unity 去猜 ✓）
             for (int i = 0; i < sub; i++) mats[i] = one;
