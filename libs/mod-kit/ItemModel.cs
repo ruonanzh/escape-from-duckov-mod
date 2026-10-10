@@ -345,18 +345,14 @@ namespace ModelKit
                 }
             if (src == null) src = fallbackMat;            // ⭐ 兜底：调用方给的（例如"世界图形上我们刚挂的那份材质" ✓）
             if (src == null) UnityEngine.Debug.LogWarning("[ItemModel] ⚠️ 借不到游戏材质 ✗ → 会用 Unity 默认材质（**粉色** ✗）");
-            // ⭐⭐ 优先：**用游戏自己的 shader 新建一份零继承材质** ✓（只上三张图 ✓ 不改别的东西 ✗）
-            //   —— 失败（拿不到 shader ✗）才退回旧做法：克隆原材质 + 硬改一堆属性 ✓
-            var one = GameApi.CreateOurMaterial(src, texture, CurrentNormalMap, CurrentMetalGlossMap, "物品");
-            if (one == null)
+            // ⭐ 用**克隆原材质**的做法 ✓（它带着游戏调好的参数 ✓ —— 实测“零继承新建材质”✗
+            //   会因该 shader 的默认值很亮 ⇒ **油光锃亮** ✗；Tripo 的图本身是非金属+虺光 ✓）
+            var one = src != null ? new Material(src) : null;
+            if (one != null)
             {
-                one = src != null ? new Material(src) : null;
-                if (one != null)
-                {
-                    GameApi.ApplyOurTexture(one, texture);
-                    GameApi.ApplyTripoMaps(one, CurrentNormalMap, CurrentMetalGlossMap, "物品");
-                    if (CurrentMetalGlossMap == null) GameApi.MakeMatte(one, "物品");
-                }
+                GameApi.ApplyOurTexture(one, texture);                                        // baseColor + 清掉对不上 UV 的槽 ✗
+                GameApi.ApplyTripoMaps(one, CurrentNormalMap, CurrentMetalGlossMap, "物品");    // Tripo 的 normal + ORM ✓
+                GameApi.MakeMatte(one, "物品");                                               // ⭐ 金属 0 ✓ 光滑 0.25 ✓（实测最干净 ✓）
             }
             int sub = Mathf.Max(1, mesh.subMeshCount);
             var mats = new Material[sub];                    // 每个 submesh 一个材质槽（别让 Unity 去猜 ✓）
