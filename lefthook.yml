@@ -3,3 +3,14 @@
 # 注意：mod 校验逻辑已迁到 .pi/extensions/mod-lint.ts（validate_mod 工具，agent 用）。
 # 维护者校验 reference/example_mod 的方式：在 pi agent 里调 validate_mod 工具。
 # 如需恢复自动 pre-commit 校验，后续设计维护者脚本（复用校验核心，避免两套逻辑）。
+#
+# ---- pre-commit（只校验环境自身，不碰 your_mods/）----
+# 需要本机装了 lefthook 才生效（brew install lefthook / npm i -D lefthook + lefthook install）
+# 没装也能随时手跑：node scripts/check-probe-tool-parity.mjs
+pre-commit:
+  parallel: true
+  commands:
+    probe-tool-parity:
+      # data-probe CLI 的参数/action 与 inspect_game_data 工具面必须对齐。
+      # 这个错犯过两次（9b26ae5 的 export；后来的 mesh/exact/has/by）⇒ 靠人记不住，改成机器查。
+      run: node scripts/check-probe-tool-parity.mjs

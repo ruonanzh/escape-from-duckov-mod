@@ -44,3 +44,20 @@ managedDir 由 `mod-repo.json` 的 `compile.managedDir` 按平台推导（mac `D
 4. **跨平台路径**：managedDir/dataDir 按 `mod-repo.json` + 平台推导，不要在脚本里写死路径。
 5. **编译/字节码产物不进 git**：`.gitignore` 已排 `**/bin/`、`**/obj/`、`__pycache__/`、`*.pyc`——`dotnet run` 和 python 脚本都会生成这些，不要提交。
 6. **Windows 终端编码**：脚本输出含中文 + emoji（✅/❌），Windows 请用 UTF-8 终端（Windows Terminal / Git Bash / VSCode 集成终端），GBK 下会乱码。
+
+## `check-probe-tool-parity.mjs` —— 工具面一致性检查
+
+```bash
+node scripts/check-probe-tool-parity.mjs     # 0 = 对齐；1 = 有缺口
+```
+
+**为什么需要**：`data-probe`（CLI）认的参数写在 `tools/data-probe/*.cs`，而 agent 能传的参数写在
+`.pi/extensions/inspect-game-data.ts` —— **两处各写各的**，没有任何东西保证一致。这个错**犯过两次**：
+`9b26ae5`（CLI 加了 `export` + `match/field/rows`，扩展没跟上）· 后来（CLI 加了
+`--mesh/--exact/--has/refs --by`，扩展又没跟上 ⇒ agent 只能绕道 bash 跑 CLI）。
+
+**它查什么**：CLI 的 `Opt(o,"x")` / `o.ContainsKey("x")` / `AllOpts(args,"x")` + `Usage` 里的
+`--action <a|b|c>` ⟷ 扩展的 `params.x` + `Type.Union` 里的 `Type.Literal("x")`。
+白名单只有 `data` / `managed`（扩展自己算的游戏路径）。
+
+已接到 `lefthook.yml` 的 `pre-commit`（装了 lefthook 才自动跑；否则手跑）。

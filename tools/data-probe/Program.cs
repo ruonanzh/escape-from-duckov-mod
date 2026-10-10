@@ -124,7 +124,7 @@ static partial class DataProbe
     }
 
     static void Usage() => Console.Error.WriteLine(
-        "usage: data-probe --managed <Managed dir> --data <Data dir> --action <classes|search|list|dump|refs>\n" +
+        "usage: data-probe --managed <Managed dir> --data <Data dir> --action <classes|search|list|dump|refs|export|transform>\n" +
         "  classes                         list asset class names + counts\n" +
         "  list    --class <C>             list assets of a class (first 500, with a hint to narrow)\n" +
         "  search  --pattern <p> [--class C]  find assets by name\n" +
