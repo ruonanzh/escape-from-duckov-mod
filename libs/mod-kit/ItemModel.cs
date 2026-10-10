@@ -345,12 +345,18 @@ namespace ModelKit
                 }
             if (src == null) src = fallbackMat;            // ⭐ 兜底：调用方给的（例如"世界图形上我们刚挂的那份材质" ✓）
             if (src == null) UnityEngine.Debug.LogWarning("[ItemModel] ⚠️ 借不到游戏材质 ✗ → 会用 Unity 默认材质（**粉色** ✗）");
-            var one = src != null ? new Material(src) : null;
-            if (one != null)
+            // ⭐⭐ 优先：**用游戏自己的 shader 新建一份零继承材质** ✓（只上三张图 ✓ 不改别的东西 ✗）
+            //   —— 失败（拿不到 shader ✗）才退回旧做法：克隆原材质 + 硬改一堆属性 ✓
+            var one = GameApi.CreateOurMaterial(src, texture, CurrentNormalMap, CurrentMetalGlossMap, "物品");
+            if (one == null)
             {
-                GameApi.ApplyOurTexture(one, texture);
-                GameApi.ApplyTripoMaps(one, CurrentNormalMap, CurrentMetalGlossMap, "物品");   // ⭐ Tripo 的 normal + ORM ✓
-                if (CurrentMetalGlossMap == null) GameApi.MakeMatte(one, "物品");              // 没 ORM 才哑光兜底 ✓
+                one = src != null ? new Material(src) : null;
+                if (one != null)
+                {
+                    GameApi.ApplyOurTexture(one, texture);
+                    GameApi.ApplyTripoMaps(one, CurrentNormalMap, CurrentMetalGlossMap, "物品");
+                    if (CurrentMetalGlossMap == null) GameApi.MakeMatte(one, "物品");
+                }
             }
             int sub = Mathf.Max(1, mesh.subMeshCount);
             var mats = new Material[sub];                    // 每个 submesh 一个材质槽（别让 Unity 去猜 ✓）

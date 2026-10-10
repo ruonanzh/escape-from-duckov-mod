@@ -173,6 +173,68 @@ namespace ModelKit
             }
             catch { /* 材质换不上不该炸 ✓ */ }
         }
+        /// <summary>⭐⭐ 用**游戏自己的 shader** 建一份**全新材质** ✓ —— **零继承** ✗（用户要求：
+        /// “就改这三个贴图 ✓ 没有的值不要动 ✓ 保持原本 prefab 原样 ✗”）。
+        ///
+        /// <para>为什么不继续用“克隆原材质”✗：克隆会把原材质的一切都带过来 ✗ ——
+        /// `_Metallic` ✓ `_Glossiness` ✓ `_Color` ✓ `_EmissionMap` ✓ … 我们只能一个个去猜着改 ✗
+        /// （实测就是这么脏的 ✓）。</para>
+        /// <para>为什么不是 `Shader.Find("Standard")` ✗：游戏可能删了内置 shader ✓；
+        /// 而**借来的材质身上的 shader** 一定存在 ✓ 且就是游戏自己那条管线 ✓ ⇒ 外观也一致 ✓。</para>
+        /// <para>只设这些 ✓：`baseColor` ✓ / `normal`（有才设 ✓）/ `ORM`（有才设 ✓）；
+        /// 金属度与光滑度：**有 ORM 图 → 1** ✓（让贴图接管 ✓）；**没图 → 0.30** ✓（哑光兜底 ✓）。
+        /// 其余一切 ✗ **不碰** ✓（= 新材质的默认值 ✓）。</para></summary>
+        public static Material CreateOurMaterial(Material shaderSource, Texture2D baseColor, Texture2D normal, Texture2D metalGloss, string tag = null)
+        {
+            try
+            {
+                var sh = shaderSource != null ? shaderSource.shader : null;
+                if (sh == null) { UnityEngine.Debug.LogWarning("[OurMat] 借不到 shader ✗ → 退回旧做法（克隆原材质 ✓）"); return null; }
+                var mat = new Material(sh);
+                mat.name = "ModelKit_mat";
+                string info = "";
+
+                if (baseColor != null)
+                {
+                    if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", baseColor);
+                    else if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", baseColor);
+                    else mat.mainTexture = baseColor;
+                    if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", Color.white);
+                    if (mat.HasProperty("_Color")) mat.SetColor("_Color", Color.white);
+                    info += "base✓";
+                }
+                if (normal != null)
+                {
+                    if (mat.HasProperty("_BumpMap")) { mat.SetTexture("_BumpMap", normal); mat.EnableKeyword("_NORMALMAP"); info += "｜法线✓"; }
+                    else info += "｜法线✗无槽";
+                }
+                if (metalGloss != null)
+                {
+                    if (mat.HasProperty("_MetallicGlossMap")) { mat.SetTexture("_MetallicGlossMap", metalGloss); mat.EnableKeyword("_METALLICGLOSSMAP"); info += "｜ORM✓"; }
+                    if (mat.HasProperty("_OcclusionMap")) mat.SetTexture("_OcclusionMap", metalGloss);   // 只读 G ✓（已把 AO 摆 G ✓）
+                    if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", 1f);
+                    if (mat.HasProperty("_Glossiness")) mat.SetFloat("_Glossiness", 1f);
+                    if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 1f);
+                }
+                else
+                {
+                    if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", 0f);
+                    if (mat.HasProperty("_Glossiness")) mat.SetFloat("_Glossiness", 0.3f);
+                    if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 0.3f);
+                    info += "｜没 ORM → 哑光 0.3";
+                }
+
+                string oldSh = shaderSource != null ? shaderSource.shader.name : "?";
+                UnityEngine.Debug.Log($"[OurMat] {tag}｜新材质（零继承 ✓）｜{info}｜shader={oldSh}");
+                return mat;
+            }
+            catch (System.Exception e)
+            {
+                UnityEngine.Debug.LogWarning("[OurMat] 建材质失败 ✗（" + e.Message + "）→ 退回旧做法 ✓");
+                return null;
+            }
+        }
+
         /// <summary>⭐ 把一份**借来的游戏材质**改成**哑光** ✓ —— 专治“看着不干净”✗。
         ///
         /// 为什么要 ✗：材质是从**目标物品自己身上**借来的 ✓（`new Material(src)` ✓），
