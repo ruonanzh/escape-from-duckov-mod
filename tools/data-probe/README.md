@@ -20,7 +20,7 @@
 ```bash
 dotnet run --project tools/data-probe -- \
   --managed "<game>/.../Managed" --data "<game>/.../Data" \
-  --action <classes|search|list|dump|refs> [options]
+  --action <classes|search|list|dump|refs|export|transform> [options]
 ```
 
 | action | 选项 | 作用 |
@@ -33,6 +33,7 @@ dotnet run --project tools/data-probe -- \
 
 > ⚠️ `--follow` **不会展开数组元素** ✗（如渲染器的 `m_Materials` ✓ 会停在不透明的 `AssetTypeArrayInfo` ✓）——
 > 要拿材质就改走 ✓：`search --class Material --pattern <名字>` ✓ 再对它 `refs` ✓ 读 `m_Shader` ✓（跨文件也能读到 ✓）。
+| `transform` | `--name <n>` \| `--pathid <p>` `[--depth d]` `[--file levelN]` | ⭐ **Transform 链**：目标的 local TRS ✓ + **父链**（逐级 + **累计世界缩放** ✓）+ **子节点树**（找 `Sockets/…` 挂点 ✓）。⚠️ Unity 的 Transform **每级都是 local** ✗ ⇒ 「模型在游戏里到底多大 / 挂点在哪」只能这样算 ✓。挂了 **MeshFilter** 时顺带读 `Mesh.m_LocalAABB` × 累计缩放 = ⭐ **真实尺寸（米）** ✓（例：`Rifle02` mesh 本地 1.525 m ✓ 累计缩放 0.6545 ⇒ 游戏里 **0.998 m** ✓）。⚠️ 场景/prefab 在 **`levelN`** 里 ✗ ⇒ 加 `--file levelN` ✓；mesh 挂在 **`MeshFilter`** 上 ✗（不是 `MeshRenderer` ✓）|
 | `export` | `--class <C>` `[--match <expr>]…` `[--field <path>]…` `[--rows N]` `[--out <file>]` | **批量表**：一类对象 × 过滤 × 字段路径 → 每行一个资产（TAB 分列；数组用 `;` 连）。`--out` 写文件、只回预览 |
 
 公共：`--file <x.assets|levelN|bundle>`（限定单个数据文件；**`levelN` = 场景文件**，格式与 `.assets` 相同；**也可以直接给 AssetBundle**（例如 mod 的包）—— 内存解包，只读、不落临时文件）、`--limit N`（截断，默认 2000 行）、`--depth d`（dump 深度，默认 3）、`--offset N`（跳过前 N 条，给 `list`/`search` 翻页用）。

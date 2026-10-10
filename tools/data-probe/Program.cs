@@ -19,8 +19,8 @@ using AssetsTools.NET.Extra;
 //
 // Usage:
 //   data-probe --managed <Managed dir> --data <Data dir> --action <a> [options]
-// Actions: classes | search | list | dump | refs
-static class DataProbe
+// Actions: classes | search | list | dump | refs | export | transform
+static partial class DataProbe
 {
     static int Main(string[] args)
     {
@@ -81,6 +81,7 @@ static class DataProbe
             case "search": Search(am, insts, Opt(o, "pattern"), Opt(o, "class"), offset, outLines); break;
             case "dump": DumpAsset(am, insts, o, depth, outLines); break;
             case "refs": Refs(am, insts, o, outLines); break;
+            case "transform": Transform(am, insts, o, depth, outLines); break;
             case "export":
             {
                 var outPath = Opt(o, "out");
@@ -131,6 +132,9 @@ static class DataProbe
         "  search  --pattern <p> [--class C]  find assets by name\n" +
         "  dump    --class <C> (--name <n>|--typeid <t>|--pathid <p>) [--depth d] [--follow]\n" +
         "  refs    --class <C> (--name <n>|--typeid <t>|--pathid <p>)   what it references\n" +
+        "  transform (--name <n>|--pathid <p>) [--depth d]  a Transform local TS+chain+world scale;\n" +
+        "          also prints the child tree (find Sockets/...) and, if a MeshFilter is attached,\n" +
+        "          the mesh AABB x world scale = **real in-game size** (levelN scenes hold the prefabs)\n" +
         "  export  --class <C> [--match <path><op><value>]... [--field <path>]... [--rows N] [--offset N] [--out <file>]\n" +
         "          one table row per matched asset; --out writes the full table to a file (stdout then gets a preview only)\n" +
         "          'a.b' field, 'a[]'/'a[i]' expand/index an array, '#class'/'#name' = resolved object's class/name\n" +

@@ -45,10 +45,11 @@ export default function (pi: ExtensionAPI) {
           Type.Literal("dump"),
           Type.Literal("refs"),
           Type.Literal("export"),
+          Type.Literal("transform"),
         ],
         {
           description:
-            "classes: list asset class names + counts. search: find assets by name (caps at 500). list: assets of one class (caps at 500). dump: an asset's fields/values. refs: what an object references. export: one table row per asset of a class, with match filters + field paths - use it to pull a whole class's values in ONE call.",
+            "classes: list asset class names + counts. search: find assets by name (caps at 500). list: assets of one class (caps at 500). dump: an asset's fields/values. refs: what an object references. export: one table row per asset of a class, with match filters + field paths - use it to pull a whole class's values in ONE call. transform: a Transform's local TRS + parent chain + accumulated world scale, plus its child tree and - when a MeshFilter is attached - the mesh AABB times that world scale, i.e. the model's REAL in-game size (Unity Transforms are all local, so this is the only way to get true sizes/positions; the prefabs live in the levelN scene files).",
         },
       ),
       class: Type.Optional(Type.String({ description: "Asset class name, e.g. Item / Quest / CharacterRandomPreset." })),

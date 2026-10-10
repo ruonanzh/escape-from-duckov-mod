@@ -85,6 +85,7 @@ PY
 | 看一个对象 | `action=dump`(`class` + `name`/`typeid`/`pathid`；`follow` 解引用；`depth` 深度) |
 | **批量表** | `action=export`(`class` + `match` 过滤 + `field` 列；**大结果用 `out` 落盘**) |
 | 它引用了谁 | `action=refs` |
+| ⭐ **模型真实尺寸 / 挂点位置** | `action=transform`(`name`/`pathid` + `depth`；⭐ 一定加 `file=levelN` —— 场景/prefab 在那里 ✓)。Unity 的 Transform **每级都是 local** ✗ ⇒ 尺寸与挂点只能**沿父链累计**才拿得到 ✓；挂了 `MeshFilter` 时顺带给出 `mesh AABB × 累计缩放` = **游戏内真实尺寸（米）** ✓（例：`Rifle02` ⇒ **0.998 m** ✓）|
 
 同一字段可给多个 `field`；`match` 也可给多个（AND）。
 
