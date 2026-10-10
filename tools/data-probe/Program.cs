@@ -130,8 +130,8 @@ static partial class DataProbe
         "  search  --pattern <p> [--class C]  find assets by name\n" +
         "  dump    --class <C> (--name <n>|--typeid <t>|--pathid <p>) [--depth d] [--follow]\n" +
         "  refs    --class <C> (--name <n>|--typeid <t>|--pathid <p>)   what it references\n" +
-        "          add --by <组件/类>  ⭐ **reverse**: which objects of that class reference it\n" +
-        "  transform (--name <n>|--pathid <p>|--mesh <mesh 名>) [--exact] [--has <组件>] [--depth d]\n" +
+        "          add --by <class>  **reverse lookup**: which objects of that class reference it\n" +
+        "  transform (--name <n>|--pathid <p>|--mesh <mesh name>) [--exact] [--has <Component>] [--depth d]\n" +
         "          a Transform local TRS + parent chain + world scale;\n" +
         "          also prints the child tree (find Sockets/...) and, if a MeshFilter is attached,\n" +
         "          the mesh AABB x world scale = **real in-game size** (levelN scenes hold the prefabs)\n" +
@@ -375,7 +375,7 @@ static partial class DataProbe
             long fid = 0;
             try { fid = f["m_FileID"].AsLong; } catch { }
             // ⭐ 引用要带上**文件**信息 ✗ —— pathID 是**按文件**编的 ✓；只打 pathID 跨文件就定位不了 ✗
-            outp.Add($"{pad}{f.FieldName} -> {(pid == 0 ? "(null)" : $"pathID {pid}  [{(fid == 0 ? "本文件" : "外部文件 fileId=" + fid)}]")}");
+            outp.Add($"{pad}{f.FieldName} -> {(pid == 0 ? "(null)" : $"pathID {pid}  [{(fid == 0 ? "this file" : "external fileId=" + fid)}]")}");
             if (followLeft > 0 && pid != 0)
             {
                 try
@@ -385,7 +385,7 @@ static partial class DataProbe
                     {
                         var efile = ext.file ?? inst;
                         var ec = ext.info != null ? ClassNameOf(am, efile, ext.info) : ClassName(am, efile, ext.baseField);
-                        outp.Add($"{pad}  [ref] {ec ?? "?"} {AssetName(ext.baseField)}" + (efile != inst ? $"  （在 {efile.name}）" : ""));
+                        outp.Add($"{pad}  [ref] {ec ?? "?"} {AssetName(ext.baseField)}" + (efile != inst ? $"  (in {efile.name})" : ""));
                         foreach (var c in ext.baseField.Children)
                             DumpField(am, efile, c, depth + 2, maxDepth + 3, followLeft - 1, outp);   // ⭐ 继续跟 ✓（跨文件也能走到底 ✓）
                     }
@@ -662,11 +662,11 @@ static partial class DataProbe
                     {
                         var efile = ext.file ?? inst;
                         var ec = ext.info != null ? ClassNameOf(am, efile, ext.info) : ClassName(am, efile, ext.baseField);
-                        target = $"  → {ec ?? "?"} {AssetName(ext.baseField)}" + (efile != inst ? $"  （在 {efile.name}）" : "");
+                        target = $"  -> {ec ?? "?"} {AssetName(ext.baseField)}" + (efile != inst ? $"  (in {efile.name})" : "");
                     }
                 }
                 catch { }
-                outp.Add($"  {path}: pathID {pid}  [{(fid == 0 ? "本文件" : "外部 fileId=" + fid)}]{target}");
+                outp.Add($"  {path}: pathID {pid}  [{(fid == 0 ? "this file" : "external fileId=" + fid)}]{target}");
             }
             return;
         }
