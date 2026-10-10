@@ -73,7 +73,8 @@ static partial class DataProbe
             catch (Exception e) { Console.Error.WriteLine($"data-probe: skip {Path.GetFileName(f)}: {e.Message}"); }
         }
 
-        var outLines = new List<string>();
+        var outPath = Opt(o, "out");
+        using var outLines = new Out(outPath, limit);
         switch (action)
         {
             case "classes": Classes(am, insts, outLines); break;
@@ -84,18 +85,15 @@ static partial class DataProbe
             case "transform": Transform(am, insts, o, depth, outLines); break;
             case "export":
             {
-                var outPath = Opt(o, "out");
-                // 写文件时默认不再限制行数（不进模型上下文，不存在刷屏问题）
+                // 写文件时默认不再限制行数（落盘不进模型上下文，不存在刷屏问题 ✓）
                 var rowCap = Opt(o, "rows") != null || outPath == null ? rows : 1000000;
-                Export(am, insts, Opt(o, "class"), AllOpts(args, "match"), AllOpts(args, "field"), rowCap, offset, outPath, outLines);
+                Export(am, insts, Opt(o, "class"), AllOpts(args, "match"), AllOpts(args, "field"), rowCap, offset, outLines);
                 break;
             }
             default: Console.Error.WriteLine($"data-probe: unknown action '{action}'"); return 2;
         }
 
-        var text = string.Join("\n", outLines);
-        var lines = text.Split('\n');
-        if (lines.Length > limit) text = string.Join("\n", lines.Take(limit)) + $"\n... ({lines.Length - limit} more lines truncated)";
+        var text = outLines.Render();
         Console.Write(text);
         if (!text.EndsWith("\n")) Console.WriteLine();
         return 0;
@@ -248,7 +246,7 @@ static partial class DataProbe
     }
 
     // ── actions ────────────────────────────────────────────────────────────────
-    static void Classes(AssetsManager am, List<AssetsFileInstance> insts, List<string> outp)
+    static void Classes(AssetsManager am, List<AssetsFileInstance> insts, Out outp)
     {
         var counts = new Dictionary<string, int>();
         int total = 0;
@@ -263,7 +261,7 @@ static partial class DataProbe
             outp.Add($"  {kv.Value,6}  {kv.Key}");
     }
 
-    static void List(AssetsManager am, List<AssetsFileInstance> insts, string cls, int offset, List<string> outp)
+    static void List(AssetsManager am, List<AssetsFileInstance> insts, string cls, int offset, Out outp)
     {
         if (cls == null) { outp.Add("# list: --class required"); return; }
         const int cap = 500;
@@ -292,7 +290,7 @@ static partial class DataProbe
             outp.Add($"... (the {cls} objects shown have no name; locate one with dump --class {cls} --pathid <pathID>)");
     }
 
-    static void Search(AssetsManager am, List<AssetsFileInstance> insts, string pattern, string cls, int offset, List<string> outp)
+    static void Search(AssetsManager am, List<AssetsFileInstance> insts, string pattern, string cls, int offset, Out outp)
     {
         if (pattern == null) { outp.Add("# search: --pattern required"); return; }
         const int cap = 500;
@@ -321,7 +319,7 @@ static partial class DataProbe
             outp.Add($"... (showing {offset + 1}-{last} of {total}; refine the pattern, or use --offset {last} for the next page)");
     }
 
-    static void DumpAsset(AssetsManager am, List<AssetsFileInstance> insts, Dictionary<string, string> o, int maxDepth, List<string> outp)
+    static void DumpAsset(AssetsManager am, List<AssetsFileInstance> insts, Dictionary<string, string> o, int maxDepth, Out outp)
     {
         var cls = Opt(o, "class");
         var name = Opt(o, "name");
@@ -348,8 +346,10 @@ static partial class DataProbe
         outp.Add($"# no asset matched (class={cls} name={name} typeid={typeId} pathid={pathId})");
     }
 
-    static void DumpField(AssetsManager am, AssetsFileInstance inst, AssetTypeValueField f, int depth, int maxDepth, int followLeft, List<string> outp)
+    static void DumpField(AssetsManager am, AssetsFileInstance inst, AssetTypeValueField f, int depth, int maxDepth, int followLeft, Out outp)
     {
+        // ⭐ 到上限就**立刻停止展开** ✗ —— 只停"记录"没用 ✗：递归本身会把时间和栈吃光 ✓
+        if (outp.Truncated) return;
         var pad = new string(' ', depth * 2);
         bool isPtr = f.Children.Count == 2
             && f.Children[0].FieldName == "m_FileID"
@@ -389,7 +389,7 @@ static partial class DataProbe
 
     // ── export（批量表：一类对象 × 过滤 × 字段路径）───────────────────────────
     static void Export(AssetsManager am, List<AssetsFileInstance> insts, string cls, List<string> matches,
-        List<string> fields, int rows, int offset, string outPath, List<string> outp)
+        List<string> fields, int rows, int offset, Out outp)
     {
         if (cls == null) { outp.Add("# export: --class required"); return; }
         var body = new List<string>();
@@ -412,21 +412,11 @@ static partial class DataProbe
         }
         var header = string.Join("\t", new List<string> { "name", "typeID", "pathID" }.Concat(fields));
         var next = $"... (showing {offset + 1}-{offset + shown} of {total}; narrow with --match, or use --offset {offset + shown} for the next page)";
-        if (outPath != null)
-        {
-            try { File.WriteAllText(outPath, string.Join("\n", body) + "\n"); }
-            catch (Exception e) { outp.Add($"# export: could not write {outPath}: {e.Message}"); return; }
-            outp.Add($"# {cls}: {total} row(s), {fields.Count} field(s) -> wrote {shown} to {outPath}");
-            outp.Add("# " + header);
-            outp.AddRange(body.Take(3));
-            if (shown > 3) outp.Add($"... (+{shown - 3} more rows in the file)");
-            if (offset + shown < total) outp.Add(next);
-            return;
-        }
-        outp.Add($"# {cls}: {total} row(s), {fields.Count} field(s)");
+        // ⭐ 表头也**进数据**（落盘时它是文件第一行 ✓）—— 不然文件里是一堆没有列名的数字 ✗
         outp.Add("# " + header);
         outp.AddRange(body);
-        if (offset + shown < total) outp.Add(next);
+        outp.Note($"# {cls}: {total} row(s), {fields.Count} field(s), wrote {body.Count} line(s)");
+        if (offset + shown < total) outp.Note(next);
     }
 
     /// --match <path><op><value>，op ∈ = != ~ > >= < <=（~ = 子串，忽略大小写）
@@ -547,7 +537,7 @@ static partial class DataProbe
         return null;
     }
 
-    static void Refs(AssetsManager am, List<AssetsFileInstance> insts, Dictionary<string, string> o, List<string> outp)
+    static void Refs(AssetsManager am, List<AssetsFileInstance> insts, Dictionary<string, string> o, Out outp)
     {
         var cls = Opt(o, "class");
         var name = Opt(o, "name");
@@ -570,8 +560,9 @@ static partial class DataProbe
         outp.Add("# no asset matched");
     }
 
-    static void CollectPtrs(AssetsManager am, AssetsFileInstance inst, AssetTypeValueField f, string path, List<string> outp, int depth)
+    static void CollectPtrs(AssetsManager am, AssetsFileInstance inst, AssetTypeValueField f, string path, Out outp, int depth)
     {
+        if (outp.Truncated) return;              // ⭐ 同上：到上限立刻停 ✓
         if (depth > 6) return;
         if (f.Children.Count == 2 && f.Children[0].FieldName == "m_FileID" && f.Children[1].FieldName == "m_PathID")
         {

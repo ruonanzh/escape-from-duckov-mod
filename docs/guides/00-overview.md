@@ -85,6 +85,7 @@ PY
 | 看一个对象 | `action=dump`(`class` + `name`/`typeid`/`pathid`；`follow` 解引用；`depth` 深度) |
 | **批量表** | `action=export`(`class` + `match` 过滤 + `field` 列；**大结果用 `out` 落盘**) |
 | 它引用了谁 | `action=refs` |
+| ⭐ **完整结果落盘** | 任何人任何 action 都能加 **`out=<file>`** ⇒ **流式写文件**（内存恒定 ✓ 数据一条不少 ✓）；不给 `out` 则**显示**到 `limit` 行就停 ✓ 并提示你落盘 ✓。⚠️ 落盘默认上限 **100 万行**（`dump --depth 7 --follow` 是指数展开 ✓ 实测写出过 1.4 亿行/几 GB ✗）⇒ 要更多用 `limit=<N>` ✓ |
 | ⭐ **模型真实尺寸 / 挂点位置** | `action=transform`(`name`/`pathid` + `depth`；⭐ 一定加 `file=levelN` —— 场景/prefab 在那里 ✓)。Unity 的 Transform **每级都是 local** ✗ ⇒ 尺寸与挂点只能**沿父链累计**才拿得到 ✓；挂了 `MeshFilter` 时顺带给出 `mesh AABB × 累计缩放` = **游戏内真实尺寸（米）** ✓（例：`Rifle02` ⇒ **0.998 m** ✓）|
 
 同一字段可给多个 `field`；`match` 也可给多个（AND）。

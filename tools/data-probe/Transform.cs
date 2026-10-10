@@ -22,7 +22,7 @@ using AssetsTools.NET.Extra;
 
 static partial class DataProbe
 {
-    public static void Transform(AssetsManager am, List<AssetsFileInstance> insts, Dictionary<string, string> o, int depth, List<string> outp)
+    public static void Transform(AssetsManager am, List<AssetsFileInstance> insts, Dictionary<string, string> o, int depth, Out outp)
     {
         var name = Opt(o, "name") ?? Opt(o, "pattern");
         var pathId = Opt(o, "pathid");
@@ -215,8 +215,9 @@ static partial class DataProbe
         return kids;
     }
 
-    static void Walk(AssetsManager am, Node t, int maxDepth, int d, List<string> outp)
+    static void Walk(AssetsManager am, Node t, int maxDepth, int d, Out outp)
     {
+        if (outp.Truncated) return;              // ⭐ 到上限立刻停 ✓
         if (d > maxDepth) return;
         var pad = new string(' ', d * 2);
         foreach (var node in ChildrenOf(am, t))

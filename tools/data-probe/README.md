@@ -31,6 +31,18 @@ dotnet run --project tools/data-probe -- \
 | `dump` | `--class <C>` ＋ (`--name`\|`--typeid`\|`--pathid`) `[--depth d] [--follow]` | dump 该资产的**字段 + 值**；`--follow` **跟随引用**（如 `Item.stats` → `StatCollection`、`Item.itemGraphic` → `ItemGraphicInfo` → 渲染器 ✓）—— ⭐ **可跨数据文件** ✓（按 `--depth` 决定能跟几跳 ✓）|
 | `refs` | 同 `dump` 的定位 | 列出该资产**引用了哪些对象**（PPtr）—— 每行带 **fileID** ✓（`[本文件]` / `[外部 fileId=N]`）**并把引用目标解出来** ✓（类名 + 名字 ✓；跨文件时标出在哪个文件 ✓）|
 
+**输出与上限**（`--out` 与 `--limit`）✓：
+
+- **不给 `--out`** ⇒ 输出**显示**到 `--limit` 行（默认 2000 ✓）就**停** ✓，末尾提示
+  `... (stopped at N lines — rerun with --out <file> to capture everything)` ✓
+  ⇒ ⚠️ **显示截断 ≠ 数据丢失** ✓（要全部就落盘 ✓）
+- ⭐ **给 `--out <file>`** ⇒ **边生成边写文件**（流式 ✓ 内存恒定 ✓）⇒ **数据一条不少** ✓；
+  stdout 只回前 40 行预览 ✓ ⇒ 再用 `read` / `grep` 去查那个文件 ✓
+- ⚠️ **落盘也默认上限 `1_000_000` 行** ✗ —— 因为 `dump --depth 7 --follow` 这种是**指数展开** ✓
+  （实测过一次写出 **141,181,293 行 / 几 GB** ✗ 磁盘会爆 ✓）；到上限会**明确告知** ✓ 不静默丢 ✓。
+  确实需要更多 ⇒ 显式 `--limit <N>` ✓
+- ⚠️ 到上限时**递归也立刻停** ✗（只停"记录"没用 ✗：`--follow` 的展开本身会吃光时间和内存 ✓）
+
 > ⚠️ `--follow` **不会展开数组元素** ✗（如渲染器的 `m_Materials` ✓ 会停在不透明的 `AssetTypeArrayInfo` ✓）——
 > 要拿材质就改走 ✓：`search --class Material --pattern <名字>` ✓ 再对它 `refs` ✓ 读 `m_Shader` ✓（跨文件也能读到 ✓）。
 | `transform` | `--name <n>` \| `--pathid <p>` `[--depth d]` `[--file levelN]` | ⭐ **Transform 链**：目标的 local TRS ✓ + **父链**（逐级 + **累计世界缩放** ✓）+ **子节点树**（找 `Sockets/…` 挂点 ✓）。⚠️ Unity 的 Transform **每级都是 local** ✗ ⇒ 「模型在游戏里到底多大 / 挂点在哪」只能这样算 ✓。挂了 **MeshFilter** 时顺带读 `Mesh.m_LocalAABB` × 累计缩放 = ⭐ **真实尺寸（米）** ✓（例：`Rifle02` mesh 本地 1.525 m ✓ 累计缩放 0.6545 ⇒ 游戏里 **0.998 m** ✓）。⚠️ 场景/prefab 在 **`levelN`** 里 ✗ ⇒ 加 `--file levelN` ✓；mesh 挂在 **`MeshFilter`** 上 ✗（不是 `MeshRenderer` ✓）|
