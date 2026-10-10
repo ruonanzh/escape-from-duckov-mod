@@ -47,17 +47,18 @@ namespace ModelKit
         /// <summary>取模型 ✓：指纹命中就复用 ✓（此时 `loaded` 为 null ✓）；
         /// 否则读 GLB ✓（`loaded` 非空 ✓ 调用方可用它打日志 ✓）。
         /// 路径为空 / 文件不存在 → 返回 null ✓（调用方自己决定怎么报 ✗）</summary>
-        public static CachedModel Get(Dictionary<string, CachedModel> cache, string path, string front, out GltfLoader.Loaded loaded)
+        public static CachedModel Get(Dictionary<string, CachedModel> cache, string path, string front, out GltfLoader.Loaded loaded, bool zeroGrip = true)
         {
             loaded = null;
             if (string.IsNullOrEmpty(path) || !File.Exists(path)) return null;
             if (cache != null)
             {
-                string sig = Fingerprint(path, front);
+                string sig = Fingerprint(path, front) + "|grip=" + (zeroGrip ? "auto" : "none");
                 if (cache.TryGetValue(path, out var c) && c != null && c.Sig == sig && c.Mesh != null) return c;
             }
-            loaded = GltfLoader.LoadFile(path, front);
-            var n = new CachedModel { Sig = Fingerprint(path, front), Mesh = loaded.Mesh, Texture = loaded.MainTexture,
+            loaded = GltfLoader.LoadFile(path, front, zeroGrip);
+            var n = new CachedModel { Sig = Fingerprint(path, front) + "|grip=" + (zeroGrip ? "auto" : "none"),
+                                      Mesh = loaded.Mesh, Texture = loaded.MainTexture,
                                       NormalTexture = loaded.NormalTexture };
             if (cache != null) cache[path] = n;
             return n;

@@ -28,9 +28,13 @@ namespace ModelKit
             public string Report = "";
         }
 
-        public static Loaded LoadFile(string path, string front = "auto") => Load(File.ReadAllBytes(path), front);
+        /// <param name="zeroGrip">⭐ 要不要做“**握把归零**” ✓ —— 默认 `true` ✓（枪的行为不变 ✓）。
+        /// <para>⚠️ 近战（刀/铲…）要传 **`false`** ✗：`GuessGrip` 的假设是**枪**（“枪口 +Z ⇒ 枪托在 −Z”✓，
+        /// 且 x/z 取包围盒**中心** ✗）—— 对弯刀/爪刀会把模型**横向挪偏** ✓。
+        /// 跳过后就用模型**自己的原点** ✓（近战按“刃朝上 · 柄朝下”建模 ✓ 再按包围盒中心对齐 ✓）。</para>
+        public static Loaded LoadFile(string path, string front = "auto", bool zeroGrip = true) => Load(File.ReadAllBytes(path), front, zeroGrip);
 
-        public static Loaded Load(byte[] data, string front = "auto")
+        public static Loaded Load(byte[] data, string front = "auto", bool zeroGrip = true)
         {
             var r = new Loaded();
             if (data.Length < 20 || data[0] != 'g' || data[1] != 'l' || data[2] != 'T' || data[3] != 'F')
@@ -95,9 +99,10 @@ namespace ModelKit
 
             ApplyFrontDeclaration(verts, norms, front);
 
-            // ② 握把归零（枪口朝 +Z → 枪托在 −Z；枪托端起 8%~35% 区间的最低点 = 握把）
-            var grip = GuessGrip(verts);
-            for (int i = 0; i < verts.Count; i++) verts[i] -= grip;
+            // ② 握把归零（枪：枪口朝 +Z → 枪托在 −Z；枪托端起 8%~35% 区间的最低点 = 握把）
+            //   ⚠️ 近战传 zeroGrip:false 跳过 ✗（理由见 LoadFile 的参数说明 ✓）
+            var grip = zeroGrip ? GuessGrip(verts) : Vector3.zero;
+            if (grip != Vector3.zero) for (int i = 0; i < verts.Count; i++) verts[i] -= grip;
 
             var mesh = new Mesh { name = "glb_model" };
             if (verts.Count > 65000) mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
@@ -120,6 +125,18 @@ namespace ModelKit
         public static void ApplyFrontDeclaration(List<Vector3> verts, List<Vector3> norms, string front)
         {
             if (string.IsNullOrEmpty(front) || front == "auto" || front == "+z") return;
+            // ⭐ 近战专用 "up" ✓：把**最长轴**转到 **+Y**（立起来 ✓）—— 刀 = 刃朝上 · 柄朝下 ✓
+            //   ⚠️ 其余 ±x/±z 都是**绕 Y**转 ✗，对“躺着的刀”不管用 ✓（实测：Tripo 出的菜刀长轴在 X ✗）
+            if (front == "up")
+            {
+                int ax = LongAxis(verts);
+                UnityEngine.Quaternion q =
+                      ax == 1 ? UnityEngine.Quaternion.identity                       // 已经是 Y ✓
+                    : ax == 0 ? UnityEngine.Quaternion.Euler(0f, 0f, 90f)             // X → +Y ✓（-90 会到 -Y ✗ 倒过来 ✓）
+                              : UnityEngine.Quaternion.Euler(-90f, 0f, 0f);           // Z → Y ✓
+                for (int i = 0; i < verts.Count; i++) { verts[i] = q * verts[i]; norms[i] = q * norms[i]; }
+                return;
+            }
             foreach (var v0 in new[] { verts })
             {
                 for (int i = 0; i < verts.Count; i++)
