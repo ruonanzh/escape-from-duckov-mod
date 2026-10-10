@@ -310,6 +310,8 @@ namespace ModelKit
 //   ⚠️ 只有一种例外 ✓：挂点在 `Character(9)` 上（穿戴/手里 ✓ 游戏自己设好的 ✓）→ 继承它 ✓
 //   否则（含 `UI(5)` ✗）一律 `0` ✓ —— `UI` 层会**发白 + 渲染在最前** ✗
 { int wantLayer = mount != null ? mount.gameObject.layer : root.gameObject.layer;
+  // ⭐ 诊断（用户猜想 ✓：“是不是 layer 错了 ✗”）—— 把三个层号都打出来 ✓ 一看就知道 ✓
+  try { UnityEngine.Debug.Log($"[ItemModel] 层：root={root.gameObject.layer}｜mount={(mount != null ? mount.gameObject.layer.ToString() : "null")}｜我们的={(wantLayer == 9 ? 9 : 0)}｜对象={itemName}"); } catch { }
   if (wantLayer != 9) wantLayer = 0; go.layer = wantLayer; }
             go.transform.SetParent(parent, false);
             // ⭐ 让"我们 mesh 的**包围盒中心**"落到"**被替掉的那个外观**的包围盒中心" ✓
