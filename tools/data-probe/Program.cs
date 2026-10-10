@@ -338,13 +338,13 @@ static class DataProbe
             if (name != null && !Matches(bf, className, name)) continue;
             var tid = TypeId(bf);
             outp.Add($"=== {className} {AssetName(bf)} ({(tid >= 0 ? $"typeID {tid}, " : "")}classID {info.TypeId}, pathID {info.PathId}) ===");
-            DumpField(am, inst, bf, 0, maxDepth, follow, outp);
+            DumpField(am, inst, bf, 0, maxDepth, follow ? Math.Max(1, maxDepth) : 0, outp);
             return;
         }
         outp.Add($"# no asset matched (class={cls} name={name} typeid={typeId} pathid={pathId})");
     }
 
-    static void DumpField(AssetsManager am, AssetsFileInstance inst, AssetTypeValueField f, int depth, int maxDepth, bool follow, List<string> outp)
+    static void DumpField(AssetsManager am, AssetsFileInstance inst, AssetTypeValueField f, int depth, int maxDepth, int followLeft, List<string> outp)
     {
         var pad = new string(' ', depth * 2);
         bool isPtr = f.Children.Count == 2
@@ -354,8 +354,11 @@ static class DataProbe
         {
             long pid = 0;
             try { pid = f["m_PathID"].AsLong; } catch { }
-            outp.Add($"{pad}{f.FieldName} -> {(pid == 0 ? "(null)" : "pathID " + pid)}");
-            if (follow && pid != 0)
+            long fid = 0;
+            try { fid = f["m_FileID"].AsLong; } catch { }
+            // ⭐ 引用要带上**文件**信息 ✗ —— pathID 是**按文件**编的 ✓；只打 pathID 跨文件就定位不了 ✗
+            outp.Add($"{pad}{f.FieldName} -> {(pid == 0 ? "(null)" : $"pathID {pid}  [{(fid == 0 ? "本文件" : "外部文件 fileId=" + fid)}]")}");
+            if (followLeft > 0 && pid != 0)
             {
                 try
                 {
@@ -364,9 +367,9 @@ static class DataProbe
                     {
                         var efile = ext.file ?? inst;
                         var ec = ext.info != null ? ClassNameOf(am, efile, ext.info) : ClassName(am, efile, ext.baseField);
-                        outp.Add($"{pad}  [ref] {ec ?? "?"} {AssetName(ext.baseField)}");
+                        outp.Add($"{pad}  [ref] {ec ?? "?"} {AssetName(ext.baseField)}" + (efile != inst ? $"  （在 {efile.name}）" : ""));
                         foreach (var c in ext.baseField.Children)
-                            DumpField(am, efile, c, depth + 2, maxDepth + 3, false, outp);
+                            DumpField(am, efile, c, depth + 2, maxDepth + 3, followLeft - 1, outp);   // ⭐ 继续跟 ✓（跨文件也能走到底 ✓）
                     }
                 }
                 catch { }
@@ -377,7 +380,7 @@ static class DataProbe
         try { if (f.Children.Count == 0) val = " = " + f.AsString; } catch { }
         outp.Add($"{pad}{f.FieldName}{val}");
         if (depth >= maxDepth) return;
-        foreach (var c in f.Children) DumpField(am, inst, c, depth + 1, maxDepth, follow, outp);
+        foreach (var c in f.Children) DumpField(am, inst, c, depth + 1, maxDepth, followLeft, outp);
     }
 
     // ── export（批量表：一类对象 × 过滤 × 字段路径）───────────────────────────
@@ -557,22 +560,40 @@ static class DataProbe
             if (typeId != null && TypeId(bf).ToString() != typeId) continue;
             if (name != null && !Matches(bf, className, name)) continue;
             outp.Add($"=== {className} {AssetName(bf)} references ===");
-            CollectPtrs(bf, "", outp, 0);
+            CollectPtrs(am, inst, bf, "", outp, 0);
             return;
         }
         outp.Add("# no asset matched");
     }
 
-    static void CollectPtrs(AssetTypeValueField f, string path, List<string> outp, int depth)
+    static void CollectPtrs(AssetsManager am, AssetsFileInstance inst, AssetTypeValueField f, string path, List<string> outp, int depth)
     {
         if (depth > 6) return;
         if (f.Children.Count == 2 && f.Children[0].FieldName == "m_FileID" && f.Children[1].FieldName == "m_PathID")
         {
             long pid = 0;
             try { pid = f["m_PathID"].AsLong; } catch { }
-            if (pid != 0) outp.Add($"  {path}: pathID {pid}");
+            long fid = 0;
+            try { fid = f["m_FileID"].AsLong; } catch { }
+            if (pid != 0)
+            {
+                // ⭐ 带上 fileId ✓ 并把**引用目标**也解出来 ✓（跨文件时标明在哪个文件 ✓）
+                string target = "";
+                try
+                {
+                    var ext = am.GetExtAsset(inst, f);
+                    if (ext.baseField != null)
+                    {
+                        var efile = ext.file ?? inst;
+                        var ec = ext.info != null ? ClassNameOf(am, efile, ext.info) : ClassName(am, efile, ext.baseField);
+                        target = $"  → {ec ?? "?"} {AssetName(ext.baseField)}" + (efile != inst ? $"  （在 {efile.name}）" : "");
+                    }
+                }
+                catch { }
+                outp.Add($"  {path}: pathID {pid}  [{(fid == 0 ? "本文件" : "外部 fileId=" + fid)}]{target}");
+            }
             return;
         }
-        foreach (var c in f.Children) CollectPtrs(c, path.Length == 0 ? c.FieldName : path + "." + c.FieldName, outp, depth + 1);
+        foreach (var c in f.Children) CollectPtrs(am, inst, c, path.Length == 0 ? c.FieldName : path + "." + c.FieldName, outp, depth + 1);
     }
 }
