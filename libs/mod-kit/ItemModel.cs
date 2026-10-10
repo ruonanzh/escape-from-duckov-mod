@@ -346,11 +346,17 @@ namespace ModelKit
             if (src == null) src = fallbackMat;            // ⭐ 兜底：调用方给的（例如“世界图形上我们刚挂的那份材质” ✓）
             if (src == null) UnityEngine.Debug.LogWarning("[ItemModel] ⚠️ 借不到游戏材质 ✗ → 会用 Unity 默认材质（**粉色** ✗）");
             // ⭐ 诊断（排查“借错了材质”✗）：材质名 ✓ shader 名 ✓ **从哪个渲染器借的** ✓
-            //   实测背景：头盔自己那份材质的 shader 是 `SodaCraft/SodaCharacter` ✓
-            //             但我们运行时借到的是 `SodaCraft/SodaLit_EdgeLight` ✗ ⇒ 疑似借到别的物体 ✗
+            //   + ⭐ 把**运行时真实数值**也打出来 ✓（金属/光滑/光滑贴图开关/法线与金属图槽有没有 ✓）
+            //   —— 这样“油不油”就能对着**数据**说 ✓ 而不是猜 ✗
             try
             {
-                UnityEngine.Debug.Log($"[ItemModel] 借材质：来源={(srcFrom != null ? srcFrom.gameObject.name + "(" + srcFrom.GetType().Name + ")" : "无")}｜材质={(src != null ? src.name : "null")}｜shader={(src != null && src.shader != null ? src.shader.name : "?")}");
+                string mm = src != null && src.HasProperty("_Metallic") ? src.GetFloat("_Metallic").ToString("0.###") : "-";
+                string ss = src != null && src.HasProperty("_Smoothness") ? src.GetFloat("_Smoothness").ToString("0.###")
+                          : (src != null && src.HasProperty("_Glossiness") ? src.GetFloat("_Glossiness").ToString("0.###") : "-");
+                string gs = src != null && src.HasProperty("_GlossMapScale") ? src.GetFloat("_GlossMapScale").ToString("0.###") : "-";
+                string hasMs = src != null && src.HasProperty("_MetallicSmoothness") && src.GetTexture("_MetallicSmoothness") != null ? "有" : "无";
+                string hasN = src != null && (src.GetTexture("_BumpMap") != null || src.GetTexture("_NormalMap") != null) ? "有" : "无";
+                UnityEngine.Debug.Log($"[ItemModel] 借材质：来源={(srcFrom != null ? srcFrom.gameObject.name + "(" + srcFrom.GetType().Name + ")" : "无")}｜材质={(src != null ? src.name : "null")}｜shader={(src != null && src.shader != null ? src.shader.name : "?")}｜原金属={mm}｜原光滑={ss}｜GlossMapScale={gs}｜原金属图={hasMs}｜原法线={hasN}");
             }
             catch { }
             // ⭐ 用**克隆原材质**的做法 ✓（它带着游戏调好的参数 ✓ —— 实测“零继承新建材质”✗
