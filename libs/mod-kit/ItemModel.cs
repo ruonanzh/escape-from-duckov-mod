@@ -182,6 +182,12 @@ namespace ModelKit
 
         /// <summary>借一份游戏材质（给"本来没有图形"的物品用 ✓）：从**任意**一个游戏网格材质上取 ✓
         /// —— shader/关键字都是游戏自己的 ✓ 不会像上次那样退回默认材质（粉色 ✗）</summary>
+        /// <para>⭐ 用户定 ✓：**固定用 `SodaCraft/SodaLit`** ✗ —— 不再“随便挑场景里第一个”✗。</para>
+        /// <para>旧做法会挑到**雾效/光效**材质 ✗（实测糖果借到 `SunFogTD` ✗）
+        /// → 一旦改它的属性 ⇒ **整个网格画不出来** ✓。</para>
+        /// <para>场景里有用了该 shader 的材质 ⇒ **克隆**它 ✓（保留关键字/参数 ✓ 不是零继承 ✗）；
+        /// 没有 ⇒ `Shader.Find` 兑底 ✓（参数用默认 ✓ 总比粉色强 ✓）。</para></summary>
+        public const string ItemShaderName = "SodaCraft/SodaLit";
         static Material _borrowed;
 
         static Material BorrowMaterial()
@@ -189,20 +195,25 @@ namespace ModelKit
             if (_borrowed != null) return _borrowed;
             try
             {
-                // ① 先在**全场景的网格渲染器**里找 ✓（原来只找 ItemGraphicInfo 底下的 ✗ ——
-                //    载入阶段可能一个都还没加载 ✓ → 借不到 → 材质 null → 粉色 ✗ 实测）
+                // ① 场景里找**用了这个 shader** 的材质 ⇒ **克隆**它 ✓（关键字/参数都保留 ✓）
                 foreach (var r in UnityEngine.Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
                 {
-                    if (r == null || r.sharedMaterial == null) continue;
-                    var sh = r.sharedMaterial.shader;
-                    if (sh == null) continue;
-                    if (sh.name.IndexOf("Sprite", StringComparison.OrdinalIgnoreCase) >= 0) continue;   // 精灵材质不要 ✗
-                    if (sh.name.IndexOf("UI/", StringComparison.OrdinalIgnoreCase) >= 0) continue;        // UI 材质不要 ✗
-                    _borrowed = r.sharedMaterial; return _borrowed;
+                    var m = r != null ? r.sharedMaterial : null;
+                    if (m == null || m.shader == null) continue;
+                    if (!string.Equals(m.shader.name, ItemShaderName, StringComparison.Ordinal)) continue;
+                    _borrowed = new Material(m); _borrowed.name = "ModelKit_item_mat";
+                    UnityEngine.Debug.Log($"[ItemModel] 借物品材质 ✓（{ItemShaderName} ✓ 克隆自 {r.gameObject.name} ✓）");
+                    return _borrowed;
                 }
-                // ② 退一步：SkinnedMeshRenderer（角色身上的）
-                foreach (var r in UnityEngine.Object.FindObjectsByType<SkinnedMeshRenderer>(FindObjectsSortMode.None))
-                    if (r != null && r.sharedMaterial != null) { _borrowed = r.sharedMaterial; return _borrowed; }
+                // ② 兑底 ✓：直接按名字取 shader（参数用默认 ✓）
+                var sh2 = Shader.Find(ItemShaderName);
+                if (sh2 != null)
+                {
+                    _borrowed = new Material(sh2); _borrowed.name = "ModelKit_item_mat";
+                    UnityEngine.Debug.Log($"[ItemModel] 借物品材质 ✓（{ItemShaderName} ✓ Shader.Find 兑底 ✓）");
+                    return _borrowed;
+                }
+                UnityEngine.Debug.LogWarning($"[ItemModel] ⚠️ 找不到 {ItemShaderName} ✗ → 会用默认材质（**粉色** ✗）");
             }
             catch { }
             return null;
