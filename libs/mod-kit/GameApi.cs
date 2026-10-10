@@ -167,6 +167,7 @@ namespace ModelKit
 
                 // ④ **清掉"和我们 UV 对不上"的图** ✗（留着只会脏 ✓）
                 var slots = new string[] { "_BumpMap", "_NormalMap", "_OcclusionMap", "_MetallicGlossMap",
+                                           "_MetallicSmoothness",   // ⭐ 游戏自定义名 ✓（两顶头盔的 shader 都用它 ✓）
                                            "_SpecGlossMap", "_DetailMask", "_DetailAlbedoMap", "_ParallaxMap" };
                 for (int i = 0; i < slots.Length; i++)
                     if (mat.HasProperty(slots[i])) mat.SetTexture(slots[i], null);
