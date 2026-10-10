@@ -336,15 +336,23 @@ namespace ModelKit
 
             // 材质：优先用**网格**渲染器的（武器/装备类 ✓）；只有精灵的话它的材质是 sprite 专用的 ✗
             // → 那就退而找 root 下任意一个 mesh 材质 ✓ 都没有才用默认 ✓
-            Material src = mount is MeshRenderer || mount is SkinnedMeshRenderer
-                ? (mount != null ? mount.sharedMaterial : null) : null;
+            Renderer srcFrom = mount is MeshRenderer || mount is SkinnedMeshRenderer ? mount : null;
+            Material src = srcFrom != null ? srcFrom.sharedMaterial : null;
             if (src == null)
                 foreach (var r in root.GetComponentsInChildren<Renderer>(true))
                 {
-                    if (r is MeshRenderer || r is SkinnedMeshRenderer) { src = r.sharedMaterial; break; }
+                    if (r is MeshRenderer || r is SkinnedMeshRenderer) { src = r.sharedMaterial; srcFrom = r; break; }
                 }
-            if (src == null) src = fallbackMat;            // ⭐ 兜底：调用方给的（例如"世界图形上我们刚挂的那份材质" ✓）
+            if (src == null) src = fallbackMat;            // ⭐ 兜底：调用方给的（例如“世界图形上我们刚挂的那份材质” ✓）
             if (src == null) UnityEngine.Debug.LogWarning("[ItemModel] ⚠️ 借不到游戏材质 ✗ → 会用 Unity 默认材质（**粉色** ✗）");
+            // ⭐ 诊断（排查“借错了材质”✗）：材质名 ✓ shader 名 ✓ **从哪个渲染器借的** ✓
+            //   实测背景：头盔自己那份材质的 shader 是 `SodaCraft/SodaCharacter` ✓
+            //             但我们运行时借到的是 `SodaCraft/SodaLit_EdgeLight` ✗ ⇒ 疑似借到别的物体 ✗
+            try
+            {
+                UnityEngine.Debug.Log($"[ItemModel] 借材质：来源={(srcFrom != null ? srcFrom.gameObject.name + "(" + srcFrom.GetType().Name + ")" : "无")}｜材质={(src != null ? src.name : "null")}｜shader={(src != null && src.shader != null ? src.shader.name : "?")}");
+            }
+            catch { }
             // ⭐ 用**克隆原材质**的做法 ✓（它带着游戏调好的参数 ✓ —— 实测“零继承新建材质”✗
             //   会因该 shader 的默认值很亮 ⇒ **油光锃亮** ✗；Tripo 的图本身是非金属+虺光 ✓）
             var one = src != null ? new Material(src) : null;
