@@ -29,6 +29,18 @@
 - 面板最下一行是**顶点 / 三角面**（诊断用 ✓ 不再重复尺寸等已在上面显示的信息 ✓）
 - 原点白十字 = 游戏里的放置点（握把 / 手抓点 / 挂点基准）
 
+## 材质与光照（"像不像游戏"和"好不好看"都在这）
+
+- ⭐ **材质只用 baseColor + 法线**：金属/光泽**贴图一律丢掉** —— 游戏那边 `GameApi.ApplyOurTexture`
+  明写着把 `_MetallicGlossMap` / `_SpecGlossMap` 清成 `null`，所以 glTF 自带的 ORM 贴图**游戏根本不用** ✓
+- **metalness / roughness 用常数**（`MAT`）：`0.3 / 0.6`（用户选定 ✓）；调试可用 URL `?mr=0.6,0.4` ✓
+  （⚠️ "银"只能靠 metalness 表现 ⇒ 设成 0 会让银色件变**白灰** ✗）
+  ⚠️ 游戏那个值**不是常数** ✗：`BorrowMaterial()` 是从**场上第一个用 `SodaCraft/SodaLit` 的材质克隆**来的 ⇒ 离线无法精确复现 ✓
+- ⭐ **自建摄影棚环境贴图**（`buildStudioEnv`）：深色底 + 顶柔光/侧暖光/背冷光
+  ⇒ 金属面出现**渐变反射与高光条** ✓（用 three 自带的 `RoomEnvironment`（全白房间）会把金属**洗白** ✗）
+- **三点光**（key 带阴影 ✓ · fill 偏冷 ✓ · rim 勾轮廓 ✓）+ **只看阴影的地面**（`ShadowMaterial`）
+  ⇒ 模型"放得住" ✓ 有接触阴影 ✓
+
 ## 技术要点（改之前先看这几条）
 
 - **离线**：宿主 CSP 是 `connect-src 'none'` ⇒ **不能走 CDN**，`three.bundle.js` 是 vendored 的（esbuild 打包）。

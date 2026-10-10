@@ -132,7 +132,36 @@
   }
 
   // ── 场景 ────────────────────────────────────────────────────────────────────
-  var renderer, scene, camera, controls, grid, hull, axes;
+  var renderer, scene, camera, controls, grid, hull, axes, shadowPlane;
+
+  /**
+   * ⭐ 自建"摄影棚"环境贴图（给 PBR 做 IBL ✓）。
+   *
+   * 为什么不用 three 自带的 `RoomEnvironment`：那是一间**全白**的屋子 ✗ ⇒
+   * 环境反射一片白 ⇒ 金属件被**洗白**、看不出材质（会被误判成"模型很糟"✗）。
+   * 这里用**深色底 + 三块面光**（顶柔光 ✓ 侧暖光 ✓ 背冷光 ✓）⇒ 金属面出现**渐变反射与高光条** ✓
+   * 立体感和"成品感"都来自这里 ✓（不接 ORM 贴图 ✓ 颜色仍然只由 baseColor 决定 ✓）。
+   */
+  function buildStudioEnv(pmrem) {
+    var s = new THREE.Scene();
+    s.background = new THREE.Color(0x2b2f35);
+    function panel(color, intensity, w, h, pos, rot) {
+      var m = new THREE.Mesh(
+        new THREE.PlaneGeometry(w, h),
+        new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(intensity), side: THREE.DoubleSide })
+      );
+      m.position.set(pos[0], pos[1], pos[2]);
+      m.rotation.set(rot[0], rot[1], rot[2]);
+      s.add(m);
+    }
+    panel(0xffffff, 3.0, 6, 6, [0, 4, 0], [-Math.PI / 2, 0, 0]);      // 顶部柔光
+    panel(0xffe6c0, 2.2, 5, 4, [-4, 1.6, 2], [0, Math.PI * 0.42, 0]); // 左前暖光
+    panel(0xc6dcff, 1.3, 4, 5, [4, 1.0, -1.2], [0, -Math.PI * 0.42, 0]); // 右侧冷光
+    panel(0xffffff, 2.4, 1.4, 6, [0, 1.4, -4.6], [0, 0, 0]);          // 背后窄亮条（勾边）
+    var tex = pmrem.fromScene(s, 0.02).texture;
+    pmrem.dispose();
+    return tex;
+  }
 
   function initScene() {
     var host = document.getElementById("view");
@@ -142,17 +171,36 @@
     renderer.setClearColor(0xeef0f2, 1);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.0;
+    renderer.toneMappingExposure = 0.98;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     host.appendChild(renderer.domElement);
 
     scene = new THREE.Scene();
     // ⭐ 环境贴图必给 ✗ —— 否则 PBR 的金属部分是**全黑**（会造成"模型很糟"的假象）
     var pmrem = new THREE.PMREMGenerator(renderer);
-    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    scene.environmentIntensity = 1.0;
-    scene.add(new THREE.AmbientLight(0xffffff, 0.75));
-    var key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(3, 5, 6); scene.add(key);
-    var fill = new THREE.DirectionalLight(0xffffff, 0.8); fill.position.set(-4, 1, -3); scene.add(fill);
+    scene.environment = buildStudioEnv(pmrem);       // ⭐ 自建摄影棚（不是全白的 RoomEnvironment ✗）
+    scene.environmentIntensity = 1.0;              // 环境反射稍强 ⇒ 曲面更有立体感 ✓
+    scene.add(new THREE.AmbientLight(0xffffff, 0.42));   // 只兜底 ✗ 主体交给方向光 ✓
+
+    // ⭐ 三点光（摄影棚打法 ✓）：key 主光带阴影 ✓ · fill 补暗部 ✓ · rim 勾轮廓 ✓
+    var key = new THREE.DirectionalLight(0xfff4e6, 1.85);   // 略暖 ✓
+    key.position.set(-3.2, 5.2, 4.2);
+    key.castShadow = true;
+    key.shadow.mapSize.set(2048, 2048);
+    key.shadow.camera.near = 0.1;
+    key.shadow.camera.far = 30;
+    key.shadow.bias = -0.0006;                     // 消自阴影的条纹/痤疮 ✓
+    key.shadow.normalBias = 0.012;
+    scene.add(key);
+
+    var fill = new THREE.DirectionalLight(0xdfe8ff, 0.55);   // 略偏冷 ✓ 与暖主光形成对比 ✓
+    fill.position.set(4.2, 1.6, 3.0);
+    scene.add(fill);
+
+    var rim = new THREE.DirectionalLight(0xffffff, 1.05);     // ⭐ 轮廓光（从后上方 ✓）= "高级感"的主要来源 ✓
+    rim.position.set(2.0, 3.0, -5.0);
+    scene.add(rim);
 
     camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.005, 500);
     controls = new OrbitControls(camera, renderer.domElement);
@@ -162,6 +210,17 @@
     grid = new THREE.GridHelper(2, 20, 0x9aa3ab, 0xc9ced3);   // 2m / 20 格 ⇒ **每格 10cm**
     grid.position.y = 0;
     scene.add(grid);
+
+    // ⭐ 一块"只看阴影"的地面（`ShadowMaterial`）—— 模型会投下柔和阴影 ⇒ 立刻有"放得住"的质感 ✓
+    //    位置在 build() 里贴到模型底部 ✓（不留缝隙 ✓）
+    shadowPlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(20, 20),
+      new THREE.ShadowMaterial({ opacity: 0.30 })
+    );
+    shadowPlane.rotation.x = -Math.PI / 2;
+    shadowPlane.receiveShadow = true;
+    shadowPlane.position.y = -0.500;
+    scene.add(shadowPlane);
 
     // 游戏坐标系标识：+X 红 · +Y 绿 · +Z 蓝（Unity：+Y 上 · +Z 前）
     axes = new THREE.AxesHelper(0.5);
@@ -212,6 +271,16 @@
   }
 
   // ── 组装（顺序与游戏一致） ─────────────────────────────────────────────────
+  // ⭐ 金属/光泽的**数值**（贴图已按游戏清掉 ✓）。默认偏哑 ✓；
+  //    调试/调参可用 URL：`?mr=0.6,0.35`（metal,rough）—— 只为对齐游戏观感用 ✓
+  var MAT = { metal: 0.3, rough: 0.6 };   // ⭐ 定死 B（用户选的档 ✓）
+  (function () {
+    var q = new URLSearchParams(location.search).get("mr");
+    if (!q) return;
+    var v = q.split(",");
+    if (v.length === 2) { MAT.metal = parseFloat(v[0]); MAT.rough = parseFloat(v[1]); }
+  })();
+
   var opts = {
     kind: "gun",        // gun（长轴→+Z） | up（长轴→+Y） | raw
     muzzle: "auto",     // ⭐ 固定"自动"（`MuzzleAtPositiveZ`：两端各看 6%/15%，细的那端是枪管）—— 不给选择
@@ -287,14 +356,30 @@
     hull = new THREE.Box3Helper(box, 0x2b6cb0);
     scene.add(hull);
 
-    // 材质：镜像后绕序会反 ⇒ 双面渲染（只影响观感，不改颜色）
+    // ⭐ 材质：**只用 baseColor + 法线**，金属/光泽贴图一律丢掉 —— 与游戏一致 ✓
+    //   游戏那边只换 baseColor（`ApplyOurTexture`）+ 接法线（`ApplyNormalMap`，且只在 `SodaCraft/` shader 上 ✓），
+    //   金属/光滑**没有槽位** ✗ ⇒ glTF 自带的 `metallicRoughnessTexture`（ORM）在游戏里根本不会被用到 ✓
+    //   ⇒ 预览要是接上它 ⇒ 会比游戏**亮/金属得多** ✗（看着像"模型很糟"的假象 ✓）
+    //   顺带：镜像后绕序会反 ⇒ 双面渲染 ✓（只影响观感，不改颜色 ✓）
     state.root.traverse(function (o) {
       if (!o.isMesh) return;
       var mats = Array.isArray(o.material) ? o.material : [o.material];
-      mats.forEach(function (m) { if (m) { m.side = THREE.DoubleSide; } });
+      mats.forEach(function (m) {
+        if (!m) return;
+        m.metalnessMap = null;
+        m.roughnessMap = null;
+        m.aoMap = null;
+        m.metalness = MAT.metal;
+        m.roughness = MAT.rough;
+        m.side = THREE.DoubleSide;
+        m.needsUpdate = true;
+      });
+      o.castShadow = true;      // ⭐ 有阴影 ⇒ 立体感/质感 ✓
+      o.receiveShadow = true;
     });
 
     grid.visible = opts.grid;
+    if (shadowPlane) shadowPlane.position.y = box.min.y - 0.001;   // 阴影面贴到模型底部 ✓
 
     // ⭐ 「握把归零」只在选「枪」时露出（物品/近战/装备不适用 —— 那是枪的猜测规则）
     var gripRow = document.getElementById("gripRow");
