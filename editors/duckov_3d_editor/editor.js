@@ -216,8 +216,8 @@
     kind: "gun",        // gun（长轴→+Z） | up（长轴→+Y） | raw
     muzzle: "auto",     // auto | +z | -z
     grip: true,         // 握把归零
-    mirror: true,       // Unity 镜像（X 取反）
-    grid: true,
+    mirror: true,       // ⭐ 固定开：Unity 镜像（X 取反）= 游戏里看到的样子 —— 不做 ⇒ 预览与游戏左右相反 ✗
+    grid: true,         // ⭐ 固定开：网格（每格 10cm）
     size: 0            // 0 = 不改（用模型自己的尺寸）
   };
 
@@ -343,8 +343,6 @@
     document.getElementById("kind").addEventListener("change", function (e) { opts.kind = e.target.value; build(); });
     document.getElementById("muzzle").addEventListener("change", function (e) { opts.muzzle = e.target.value; build(); });
     document.getElementById("grip").addEventListener("change", function (e) { opts.grip = e.target.checked; build(); });
-    document.getElementById("mirror").addEventListener("change", function (e) { opts.mirror = e.target.checked; build(); });
-    document.getElementById("grid").addEventListener("change", function (e) { opts.grid = e.target.checked; build(); });
     document.getElementById("size").addEventListener("change", function (e) {
       opts.size = parseFloat(e.target.value) || 0; build();
     });

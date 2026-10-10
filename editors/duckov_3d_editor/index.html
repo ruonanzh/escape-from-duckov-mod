@@ -18,7 +18,8 @@
     #hud a { color:var(--accent); text-decoration:none; white-space:nowrap; cursor:pointer; }
     #hud a.on { font-weight:700; text-decoration:underline; }
     #hud .dim { color:var(--dim); }
-    #panel { position:fixed; right:10px; top:10px; width:250px; background:var(--panel);
+    /* 「游戏朝向」+ 尺寸：整块放**右下角**（左上留给标题/视角/提示） */
+    #panel { position:fixed; right:10px; bottom:10px; width:250px; background:var(--panel);
       padding:10px 12px; border-radius:8px; box-shadow:0 1px 6px #0002; }
     #panel h2 { margin:0 0 8px; font-size:13px; }
     #panel label { display:flex; justify-content:space-between; align-items:center; gap:8px; margin:5px 0; }
@@ -58,8 +59,6 @@
       </select>
     </label>
     <label>握把归零<input type="checkbox" id="grip" checked></label>
-    <label>Unity 镜像<input type="checkbox" id="mirror" checked></label>
-    <label>显示网格<input type="checkbox" id="grid" checked></label>
     <div class="hr"></div>
     <h2>尺寸</h2>
     <label>最长边（米）<input type="number" id="size" step="0.01" min="0.01"></label>
