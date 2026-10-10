@@ -311,12 +311,8 @@
       verts += g.attributes.position ? g.attributes.position.count : 0;
       tris += g.index ? g.index.count / 3 : (g.attributes.position ? g.attributes.position.count / 3 : 0);
     });
-    document.getElementById("diag").innerHTML =
-      "顶点 " + verts + " · 三角面 " + Math.round(tris) + "<br>" +
-      "最长边 " + Math.max(cur.x, Math.max(cur.y, cur.z)).toFixed(3) + " m" +
-      (s !== 1 ? "（缩放 ×" + s.toFixed(4) + "）" : "") + "<br>" +
-      "镜像 " + (opts.mirror ? "开（= 游戏里）" : "关（= glb 原始）") + "<br>" +
-      "握把归零 " + (opts.grip && opts.kind === "gun" ? "已做" : "未做");
+    // 右下角最下面只留顶点/三角面（其它信息在「尺寸」那一段已经有了 ✓ 不再重复 ✓）
+    document.getElementById("diag").textContent = "顶点 " + verts + " · 三角面 " + Math.round(tris);
   }
 
   /** 取模型世界坐标下的顶点样本（用于朝向/握把判定） */
