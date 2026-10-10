@@ -174,6 +174,31 @@ namespace ModelKit
             catch { /* 材质换不上不该炸 ✓ */ }
         }
 
+        /// <summary>⭐ **只接法线** ✓（用户口径 ✓：“把法线拿回来看看” ✓）。
+        /// <para>⚠️ **金属/光滑一律不碰** ✗ —— 数值与那张 ORM 图都不动 ✓。</para>
+        /// <para>⭐ **白名单** ✗：只在 shader 名以 **`SodaCraft/`** 开头时才接 ✓
+        ///（游戏自己的 3D 物品/角色 shader ✓：`SodaLit` ✓ `SodaLit_EdgeLight` ✓ `SodaCharacter` ✓）。
+        /// 其他 shader（例如雾效 ✓ 精灵 ✓ UI ✓）**一律跳过** ✗ —— 实测：给非 3D shader 改属性会让**整个网格画不出来** ✓。</para>
+        /// <para>法线是 **数据** ✗ ⇒ 必须**线性**读 ✓（加载器已处理 ✓）；glTF 与 Unity 同为 OpenGL 约定 +Y ✓ **不翻转** ✓。</para></summary>
+        public static void ApplyNormalMap(Material mat, Texture2D normal, string tag = null)
+        {
+            if (mat == null || normal == null) return;
+            try
+            {
+                string shName = mat.shader != null ? mat.shader.name : "";
+                if (!shName.StartsWith("SodaCraft/", System.StringComparison.Ordinal))
+                {
+                    UnityEngine.Debug.Log($"[NormalMap] {tag}｜**跳过** ✗（shader={shName} 不在白名单里 ✓）");
+                    return;
+                }
+                if (mat.HasProperty("_BumpMap")) { mat.SetTexture("_BumpMap", normal); mat.EnableKeyword("_NORMALMAP"); }
+                else if (mat.HasProperty("_NormalMap")) { mat.SetTexture("_NormalMap", normal); mat.EnableKeyword("_NORMALMAP"); }
+                else { UnityEngine.Debug.Log($"[NormalMap] {tag}｜shader 没有法线槽 ✗（shader={shName}）"); return; }
+                UnityEngine.Debug.Log($"[NormalMap] {tag}｜法线✓｜shader={shName}");
+            }
+            catch { /* 接不上不该炸 ✓ */ }
+        }
+
         /// <summary>⭐ 游戏**自己声明**的"这套外观用哪些渲染器" ✓ —— 图形根上的 `CharacterSubVisuals.renderers` ✓。
         /// 实测价值 ✓：运行时挂上去的**灯 / 特效不在这个清单里** ✗ → 用它找"本体"最准 ✓（比"取最大"稳 ✓）。
         /// 武器/物品两边都适用 ✓（物品清单通常只有 1 个 = 本体 ✓；武器清单含 枪身+配件 ✓ 需再筛 ✓）</summary>

@@ -30,6 +30,10 @@ namespace ModelKit
     /// <summary>把"我们的 mesh + 贴图"接到**非武器物品**上（改它自己的图形 ✓ 不克隆不 DDOL ✗）。</summary>
     public static class ItemModel
     {
+        /// <summary>⭐ **当前模型的法线图** ✓ —— 由调用方在 `Apply*` 之前设一次 ✓（拿到的 `CachedModel.NormalTexture` ✓）。
+        /// <para>只影响**法线**那一张 ✓；**金属/光滑一律不碰** ✗（用户口径 ✓：先把法线单独拿回来看看 ✓）。</para>
+        /// <para>⚠️ 用字段而非参数 ✗ —— 否则要穿过 10+ 个签名 ✓；Unity 主线程单线程 ✓ 无并发 ✓。</para></summary>
+        public static Texture2D CurrentNormalMap;
         /// <summary>一次替换的结果 ✓（带 `Restore()` ✓ 热重载/卸载时能还原 ✓）</summary>
         public sealed class Result
         {
@@ -349,7 +353,11 @@ namespace ModelKit
             if (src == null) src = fallbackMat;            // ⭐ 兜底：调用方给的（例如"世界图形上我们刚挂的那份材质" ✓）
             if (src == null) UnityEngine.Debug.LogWarning("[ItemModel] ⚠️ 借不到游戏材质 ✗ → 会用 Unity 默认材质（**粉色** ✗）");
             var one = src != null ? new Material(src) : null;
-            if (one != null) GameApi.ApplyOurTexture(one, texture);      // ⭐ 换贴图 + **清其它槽** ✓（与武器共用一套 ✓）
+            if (one != null)
+            {
+                GameApi.ApplyOurTexture(one, texture);                        // ⭐ 换 baseColor + **清其它槽** ✓
+                GameApi.ApplyNormalMap(one, CurrentNormalMap, itemName);      // ⭐ 只加法线 ✓（不碰金属/光滑 ✗）
+            }
             int sub = Mathf.Max(1, mesh.subMeshCount);
             var mats = new Material[sub];                    // 每个 submesh 一个材质槽（别让 Unity 去猜 ✓）
             for (int i = 0; i < sub; i++) mats[i] = one;

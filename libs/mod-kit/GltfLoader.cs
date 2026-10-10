@@ -22,6 +22,7 @@ namespace ModelKit
         {
             public Mesh Mesh;
             public Texture2D MainTexture;      // baseColor 贴图（可能为 null）
+            public Texture2D NormalTexture;    // ⭐ 法线（Tripo 的 `normalTexture` ✓ 可能为 null ✓）
             public int VertexCount;
             public int TriangleCount;
             public string Report = "";
@@ -109,7 +110,9 @@ namespace ModelKit
 
             // ② 贴图：优先材质上的 baseColorTexture，否则第一张
             r.MainTexture = LoadBaseColor(doc, views, bin);
-            r.Report = $"GLB：顶点 {r.VertexCount}，三角面 {r.TriangleCount}，贴图 {(r.MainTexture != null ? r.MainTexture.name + $" {r.MainTexture.width}x{r.MainTexture.height}" : "无")}；包围盒 {mesh.bounds.size}；握把归零 {grip}";
+            // ⭐ 法线 ✓ —— 只读这一张 ✗（**不读 ORM** ✗：金属/光滑一律不碰 ✓）
+            r.NormalTexture = LoadNormal(doc, views, bin);
+            r.Report = $"GLB：顶点 {r.VertexCount}，三角面 {r.TriangleCount}，贴图 {(r.MainTexture != null ? r.MainTexture.name + $" {r.MainTexture.width}x{r.MainTexture.height}" : "无")}，法线 {(r.NormalTexture != null ? "有" : "无")}；包围盒 {mesh.bounds.size}；握把归零 {grip}";
             return r;
         }
 
@@ -275,6 +278,51 @@ namespace ModelKit
                         return tex;
                     }
                 }
+            }
+            return null;
+        }
+
+        /// <summary>⭐ 法线图（glTF 的 `normalTexture` ✓）—— **按线性读** ✗（它是**数据**不是颜色 ✓，按 sRGB 读会偏 ✓）。
+        /// <para>只取这一张 ✓；**不读 ORM** ✗（金属/光滑数值一律不碰 ✓—— 用户口径 ✓）。</para></summary>
+        static Texture2D LoadNormal(JsonValue doc, JsonValue views, byte[] bin)
+        {
+            int imgIndex = -1;
+            try
+            {
+                var mats = doc["materials"];
+                var texs = doc["textures"];
+                var imgs = doc["images"];
+                if (mats != null && mats.Count > 0 && texs != null && imgs != null)
+                {
+                    var node = mats[0]["normalTexture"];
+                    if (node != null && node.Has("index"))
+                    {
+                        int ti = node["index"].AsInt(-1);
+                        if (ti >= 0 && ti < texs.Count) imgIndex = texs[ti]["source"].AsInt(-1);
+                    }
+                }
+            }
+            catch { }
+            if (imgIndex < 0) return null;                       // ⚠️ **不回退到第 0 张** ✗（那是 baseColor ✓）
+
+            var images = doc["images"];
+            if (images == null || imgIndex >= images.Count) return null;
+            var im = images[imgIndex];
+            if (!im.Has("bufferView")) return null;
+            int bv = im["bufferView"].AsInt(-1);
+            if (bv < 0 || bv >= views.Count) return null;
+            var v = views[bv];
+            int vo = v.Has("byteOffset") ? v["byteOffset"].AsInt(0) : 0;
+            int vl = v["byteLength"].AsInt(0);
+            if (vl <= 0 || vo + vl > bin.Length) return null;
+            var bytes = new byte[vl];
+            Buffer.BlockCopy(bin, vo, bytes, 0, vl);
+            var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false, true);    // ⭐ linear: true ✓
+            if (tex.LoadImage(bytes))                                           // 支持 PNG/JPEG ✓
+            {
+                tex.name = "glb_" + (im["name"].AsString("normal"));
+                tex.wrapMode = TextureWrapMode.Clamp;
+                return tex;
             }
             return null;
         }

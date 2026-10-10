@@ -19,6 +19,7 @@ namespace ModelKit
         public string Sig;
         public Mesh Mesh;
         public Texture2D Texture;
+        public Texture2D NormalTexture;      // ⭐ 法线（Tripo 的 `normalTexture` ✓ 可能为 null ✓）
     }
 
     /// <summary>模型缓存相关的共用小工具 ✓</summary>
@@ -56,7 +57,8 @@ namespace ModelKit
                 if (cache.TryGetValue(path, out var c) && c != null && c.Sig == sig && c.Mesh != null) return c;
             }
             loaded = GltfLoader.LoadFile(path, front);
-            var n = new CachedModel { Sig = Fingerprint(path, front), Mesh = loaded.Mesh, Texture = loaded.MainTexture };
+            var n = new CachedModel { Sig = Fingerprint(path, front), Mesh = loaded.Mesh, Texture = loaded.MainTexture,
+                                      NormalTexture = loaded.NormalTexture };
             if (cache != null) cache[path] = n;
             return n;
         }
