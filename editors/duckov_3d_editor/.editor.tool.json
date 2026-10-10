@@ -1,0 +1,9 @@
+{
+  "apiVersion": 1,
+  "id": "duckov_3d_editor",
+  "name": "Duckov 3D 编辑器",
+  "match": ["*.glb"],
+  "entry": "index.html",
+  "mode": "view",
+  "description": "用 Unity 坐标系（+Y 上 / +Z 前）查看 .glb 模型：游戏朝向、尺寸（米）、网格与标尺"
+}
