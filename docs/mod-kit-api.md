@@ -37,7 +37,8 @@
 | `ItemModel.ApplyToTransform(root, …)` / `ApplyToGraphicClone(clone, …)` | 你已经拿到"要改的那一层"时直接用；后者专给**场上的图形副本**（掉落/展示） |
 | `ItemModel.IsPatched(layer)` | 判"这一层我们挂过没有"—— **唯一判据**，别用别的（`Marked`/名字/扫子树都会判错） |
 | `ItemModel.MarkPatched(layer)` / `UnmarkPatched(layer)` | 别的能力（例如武器侧）挂完也要登记 / 自己 `Restore()` 时注销 |
-| `ItemModel.HasOurMeshUnder(t)` | 这一层（含子树）里有没有我们的 mesh；给"别重复挂"用 |
+| `ItemModel.HasOurMeshUnder(t)` | 这一层（含子树）里有没有我们的 mesh；给“别重复挂”用 |
+| `ItemModel.ItemShaderName` | 常量 ✓ = `"SodaCraft/SodaLit"`。只影响“**本来没有 `itemGraphic`**”的物品（如糖果 ✓）：给它们借材质时**固定用这个 shader** ✓（不再在场景里随便挑 ✗ —— 那会挑到雾效/光效材质 ✗，一改它的属性整个网格就画不出来 ✓）|
 
 ## 4. 尺寸档位（config `size` 的上游）
 
