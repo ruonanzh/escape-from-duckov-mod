@@ -110,6 +110,10 @@ namespace ModelKit
             mesh.SetNormals(norms);
             mesh.SetUVs(0, uvs);
             mesh.SetTriangles(tris, 0);
+            // ⭐⭐ **切线必须算** ✗ —— Unity 的 `_BumpMap`（法线贴图）**依赖 tangents** ✓；
+            //   缺了它 Unity 用退化值 ⇒ 表面出现**黑斑 / 破碎 / “裂缝”** ✓（实测：刀在游戏里就是这个 ✓）
+            //   而 three.js 查看器自己会算 ✓ ⇒ 同模型在那里是正常的 ✓（交叉验证 ✓）
+            mesh.RecalculateTangents();
             mesh.RecalculateBounds();
             r.Mesh = mesh; r.VertexCount = verts.Count; r.TriangleCount = tris.Count / 3;
 
@@ -135,6 +139,8 @@ namespace ModelKit
                     : ax == 0 ? UnityEngine.Quaternion.Euler(0f, 0f, 90f)             // X → +Y ✓（-90 会到 -Y ✗ 倒过来 ✓）
                               : UnityEngine.Quaternion.Euler(-90f, 0f, 0f);           // Z → Y ✓
                 for (int i = 0; i < verts.Count; i++) { verts[i] = q * verts[i]; norms[i] = q * norms[i]; }
+                // ⚠️ **不要**再绕 Y 转 ✗ —— 试过（把厚度轴变 Z ⇒ 刀面**正对镜头**✓）但那是给“出图”的要求 ✗；
+                //   真实握刀是**刀面与视线平行** ✓ ⇒ 厚度轴保持 X ✓（实测预测 [0.10, 1.00, 0.57] ✓）。
                 return;
             }
             foreach (var v0 in new[] { verts })
