@@ -174,6 +174,12 @@ namespace ModelKit
             }
             catch { /* 材质换不上不该炸 ✓ */ }
         }
+        /// <summary>⭐ **实验开关** ✓：要不要把 Tripo 的 **ORM（金属/光滑）** 接上 ✓。
+        /// <para>实测印象 ✓（用户 ✓）：“加上 ORM **增加了真实感** ✓ 但和游戏原本风格**有些冲突**” ✗</para>
+        /// <para>⇒ 默认 **关** ✗ = 只换 baseColor + 法线 ✓，**金属/光滑保持游戏原值** ✓（= 风格一致 ✓）。
+        /// 想再比一次就改成 `true` ✓ 重编即可 ✓（法线**始终**接 ✓ 不受这个开关影响 ✓）。</para></summary>
+        public static bool ApplyOrm = false;
+
         /// <summary>⭐⭐ **通用策略**：把 Tripo 的两张贴图按目标 shader 的**能力**接上 ✓。
         /// <para>用户口径 ✓：“应该 generic 地从 tripo 的结果设置这两个数值” ✓ /
         /// “没有 ORM 的情况就**不变**原有材质设置” ✗。</para>
@@ -203,6 +209,11 @@ namespace ModelKit
                 if (metalGloss == null)
                 {
                     info += "｜ORM（GLB 里没有 ✓ **材质原值不动** ✗）";      // ⭐ 没有依据 ⇒ 一个值都不改 ✓
+                }
+                else if (!ApplyOrm)
+                {
+                    // ⭐ 实验开关关着 ✓ ⇒ **ORM 完全不用** ✗ ⇒ 金属/光滑保持游戏原值 ✓（风格一致 ✓）
+                    info += "｜ORM→**本次不接**（开关关 ✗ 保持游戏原值 ✓）";
                 }
                 else if (mat.HasProperty("_MetallicGlossMap") || mat.HasProperty("_MetallicSmoothness"))
                 {
