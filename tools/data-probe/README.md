@@ -28,8 +28,11 @@ dotnet run --project tools/data-probe -- \
 | `classes` | — | 列出资产**类名 + 数量**（含内置类型：`GameObject`/`Transform`/`Camera`…）|
 | `list` | `--class <C>` | 列出某类的资产（name / typeID / pathID；**每次最多 500 条**，用 `--offset` 翻页）|
 | `search` | `--pattern <p>` `[--class C]` | 按名称/类/typeID 找资产（**每次最多 500 条**，用 `--offset` 翻页）|
-| `dump` | `--class <C>` ＋ (`--name`\|`--typeid`\|`--pathid`) `[--depth d] [--follow]` | dump 该资产的**字段 + 值**；`--follow` **跟随引用**（如 `Item.stats` → `StatCollection` 里的 `Damage`）|
-| `refs` | 同 `dump` 的定位 | 列出该资产**引用了哪些对象**（PPtr）|
+| `dump` | `--class <C>` ＋ (`--name`\|`--typeid`\|`--pathid`) `[--depth d] [--follow]` | dump 该资产的**字段 + 值**；`--follow` **跟随引用**（如 `Item.stats` → `StatCollection`、`Item.itemGraphic` → `ItemGraphicInfo` → 渲染器 ✓）—— ⭐ **可跨数据文件** ✓（按 `--depth` 决定能跟几跳 ✓）|
+| `refs` | 同 `dump` 的定位 | 列出该资产**引用了哪些对象**（PPtr）—— 每行带 **fileID** ✓（`[本文件]` / `[外部 fileId=N]`）**并把引用目标解出来** ✓（类名 + 名字 ✓；跨文件时标出在哪个文件 ✓）|
+
+> ⚠️ `--follow` **不会展开数组元素** ✗（如渲染器的 `m_Materials` ✓ 会停在不透明的 `AssetTypeArrayInfo` ✓）——
+> 要拿材质就改走 ✓：`search --class Material --pattern <名字>` ✓ 再对它 `refs` ✓ 读 `m_Shader` ✓（跨文件也能读到 ✓）。
 | `export` | `--class <C>` `[--match <expr>]…` `[--field <path>]…` `[--rows N]` `[--out <file>]` | **批量表**：一类对象 × 过滤 × 字段路径 → 每行一个资产（TAB 分列；数组用 `;` 连）。`--out` 写文件、只回预览 |
 
 公共：`--file <x.assets|levelN|bundle>`（限定单个数据文件；**`levelN` = 场景文件**，格式与 `.assets` 相同；**也可以直接给 AssetBundle**（例如 mod 的包）—— 内存解包，只读、不落临时文件）、`--limit N`（截断，默认 2000 行）、`--depth d`（dump 深度，默认 3）、`--offset N`（跳过前 N 条，给 `list`/`search` 翻页用）。
