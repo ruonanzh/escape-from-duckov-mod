@@ -203,52 +203,32 @@ namespace ModelKit
                 {
                     info += "｜ORM（GLB 里没有 ✓ **材质原值不动** ✗）";      // ⭐ 没有依据 ⇒ 一个值都不改 ✓
                 }
-                else if (mat.HasProperty("_MetallicGlossMap"))
+                else if (mat.HasProperty("_MetallicGlossMap") || mat.HasProperty("_MetallicSmoothness"))
                 {
-                    // ① 有贴图槽 ⇒ 用图 ✓（细节最全 ✓）
-                    mat.SetTexture("_MetallicGlossMap", metalGloss);
+                    // ① 有贴图槽 ⇒ **用图** ✓（细节最全 ✓）
+                    //   · `_MetallicGlossMap` = Unity 通用名 ✓；**`_MetallicSmoothness`** = 游戏自定义名 ✓
+                    //     （实测两个头盔的 shader 都用后者 ✗ —— 之前只认通用名 ✗ 所以误判成“没槽”✗）
+                    string slot = mat.HasProperty("_MetallicGlossMap") ? "_MetallicGlossMap" : "_MetallicSmoothness";
+                    mat.SetTexture(slot, metalGloss);
                     mat.EnableKeyword("_METALLICGLOSSMAP");
                     if (mat.HasProperty("_OcclusionMap")) mat.SetTexture("_OcclusionMap", metalGloss);   // 它**只读 G** ✓ 同一张图 ✓
+                    // ⚠️ 游戏把 `_GlossMapScale` 设成 **0** ✗（= 把光滑贴图关了 ✗）⇒ 要接图就得开回来 ✓
+                    if (mat.HasProperty("_GlossMapScale")) mat.SetFloat("_GlossMapScale", 1f);
                     if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", 1f);
                     if (mat.HasProperty("_Glossiness")) mat.SetFloat("_Glossiness", 1f);
                     if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 1f);
-                    info += "｜ORM→贴图✓（数值置 1 ✓）";
+                    info += $"｜ORM→{slot}✓（数值置 1 ✓）";
                 }
                 else
                 {
-                    // ② 没贴图槽 ⇒ ⭐ 把 ORM **折算成两个常数** ✓（通用 ✓ 不写死 ✗）
-                    OrmMeans(metalGloss, out float metal, out float smooth);
-                    float oldM = mat.HasProperty("_Metallic") ? mat.GetFloat("_Metallic") : -1f;
-                    float oldS = mat.HasProperty("_Smoothness") ? mat.GetFloat("_Smoothness")
-                               : (mat.HasProperty("_Glossiness") ? mat.GetFloat("_Glossiness") : -1f);
-                    if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", metal);
-                    if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", smooth);
-                    if (mat.HasProperty("_Glossiness")) mat.SetFloat("_Glossiness", smooth);   // 两套名字都设 ✓ 哪个管事都一样 ✓
-                    info += $"｜ORM→常数✓（金属 {oldM:0.##}→{metal:0.##}｜光滑 {oldS:0.##}→{smooth:0.##}）";
+                    // ② ⭐ 真没有贴图槽 ⇒ **什么都不动** ✓（用户口径 ✓：“如果失败 ✓ 不要用均值 ✗ 就保留原有就好了” ✓）
+                    info += "｜ORM→**不动** ✗（shader 没有金属/光滑贴图槽 ✓ 保留原有数值 ✓）";
                 }
 
                 string sh = mat.shader != null ? mat.shader.name : "?";
                 UnityEngine.Debug.Log($"[ApplyTripoMaps] {tag}｜{info}｜shader={sh}");
             }
             catch { /* 图接不上不该炸 ✓ */ }
-        }
-
-        /// <summary>ORM（重排后的 ✓）的**通道均值** ✓：`R = metallic` ✓ `A = smoothness` ✓。
-        /// <para>为什么可以用均值 ✗：目标 shader **根本没地方放这张图** ✗ ⇒ 常数是能做的极限 ✓；
-        /// 若它有图槽 ✓ 就走“接图”那条 ✓ 不会用到这里 ✓。</para>
-        /// <para>Y 方向跳着采样 ✓（每 8 行取一行 ✓ 够准且便宜 ✓）。</para></summary>
-        static void OrmMeans(Texture2D t, out float metal, out float smooth)
-        {
-            metal = 0f; smooth = 0.5f;
-            try
-            {
-                long sumM = 0, sumS = 0, n = 0;
-                var px = t.GetPixels32();
-                int stride = Mathf.Max(1, px.Length / 65536);   // 最多采 65536 个像素 ✓（跳着采 ✓ 够准且便宜 ✓）
-                for (int i = 0; i < px.Length; i += stride) { sumM += px[i].r; sumS += px[i].a; n++; }
-                if (n > 0) { metal = (float)sumM / n / 255f; smooth = (float)sumS / n / 255f; }
-            }
-            catch { }
         }
 
         /// <summary>⭐ 游戏**自己声明**的"这套外观用哪些渲染器" ✓ —— 图形根上的 `CharacterSubVisuals.renderers` ✓。
