@@ -15,7 +15,7 @@
 
 | API | 什么时候用 |
 |---|---|
-| `GltfLoader.LoadFile(path, front)` | 读一个 `.glb` → `Mesh` + 主贴图。`front` 一般 `"auto"`；用户自带的模型按 config 传 `"-z"`/`"+x"`/`"-x"` |
+| `GltfLoader.LoadFile(path, front)` | 读一个 `.glb` → `Mesh` + 主贴图 + **法线**。`front` 一般 `"auto"`；用户自带的模型按 config 传 `"-z"`/`"+x"`/`"-x"` |
 | `GltfLoader.Load(byte[], front)` | 同上，但手上已有字节（很少用） |
 | `GltfLoader.MuzzleAtPositiveZ(pts)` / `GuessGrip(pts)` | 自己需要判朝向 / 找握把时才用（换模型时 kit 内部已经做了） |
 
@@ -38,7 +38,8 @@
 | `ItemModel.IsPatched(layer)` | 判"这一层我们挂过没有"—— **唯一判据**，别用别的（`Marked`/名字/扫子树都会判错） |
 | `ItemModel.MarkPatched(layer)` / `UnmarkPatched(layer)` | 别的能力（例如武器侧）挂完也要登记 / 自己 `Restore()` 时注销 |
 | `ItemModel.HasOurMeshUnder(t)` | 这一层（含子树）里有没有我们的 mesh；给“别重复挂”用 |
-| `ItemModel.ItemShaderName` | 常量 ✓ = `"SodaCraft/SodaLit"`。只影响“**本来没有 `itemGraphic`**”的物品（如糖果 ✓）：给它们借材质时**固定用这个 shader** ✓（不再在场景里随便挑 ✗ —— 那会挑到雾效/光效材质 ✗，一改它的属性整个网格就画不出来 ✓）|
+| `ItemModel.ItemShaderName` | 常量 ✓ = `"SodaCraft/SodaLit"`。只影响“**本来没有 `itemGraphic`**”的物品（如糖果 ✓）：给它们借材质时**固定用这个 shader** ✓ |
+| `ItemModel.CurrentNormalMap` | ⭐ **调 `Apply*` 之前必须设**（= `CachedModel.NormalTexture`）；决定“附在材质上的法线图”。确实没有就显式设 `null`。**只给物品**（武器不设）|
 
 ## 4. 尺寸档位（config `size` 的上游）
 
@@ -53,7 +54,7 @@
 | API | 什么时候用 |
 |---|---|
 | `ModelCache.ModDir()` | 本 mod 的目录（DLL 所在处）—— 找 `config.json` / 素材文件 |
-| `ModelCache.Get(cache, path, front, out loaded)` | 带指纹的模型缓存：文件没变就不重读（指纹**不含 `size`**，改 `size` 不必重读） |
+| `ModelCache.Get(cache, path, front, out loaded)` | 带指纹的模型缓存（`CachedModel` 带 `Mesh` / `Texture` / `NormalTexture`）：文件没变就不重读（指纹**不含 `size`**，改 `size` 不必重读） |
 | `ModelCache.Fingerprint(path, front)` | 自己要判"该不该重读"时用 |
 
 ## 6. 游戏查询 / 操作
@@ -64,6 +65,7 @@
 | `GameApi.NameMatches(item, "MP5")` | 名字匹配（**全等**，不是子串） |
 | `GameApi.DeclaredRenderers(root)` | 游戏**自己声明**的渲染器清单（找"本体"最准，胜过"取最大"） |
 | `GameApi.ApplyOurTexture(mat, tex)` | 把我们的贴图换到一份游戏材质上（并清掉对不上的其它贴图槽） |
+| `GameApi.ApplyNormalMap(mat, normal, tag)` | 只接**法线**（`_BumpMap` / `_NormalMap` + 关键字）。只在 shader 名以 `SodaCraft/` 开头时才接，其余（雾效 / 精灵 / UI）**一律跳过** |
 | `GameApi.EnsureHandheldAgent(item, graphicPrefab)` / `SetAgentPrefab(…, "Handheld", …)` | 让物品"拿在手里"时用我们的模型 |
 | `GameApi.FindMainCharacter()` / `AllCharacters()` / `FindCharacter(name)` | 找玩家 / 角色 |
 | `GameApi.VisibleLayer` / `HiddenLayer` | 游戏那两个层（`Character` / `SpecialCamera`） |
