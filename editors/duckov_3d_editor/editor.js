@@ -351,6 +351,14 @@
 
     readFile().then(function (res) {
       if (!res.data) throw new Error("文件为空");
+      // 宿主必须把二进制按 base64 发（`editor:fileContent` 的 `encoding: "base64"`）。
+      // 万一发的是 utf8（把 .glb 当文本读了 ⇒ 乱码 + 256KB 截断），给一句人话 ✗ 别把 atob 的异常抛给玩家。
+      if (res.encoding && res.encoding !== "base64") {
+        throw new Error(
+          "宿主把这个模型当文本发过来了（encoding=" + res.encoding +
+          "）—— 需要产品把二进制文件按 base64 交给编辑器（见 docs/mod-repo-guide.md §10）"
+        );
+      }
       var bin = base64ToBytes(res.data);
       var buf = bin.buffer.slice(bin.byteOffset, bin.byteOffset + bin.byteLength);
       // ⚠️ CSP 是 `connect-src 'none'`（编辑器不给外传通道）⇒ 内嵌纹理**不能**走
