@@ -336,7 +336,7 @@ namespace ModelKit
             if (src == null) src = fallbackMat;            // ⭐ 兜底：调用方给的（例如"世界图形上我们刚挂的那份材质" ✓）
             if (src == null) UnityEngine.Debug.LogWarning("[ItemModel] ⚠️ 借不到游戏材质 ✗ → 会用 Unity 默认材质（**粉色** ✗）");
             var one = src != null ? new Material(src) : null;
-            if (one != null) GameApi.ApplyOurTexture(one, texture);      // ⭐ 换贴图 + **清其它槽** ✓（与武器共用一套 ✓）
+            if (one != null) { GameApi.ApplyOurTexture(one, texture); GameApi.MakeMatte(one, "物品"); }   // ⭐ 换贴图 + 清其它槽 ✓ + **哑光化** ✗（武器不调 ✗）
             int sub = Mathf.Max(1, mesh.subMeshCount);
             var mats = new Material[sub];                    // 每个 submesh 一个材质槽（别让 Unity 去猜 ✓）
             for (int i = 0; i < sub; i++) mats[i] = one;

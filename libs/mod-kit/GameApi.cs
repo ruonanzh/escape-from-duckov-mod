@@ -173,6 +173,36 @@ namespace ModelKit
             }
             catch { /* 材质换不上不该炸 ✓ */ }
         }
+        /// <summary>⭐ 把一份**借来的游戏材质**改成**哑光** ✓ —— 专治“看着不干净”✗。
+        ///
+        /// 为什么要 ✗：材质是从**目标物品自己身上**借来的 ✓（`new Material(src)` ✓），
+        ///   带着它的 **`_Metallic` / `_Glossiness` 原值** ✗；高金属 + 高光滑在游戏的高对比环境里
+        ///   ⇒ baseColor 被当作“金属反射色”→ 暗部大片**死黑 / 暗紫斑** ✗ + **硬高光** ✗
+        ///   （实测：头盔在游戏里脏 ✓ 而同一份网格/贴图离线渲染干净 ✓ ⇒ 就是这两项 ✓）
+        ///
+        /// 只给**物品**用 ✓；**武器不调** ✗（用户实测武器看着没问题 ✓ 别动 ✓）。
+        /// 调完把**改前/改后**的数值打一条日志 ✓ —— 万一不是这个原因 ✓ 也能马上看出来 ✓。</summary>
+        public static void MakeMatte(Material mat, string tag = null)
+        {
+            if (mat == null) return;
+            try
+            {
+                float oldM = mat.HasProperty("_Metallic") ? mat.GetFloat("_Metallic") : -1f;
+                float oldG = mat.HasProperty("_Glossiness") ? mat.GetFloat("_Glossiness")
+                           : (mat.HasProperty("_Smoothness") ? mat.GetFloat("_Smoothness") : -1f);
+
+                if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", 0f);
+                if (mat.HasProperty("_Glossiness")) mat.SetFloat("_Glossiness", 0.25f);
+                if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 0.25f);
+                // 高光/反射的开关（Standard shader ✓ 两套名字都试 ✓）
+                if (mat.HasProperty("_SpecularHighlights")) mat.SetFloat("_SpecularHighlights", 0f);
+                if (mat.HasProperty("_GlossyReflections")) mat.SetFloat("_GlossyReflections", 0f);
+
+                string sh = mat.shader != null ? mat.shader.name : "?";
+                UnityEngine.Debug.Log($"[MakeMatte] {tag}｜金属 {oldM:0.##}→0｜光滑 {oldG:0.##}→0.25｜shader={sh}");
+            }
+            catch { /* 数值改不上不该炸 ✓ */ }
+        }
 
         /// <summary>⭐ 游戏**自己声明**的"这套外观用哪些渲染器" ✓ —— 图形根上的 `CharacterSubVisuals.renderers` ✓。
         /// 实测价值 ✓：运行时挂上去的**灯 / 特效不在这个清单里** ✗ → 用它找"本体"最准 ✓（比"取最大"稳 ✓）。
