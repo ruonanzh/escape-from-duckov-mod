@@ -180,6 +180,16 @@ namespace ModelKit
         /// 想再比一次就改成 `true` ✓ 重编即可 ✓（法线**始终**接 ✓ 不受这个开关影响 ✓）。</para></summary>
         public static bool ApplyOrm = false;
 
+        /// <summary>⭐ **哑光化** ✓（用户口径 ✓：“除了 baseColor 和法线 ✓ 什么都不改”✗ 与 “不要油光”✗ **这件事上是矛盾的** ✓ ——
+        /// 因为**游戏原材质本身就是亮的** ✗：实测 `PFB_SpaceSuitIII` ⇒ `_Metallic` **0.872** ✓ `_Smoothness` **0.855** ✓；
+        /// `Mat_Helmet_LV3` ⇒ `_Metallic` **1** ✓ `_Smoothness` **0.7** ✓）。
+        /// <para>⇒ 所以“不碰两个数值”✗ = “油光”✗（就是现在这版 ✓）；
+        /// 要让观感“**干净**”✓（用户实测过的那组值 ✓）就得把这两个数压下来 ✓。</para>
+        /// <para>默认 **开** ✓：不接 ORM 贴图 ✗，但把金属/光滑压到下面这两个值 ✓。</para></summary>
+        public static bool ApplyMatte = true;
+        public static float MatteMetallic = 0f;
+        public static float MatteSmoothness = 0.25f;
+
         /// <summary>⭐⭐ **通用策略**：把 Tripo 的两张贴图按目标 shader 的**能力**接上 ✓。
         /// <para>用户口径 ✓：“应该 generic 地从 tripo 的结果设置这两个数值” ✓ /
         /// “没有 ORM 的情况就**不变**原有材质设置” ✗。</para>
@@ -212,8 +222,8 @@ namespace ModelKit
                 }
                 else if (!ApplyOrm)
                 {
-                    // ⭐ 实验开关关着 ✓ ⇒ **ORM 完全不用** ✗ ⇒ 金属/光滑保持游戏原值 ✓（风格一致 ✓）
-                    info += "｜ORM→**本次不接**（开关关 ✗ 保持游戏原值 ✓）";
+                    // ⭐ 实验开关关着 ✓ ⇒ **ORM 贴图不用** ✗（改不改数值看下面的哑光开关 ✓）
+                    info += "｜ORM→**不接贴图** ✗";
                 }
                 else if (mat.HasProperty("_MetallicGlossMap") || mat.HasProperty("_MetallicSmoothness"))
                 {
@@ -235,6 +245,19 @@ namespace ModelKit
                 {
                     // ② ⭐ 真没有贴图槽 ⇒ **什么都不动** ✓（用户口径 ✓：“如果失败 ✓ 不要用均值 ✗ 就保留原有就好了” ✓）
                     info += "｜ORM→**不动** ✗（shader 没有金属/光滑贴图槽 ✓ 保留原有数值 ✓）";
+                }
+
+                // ── ⭐ 哑光化（不接 ORM 时）──
+                //   用户实测 ✓：压到这两个值 ⇒ “干净很多”✓；不压 ⇒ 保持游戏原值（0.87/0.855 ✓）= **油光**✗
+                if (ApplyMatte && (metalGloss == null || !ApplyOrm))
+                {
+                    float om = mat.HasProperty("_Metallic") ? mat.GetFloat("_Metallic") : -1f;
+                    float os_ = mat.HasProperty("_Smoothness") ? mat.GetFloat("_Smoothness")
+                              : (mat.HasProperty("_Glossiness") ? mat.GetFloat("_Glossiness") : -1f);
+                    if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", MatteMetallic);
+                    if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", MatteSmoothness);
+                    if (mat.HasProperty("_Glossiness")) mat.SetFloat("_Glossiness", MatteSmoothness);
+                    info += $"｜哑光✓（金属 {om:0.##}→{MatteMetallic:0.##}｜光滑 {os_:0.##}→{MatteSmoothness:0.##}）";
                 }
 
                 string sh = mat.shader != null ? mat.shader.name : "?";
