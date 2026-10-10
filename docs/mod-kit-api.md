@@ -10,15 +10,12 @@
 - **有借有还**：`Result` 里记着这次改过的东西（关掉的旧零件、挂上的实例、搬过的挂点、顺手做的 `Nested`）——
   只调 `Restore()` 就全还回去，不用自己记。
 - **层不动**：不自己挑层。游戏设好的 `Character(9)` 照用，其余一律 `Default(0)`（`UI(5)` 会让模型发白）。
-- **贴图只改该改的** ✓：baseColor / 法线 / 金属光滑三张**按目标 shader 的能力**接（有槽就接图 ✓；没槽就**什么都不动** ✗）；
-  金属/光滑的数值**不从别处写死** ✗ —— 没依据就不碰 ✓。
 
 ## 1. 读模型
 
 | API | 什么时候用 |
 |---|---|
-| `GltfLoader.LoadFile(path, front)` | 读一个 `.glb` → `Mesh` + 主贴图 **+ 法线 + 金属光滑（ORM）**（Tripo 产物都带这两张）✓。`front` 一般 `"auto"`；用户自带的模型按 config 传 `"-z"`/`"+x"`/`"-x"` |
-| `ModelCache.Get(cache, path, front, out loaded)` | 按「路径 + 朝向 + 文件指纹」缓存解析结果 ✓（`CachedModel` 里带着 `Mesh` / `Texture` / `NormalTexture` / `MetalGlossMap`）—— 模型文件一改就自动重读 ✓ |
+| `GltfLoader.LoadFile(path, front)` | 读一个 `.glb` → `Mesh` + 主贴图。`front` 一般 `"auto"`；用户自带的模型按 config 传 `"-z"`/`"+x"`/`"-x"` |
 | `GltfLoader.Load(byte[], front)` | 同上，但手上已有字节（很少用） |
 | `GltfLoader.MuzzleAtPositiveZ(pts)` / `GuessGrip(pts)` | 自己需要判朝向 / 找握把时才用（换模型时 kit 内部已经做了） |
 
@@ -35,7 +32,6 @@
 | API | 什么时候用 |
 |---|---|
 | `ItemModel.Apply(item, mesh, tex, handheld, size)` | **主入口**：换一件物品（有图形就地改实例；没图形自动"克隆物品 + 注册动态条目"） |
-| `ItemModel.CurrentNormalMap` / `CurrentMetalGlossMap` | ⭐ **调 `Apply*` 之前必须设** ✓（拿到的 `CachedModel.NormalTexture` / `.MetalGlossMap`）—— 它们决定“附在材质上的法线与金属光滑图”✓；**忘了设会静默沿用上一个模型的两张图** ✗（错配 ✗）；确实没有就显式设 `null` ✓ |
 | `ItemModel.ApplyHandheld(item, mesh, tex, scale)` | 只换"拿在手里"那条 |
 | `ItemModel.ApplyToInstance(item, mesh, tex, scale)` | 只换"场上那一个"（手里/身上），不动模板 |
 | `ItemModel.ApplyToTransform(root, …)` / `ApplyToGraphicClone(clone, …)` | 你已经拿到"要改的那一层"时直接用；后者专给**场上的图形副本**（掉落/展示） |
