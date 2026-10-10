@@ -173,48 +173,23 @@ namespace ModelKit
             }
             catch { /* 材质换不上不该炸 ✓ */ }
         }
-        /// <summary>⭐ 把一份**借来的游戏材质**改成**哑光** ✓ —— 专治“看着不干净”✗。
+        /// <summary>⭐⭐ **通用策略**：把 Tripo 的两张贴图按目标 shader 的**能力**接上 ✓。
+        /// <para>用户口径 ✓：“应该 generic 地从 tripo 的结果设置这两个数值” ✓ /
+        /// “没有 ORM 的情况就**不变**原有材质设置” ✗。</para>
         ///
-        /// 为什么要 ✗：材质是从**目标物品自己身上**借来的 ✓（`new Material(src)` ✓），
-        ///   带着它的 **`_Metallic` / `_Glossiness` 原值** ✗；高金属 + 高光滑在游戏的高对比环境里
-        ///   ⇒ baseColor 被当作“金属反射色”→ 暗部大片**死黑 / 暗紫斑** ✗ + **硬高光** ✗
-        ///   （实测：头盔在游戏里脏 ✓ 而同一份网格/贴图离线渲染干净 ✓ ⇒ 就是这两项 ✓）
-        ///
-        /// 只给**物品**用 ✓；**武器不调** ✗（用户实测武器看着没问题 ✓ 别动 ✓）。
-        /// 调完把**改前/改后**的数值打一条日志 ✓ —— 万一不是这个原因 ✓ 也能马上看出来 ✓。</summary>
-        public static void MakeMatte(Material mat, string tag = null)
-        {
-            if (mat == null) return;
-            try
-            {
-                float oldM = mat.HasProperty("_Metallic") ? mat.GetFloat("_Metallic") : -1f;
-                float oldG = mat.HasProperty("_Glossiness") ? mat.GetFloat("_Glossiness")
-                           : (mat.HasProperty("_Smoothness") ? mat.GetFloat("_Smoothness") : -1f);
-
-                if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", 0f);
-                if (mat.HasProperty("_Glossiness")) mat.SetFloat("_Glossiness", 0.25f);
-                if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 0.25f);
-                // ⭐ 高光/反射：Standard shader 里**真正的开关是关键字** ✗（设 float 没用 ✗ —— 实测“边缘怪光”就是它们 ✓）
-                mat.EnableKeyword("_SPECULARHIGHLIGHTS_OFF");
-                mat.EnableKeyword("_GLOSSYREFLECTIONS_OFF");
-
-                string sh = mat.shader != null ? mat.shader.name : "?";
-                UnityEngine.Debug.Log($"[MakeMatte] {tag}｜金属 {oldM:0.##}→0｜光滑 {oldG:0.##}→0.25｜shader={sh}");
-            }
-            catch { /* 数值改不上不该炸 ✓ */ }
-        }
-        /// <summary>⭐⭐ 把 Tripo 那两张图接上 ✓（用户要求：“用 tripo 发来的图试试吧”✓）。
-        ///
-        /// <para>`normal` ✓ → `_BumpMap` ✓（glTF 与 Unity 同为 OpenGL 约定 +Y ✓ ⇒ **不用翻转** ✓）</para>
-        /// <para>`metalGloss` ✓ → `_MetallicGlossMap` ✓ + `_OcclusionMap`（后者只读 **G** ✓ 所以两张图**共用一张** ✓）；
-        /// 同时把 `_Metallic`/`_Glossiness` 置 **1** ✓ 让**贴图接管** ✓（否则数值会把图盖掉 ✗）</para>
-        /// <para>⚠️ 图必须是**线性**读出来的 ✗（加载器已处理 ✓）。</para></summary>
+        /// <para>① `normal` ✓：有 `_BumpMap` / `_NormalMap` 就接 ✓（glTF 与 Unity 同为 OpenGL 约定 +Y ✓ **不翻转** ✓）；
+        /// 没有就**什么都不做** ✗。</para>
+        /// <para>② `metalGloss`（ORM ✓，加载器已重排为 Unity 版：R=metallic ✓ G=AO ✓ A=smoothness ✓）：</para>
+        /// <para>   · shader **有** `_MetallicGlossMap` 槽 ⇒ 接图 ✓ + 数值置 1 ✓（让贴图接管 ✓）</para>
+        /// <para>   · **没有**槽 ✗ ⇒ ⭐ **把 ORM 折算成两个常数** ✓（这就是“从 Tripo 结果通用地得出这两个值”✓）</para>
+        /// <para>③ **没有 ORM** ✗ ⇒ ⭐ **一处都不碰** ✓（保持借来材质的原值 ✓ —— 没依据就不该改 ✓）</para></summary>
         public static void ApplyTripoMaps(Material mat, Texture2D normal, Texture2D metalGloss, string tag = null)
         {
             if (mat == null) return;
             try
             {
                 string info = "";
+                // ── ① 法线 ──
                 if (normal != null)
                 {
                     if (mat.HasProperty("_BumpMap")) { mat.SetTexture("_BumpMap", normal); mat.EnableKeyword("_NORMALMAP"); info += "法线✓"; }
@@ -223,20 +198,57 @@ namespace ModelKit
                 }
                 else info += "法线（GLB 里没有）";
 
-                if (metalGloss != null)
+                // ── ②/③ 金属 + 光滑 ──
+                if (metalGloss == null)
                 {
-                    if (mat.HasProperty("_MetallicGlossMap")) { mat.SetTexture("_MetallicGlossMap", metalGloss); mat.EnableKeyword("_METALLICGLOSSMAP"); info += "｜ORM✓"; }
-                    else info += "｜ORM✗（shader 没这个槽）";
+                    info += "｜ORM（GLB 里没有 ✓ **材质原值不动** ✗）";      // ⭐ 没有依据 ⇒ 一个值都不改 ✓
+                }
+                else if (mat.HasProperty("_MetallicGlossMap"))
+                {
+                    // ① 有贴图槽 ⇒ 用图 ✓（细节最全 ✓）
+                    mat.SetTexture("_MetallicGlossMap", metalGloss);
+                    mat.EnableKeyword("_METALLICGLOSSMAP");
                     if (mat.HasProperty("_OcclusionMap")) mat.SetTexture("_OcclusionMap", metalGloss);   // 它**只读 G** ✓ 同一张图 ✓
-                    // ⚠️ 金属度/光滑度**不在这里置 1** ✗ —— 交给紧接着的 `MakeMatte` ✓（金属 0 ✓ 光滑 0.25 ✓）
-                    //   ⇒ 两者**相乘** ✓：若该 shader 读这张图 ⇒ 0 × 0.25 × A(≈0.03) ⇒ **更虺光** ✓；
-                    //     若该 shader 不读 ✗ ⇒ 0.25 ⇒ 也是虺光 ✓ —— 两种 shader 都安全 ✓
+                    if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", 1f);
+                    if (mat.HasProperty("_Glossiness")) mat.SetFloat("_Glossiness", 1f);
+                    if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 1f);
+                    info += "｜ORM→贴图✓（数值置 1 ✓）";
+                }
+                else
+                {
+                    // ② 没贴图槽 ⇒ ⭐ 把 ORM **折算成两个常数** ✓（通用 ✓ 不写死 ✗）
+                    OrmMeans(metalGloss, out float metal, out float smooth);
+                    float oldM = mat.HasProperty("_Metallic") ? mat.GetFloat("_Metallic") : -1f;
+                    float oldS = mat.HasProperty("_Smoothness") ? mat.GetFloat("_Smoothness")
+                               : (mat.HasProperty("_Glossiness") ? mat.GetFloat("_Glossiness") : -1f);
+                    if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", metal);
+                    if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", smooth);
+                    if (mat.HasProperty("_Glossiness")) mat.SetFloat("_Glossiness", smooth);   // 两套名字都设 ✓ 哪个管事都一样 ✓
+                    info += $"｜ORM→常数✓（金属 {oldM:0.##}→{metal:0.##}｜光滑 {oldS:0.##}→{smooth:0.##}）";
                 }
 
                 string sh = mat.shader != null ? mat.shader.name : "?";
                 UnityEngine.Debug.Log($"[ApplyTripoMaps] {tag}｜{info}｜shader={sh}");
             }
             catch { /* 图接不上不该炸 ✓ */ }
+        }
+
+        /// <summary>ORM（重排后的 ✓）的**通道均值** ✓：`R = metallic` ✓ `A = smoothness` ✓。
+        /// <para>为什么可以用均值 ✗：目标 shader **根本没地方放这张图** ✗ ⇒ 常数是能做的极限 ✓；
+        /// 若它有图槽 ✓ 就走“接图”那条 ✓ 不会用到这里 ✓。</para>
+        /// <para>Y 方向跳着采样 ✓（每 8 行取一行 ✓ 够准且便宜 ✓）。</para></summary>
+        static void OrmMeans(Texture2D t, out float metal, out float smooth)
+        {
+            metal = 0f; smooth = 0.5f;
+            try
+            {
+                long sumM = 0, sumS = 0, n = 0;
+                var px = t.GetPixels32();
+                int stride = Mathf.Max(1, px.Length / 65536);   // 最多采 65536 个像素 ✓（跳着采 ✓ 够准且便宜 ✓）
+                for (int i = 0; i < px.Length; i += stride) { sumM += px[i].r; sumS += px[i].a; n++; }
+                if (n > 0) { metal = (float)sumM / n / 255f; smooth = (float)sumS / n / 255f; }
+            }
+            catch { }
         }
 
         /// <summary>⭐ 游戏**自己声明**的"这套外观用哪些渲染器" ✓ —— 图形根上的 `CharacterSubVisuals.renderers` ✓。

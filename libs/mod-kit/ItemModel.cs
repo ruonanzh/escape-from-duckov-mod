@@ -360,7 +360,6 @@ namespace ModelKit
             {
                 GameApi.ApplyOurTexture(one, texture);                                        // baseColor + 清掉对不上 UV 的槽 ✗
                 GameApi.ApplyTripoMaps(one, CurrentNormalMap, CurrentMetalGlossMap, "物品");    // Tripo 的 normal + ORM ✓
-                GameApi.MakeMatte(one, "物品");                                               // ⭐ 金属 0 ✓ 光滑 0.25 ✓（实测最干净 ✓）
             }
             int sub = Mathf.Max(1, mesh.subMeshCount);
             var mats = new Material[sub];                    // 每个 submesh 一个材质槽（别让 Unity 去猜 ✓）
