@@ -132,7 +132,7 @@
   }
 
   // ── 场景 ────────────────────────────────────────────────────────────────────
-  var renderer, scene, camera, controls, grid, hull, axes, shadowPlane;
+  var renderer, scene, camera, controls, grid, hull, axes;
 
   /**
    * ⭐ 自建"摄影棚"环境贴图（给 PBR 做 IBL ✓）。
@@ -172,8 +172,7 @@
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.98;
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // ⚠️ **不开阴影** ✓（用户："影子没必要"）—— 三点光只做明暗与轮廓 ✓ 不投影 ✓
     host.appendChild(renderer.domElement);
 
     scene = new THREE.Scene();
@@ -186,12 +185,6 @@
     // ⭐ 三点光（摄影棚打法 ✓）：key 主光带阴影 ✓ · fill 补暗部 ✓ · rim 勾轮廓 ✓
     var key = new THREE.DirectionalLight(0xfff4e6, 1.85);   // 略暖 ✓
     key.position.set(-3.2, 5.2, 4.2);
-    key.castShadow = true;
-    key.shadow.mapSize.set(2048, 2048);
-    key.shadow.camera.near = 0.1;
-    key.shadow.camera.far = 30;
-    key.shadow.bias = -0.0006;                     // 消自阴影的条纹/痤疮 ✓
-    key.shadow.normalBias = 0.012;
     scene.add(key);
 
     var fill = new THREE.DirectionalLight(0xdfe8ff, 0.55);   // 略偏冷 ✓ 与暖主光形成对比 ✓
@@ -211,16 +204,6 @@
     grid.position.y = 0;
     scene.add(grid);
 
-    // ⭐ 一块"只看阴影"的地面（`ShadowMaterial`）—— 模型会投下柔和阴影 ⇒ 立刻有"放得住"的质感 ✓
-    //    位置在 build() 里贴到模型底部 ✓（不留缝隙 ✓）
-    shadowPlane = new THREE.Mesh(
-      new THREE.PlaneGeometry(20, 20),
-      new THREE.ShadowMaterial({ opacity: 0.30 })
-    );
-    shadowPlane.rotation.x = -Math.PI / 2;
-    shadowPlane.receiveShadow = true;
-    shadowPlane.position.y = -0.500;
-    scene.add(shadowPlane);
 
     // 游戏坐标系标识：+X 红 · +Y 绿 · +Z 蓝（Unity：+Y 上 · +Z 前）
     axes = new THREE.AxesHelper(0.5);
@@ -374,12 +357,9 @@
         m.side = THREE.DoubleSide;
         m.needsUpdate = true;
       });
-      o.castShadow = true;      // ⭐ 有阴影 ⇒ 立体感/质感 ✓
-      o.receiveShadow = true;
     });
 
     grid.visible = opts.grid;
-    if (shadowPlane) shadowPlane.position.y = box.min.y - 0.001;   // 阴影面贴到模型底部 ✓
 
     // ⭐ 「握把归零」只在选「枪」时露出（物品/近战/装备不适用 —— 那是枪的猜测规则）
     var gripRow = document.getElementById("gripRow");
