@@ -26,31 +26,60 @@ static partial class DataProbe
     {
         var name = Opt(o, "name") ?? Opt(o, "pattern");
         var pathId = Opt(o, "pathid");
-        if (name == null && pathId == null)
+        var meshWant = Opt(o, "mesh");
+        var has = Opt(o, "has");
+        bool exact = o.ContainsKey("exact");
+        if (name == null && pathId == null && meshWant == null)
         {
-            outp.Add("# transform: need --name/--pattern (Transform 或它 GameObject 的名字) or --pathid");
+            outp.Add("# transform: need one of --name/--pattern, --pathid, --mesh <mesh 名>");
+            outp.Add("#   可选：--exact（名字严格相等 ✓）· --has <组件名>（只保留挂了该组件的 ✓）· --depth");
             return;
         }
         if (depth <= 0) depth = 2;
 
-        // ① 定位 Transform（也接受"GameObject 的名字" ⇒ 找挂它的那个 Transform ✓）
-        Node hit = null;
+        // ① 定位候选 Transform（三种入口 ✓）
+        //    · --pathid      直取 ✓
+        //    · --mesh <名>   ⭐ 由 mesh 名**反查**挂它的 MeshFilter ⇒ 取它的 GameObject 的 Transform ✓
+        //                    （省掉"search 抄 pathID 再 dump"三步 ✓）
+        //    · --name <名>   匹配 GameObject 名字 ✓（--exact ⇒ 严格相等 ✗ 否则子串 ✓）
+        var hits = new List<Node>();
         foreach (var (inst, info) in AllInfos(insts))
         {
-            if (!string.Equals(ClassNameOf(am, inst, info), "Transform", StringComparison.Ordinal)) continue;
+            var cn = ClassNameOf(am, inst, info);
+            if (meshWant != null)
+            {
+                // 只扫 MeshFilter ✓（mesh 挂在它身上 ✗ 不是 MeshRenderer ✓）
+                if (!string.Equals(cn, "MeshFilter", StringComparison.Ordinal)) continue;
+                AssetTypeValueField mbf;
+                try { mbf = am.GetBaseField(inst, info); } catch { continue; }
+                if (mbf == null) continue;
+                var mnode = Ext(am, inst, mbf, "m_Mesh");
+                var mname = mnode != null ? AssetNameOrDash(mnode.bf) : "";
+                if (!NameMatches(mname, meshWant, exact)) continue;
+                // MeshFilter → 它的 GameObject → 它的 Transform ✓
+                var go = Ext(am, inst, mbf, "m_GameObject");
+                if (go == null) continue;
+                var tr = TransformOf(am, go);
+                if (tr != null && HasComponent(am, tr, has)) hits.Add(tr);
+                continue;
+            }
+            if (!string.Equals(cn, "Transform", StringComparison.Ordinal)) continue;
             if (pathId != null && info.PathId.ToString() != pathId) continue;
             AssetTypeValueField bf;
             try { bf = am.GetBaseField(inst, info); } catch { continue; }
             if (bf == null) continue;
-            if (name != null && (GoName(am, inst, bf) ?? "").IndexOf(name, StringComparison.OrdinalIgnoreCase) < 0) continue;
-            hit = new Node(inst, info, bf);
-            break;
+            if (name != null && !NameMatches(GoName(am, inst, bf) ?? "", name, exact)) continue;
+            if (!HasComponent(am, new Node(inst, info, bf), has)) continue;
+            hits.Add(new Node(inst, info, bf));
+            if (pathId != null || has == null) break;    // 精确/无 --has ⇒ 取第一个就够 ✓；--has 时继续找 ✓
         }
-        if (hit == null)
+        if (hits.Count == 0)
         {
-            outp.Add($"# transform: no Transform matched (name={name} pathid={pathId})");
+            outp.Add($"# transform: no Transform matched (name={name} pathid={pathId} mesh={meshWant} has={has})");
             return;
         }
+        if (hits.Count > 1) outp.Add($"# ⚠️ 匹配到 {hits.Count} 个（我只详细展开**第一个** ✓ —— 想缩小范围用 --exact / --has）");
+        Node hit = hits[0];
 
         // ② 父链（子 → 根 ✓）
         var chain = new List<Node>();
@@ -84,7 +113,7 @@ static partial class DataProbe
         if (mf != null)
         {
             var mesh = Ext(am, mf.inst, mf.bf, "m_Mesh");
-            if (mesh != null)
+            if (meshWant != null)
             {
                 var ext2 = ExtField(mesh.bf, "m_LocalAABB.m_Extent");
                 var cen = ExtField(mesh.bf, "m_LocalAABB.m_Center");
@@ -108,6 +137,41 @@ static partial class DataProbe
     }
 
     // ── helpers ────────────────────────────────────────────────────────────────
+
+    /// <summary>名字匹配：`--exact` ⇒ 严格相等 ✗（`Rifle02` 就不会再匹配到 `Rifle02_Sight` ✓）；否则子串 ✓</summary>
+    static bool NameMatches(string value, string want, bool exact)
+        => exact ? string.Equals(value, want, StringComparison.Ordinal)
+                 : (value ?? "").IndexOf(want, StringComparison.OrdinalIgnoreCase) >= 0;
+
+    /// <summary>该 Transform 的 GameObject 是否挂着某组件（`--has` ✓；没给 = 恒真 ✓）</summary>
+    static bool HasComponent(AssetsManager am, Node t, string className)
+        => className == null || ComponentOf(am, t, className) != null;
+
+    /// <summary>由 GameObject 找它的 Transform（`Transform.m_GameObject` 反向查 ✓）</summary>
+    static Node TransformOf(AssetsManager am, Node go)
+    {
+        AssetTypeValueField arr;
+        try { arr = go.bf["m_Component"]; } catch { return null; }
+        if (arr == null) return null;
+        arr = ArrayNode(arr) ?? arr;
+        foreach (var item in arr.Children)
+        {
+            AssetTypeValueField ptrField = null;
+            try { ptrField = item["component"]; } catch { }
+            if (ptrField == null || ptrField.Children.Count == 0) ptrField = item;
+            try
+            {
+                if (ptrField["m_PathID"] == null) continue;
+                var ext = am.GetExtAsset(go.inst, ptrField);
+                if (ext.baseField == null) continue;
+                var f = ext.file ?? go.inst;
+                var cn = ext.info != null ? ClassNameOf(am, f, ext.info) : null;
+                if (string.Equals(cn, "Transform", StringComparison.Ordinal)) return new Node(f, ext.info, ext.baseField);
+            }
+            catch { }
+        }
+        return null;
+    }
 
     class Node
     {

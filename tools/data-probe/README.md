@@ -31,6 +31,22 @@ dotnet run --project tools/data-probe -- \
 | `dump` | `--class <C>` ＋ (`--name`\|`--typeid`\|`--pathid`) `[--depth d] [--follow]` | dump 该资产的**字段 + 值**；`--follow` **跟随引用**（如 `Item.stats` → `StatCollection`、`Item.itemGraphic` → `ItemGraphicInfo` → 渲染器 ✓）—— ⭐ **可跨数据文件** ✓（按 `--depth` 决定能跟几跳 ✓）|
 | `refs` | 同 `dump` 的定位 | 列出该资产**引用了哪些对象**（PPtr）—— 每行带 **fileID** ✓（`[本文件]` / `[外部 fileId=N]`）**并把引用目标解出来** ✓（类名 + 名字 ✓；跨文件时标出在哪个文件 ✓）|
 
+**过滤参数（v2 新增）** ✓：
+
+- ⭐ **`--mesh <mesh 名>`**（`transform`）⇒ **由 mesh 名反查**挂它的 `MeshFilter` ⇒ 拿它的 GameObject 的 Transform ✓
+  ⇒ ⭐ **一步**得到"这个模型在游戏里的**真实尺寸**"✓（以前要 `search` → 抄 pathID → `dump` 三步 ✓）。
+  例：`transform --mesh Rifle02 --exact --file level4 --depth 0` ✓
+- **`--exact`** ⇒ `--name` / `--mesh` 改成**严格相等** ✗（默认子串 ✓）。
+  ⚠️ 很有用 ✓：`Rifle02` 与 `Rifle02_Sight` 是两把不同东西 ✓ 子串分不开 ✗
+- **`--has <组件名>`**（`transform`）⇒ 只保留**挂着该组件**的对象 ✓
+  （例：`--has MeshFilter` 只看有模型的 ✓；`--has ItemGraphicInfo` 找"换外观"的中枢 ✓）
+- ⭐⭐ **`refs --by <类名>`** ⇒ **反查** ✗：**哪些该类的对象引用了它** ✓
+  （正向 `refs` 是"我引用了谁"✗ —— 反方向以前完全没有 ✗）
+  例：`refs --class Mesh --name Rifle02 --exact --file sharedassets4.assets,level4 --by MeshFilter`
+  ⇒ `MeshFilter (pathID 3321) via m_Mesh (resolved)` ✓
+- ⭐ **`--file` 支持多个**（逗号分隔 ✓）—— 跨文件反查**必须同时加载两边** ✗
+  （`Mesh` 在 `sharedassets4.assets` ✓ 引用它的 `MeshFilter` 在 `level4` ✗）
+
 **输出与上限**（`--out` 与 `--limit`）✓：
 
 - **不给 `--out`** ⇒ 输出**显示**到 `--limit` 行（默认 2000 ✓）就**停** ✓，末尾提示
@@ -45,7 +61,7 @@ dotnet run --project tools/data-probe -- \
 
 > ⚠️ `--follow` **不会展开数组元素** ✗（如渲染器的 `m_Materials` ✓ 会停在不透明的 `AssetTypeArrayInfo` ✓）——
 > 要拿材质就改走 ✓：`search --class Material --pattern <名字>` ✓ 再对它 `refs` ✓ 读 `m_Shader` ✓（跨文件也能读到 ✓）。
-| `transform` | `--name <n>` \| `--pathid <p>` `[--depth d]` `[--file levelN]` | ⭐ **Transform 链**：目标的 local TRS ✓ + **父链**（逐级 + **累计世界缩放** ✓）+ **子节点树**（找 `Sockets/…` 挂点 ✓）。⚠️ Unity 的 Transform **每级都是 local** ✗ ⇒ 「模型在游戏里到底多大 / 挂点在哪」只能这样算 ✓。挂了 **MeshFilter** 时顺带读 `Mesh.m_LocalAABB` × 累计缩放 = ⭐ **真实尺寸（米）** ✓（例：`Rifle02` mesh 本地 1.525 m ✓ 累计缩放 0.6545 ⇒ 游戏里 **0.998 m** ✓）。⚠️ 场景/prefab 在 **`levelN`** 里 ✗ ⇒ 加 `--file levelN` ✓；mesh 挂在 **`MeshFilter`** 上 ✗（不是 `MeshRenderer` ✓）|
+| `transform` | `--name <n>` \| `--pathid <p>` \| ⭐ **`--mesh <mesh 名>`** `[--exact]` `[--has <组件>]` `[--depth d]` `[--file levelN]` | ⭐ **Transform 链**：目标的 local TRS ✓ + **父链**（逐级 + **累计世界缩放** ✓）+ **子节点树**（找 `Sockets/…` 挂点 ✓）。⚠️ Unity 的 Transform **每级都是 local** ✗ ⇒ 「模型在游戏里到底多大 / 挂点在哪」只能这样算 ✓。挂了 **MeshFilter** 时顺带读 `Mesh.m_LocalAABB` × 累计缩放 = ⭐ **真实尺寸（米）** ✓（例：`Rifle02` mesh 本地 1.525 m ✓ 累计缩放 0.6545 ⇒ 游戏里 **0.998 m** ✓）。⚠️ 场景/prefab 在 **`levelN`** 里 ✗ ⇒ 加 `--file levelN` ✓；mesh 挂在 **`MeshFilter`** 上 ✗（不是 `MeshRenderer` ✓）|
 | `export` | `--class <C>` `[--match <expr>]…` `[--field <path>]…` `[--rows N]` `[--out <file>]` | **批量表**：一类对象 × 过滤 × 字段路径 → 每行一个资产（TAB 分列；数组用 `;` 连）。`--out` 写文件、只回预览 |
 
 公共：`--file <x.assets|levelN|bundle>`（限定单个数据文件；**`levelN` = 场景文件**，格式与 `.assets` 相同；**也可以直接给 AssetBundle**（例如 mod 的包）—— 内存解包，只读、不落临时文件）、`--limit N`（截断，默认 2000 行）、`--depth d`（dump 深度，默认 3）、`--offset N`（跳过前 N 条，给 `list`/`search` 翻页用）。

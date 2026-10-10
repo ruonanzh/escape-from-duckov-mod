@@ -130,14 +130,16 @@ static partial class DataProbe
         "  search  --pattern <p> [--class C]  find assets by name\n" +
         "  dump    --class <C> (--name <n>|--typeid <t>|--pathid <p>) [--depth d] [--follow]\n" +
         "  refs    --class <C> (--name <n>|--typeid <t>|--pathid <p>)   what it references\n" +
-        "  transform (--name <n>|--pathid <p>) [--depth d]  a Transform local TS+chain+world scale;\n" +
+        "          add --by <组件/类>  ⭐ **reverse**: which objects of that class reference it\n" +
+        "  transform (--name <n>|--pathid <p>|--mesh <mesh 名>) [--exact] [--has <组件>] [--depth d]\n" +
+        "          a Transform local TRS + parent chain + world scale;\n" +
         "          also prints the child tree (find Sockets/...) and, if a MeshFilter is attached,\n" +
         "          the mesh AABB x world scale = **real in-game size** (levelN scenes hold the prefabs)\n" +
         "  export  --class <C> [--match <path><op><value>]... [--field <path>]... [--rows N] [--offset N] [--out <file>]\n" +
         "          one table row per matched asset; --out writes the full table to a file (stdout then gets a preview only)\n" +
         "          'a.b' field, 'a[]'/'a[i]' expand/index an array, '#class'/'#name' = resolved object's class/name\n" +
         "          match ops: = != ~ (substring) > >= < <=   -   columns are TAB-separated, arrays joined with ';'\n" +
-        "  common: [--file <x.assets|levelN>] [--limit N] [--offset N]\n" +
+        "  common: [--file <x.assets|levelN>[,<more>]] [--limit N] [--offset N] [--out <file>]\n" +
         "  note:  --file levelN reads a scene (level files are serialized like .assets)");
 
     static string FindClassData()
@@ -153,7 +155,19 @@ static partial class DataProbe
 
     static List<string> ResolveFiles(string data, string file)
     {
-        if (file != null) return new List<string> { Path.IsPathRooted(file) ? file : Path.Combine(data, file) };
+        // ⭐ `--file` 支持**多个**（逗号分隔 ✓）—— 跨文件反查必须同时加载两边 ✗
+        //    例：`Mesh` 在 `sharedassets4.assets` ✓ 而引用它的 `MeshFilter` 在 `level4` ✗
+        if (file != null)
+        {
+            var outList = new List<string>();
+            foreach (var one in file.Split(','))
+            {
+                var t = one.Trim();
+                if (t.Length == 0) continue;
+                outList.Add(Path.IsPathRooted(t) ? t : Path.Combine(data, t));
+            }
+            if (outList.Count > 0) return outList;
+        }
         var assets = Directory.GetFiles(data, "*.assets").OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList();
         if (assets.Count > 0) return assets;
         // 没有 .assets 时，把目录里看起来像 AssetBundle 的文件也接上（例如 mod 的包目录）
@@ -539,6 +553,7 @@ static partial class DataProbe
 
     static void Refs(AssetsManager am, List<AssetsFileInstance> insts, Dictionary<string, string> o, Out outp)
     {
+        var by = Opt(o, "by");                 // ⭐ 反查模式：只扫这个类的对象 ✓
         var cls = Opt(o, "class");
         var name = Opt(o, "name");
         var typeId = Opt(o, "typeid");
@@ -553,11 +568,77 @@ static partial class DataProbe
             if (bf == null) continue;
             if (typeId != null && TypeId(bf).ToString() != typeId) continue;
             if (name != null && !Matches(bf, className, name)) continue;
+            if (by != null)
+            {
+                // ⭐ **反查**：哪些 `--by <类>` 的对象引用了它 ✓（现在只有"我引用了谁"✗ 没有反方向 ✗）
+                //    用途：找"谁在用这个模型/挂点" ✓（如哪些 MeshFilter 引用了某 mesh ✓）
+                outp.Add($"=== who references {className} {AssetName(bf)} (only class {by}) ===");
+                long tgtPath = info.PathId;
+                string tgtFile = inst.name;
+                int n = 0;
+                foreach (var (i2, nfo2) in AllInfos(insts))
+                {
+                    if (!string.Equals(ClassNameOf(am, i2, nfo2), by, StringComparison.Ordinal)) continue;
+                    AssetTypeValueField bf2;
+                    try { bf2 = am.GetBaseField(i2, nfo2); } catch { continue; }
+                    if (bf2 == null) continue;
+                    if (!ReferencesTarget(am, i2, bf2, tgtFile, tgtPath, out var path, 0)) continue;
+                    outp.Add($"  {by} {AssetName(bf2)} (pathID {nfo2.PathId})  via {path}");
+                    n++;
+                }
+                outp.Add($"  ({n} object(s) of class {by} reference it)");
+                return;
+            }
             outp.Add($"=== {className} {AssetName(bf)} references ===");
             CollectPtrs(am, inst, bf, "", outp, 0);
             return;
         }
         outp.Add("# no asset matched");
+    }
+
+    /// <summary>反查用：这个对象的字段里**有没有引用**（文件,name + pathID）指向的目标 ✓</summary>
+    static bool ReferencesTarget(AssetsManager am, AssetsFileInstance inst, AssetTypeValueField f,
+        string tgtFile, long tgtPath, out string hitPath, int depth)
+    {
+        hitPath = null;
+        if (depth > 6) return false;
+        if (f.Children.Count == 2 && f.Children[0].FieldName == "m_FileID" && f.Children[1].FieldName == "m_PathID")
+        {
+            try
+            {
+                long pid = f["m_PathID"].AsLong, fid = f["m_FileID"].AsLong;
+                if (pid != 0 && pid == tgtPath && fid == 0 &&
+                    string.Equals(inst.name, tgtFile, StringComparison.Ordinal))
+                {
+                    hitPath = "(direct)";
+                    return true;
+                }
+                // 跨文件：把引用解出来再比一次 ✓（同 pathID 撞号很常见 ✗ 不能只看数字 ✓）
+                if (pid != 0)
+                {
+                    var ext = am.GetExtAsset(inst, f);
+                    if (ext.baseField != null)
+                    {
+                        var efile = ext.file ?? inst;
+                        long ep = ext.info != null ? ext.info.PathId : -1;
+                        if (ep == tgtPath && string.Equals(efile.name, tgtFile, StringComparison.Ordinal))
+                        {
+                            hitPath = "(resolved)";
+                            return true;
+                        }
+                    }
+                }
+            }
+            catch { }
+            return false;
+        }
+        foreach (var c in f.Children)
+            if (ReferencesTarget(am, inst, c, tgtFile, tgtPath, out hitPath, depth + 1))
+            {
+                hitPath = (hitPath == "(direct)" || hitPath == "(resolved)") ? $"{c.FieldName} {hitPath}" : hitPath;
+                return true;
+            }
+        return false;
     }
 
     static void CollectPtrs(AssetsManager am, AssetsFileInstance inst, AssetTypeValueField f, string path, Out outp, int depth)
