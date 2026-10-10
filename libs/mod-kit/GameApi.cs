@@ -167,112 +167,11 @@ namespace ModelKit
 
                 // ④ **清掉"和我们 UV 对不上"的图** ✗（留着只会脏 ✓）
                 var slots = new string[] { "_BumpMap", "_NormalMap", "_OcclusionMap", "_MetallicGlossMap",
-                                           "_MetallicSmoothness",   // ⭐ 游戏自定义名 ✓（两顶头盔的 shader 都用它 ✓）
                                            "_SpecGlossMap", "_DetailMask", "_DetailAlbedoMap", "_ParallaxMap" };
                 for (int i = 0; i < slots.Length; i++)
                     if (mat.HasProperty(slots[i])) mat.SetTexture(slots[i], null);
             }
             catch { /* 材质换不上不该炸 ✓ */ }
-        }
-        /// <summary>⭐ **实验开关** ✓：要不要把 Tripo 的 **ORM（金属/光滑）** 接上 ✓。
-        /// <para>实测印象 ✓（用户 ✓）：“加上 ORM **增加了真实感** ✓ 但和游戏原本风格**有些冲突**” ✗</para>
-        /// <para>⇒ 默认 **关** ✗ = 只换 baseColor + 法线 ✓，**金属/光滑保持游戏原值** ✓（= 风格一致 ✓）。
-        /// 想再比一次就改成 `true` ✓ 重编即可 ✓（法线**始终**接 ✓ 不受这个开关影响 ✓）。</para></summary>
-        public static bool ApplyOrm = false;
-
-        /// <summary>⭐ **哑光化** ✓（用户口径 ✓：“除了 baseColor 和法线 ✓ 什么都不改”✗ 与 “不要油光”✗ **这件事上是矛盾的** ✓ ——
-        /// 因为**游戏原材质本身就是亮的** ✗：实测 `PFB_SpaceSuitIII` ⇒ `_Metallic` **0.872** ✓ `_Smoothness` **0.855** ✓；
-        /// `Mat_Helmet_LV3` ⇒ `_Metallic` **1** ✓ `_Smoothness` **0.7** ✓）。
-        /// <para>⇒ 所以“不碰两个数值”✗ = “油光”✗（就是现在这版 ✓）；
-        /// 要让观感“**干净**”✓（用户实测过的那组值 ✓）就得把这两个数压下来 ✓。</para>
-        /// <para>默认 **开** ✓：不接 ORM 贴图 ✗，但把金属/光滑压到下面这两个值 ✓。</para></summary>
-        public static bool ApplyMatte = false;
-        public static float MatteMetallic = 0f;
-        public static float MatteSmoothness = 0.25f;
-
-        /// <summary>⭐ **法线开关** ✓：要不要接 Tripo 的**法线图** ✓。
-        /// <para>用户要求做“**只换 baseColor**”的基线对比 ✓（“把法线去掉 ✗ 以及把哑光去掉 ✗”）⇒ 默认 **关** ✗。</para>
-        /// <para>开着时 ✓：有 `_BumpMap`/`_NormalMap` 就接 ✓（glTF 与 Unity 同为 OpenGL 约定 +Y ✓ 不翻转 ✓）。</para></summary>
-        public static bool ApplyNormal = false;
-
-        /// <summary>⭐⭐ **通用策略**：把 Tripo 的两张贴图按目标 shader 的**能力**接上 ✓。
-        /// <para>用户口径 ✓：“应该 generic 地从 tripo 的结果设置这两个数值” ✓ /
-        /// “没有 ORM 的情况就**不变**原有材质设置” ✗。</para>
-        ///
-        /// <para>① `normal` ✓：有 `_BumpMap` / `_NormalMap` 就接 ✓（glTF 与 Unity 同为 OpenGL 约定 +Y ✓ **不翻转** ✓）；
-        /// 没有就**什么都不做** ✗。</para>
-        /// <para>② `metalGloss`（ORM ✓，加载器已重排为 Unity 版：R=metallic ✓ G=AO ✓ A=smoothness ✓）：</para>
-        /// <para>   · shader **有** `_MetallicGlossMap` 槽 ⇒ 接图 ✓ + 数值置 1 ✓（让贴图接管 ✓）</para>
-        /// <para>   · **没有**槽 ✗ ⇒ ⭐ **把 ORM 折算成两个常数** ✓（这就是“从 Tripo 结果通用地得出这两个值”✓）</para>
-        /// <para>③ **没有 ORM** ✗ ⇒ ⭐ **一处都不碰** ✓（保持借来材质的原值 ✓ —— 没依据就不该改 ✓）</para></summary>
-        public static void ApplyTripoMaps(Material mat, Texture2D normal, Texture2D metalGloss, string tag = null)
-        {
-            if (mat == null) return;
-            try
-            {
-                string info = "";
-                // ── ① 法线 ──
-                if (!ApplyNormal)
-                {
-                    info += "法线→**本次不接** ✗（开关关 ✓）";
-                }
-                else if (normal != null)
-                {
-                    if (mat.HasProperty("_BumpMap")) { mat.SetTexture("_BumpMap", normal); mat.EnableKeyword("_NORMALMAP"); info += "法线✓"; }
-                    else if (mat.HasProperty("_NormalMap")) { mat.SetTexture("_NormalMap", normal); mat.EnableKeyword("_NORMALMAP"); info += "法线✓(URP)"; }
-                    else info += "法线✗（shader 没这个槽）";
-                }
-                else info += "法线（GLB 里没有）";
-
-                // ── ②/③ 金属 + 光滑 ──
-                if (metalGloss == null)
-                {
-                    info += "｜ORM（GLB 里没有 ✓ **材质原值不动** ✗）";      // ⭐ 没有依据 ⇒ 一个值都不改 ✓
-                }
-                else if (!ApplyOrm)
-                {
-                    // ⭐ 实验开关关着 ✓ ⇒ **ORM 贴图不用** ✗（改不改数值看下面的哑光开关 ✓）
-                    info += "｜ORM→**不接贴图** ✗";
-                }
-                else if (mat.HasProperty("_MetallicGlossMap") || mat.HasProperty("_MetallicSmoothness"))
-                {
-                    // ① 有贴图槽 ⇒ **用图** ✓（细节最全 ✓）
-                    //   · `_MetallicGlossMap` = Unity 通用名 ✓；**`_MetallicSmoothness`** = 游戏自定义名 ✓
-                    //     （实测两个头盔的 shader 都用后者 ✗ —— 之前只认通用名 ✗ 所以误判成“没槽”✗）
-                    string slot = mat.HasProperty("_MetallicGlossMap") ? "_MetallicGlossMap" : "_MetallicSmoothness";
-                    mat.SetTexture(slot, metalGloss);
-                    mat.EnableKeyword("_METALLICGLOSSMAP");
-                    if (mat.HasProperty("_OcclusionMap")) mat.SetTexture("_OcclusionMap", metalGloss);   // 它**只读 G** ✓ 同一张图 ✓
-                    // ⚠️ 游戏把 `_GlossMapScale` 设成 **0** ✗（= 把光滑贴图关了 ✗）⇒ 要接图就得开回来 ✓
-                    if (mat.HasProperty("_GlossMapScale")) mat.SetFloat("_GlossMapScale", 1f);
-                    if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", 1f);
-                    if (mat.HasProperty("_Glossiness")) mat.SetFloat("_Glossiness", 1f);
-                    if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 1f);
-                    info += $"｜ORM→{slot}✓（数值置 1 ✓）";
-                }
-                else
-                {
-                    // ② ⭐ 真没有贴图槽 ⇒ **什么都不动** ✓（用户口径 ✓：“如果失败 ✓ 不要用均值 ✗ 就保留原有就好了” ✓）
-                    info += "｜ORM→**不动** ✗（shader 没有金属/光滑贴图槽 ✓ 保留原有数值 ✓）";
-                }
-
-                // ── ⭐ 哑光化（不接 ORM 时）──
-                //   用户实测 ✓：压到这两个值 ⇒ “干净很多”✓；不压 ⇒ 保持游戏原值（0.87/0.855 ✓）= **油光**✗
-                if (ApplyMatte && (metalGloss == null || !ApplyOrm))
-                {
-                    float om = mat.HasProperty("_Metallic") ? mat.GetFloat("_Metallic") : -1f;
-                    float os_ = mat.HasProperty("_Smoothness") ? mat.GetFloat("_Smoothness")
-                              : (mat.HasProperty("_Glossiness") ? mat.GetFloat("_Glossiness") : -1f);
-                    if (mat.HasProperty("_Metallic")) mat.SetFloat("_Metallic", MatteMetallic);
-                    if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", MatteSmoothness);
-                    if (mat.HasProperty("_Glossiness")) mat.SetFloat("_Glossiness", MatteSmoothness);
-                    info += $"｜哑光✓（金属 {om:0.##}→{MatteMetallic:0.##}｜光滑 {os_:0.##}→{MatteSmoothness:0.##}）";
-                }
-
-                string sh = mat.shader != null ? mat.shader.name : "?";
-                UnityEngine.Debug.Log($"[ApplyTripoMaps] {tag}｜{info}｜shader={sh}");
-            }
-            catch { /* 图接不上不该炸 ✓ */ }
         }
 
         /// <summary>⭐ 游戏**自己声明**的"这套外观用哪些渲染器" ✓ —— 图形根上的 `CharacterSubVisuals.renderers` ✓。

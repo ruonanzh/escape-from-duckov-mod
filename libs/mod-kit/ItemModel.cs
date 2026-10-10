@@ -30,16 +30,6 @@ namespace ModelKit
     /// <summary>把"我们的 mesh + 贴图"接到**非武器物品**上（改它自己的图形 ✓ 不克隆不 DDOL ✗）。</summary>
     public static class ItemModel
     {
-        /// <summary>⭐ **当前模型的“另两张图”** ✓ —— 由调用方在 `Apply*` 之前设一次 ✓。
-        /// <para>为什么要用字段 ✗：这两个参数要穿过 `Apply`→`ApplyToInstance`→`ApplyToTransform`→`Attach`
-        /// （以及 `ApplyHandheld` / `MakeGraphicForItem` ✓）**10+ 个签名** ✗ —— 穿参改动面大、容易漏 ✓；
-        /// Unity 主线程单线程 ✓ 无并发问题 ✓。</para>
-        /// <para>⚠️ **只给物品用** ✗ —— 武器不设 ✓（用户实测武器看着没问题 ✓ 保持原样 ✗）。
-        /// Tripo 出的 GLB 自带：`normalTexture` ✓ 与 `metallicRoughnessTexture`（ORM ✓）——
-        /// 两张都是**数据** ✗ 必须按**线性**读 ✓（加载器已处理 ✓）；ORM 的通道已重排为
-        /// Unity 格式：`R=metal` ✓ `G=AO` ✓ `A=smoothness` ✓。</para></summary>
-        public static Texture2D CurrentNormalMap;
-        public static Texture2D CurrentMetalGlossMap;
         /// <summary>一次替换的结果 ✓（带 `Restore()` ✓ 热重载/卸载时能还原 ✓）</summary>
         public sealed class Result
         {
@@ -336,37 +326,17 @@ namespace ModelKit
 
             // 材质：优先用**网格**渲染器的（武器/装备类 ✓）；只有精灵的话它的材质是 sprite 专用的 ✗
             // → 那就退而找 root 下任意一个 mesh 材质 ✓ 都没有才用默认 ✓
-            Renderer srcFrom = mount is MeshRenderer || mount is SkinnedMeshRenderer ? mount : null;
-            Material src = srcFrom != null ? srcFrom.sharedMaterial : null;
+            Material src = mount is MeshRenderer || mount is SkinnedMeshRenderer
+                ? (mount != null ? mount.sharedMaterial : null) : null;
             if (src == null)
                 foreach (var r in root.GetComponentsInChildren<Renderer>(true))
                 {
-                    if (r is MeshRenderer || r is SkinnedMeshRenderer) { src = r.sharedMaterial; srcFrom = r; break; }
+                    if (r is MeshRenderer || r is SkinnedMeshRenderer) { src = r.sharedMaterial; break; }
                 }
-            if (src == null) src = fallbackMat;            // ⭐ 兜底：调用方给的（例如“世界图形上我们刚挂的那份材质” ✓）
+            if (src == null) src = fallbackMat;            // ⭐ 兜底：调用方给的（例如"世界图形上我们刚挂的那份材质" ✓）
             if (src == null) UnityEngine.Debug.LogWarning("[ItemModel] ⚠️ 借不到游戏材质 ✗ → 会用 Unity 默认材质（**粉色** ✗）");
-            // ⭐ 诊断（排查“借错了材质”✗）：材质名 ✓ shader 名 ✓ **从哪个渲染器借的** ✓
-            //   + ⭐ 把**运行时真实数值**也打出来 ✓（金属/光滑/光滑贴图开关/法线与金属图槽有没有 ✓）
-            //   —— 这样“油不油”就能对着**数据**说 ✓ 而不是猜 ✗
-            try
-            {
-                string mm = src != null && src.HasProperty("_Metallic") ? src.GetFloat("_Metallic").ToString("0.###") : "-";
-                string ss = src != null && src.HasProperty("_Smoothness") ? src.GetFloat("_Smoothness").ToString("0.###")
-                          : (src != null && src.HasProperty("_Glossiness") ? src.GetFloat("_Glossiness").ToString("0.###") : "-");
-                string gs = src != null && src.HasProperty("_GlossMapScale") ? src.GetFloat("_GlossMapScale").ToString("0.###") : "-";
-                string hasMs = src != null && src.HasProperty("_MetallicSmoothness") && src.GetTexture("_MetallicSmoothness") != null ? "有" : "无";
-                string hasN = src != null && (src.GetTexture("_BumpMap") != null || src.GetTexture("_NormalMap") != null) ? "有" : "无";
-                UnityEngine.Debug.Log($"[ItemModel] 借材质：来源={(srcFrom != null ? srcFrom.gameObject.name + "(" + srcFrom.GetType().Name + ")" : "无")}｜材质={(src != null ? src.name : "null")}｜shader={(src != null && src.shader != null ? src.shader.name : "?")}｜原金属={mm}｜原光滑={ss}｜GlossMapScale={gs}｜原金属图={hasMs}｜原法线={hasN}");
-            }
-            catch { }
-            // ⭐ 用**克隆原材质**的做法 ✓（它带着游戏调好的参数 ✓ —— 实测“零继承新建材质”✗
-            //   会因该 shader 的默认值很亮 ⇒ **油光锃亮** ✗；Tripo 的图本身是非金属+虺光 ✓）
             var one = src != null ? new Material(src) : null;
-            if (one != null)
-            {
-                GameApi.ApplyOurTexture(one, texture);                                        // baseColor + 清掉对不上 UV 的槽 ✗
-                GameApi.ApplyTripoMaps(one, CurrentNormalMap, CurrentMetalGlossMap, "物品");    // Tripo 的 normal + ORM ✓
-            }
+            if (one != null) GameApi.ApplyOurTexture(one, texture);      // ⭐ 换贴图 + **清其它槽** ✓（与武器共用一套 ✓）
             int sub = Mathf.Max(1, mesh.subMeshCount);
             var mats = new Material[sub];                    // 每个 submesh 一个材质槽（别让 Unity 去猜 ✓）
             for (int i = 0; i < sub; i++) mats[i] = one;

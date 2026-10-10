@@ -22,8 +22,6 @@ namespace ModelKit
         {
             public Mesh Mesh;
             public Texture2D MainTexture;      // baseColor 贴图（可能为 null）
-            public Texture2D NormalTexture;    // 法线（glTF `normalTexture` ✓ 与 Unity `_BumpMap` 同为 OpenGL 约定 ✓）
-            public Texture2D MetallicGlossMap; // ⭐ **已重排成 Unity 格式**：R=metallic ✓ G=AO ✓ A=smoothness ✓
             public int VertexCount;
             public int TriangleCount;
             public string Report = "";
@@ -111,11 +109,7 @@ namespace ModelKit
 
             // ② 贴图：优先材质上的 baseColorTexture，否则第一张
             r.MainTexture = LoadBaseColor(doc, views, bin);
-            // ②' 顺带把 Tripo 给的另两张也读出来 ✓（法线 ✓ ORM→Unity 重排 ✓）—— 用户要求“用 tripo 发来的图”✓
-            r.NormalTexture = LoadSlot(doc, views, bin, "normalTexture", linear: true);
-            r.MetallicGlossMap = RepackOrm(LoadMetallicRoughness(doc, views, bin));
-            r.Report = $"GLB：顶点 {r.VertexCount}，三角面 {r.TriangleCount}，贴图 {(r.MainTexture != null ? r.MainTexture.name + $" {r.MainTexture.width}x{r.MainTexture.height}" : "无")}" +
-                       $"，法线 {(r.NormalTexture != null ? "有" : "无")}，金属光滑图 {(r.MetallicGlossMap != null ? "有" : "无")}；包围盒 {mesh.bounds.size}；握把归零 {grip}";
+            r.Report = $"GLB：顶点 {r.VertexCount}，三角面 {r.TriangleCount}，贴图 {(r.MainTexture != null ? r.MainTexture.name + $" {r.MainTexture.width}x{r.MainTexture.height}" : "无")}；包围盒 {mesh.bounds.size}；握把归零 {grip}";
             return r;
         }
 
@@ -237,11 +231,6 @@ namespace ModelKit
         }
 
         static Texture2D LoadBaseColor(JsonValue doc, JsonValue views, byte[] bin)
-            => LoadSlot(doc, views, bin, "baseColorTexture", linear: false, fallbackToFirst: true);
-
-        /// <summary>按 glTF 材质里的槽名取图 ✓（`baseColorTexture` 在 pbrMetallicRoughness 下 ✓；`normalTexture` 在材质根下 ✓）。
-        /// <para>`linear` ✓：**非颜色数据**（法线 ✓ ORM ✓）必须按**线性**读 ✗ —— 按 sRGB 读会偏 ✓</para></summary>
-        static Texture2D LoadSlot(JsonValue doc, JsonValue views, byte[] bin, string slot, bool linear, bool fallbackToFirst = false)
         {
             int imgIndex = -1;
             try
@@ -251,35 +240,22 @@ namespace ModelKit
                 var imgs = doc["images"];
                 if (mats != null && mats.Count > 0 && texs != null && imgs != null)
                 {
-                    var node = mats[0][slot];
-                    if (node == null)
+                    var pbr = mats[0]["pbrMetallicRoughness"];
+                    if (pbr != null && pbr.Has("baseColorTexture"))
                     {
-                        var pbr = mats[0]["pbrMetallicRoughness"];
-                        if (pbr != null) node = pbr[slot];
-                    }
-                    if (node != null && node.Has("index"))
-                    {
-                        int ti = node["index"].AsInt(-1);
+                        int ti = pbr["baseColorTexture"]["index"].AsInt(-1);
                         if (ti >= 0 && ti < texs.Count) imgIndex = texs[ti]["source"].AsInt(-1);
                     }
                 }
             }
             catch { }
-            return LoadImageAt(doc, views, bin, imgIndex, linear, fallbackToFirst);
-        }
 
-        /// <summary>glTF 的 `metallicRoughnessTexture` ✓（R=无 ✓ G=roughness ✓ B=metallic ✓）；没声明就返回 null ✓（**不回退到第 0 张** ✗ 那是 baseColor ✓）</summary>
-        static Texture2D LoadMetallicRoughness(JsonValue doc, JsonValue views, byte[] bin)
-            => LoadSlot(doc, views, bin, "metallicRoughnessTexture", linear: true);
-
-        static Texture2D LoadImageAt(JsonValue doc, JsonValue views, byte[] bin, int imgIndex, bool linear, bool fallbackToFirst)
-        {
             var images = doc["images"];
             if (images != null && images.Count > 0)
             {
                 for (int attempt = 0; attempt < 2; attempt++)
                 {
-                    int ii = attempt == 0 ? imgIndex : (fallbackToFirst ? 0 : -1);
+                    int ii = attempt == 0 ? imgIndex : 0;
                     if (ii < 0 || ii >= images.Count) continue;
                     var im = images[ii];
                     if (!im.Has("bufferView")) continue;
@@ -291,8 +267,7 @@ namespace ModelKit
                     if (vl <= 0 || vo + vl > bin.Length) continue;
                     var bytes = new byte[vl];
                     Buffer.BlockCopy(bin, vo, bytes, 0, vl);
-                    // linear ✓：法线/ORM 是**数据** ✗ 不是颜色 ✗ ⇒ 必须线性 ✓（构造时就要指定 ✓ LoadImage 不会改这个标志 ✓）
-                    var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false, linear);
+                    var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
                     if (tex.LoadImage(bytes))                     // 支持 PNG/JPEG ✓
                     {
                         tex.name = "glb_" + (im["name"].AsString("tex" + ii));
@@ -302,31 +277,6 @@ namespace ModelKit
                 }
             }
             return null;
-        }
-
-        /// <summary>glTF 的 ORM → Unity 的 `_MetallicGlossMap` ✓（**通道不一样 ✗ 必须重排**）：
-        /// <para>glTF ✓  R=AO ✓ G=roughness ✓ B=metallic ✓（smoothness = 1 − roughness ✓）</para>
-        /// <para>Unity ✓  `_MetallicGlossMap` 读 **R(=metal) + A(=smooth)** ✓；`_OcclusionMap` 只读 **G** ✓
-        /// ⇒ 把 AO 摆在 **G** ✓ 两张图**共用同一张** ✓</para></summary>
-        static Texture2D RepackOrm(Texture2D src)
-        {
-            if (src == null) return null;
-            try
-            {
-                var px = src.GetPixels32();
-                for (int i = 0; i < px.Length; i++)
-                {
-                    byte ao = px[i].r, rough = px[i].g, metal = px[i].b;
-                    px[i] = new Color32(metal, ao, 0, (byte)(255 - rough));
-                }
-                var tex = new Texture2D(src.width, src.height, TextureFormat.RGBA32, true, true);
-                tex.name = "glb_orm_unity";
-                tex.wrapMode = TextureWrapMode.Repeat;
-                tex.SetPixels32(px);
-                tex.Apply(true, false);
-                return tex;
-            }
-            catch { return null; }
         }
 
         static List<float[]> ReadAccessor(JsonValue accessors, JsonValue views, byte[] bin, int ai, int dim)
