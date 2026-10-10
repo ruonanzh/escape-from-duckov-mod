@@ -53,11 +53,29 @@ export default function (pi: ExtensionAPI) {
         },
       ),
       class: Type.Optional(Type.String({ description: "Asset class name, e.g. Item / Quest / CharacterRandomPreset." })),
-      name: Type.Optional(Type.String({ description: "Asset name (or a substring), for dump/refs." })),
+      name: Type.Optional(Type.String({ description: "Asset name (or a substring), for dump/refs/transform." })),
+      mesh: Type.Optional(
+        Type.String({
+          description:
+            "For transform: locate a Transform by the MESH it renders (reverse lookup through MeshFilter). Use this to get a model's real in-game size in one call, e.g. mesh=\"Rifle02\" with file=level4.",
+        }),
+      ),
+      exact: Type.Optional(
+        Type.Boolean({ description: "For transform/refs: require an exact name/mesh match instead of a substring (e.g. Rifle02 vs Rifle02_Sight)." }),
+      ),
+      has: Type.Optional(
+        Type.String({ description: "For transform: keep only objects whose GameObject carries this component, e.g. has=MeshFilter." }),
+      ),
+      by: Type.Optional(
+        Type.String({
+          description:
+            "For refs: REVERSE lookup - list the objects of this class that reference the target, e.g. by=MeshFilter. Plain refs answers 'what does it reference'; by= answers 'who references it'.",
+        }),
+      ),
       typeid: Type.Optional(Type.Number({ description: "Asset typeID, for dump/refs (e.g. an item's typeID)." })),
       pathid: Type.Optional(Type.Number({ description: "Asset pathID, for dump/refs." })),
       pattern: Type.Optional(Type.String({ description: "Search pattern (name/class/typeID substring), for search." })),
-      file: Type.Optional(Type.String({ description: "Limit to one data file: resources.assets, levelN (a scene), or an AssetBundle (e.g. a mod's bundle in its own dir)." })),
+      file: Type.Optional(Type.String({ description: "Limit to one data file: resources.assets, levelN (a scene), or an AssetBundle (e.g. a mod's bundle in its own dir). Comma-separate several to load them together - required for cross-file reverse lookups (e.g. 'sharedassets4.assets,level4')." })),
       depth: Type.Optional(Type.Number({ description: "dump depth (default 3)." })),
       follow: Type.Optional(Type.Boolean({ description: "For dump: also resolve referenced objects (e.g. item stats), walking them across data files (prefab -> renderer -> material -> shader)." })),
       limit: Type.Optional(Type.Number({ description: "Max output lines (default 2000)." })),
@@ -78,7 +96,7 @@ export default function (pi: ExtensionAPI) {
       out: Type.Optional(
         Type.String({
           description:
-            "For export: write the full table to this file (e.g. /tmp/weapons.tsv) and return only a preview - use this for large exports so the data does not flood the context; then process the file with bash/tools.",
+            "Write the full result to this file (e.g. /tmp/weapons.tsv) and return only a preview - use this for large result sets so the data does not flood the context; then process the file with bash/tools. Works for every action (streamed, so memory stays flat).",
         }),
       ),
     }),
@@ -143,6 +161,10 @@ export default function (pi: ExtensionAPI) {
       const args = [probeDll, "--managed", managed, "--data", data, "--action", params.action];
       if (params.class) args.push("--class", params.class);
       if (params.name) args.push("--name", params.name);
+      if (params.mesh) args.push("--mesh", params.mesh);
+      if (params.exact) args.push("--exact");
+      if (params.has) args.push("--has", params.has);
+      if (params.by) args.push("--by", params.by);
       if (params.typeid !== undefined) args.push("--typeid", String(params.typeid));
       if (params.pathid !== undefined) args.push("--pathid", String(params.pathid));
       if (params.pattern) args.push("--pattern", params.pattern);
