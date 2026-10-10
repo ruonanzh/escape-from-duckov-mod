@@ -215,7 +215,7 @@
   var opts = {
     kind: "gun",        // gun（长轴→+Z） | up（长轴→+Y） | raw
     muzzle: "auto",     // ⭐ 固定"自动"（`MuzzleAtPositiveZ`：两端各看 6%/15%，细的那端是枪管）—— 不给选择
-    grip: true,         // 握把归零
+    grip: true,         // ⭐ 只有「枪」用得上（`GuessGrip` 的假设是枪）—— UI 里也只在选枪时露出这一行 ✗
     mirror: true,       // ⭐ 固定开：Unity 镜像（X 取反）= 游戏里看到的样子 —— 不做 ⇒ 预览与游戏左右相反 ✗
     grid: true,         // ⭐ 固定开：网格（每格 10cm）
     size: 0            // 0 = 不改（用模型自己的尺寸）
@@ -295,6 +295,10 @@
     });
 
     grid.visible = opts.grid;
+
+    // ⭐ 「握把归零」只在选「枪」时露出（物品/近战/装备不适用 —— 那是枪的猜测规则）
+    var gripRow = document.getElementById("gripRow");
+    if (gripRow) gripRow.hidden = opts.kind !== "gun";
 
     // 面板读数
     var cur = box.getSize(new THREE.Vector3());

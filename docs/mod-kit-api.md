@@ -17,7 +17,7 @@
 |---|---|
 | `GltfLoader.LoadFile(path, front)` | 读一个 `.glb` → `Mesh` + 主贴图 + **法线**。`front` 一般 `"auto"`；用户自带的模型按 config 传 `"-z"`/`"+x"`/`"-x"` |
 | `GltfLoader.Load(byte[], front)` | 同上，但手上已有字节（很少用） |
-| `GltfLoader.MuzzleAtPositiveZ(pts)` / `GuessGrip(pts)` | 自己需要判朝向 / 找握把时才用（换模型时 kit 内部已经做了） |
+| `GltfLoader.MuzzleAtPositiveZ(pts)` / `GuessGrip(pts)` | 自己需要判朝向 / 找握把时才用。⚠️ **两个都是枪的规则** ✓ —— 只用于**换枪**（`WeaponModel` ✓ 内部已经做了）；**物品/装备/近战不要用** ✗ |
 
 ## 2. 换武器外观
 

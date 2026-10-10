@@ -54,7 +54,6 @@ namespace ItemModelSwap
             public bool World = true;
             public bool Handheld = false;
             public string Front = "auto";
-            public string Grip = "auto";          // "auto"=握把归零（默认 ✓）/ "none"=近战用模型自己的原点 ✓
             public string ResolvedPath = "";
             /// <summary>config 的 `size`（**米** ✓、可选 ✓）—— 目标最长边 ✓。
             /// ≤0 = 没填 ✓ → 用 <see cref="ModelSize.For"/> 的自动档位 ✓
@@ -355,7 +354,10 @@ namespace ItemModelSwap
             CachedModel c;
             if (_modelCache.TryGetValue(e.ResolvedPath, out c) && c != null && c.Sig == sig) return c;
 
-            var loaded = GltfLoader.LoadFile(e.ResolvedPath, e.Front, zeroGrip: e.Grip != "none");
+            // ⭐ **不做"握把归零"** ✗（`zeroGrip: false`）—— 那是**枪**的猜测规则（`GuessGrip`：“枪口 +Z ⇒
+            //   枪托在 −Z”），物品/装备/近战都不适用 ✓。而且这条路上 `Attach()` 本来就按**包围盒中心**
+            //   对齐（`ItemModel.cs`）“先减原点”会被它抵消 ✗ ⇒ 做了≈没做 ✓。摆在哪儿由对齐与 `pivot` 决定 ✓。
+            var loaded = GltfLoader.LoadFile(e.ResolvedPath, e.Front, zeroGrip: false);
             c = new CachedModel { Sig = sig, Mesh = loaded.Mesh, Texture = loaded.MainTexture,
                                  NormalTexture = loaded.NormalTexture };
             _modelCache[e.ResolvedPath] = c;
@@ -407,7 +409,6 @@ namespace ItemModelSwap
                 Targets = Json.Strings(j, "targets"),
                 ModelFile = j.GetStr("model", ""),
                 Front = j.GetStr("front", "auto"),
-                  Grip = j.GetStr("grip", "auto"),        // ⭐ 近战写 "none" ✓（跳过给枪猜的握把归零 ✗）
                 World = j.GetBool("world", true),        // 世界那条默认开 ✓
                 Handheld = j.GetBool("handheld", false), // 手持那条默认关 ✓（它会改行为 ✓）
                 Size = j.GetFloat("size", 0f),

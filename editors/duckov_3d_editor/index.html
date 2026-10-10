@@ -51,7 +51,8 @@
         <option value="raw">原始（不摆正）</option>
       </select>
     </label>
-    <label>握把归零<input type="checkbox" id="grip" checked></label>
+    <!-- ⭐ 只有「枪」才显示这一行：握把归零是枪的规则（`GuessGrip`），物品/近战/装备都不适用 -->
+    <label id="gripRow" hidden>握把归零<input type="checkbox" id="grip" checked></label>
     <div class="hr"></div>
     <h2>尺寸</h2>
     <label>最长边（米）<input type="number" id="size" step="0.01" min="0.01"></label>
