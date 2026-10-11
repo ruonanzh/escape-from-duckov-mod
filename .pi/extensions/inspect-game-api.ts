@@ -46,26 +46,26 @@ export default function (pi: ExtensionAPI) {
         ],
         {
           description:
-            "search: find types/members by name (caps at 500). members: list a type's members (incl. private). decompile: type/member to C#. il: type/method to IL. strings: string literals (caps at 500).",
+            "search: find types or members by name (caps at 500). members: list a type's members, including private. decompile: a type or member to C#. il: a type or method to IL. strings: string literals (caps at 500).",
         },
       ),
       target: Type.Optional(
         Type.String({
           description:
-            "Type name (e.g. 'Duckov.BlackMarkets.BlackMarket' or short 'BlackMarket'), or a substring for action=search.",
+            "Type name (for example 'Duckov.BlackMarkets.BlackMarket' or the short form 'BlackMarket'), or a substring for action=search.",
         }),
       ),
       member: Type.Optional(
-        Type.String({ description: "Member (method/field) name, for action=decompile or action=il." }),
+        Type.String({ description: "Member name (a method or a field), for action=decompile or action=il." }),
       ),
       dll: Type.Optional(
         Type.String({
           description:
-            "Managed DLL name to read (default TeamSoda.Duckov.Core). Comma-separate several, or use '*' for every DLL in the Managed folder.",
+            "Managed DLL name to read (default TeamSoda.Duckov.Core). Use commas to separate several DLLs, or use '*' for every DLL in the Managed directory.",
         }),
       ),
       limit: Type.Optional(Type.Number({ description: "Max output lines (default 2000)." })),
-      offset: Type.Optional(Type.Number({ description: "Skip the first N matches, for paging a large search/strings (default 0)." })),
+      offset: Type.Optional(Type.Number({ description: "Skip the first N matches, to page a large search or strings result (default 0)." })),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       const cwd = ctx.cwd;
@@ -110,7 +110,7 @@ export default function (pi: ExtensionAPI) {
             const e = error as { stderr?: string; stdout?: string; message?: string };
             const detail = (e.stderr || e.stdout || e.message || String(error)).trim().slice(0, 400);
             if (!existsSync(probeDll)) throw new Error(detail);
-            buildWarning = `WARN: could not rebuild the inspection probe; using the existing build.\n${detail.slice(0, 200)}\n`;
+            buildWarning = `WARN: could not rebuild the inspection probe. Using the existing build.\n${detail.slice(0, 200)}\n`;
           }
         });
       } catch (error) {

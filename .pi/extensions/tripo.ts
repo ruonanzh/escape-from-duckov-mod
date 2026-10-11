@@ -53,7 +53,7 @@ function tripoRequireKey(): string {
   const key = readTripoKey();
   if (!key) {
     throw new Error(
-      'TRIPO_NO_API_KEY: ask the user for their Tripo API key, then save it to ~/.gamer-agent-pi/api-keys.json as {"tripo":"tsk_..."} (user-level file shared by all game repos, never committed), or set TRIPO_API_KEY',
+      'TRIPO_NO_API_KEY: ask the player for the Tripo API key, then save it to ~/.gamer-agent-pi/api-keys.json as {"tripo":"tsk_..."} (a user-level file shared by all game repositories, never committed), or set TRIPO_API_KEY',
     );
   }
   return key;
@@ -127,7 +127,7 @@ function guardOutNotExists(outPath: string): void {
   if (!existsSync(outPath)) return;
   throw new Error(
     `OUT_FILE_EXISTS: ${outPath} already exists - nothing was written. ` +
-      `Either pick a different file name (e.g. name files after the weapon: ak103.glb / ak103.preview.png), ` +
+      `Either pick a different file name (for example name files after the weapon: ak103.glb or ak103.preview.png), ` +
       `or delete that file first if you have checked it is not used any more.`,
   );
 }
@@ -201,7 +201,7 @@ export default function (pi: ExtensionAPI) {
     parameters: Type.Object({
       model: Type.Optional(Type.String({ description: "A .glb to work from (its own render, or the base for a styled image)." })),
       taskId: Type.Optional(Type.String({ description: "A Tripo task id (when the model came from generate_model)." })),
-      image: Type.Optional(Type.String({ description: "A reference picture (the user's image / screenshot / concept art)." })),
+      image: Type.Optional(Type.String({ description: "A reference picture (the player's image, screenshot, or concept art)." })),
       styleRef: Type.Optional(
         Type.String({ description: "A second reference showing how the game's own assets look (existing icon or screenshot)." }),
       ),
@@ -214,7 +214,7 @@ export default function (pi: ExtensionAPI) {
         }),
       ),
       out: Type.Optional(
-        Type.String({ description: "Where to save the PNG (e.g. icon.png to ship it, or .preview/x.preview.png for a preview)." }),
+        Type.String({ description: "Where to save the PNG (for example icon.png to ship it, or .preview/x.preview.png for a preview)." }),
       ),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
@@ -370,16 +370,16 @@ export default function (pi: ExtensionAPI) {
     parameters: Type.Object({
       action: Type.Union(
         [Type.Literal("generate"), Type.Literal("convert"), Type.Literal("balance")],
-        { description: "generate = prompt/image -> a new model; convert = re-export an existing task; balance = credits left." },
+        { description: "generate: make a new model from a prompt or an image. convert: re-export an existing task. balance: show the credits left." },
       ),
       prompt: Type.Optional(
-        Type.String({ description: 'What the model is, e.g. "PPSh-41 style submachine gun with drum magazine, game asset, side view, no hands".' }),
+        Type.String({ description: 'What the model is, for example "PPSh-41 style submachine gun with drum magazine, game asset, side view, no hands".' }),
       ),
-      image: Type.Optional(Type.String({ description: "Path to a reference image (png/jpg) for image-to-model." })),
-      out: Type.Optional(Type.String({ description: "Where to save the GLB (usually inside your mod folder). Default: model.glb." })),
-      taskId: Type.Optional(Type.String({ description: "A Tripo task id: for action=convert (the model to convert), or for action=generate it is used as the image source (an earlier image task)." })),
+      image: Type.Optional(Type.String({ description: "Path to a reference image (png or jpg) for image-to-model." })),
+      out: Type.Optional(Type.String({ description: "Where to save the GLB (usually inside your mod directory). Default: model.glb." })),
+      taskId: Type.Optional(Type.String({ description: "A Tripo task id. For action=convert, it is the model to convert. For action=generate, it is the image source (an earlier image task)." })),
       faceLimit: Type.Optional(Type.Number({ description: "Max triangles (default 3000). Game assets: 1500-4000." })),
-      animated: Type.Optional(Type.Boolean({ description: "Keep skeleton/animation data (default false = static, correct for props and weapons)." })),
+      animated: Type.Optional(Type.Boolean({ description: "Keep skeleton or animation data (default false). A static model is correct for props and weapons." })),
       noTexture: Type.Optional(Type.Boolean({ description: "Skip texturing (cheaper, faster)." })),
     }),
 
@@ -464,7 +464,7 @@ export default function (pi: ExtensionAPI) {
               type: "text",
               text:
                 `PASS: model saved to ${firstOut} (${size2}, raw also at ${rawPath} ${size}). task_id=${taskId}\n` +
-                (shots.length ? `Preview: ${shots.join(", ")} - read/look at it and show it to the user BEFORE installing: shape is up to the prompt, orientation is already right.\n` : ""),
+                (shots.length ? `Preview: ${shots.join(", ")} - read the image and show it to the player before installing. The shape is up to the prompt. The orientation is already right.\n` : ""),
             },
           ],
         };
