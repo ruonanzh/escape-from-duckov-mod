@@ -122,7 +122,7 @@ generate_model(action="generate",
 **接口**（完整清单见 [`docs/mod-kit-api.md`](../../docs/mod-kit-api.md)。签名用 `rg "public static" libs/mod-kit/ItemModel.cs` 现查）：
 
 ```csharp
-var loaded = ModelKit.GltfLoader.LoadFile(路径, "auto");     // → Mesh + MainTexture
+var loaded = ModelKit.GltfLoader.LoadFile(路径, "auto");     // 返回 Mesh 与 MainTexture
 
 // 主入口：一件物品（含它的模板）
 var res = ModelKit.ItemModel.Apply(item, loaded.Mesh, loaded.MainTexture, handheld: 开关);

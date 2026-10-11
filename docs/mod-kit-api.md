@@ -74,7 +74,7 @@
 
 | API | 什么时候用 |
 |---|---|
-| `Json.Parse(text)` → `GetStr/GetInt/GetFloat/GetBool(key, fallback)` | 读 `config.json`（不用引第三方 JSON 库） |
+| `Json.Parse(text)` 返回 `GetStr/GetInt/GetFloat/GetBool(key, fallback)` | 读 `config.json`（不需要引第三方 JSON 库） |
 | `Json.Strings(j, "targets")` | 读字符串数组字段 |
 
 ## 8. 排查用

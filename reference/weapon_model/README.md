@@ -5,11 +5,11 @@
 ## 用法
 
 ```
-WeaponModelSwap/                 ← mod 目录（装进游戏时的目录名）
+WeaponModelSwap/                 这是 mod 目录（装进游戏时的目录名）
   ├─ WeaponModelSwap.dll
   ├─ info.ini
-  ├─ config.json                 ← { "typeIDs": [655], "model": "mp5.glb" }
-  └─ mp5.glb                     ← 你的模型（**按武器起名**。Tripo 导出的 GLB。）
+  ├─ config.json                 内容为 { "typeIDs": [655], "model": "mp5.glb" }
+  └─ mp5.glb                     你的模型（**按武器起名**。Tripo 导出的 GLB。）
 ```
 
 `config.json`（两种写法都支持）：

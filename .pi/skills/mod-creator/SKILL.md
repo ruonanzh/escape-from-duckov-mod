@@ -55,7 +55,7 @@ description: Escape From Duckov 的 C# mod 制作与修改。覆盖目录结构�
 （内置 `DontDestroyOnLoad`、名字走本地化、`useSpriteForPickup=false`、枪自动打 `IsGun`）。手写版本：
 
 - 克隆：`Instantiate(ItemAssetsCollection.GetPrefab(源typeID).gameObject)`。必须调用 `DontDestroyOnLoad`。
-  → `GetComponent<Item>()` → `SetTypeID(新typeID)`。
+  然后调用 `GetComponent<Item>()`。再调用 `SetTypeID(新typeID)`。
 - 名字：`LocalizationManager.SetOverrideText(key, 文本)` 与 `DisplayNameRaw = key`。
   直接塞字面量会被显示成 `*字面量*`。
 - 注册：`ItemAssetsCollection.AddDynamicEntry(item)`。同一个 typeID 会覆盖原版并打警告。失败时必须销毁克隆体。
@@ -132,13 +132,13 @@ namespace MyMod
 
 ## 常见错误（对照修正）
 
-- `FAIL: info.ini: name is missing` → info.ini 缺 name，补上。
-- `FAIL: info.ini: name (...) is not a valid namespace` → name 含非法字符，改成合法 C# 标识符（PascalCase）。
-- `FAIL: missing ModBehaviour.cs` → 缺入口类，创建继承 `Duckov.Modding.ModBehaviour` 的 `ModBehaviour` 类。
-- `FAIL: dotnet build failed: ...` → 编译错误，读报错定位（多半是 API 用法或引用问题）。
-- `FAIL: missing <ModName>.dll` → 编译没产出 dll，先跑 dotnet build。
-- `WARN: dotnet not found` → 用 `check_runtime` 核实，按 `install_runtime` 返回的指引准备 SDK。再次检查确认后才能编译。工具本身不执行安装。
-- `WARN: missing preview.png` → 缺预览图（不影响本地加载，Workshop 上传需要 256×256）。
+- `FAIL: info.ini: name is missing`：info.ini 缺 name，补上。
+- `FAIL: info.ini: name (...) is not a valid namespace`：name 含非法字符。改成合法 C# 标识符（PascalCase）。
+- `FAIL: missing ModBehaviour.cs`：缺入口类。创建继承 `Duckov.Modding.ModBehaviour` 的 `ModBehaviour` 类。
+- `FAIL: dotnet build failed: ...`：编译错误。读报错定位（多半是 API 用法或引用问题）。
+- `FAIL: missing <ModName>.dll`：编译没产出 dll。先跑 dotnet build。
+- `WARN: dotnet not found`：用 `check_runtime` 核实，按 `install_runtime` 返回的指引准备 SDK。再次检查确认后才能编译。工具本身不执行安装。
+- `WARN: missing preview.png`：缺预览图（不影响本地加载，Workshop 上传需要 256×256）。
 
 ## 参考
 

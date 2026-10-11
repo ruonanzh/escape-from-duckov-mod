@@ -6,7 +6,7 @@
 
 - `docs/game.md` 与 `docs/items.md`：游戏机制与物品。`docs/mod-api.md`：mod API。`docs/asset-mods.md`：资源替换方法。
 - `docs/api/`：生成的 API 签名。`docs/data/`：数据、本地化 CSV、资源清单。按问题检索，不得全量读入。这些是版本快照。快照不保证对应玩家最新游戏版本。
-- `docs/guides/`：**游戏数据查询指南**（物品、武器、图腾、任务、地图、生物、天赋、建筑、商店、增益 → 数据在哪，以及可复制命令）。**查游戏数据时，必须先读这里，不得靠试**。入口是 `docs/guides/00-overview.md`。
+- `docs/guides/`：**游戏数据查询指南**。它覆盖物品、武器、图腾、任务、地图、生物、天赋、建筑、商店、增益，说明数据在哪，并给出可复制命令。**查游戏数据时，必须先读这里，不得靠试**。入口是 `docs/guides/00-overview.md`。
 - `reference/example_mod/`、`reference/weapon_model/`、`reference/item_model/`：可编译样例。后两个是「替换枪械模型」与「替换物品模型」的完整答案。`libs/mod-kit/`：**模型运行时库**。它读 GLB，产出 Mesh 与贴图，把模型换到手持武器上，把模型换到物品上，换图标，找玩家与手持物，读 config 的 JSON。`libs/`：编译与分发依赖，含 `0Harmony.dll`。产物规范见 `.pi/skills/mod-creator/SKILL.md`。mod-kit 的完整签名用 `rg "public static" libs/mod-kit/` 现查。
 - `mod-repo.json`：平台路径与依赖声明。`game.version` 记录数据层快照对应的版本。`workshop.supported` 声明本游戏是否有创意工坊。`workshopDir` 只是只读参考，不参与安装。判定规则见 `.pi/skills/setup-workspace/SKILL.md`。
 - `.pi/skills/`：按职责分开的技能：`setup-workspace`、`mod-creator`、`mod-installer`、`replace-gun-model`、`replace-item-model`。每个技能的用途写在它自己的 description 里。Pi 会把 description 常驻上下文，任务匹配时读对应那份。本工作区的步骤指导都在这些技能里，不在产品提示词里。

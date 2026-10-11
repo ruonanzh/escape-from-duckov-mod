@@ -160,10 +160,10 @@ generate_image(model="your_mods/<mod>/<武器名>.glb",
 
 | 调用 | 作用 |
 |---|---|
-| `GltfLoader.LoadFile(path, front)` → `Loaded { Mesh, MainTexture, VertexCount, TriangleCount, Report }` | 读 GLB。`front` 用 `"auto"`；玩家自带的模型按 `config.json` 传 `"-z"`、`"+x"` 或 `"-x"` |
-| `WeaponModel.Apply(anchorRoot, mesh, texture)` → `Result { Applied, Instance, Report }` | 换到手持武器上。**`reference/weapon_model/ModBehaviour.cs` 里有完整用法，照抄即可** |
+| `GltfLoader.LoadFile(path, front)` 返回 `Loaded { Mesh, MainTexture, VertexCount, TriangleCount, Report }` | 读 GLB。`front` 用 `"auto"`；玩家自带的模型按 `config.json` 传 `"-z"`、`"+x"` 或 `"-x"` |
+| `WeaponModel.Apply(anchorRoot, mesh, texture)` 返回 `Result { Applied, Instance, Report }` | 换到手持武器上。**`reference/weapon_model/ModBehaviour.cs` 里有完整用法，照抄即可** |
 | `WeaponIcon.Apply(item, "icon.png")`（有图标时才调）| 换图标（幂等，内部自己归一化尺寸）|
-| `Json.Parse(text)` → `GetStr/GetInt/GetFloat(key, fallback)` | 读 `config.json` 字段 |
+| `Json.Parse(text)` 返回 `GetStr/GetInt/GetFloat(key, fallback)` | 读 `config.json` 字段 |
 
 **要用 Harmony**（自己改数值或行为时）：再加 `libs/0Harmony.dll` 的引用。照 `reference/example_mod/ExampleMod.csproj`（它是 `<Private>true</Private>`，会随 mod 自带）。
 
