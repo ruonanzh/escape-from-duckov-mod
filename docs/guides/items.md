@@ -1,7 +1,7 @@
 # 物品（Items）与子类
 
 游戏里所有物品都是 `Item`（`ItemStatsSystem`）—— **一次 export 就能拿全**（总数 **1581**）。
-「武器 / 装备 / 药品 / 食物…」不是不同的类，而是 **`Item.tags` 里的 Tag**。
+「武器、装备、药品、食物」不是不同的类，而是 **`Item.tags` 里的 Tag**。
 
 ```
 action=export, class=Item, file=resources.assets            # 全部 1581 件
@@ -13,13 +13,13 @@ action=export, class=Item, file=resources.assets            # 全部 1581 件
 |---|---|
 | `typeID` | 物品 ID（`ItemAssetsCollection.InstantiateAsync(typeID)` 用它生成实例）|
 | `displayName` | **本地化 key**（不是中文！见 `00-overview.md` 的 join 段）|
-| `value` | 单价（**单位价值**；见下方⚠️）|
+| `value` | 单价（**单位价值**。见下方）|
 | `quality` | 品质（0–5）|
 | `weight` | 重量 |
 | `maxStackCount` | 堆叠上限 |
-| `variables` | → `entries[]`（`key` / `dataType` / `data` / `display`）；**`data` 是原始字节** |
-| `tags` | → `TagCollection`；**分类看这里** |
-| `stats` | → `StatCollection`；**数值在这里**（见下）|
+| `variables` | 指向 `entries[]`（`key`、`dataType`、`data`、`display`）。**`data` 是原始字节** |
+| `tags` | 指向 `TagCollection`。**分类看这里** |
+| `stats` | 指向 `StatCollection`。**数值在这里**（见下）|
 | `slots` / `modifiers` / `variables` / `constants` / `effects` | 插槽 / 修改器 / 变量 / 常量 / 效果 |
 
 查看一件物品（`dump` 适合看单个）：
@@ -28,7 +28,7 @@ action=export, class=Item, file=resources.assets            # 全部 1581 件
 action=dump, class=Item, typeid=260, depth=3          # 或 name="Item_S_UAK45_Lv_2"
 ```
 
-### ⚠️ `value` 是**单位**价值；「每包价值」要乘 `variables.Count`
+### `value` 是**单位**价值：「每包价值」要乘 `variables.Count`
 
 有些物品在游戏/wiki 里显示的价是**一整包**的（实测：绷带 `Count=3`、子弹 `Count=30`）：
 
@@ -39,7 +39,7 @@ field=["displayName","value","maxStackCount","variables.entries[].key","variable
 #   单价 80 × Count 3 = 240（wiki 上显示的就是 240）
 ```
 
-- `variables.entries[]` 的 **`data` 是原始字节**（如 `03 00 00 00` = 小端 int32 → 3）；`dataType=2` 表示 int。
+- `variables.entries[]` 的 **`data` 是原始字节**（例如 `03 00 00 00` 等于小端 int32 的 3）。`dataType=2` 表示 int。
 - 常见的 key：`Count`（一件等于几件）、`Durability`（耐久）。
 
 > 本页的数量与分类**已与官方 wiki 逐条比对**（1564 件共有物品）：`tags` **100% 一致**，`quality`/`weight`/`displayNameKey` **零差异**；唯一差异就是 `value`（wiki 显示每包总量 = `value × Count`）。
@@ -78,13 +78,13 @@ action=export, class=Item, match=["tags.list[].#name=Weapon"], field=["displayNa
 | └ 治疗 / 注射 | `=Healing` / `=Injector` | 9 / 19 |
 | **食物 / 饮料** | `tags.list[].#name=Food` / `=Drink` | 32 / 8 |
 | **弹药** | `tags.list[].#name=Bullet` | 145（另有 `Cartridge` 6）|
-| **蓝图 / 配方** | `tags.list[].#name=Formula`（`Formula_Blueprint` 178 / `Formula_Printer` 29 …）| 215 |
+| **蓝图与配方** | `tags.list[].#name=Formula`（`Formula_Blueprint` 178、`Formula_Printer` 29）| 215 |
 | **材料 / 种子 / 作物 / 工具 / 宝石** | `=Material` / `=Seed` / `=Crop` / `=Tool` / `=Gem` | 8 / 32 / 30 / 47 / 4 |
 | **任务物品** | `tags.list[].#name=Quest` | 71 |
 
-> 枪械还有细分子类 tag：`GunType_AR` / `GunType_SMG` / `GunType_SHT` / `GunType_SNP` / `GunType_Rifle` / `GunType_BR` / `GunType_PST` …（`match="tags.list[].#name=GunType_AR"`）。
+> 枪械还有细分子类 tag：`GunType_AR`、`GunType_SMG`、`GunType_SHT`、`GunType_SNP`、`GunType_Rifle`、`GunType_BR`、`GunType_PST`（`match="tags.list[].#name=GunType_AR"`。完整清单见附录）。
 
-> ⚠️ **`Weapon` / `Gun` / `MeleeWeapon` 三个 tag 不是一回事（实测踩过）**：
+> **`Weapon`、`Gun`、`MeleeWeapon` 三个 tag 不是一回事（实测踩过）**：
 >
 > | tag | n | 含义 | 与其他 tag 的关系 |
 > |---|---|---|---|
@@ -99,10 +99,10 @@ action=export, class=Item, match=["tags.list[].#name=Weapon"], field=["displayNa
 >   ```
 >   action=export, class=Item, match=["tags.list[].#name=Weapon"],      field=["typeID","displayName","value","quality","stats.list[].key","stats.list[].baseValue"], out="/tmp/w1.tsv"
 >   action=export, class=Item, match=["tags.list[].#name=MeleeWeapon"], field=["typeID","displayName","value","quality","stats.list[].key","stats.list[].baseValue"], out="/tmp/w2.tsv"
->   # 合并 /tmp/w1.tsv + /tmp/w2.tsv，按第 2 列（typeID）去重 → 172
+>   # 合并 /tmp/w1.tsv 与 /tmp/w2.tsv，按第 2 列（typeID）去重，得到 172
 >   ```
-> - “只要**枪**” → `Gun`（124）；“只要**正经近战**” → `Weapon ∩ MeleeWeapon`（34，即两个 match 一起给）；
->   “一切能当**近战**用的（含工具）” → `MeleeWeapon`（48）。
+> - 只要**枪**时，用 `Gun`（124）。只要**正经近战**时，用 `Weapon ∩ MeleeWeapon`（34，即两个 match 一起给）。
+>   一切能当**近战**用的（含工具）时，用 `MeleeWeapon`（48）。
 
 ## 数值（stats）—— 平行数组
 
@@ -130,12 +130,12 @@ for k, v in zip(keys, vals):
     print(f"{k} = {v}")
 ```
 
-## 附录：全部 Tag（134 个）—— **别当成 134 个品类**
+## 附录：全部 Tag（134 个）—— **不得当成 134 个品类**
 
-`Tag` 资产一**134 个**，但只有 **121 个真的挂在物品上**，且含义混三类：**品类**（这是什么）、**子类型**（品类细分）、**行为标记**（可修理/展示/锁定…）。
+`Tag` 资产一**134 个**，但只有 **121 个真的挂在物品上**，且含义混三类：**品类**（这是什么）、**子类型**（品类细分）、**行为标记**（可修理、展示、锁定）。
 选物品时**从 A / B 里挑**；C 类当过滤条件可以，当“品类”会奇怪。数字是实测（多少件物品挂了这个 tag）。
 
-> ⚠️ **本表只用于“选对 tag 名”；数字会随版本变，精确值一律现查**：`action=export, class=Tag`（列出全部 tag）+ 计数（`match=["tags.list[].#name=X"]` 的返回行数）。表内数字与正文「常用分类对照」不一致时，**以现查为准**。
+> **本表只用于「选对 tag 名」。数字会随版本变，精确值一律现查**：`action=export, class=Tag`（列出全部 tag）与计数（`match=["tags.list[].#name=X"]` 的返回行数）。表内数字与正文「常用分类对照」不一致时，**以现查为准**。
 
 ### A. 主要品类（挑“要哪类物品”用这些）
 
@@ -186,7 +186,7 @@ for k, v in zip(keys, vals):
 | 枪枝细分 | `GunType_AR`(67) `GunType_SMG`(54) `GunType_SHT`(50) `GunType_SNP`(47) `GunType_PST`(26) `GunType_BR`(12) `GunType_ARR`(5) `GunType_MAG`(3) `GunType_Rocket`(1) `GunType_PWS`(1)（未用：`GunType_Rifle/Shot/Sniper`）|
 | 配方细分 | `Formula_Blueprint`(178) `Formula_Printer`(29) `Formula_Medic`(7) `Formula_Normal`(1)（未用：`Formula_Cook`）|
 | 鱼 / 钓鱼 | `Fish`(33) `Fish_Special`(14) `Fish_OnlyNight`(10) `Fish_OnlyDay`(8) `Fish_OnlyRainDay`(6) `Fish_OnlySunDay`(5) `Fish_OnlyStorm`(5)（未用：`Fish_Other`）|
-| 配件专属 | `Acc_*`（每个 1–2 件：`Acc_Aug` / `Acc_M14` / `Acc_UZI` …）|
+| 配件专属 | `Acc_*`（每个 1 到 2 件。例如 `Acc_Aug`、`Acc_M14`、`Acc_UZI`）|
 | 被动 / 特殊件 | `PassiveProp`(51) `SpecialAcc`(22) `SpecialKey`(20) `TecEquip`(15 科技件) `Western`(55 西式枪械) `SnowLand`(12 雪地版) |
 | 其它细分 | `Matryoshka_1`(5) `Gem_Armor_Igny`(1) `Gem_Armor_Fleeze`(1) |
 
@@ -209,4 +209,4 @@ for k, v in zip(keys, vals):
 ## 物品相关 API（改物品时看这些）
 
 `ItemStatsSystem`：`ItemAssetsCollection.InstantiateAsync(typeID)` 生成实例；`Item.GetStat(key)` / `GetStatValue(key)` 读写数值；`ItemUtilities.SendToPlayer(...)` 发给玩家。
-更细的 API/实现用 `inspect_game_api`（decompile）。**改数值要在 mod 的 C# 运行时做，不要改游戏数据文件**。
+更细的 API 与实现用 `inspect_game_api`（decompile）。**改数值必须在 mod 的 C# 运行时做，不得改游戏数据文件**。
