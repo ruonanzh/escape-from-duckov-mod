@@ -21,7 +21,7 @@ description: 玩家想换**物品**（背包、防弹衣、头盔、弹匣、任
 ### ② 先把 mod 骨架建好（免费，编译几秒）
 
 - 照 **`reference/item_model/`**（示例 mod 等于正确答案）建你自己的 mod 目录。
-- 四处名字必须一致。不一致的症状是 mod 静默不加载。明细见 §5。
+- 三个名字必须一致：`info.ini` 的 mod 名、csproj 的 `AssemblyName`、`ModBehaviour.cs` 的 namespace。不一致的症状是 mod 静默不加载。明细见 §5。
 - 建完**先跑一次 `validate_mod`** 确认能编译。它会替你检查 mod 名与 namespace 一致。
 - **先建骨架，不得等模型**。模型工具落盘时会自建目录，不得让它抢在你前面把目录建出来。
 
@@ -151,7 +151,7 @@ var res = ModelKit.ItemModel.Apply(item, loaded.Mesh, loaded.MainTexture, handhe
 
 | 症状 | 原因 | 修 |
 |---|---|---|
-| **什么都没变化** | 四处名字**不一致**（`info.ini` 的 name、mod 目录名、程序集名即 csproj 的 `AssemblyName`、命名空间加类 `ModBehaviour`）| 改成同一个名字。`validate_mod` 会拦。它们会成为 C# 命名空间，必须**小写字母与数字，字母开头**。照 `reference/item_model/` 抄最省事 |
+| **什么都没变化** | 三个名字**不一致**（`info.ini` 的 name、csproj 的 `AssemblyName`、`ModBehaviour.cs` 的 namespace），或类名不是 `ModBehaviour` | 改成同一个名字。`validate_mod` 会拦。namespace 是合法 C# 标识符，通常 PascalCase。照 `reference/item_model/` 抄最省事 |
 | 物品**原样没变** | 匹配条件写错，或规则里 `world=关` | 确认 `typeIDs` 抄对了（抄错一位就「什么都没命中」），并确认 `world` 没关 |
 | **地上变了、手里没变** | 这条物品的 `handheld` 没开（默认关）| 加上 `"handheld": true`。会改行为，先问玩家。|
 | **手里还是那张 2D 图** | 这件物品本来没有「拿着」的模型，而 `handheld` **默认是关的** | 加 `"handheld": true`。会改行为，先问玩家。|

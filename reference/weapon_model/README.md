@@ -5,7 +5,7 @@
 ## 用法
 
 ```
-WeaponModelSwap/                 ← 装进游戏的目录名要和 info.ini 的 name 一致
+WeaponModelSwap/                 ← mod 目录（装进游戏时的目录名）
   ├─ WeaponModelSwap.dll
   ├─ info.ini
   ├─ config.json                 ← { "typeIDs": [655], "model": "mp5.glb" }

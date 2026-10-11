@@ -21,7 +21,7 @@ description: 玩家想换某把**枪械**的模型或外观时用（例如「把
 ### ② 先把 mod 骨架建好（免费，编译几秒）
 
 - 照 **`reference/weapon_model/`**（示例 mod 等于正确答案）建你自己的 mod 目录：拷它当起点，或按它自己写。
-- 四处名字必须一致。不一致的症状是 mod 静默不加载。明细见 §5。
+- 三个名字必须一致：`info.ini` 的 mod 名、csproj 的 `AssemblyName`、`ModBehaviour.cs` 的 namespace。不一致的症状是 mod 静默不加载。明细见 §5。
 - 建完**先跑一次 `validate_mod`** 确认能编译。它会替你检查 mod 名与 namespace 一致。
 - **先建骨架，不得等模型**。模型工具落盘时会自建目录，不得让它抢在你前面把目录建出来。
 - 图标与模型下一步产出来，再放进这个目录即可。
@@ -200,4 +200,4 @@ generate_image(model="your_mods/<mod>/<武器名>.glb",
 - **贴图没上**：GLB 里没有 baseColor 贴图。重新 `texture_model`，或直接用带贴图的 GLB。
 - **模型整块看不见**：绕序或 UV 问题（加载器已按左手系转换）。改提示词或换玩家参考图重生成。
 - **前后反了**：提示词朝向写反了（写成了 "left"）。**玩家自带的模型**没这个保证，在 `config.json` 里写 `"front": "-z"`（或 `+x`、`-x`）。
-- **什么都没变化**：四处名字**不一致**（`info.ini` 的 name、mod 目录名、程序集名即 csproj 的 `AssemblyName`、命名空间加类 `ModBehaviour`）。改成同一个名字。`validate_mod` 会拦。它们会成为 C# 命名空间，必须**小写字母与数字，字母开头**。照 `reference/weapon_model/` 抄最省事。
+- **什么都没变化**：三个名字**不一致**（`info.ini` 的 name、csproj 的 `AssemblyName`、`ModBehaviour.cs` 的 namespace），或类名不是 `ModBehaviour`。改成同一个名字。`validate_mod` 会拦。namespace 是合法 C# 标识符，通常 PascalCase。照 `reference/weapon_model/` 抄最省事。
