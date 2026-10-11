@@ -202,18 +202,18 @@ export default function (pi: ExtensionAPI) {
     name: "install_mod",
     label: "Install Mod",
     description:
-      "Copy a mod's runtime products from your_mods/<ModName>/ into the game's Mods directory, using the mod-install directory that try_set_game_dir / set_game_dir recorded (install_mod does not locate the game itself). Re-installing the same mod updates it in place. If the target directory is taken by another mod it installs as <ModName>_pimod instead of overwriting it. Does not compile, does not install SDKs, does not touch mod sources. It records where the mod was installed in the workspace (your_mods/<ModName>/.pi-mod.json), so re-installing updates that copy in place.",
+      "Copy a mod's runtime products from your_mods/<ModName>/ into the game's Mods directory. It uses the mod install directory that try_set_game_dir or set_game_dir recorded. install_mod does not locate the game itself. Re-installing the same mod updates it in place. If another mod owns the target directory, install_mod uses <ModName>_pimod and does not overwrite it. It does not compile, does not install SDKs, and does not touch mod sources. It records the install location in your_mods/<ModName>/.pi-mod.json, so re-installing updates that copy in place.",
     promptSnippet:
       "Install (or update) this mod into the game after validate_mod passes",
     promptGuidelines: [
-      "Use install_mod after validate_mod passes, so the player can test the mod in-game. It copies products only; it never compiles.",
-      "If install_mod reports the mod was installed as <ModName>_pimod, tell the player: the other mod in that directory was left untouched, and this mod still carries its own in-game name (info.ini name).",
+      "Use install_mod after validate_mod passes, so the player can test the mod in-game. It copies products only. It never compiles.",
+      "If install_mod reports the mod was installed as <ModName>_pimod, tell the player. The other mod in that directory was left untouched. This mod still carries its own in-game name (info.ini name).",
     ],
     parameters: Type.Object({
       modDir: Type.String({
         minLength: 1,
         description:
-          "Existing mod directory; absolute or relative to the workspace root, e.g. your_mods/MyMod.",
+          "Existing mod directory. It may be absolute or relative to the workspace root, for example your_mods/MyMod.",
       }),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {

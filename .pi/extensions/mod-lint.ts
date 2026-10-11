@@ -33,17 +33,17 @@ export default function (pi: ExtensionAPI) {
     name: "validate_mod",
     label: "Validate Mod",
     description:
-      "Validate info.ini and C# source files in an existing mod directory (relative modDir uses workspace root). With ready SDK/game paths, runs dotnet build, which may restore dependencies and write build outputs; does not edit source or test gameplay. Output text uses PASS/FAIL/PARTIAL and a NEXT line for next steps. Skipped compilation is PARTIAL, never full PASS.",
+      "Validate info.ini and the C# source files in an existing mod directory. A relative modDir uses the workspace root. When the SDK and the game paths are ready, it runs dotnet build. The build may restore dependencies and write build output. It does not edit source and does not test gameplay. The output text uses PASS, FAIL, or PARTIAL, and a NEXT line. Skipped compilation is PARTIAL, never a full PASS.",
     promptSnippet:
       "Check an existing C# mod and compile it when runtime prerequisites are ready",
     promptGuidelines: [
-      "Use validate_mod for changed code or requested validation. It can compile, so do not mechanically duplicate the same dotnet build. Inspect the PARTIAL status in output text; resolve skipped-compilation prerequisites before claiming success.",
+      "Use validate_mod for changed code or requested validation. It can compile, so do not repeat the same dotnet build. Check the PARTIAL status in the output text. Resolve the skipped-compilation prerequisites before you claim success.",
     ],
     parameters: Type.Object({
       modDir: Type.String({
         minLength: 1,
         description:
-          "Existing mod directory; absolute or relative to the workspace root, e.g. your_mods/MyMod (not relative to the skill).",
+          "Existing mod directory. It may be absolute or relative to the workspace root, for example your_mods/MyMod. It is not relative to the skill.",
       }),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
