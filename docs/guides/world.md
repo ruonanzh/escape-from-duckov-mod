@@ -1,8 +1,8 @@
-# 任务 / 地图 / 生物 / 天赋 / 建筑 / 商店 / 增益
+# 任务、地图、生物、天赋、建筑、商店、增益
 
 每一类都给出：**类名**（固定）· 常用字段（实测）· **可直接复制的命令**。数量是撰写时的实测值，仅供对照。
 
-所有命令都省略了公共参数 `--file resources.assets`（下同）；用工具时对应 `file="resources.assets"`。
+所有命令都省略了公共参数 `--file resources.assets`（下同）。用工具时对应 `file="resources.assets"`。
 
 ## 任务 Quests — `Quest`（315）
 
@@ -14,7 +14,7 @@ action=export, class=Quest, match=["requireLevel>=1"],
 field=["id","displayName","requireLevel","requiredItemID","requiredItemCount","requireSceneID"]
 ```
 
-- 前置/子任务：`prerequisit`、`tasks`（→ 引用其它任务对象；用 `dump` + `follow` 看一层）。
+- 前置与子任务：`prerequisit`、`tasks`（指向其它任务对象。用 `dump` 与 `follow` 看一层）。
 - 任务流程/UI 的类：`QuestManager`(1) / `QuestCollection`(1) / `QuestGiver`(10)。
 - `displayName` 是 key，join 本地化 CSV 得到中文（见 `00-overview.md`）。
 
@@ -54,12 +54,12 @@ action=export, class=CharacterRandomPreset, match=["isBoss=1"],
 field=["nameKey","lootBoxPrefab","team","showName"]
 ```
 
-- `nameKey` 是本地化 key（如 `Cname_SchoolBully`）→ join CSV 得名字。
+- `nameKey` 是本地化 key（例如 `Cname_SchoolBully`）。join CSV 得名字。
 - 角色行为/属性代码：`CharacterMainControl`、`AICharacterController`（用 `inspect_game_api` 看）。
 
 ## 天赋 / 技能树 Perks — `Perk`（163）
 
-字段：`displayName` `quality` `defaultUnlocked` `unlocking` `requirement` `icon` `master`(→ 技能树) `hasDescription`
+字段：`displayName` `quality` `defaultUnlocked` `unlocking` `requirement` `icon` `master`（指向技能树）`hasDescription`
 
 ```
 # 全部天赋
@@ -103,10 +103,10 @@ field=["merchantProfiles[].merchantID",
        "merchantProfiles[].entries[].maxStock",
        "merchantProfiles[].entries[].priceFactor"]
 # merchantID 与 entries 的字段各自平行（同一层内同序）
-# ⚠️ 但**跨商人会被拍平**：entries 的所有条目连成一条数组，看不出哪段属于哪个商人
+# 但**跨商人会被拍平**：entries 的所有条目连成一条数组，看不出哪段属于哪个商人
 ```
 
-> ⚠️ **要保留“哪个商人卖什么”的边界**，改用它（保留嵌套）：
+> **要保留「哪个商人卖什么」的边界**，改用它（保留嵌套）：
 > `action=dump, class=StockShopDatabase, pathid=76730, depth=8`（每个 profile 一块：`merchantID` + `entries[]`）；
 > 或拿 `entries[].typeID` 的全量清单，再按 typeID 去 `items.md` 查名字。
 
@@ -141,7 +141,7 @@ field=["list[].id","list[].result.id","list[].result.amount","list[].cost.money"
        "list[].cost.items[].id","list[].cost.items[].amount","list[].tags[]"]
 ```
 
-> ⚠️ 两个数组嵌套（`list` → `cost.items`）会**拍平**：`cost.items[].id` 是**所有配方材料连成一条**，看不出哪几样属于哪条配方。要看单条配方：
+> 两个数组嵌套（`list` 与 `cost.items`）会**拍平**：`cost.items[].id` 是**所有配方材料连成一条**，看不出哪几样属于哪条配方。要看单条配方：
 > `action=dump, class=CraftingFormulaCollection, pathid=76575, depth=9`（保留嵌套），或用 `--offset` 一条条看。
 > `result.id` / `cost.items[].id` 都是 `Item.typeID` —— 去 `items.md` 查名字。
 
@@ -149,7 +149,7 @@ field=["list[].id","list[].result.id","list[].result.amount","list[].cost.money"
 
 **掉落不是固定物品单，而是「按 tag 池加权随机」**：
 
-`CharacterRandomPreset.lootBoxPrefab`（PPtr）→ 一个 `InteractableLootbox`（同一个 GameObject 上还有 `LootBoxLoader`），里面：
+`CharacterRandomPreset.lootBoxPrefab`（PPtr）指向一个 `InteractableLootbox`（同一个 GameObject 上还有 `LootBoxLoader`），里面：
 
 | 字段 | 含义 |
 |---|---|
@@ -166,17 +166,17 @@ action=export, class=LootBoxLoader, file="resources.assets",
 field=["tags.entries[].value.#name","tags.entries[].weight","activeChance","inventorySize"]
 ```
 
-> **「某敌人掉什么」的完整链路**：`CharacterRandomPreset`（用 `nameKey`/`isBoss` 定位）→ `lootBoxPrefab` 的 pathID → `action=dump, class=LootBoxLoader, pathid=<那个 gameObject 上的 loader>`；或先用上面的 export 把**全部**掉落箱列出来对照。
-> 要“哪些物品属于某个 tag 池” → 用 `items.md` 的 `match="tags.list[].#name=<X>"`。
+> **「某敌人掉什么」的完整链路**：用 `nameKey` 与 `isBoss` 定位 `CharacterRandomPreset`，再找到 `lootBoxPrefab` 的 pathID，然后 `action=dump, class=LootBoxLoader, pathid=<那个 gameObject 上的 loader>`。或先用上面的 export 把**全部**掉落箱列出来对照。
+> 要「哪些物品属于某个 tag 池」时，用 `items.md` 的 `match="tags.list[].#name=<X>"`。
 
-## 跨类 join 速查（问题 → 一条命令）
+## 跨类 join 速查（问题与对应命令）
 
 | 我想知道 | 命令要点 |
 |---|---|
-| 某任务要交什么？ | `class=Quest` → `requiredItemID` `requiredItemCount`（+ `requireSceneID`）|
+| 某任务要交什么？ | 用 `class=Quest`，看 `requiredItemID`、`requiredItemCount`（与 `requireSceneID`）|
 | 某配方的材料？ | `class=CraftingFormulaCollection`（单条用 `dump`，见上）|
-| 某商人卖什么？ | `class=StockShopDatabase` → `merchantProfiles[].entries[].typeID` |
-| 某敌人/BOSS 掉什么？ | `class=CharacterRandomPreset` → `lootBoxPrefab` → `class=LootBoxLoader` |
+| 某商人卖什么？ | 用 `class=StockShopDatabase`，看 `merchantProfiles[].entries[].typeID` |
+| 某敌人或 BOSS 掉什么？ | 用 `class=CharacterRandomPreset`，再 `lootBoxPrefab`，再 `class=LootBoxLoader` |
 | 某物品的数值？ | `docs/guides/items.md`（`stats.list[].key/baseValue`）|
 | 某场景里有什么？ | `class=GameObject, file=levelN` |
 | 某个中文名对应哪个 key？ | 本地化 CSV（`00-overview.md`）|
@@ -198,9 +198,9 @@ field=["tags.entries[].value.#name","tags.entries[].weight","activeChance","inve
 
 ## 通用提示
 
-- **本指南没写到的概念**，按 `00-overview.md` 的「这份指南没写到怎么办」四步走（`classes` → `export rows=1` 拿 pathID → `dump depth=1` 看字段 → `export` 取；要实现用 `inspect_game_api`）。
-- **不确定类名** → 先 `action=classes`（960 个类）grep 关键词；再 `action=search, pattern=...`。
-- **要数值/条件**（不是文案）→ 都在 `resources.assets` 的这类对象字段里，用 `export`。
-- **要文案**（中/英）→ join `Data/StreamingAssets/Localization/*.csv`。
-- **要行为/实现** → `inspect_game_api`（decompile）。
+- **本指南没写到的概念**，按 `00-overview.md` 的「这份指南没写到怎么办」一节走（`classes`，再 `export rows=1` 拿 pathID，再 `dump depth=1` 看字段，再用 `export` 取。要实现用 `inspect_game_api`）。
+- **不确定类名**时，先用 `action=classes`（960 个类）grep 关键词，再用 `action=search, pattern=...`。
+- **要数值或条件**（不是文案）时，用 `export`。它们都在 `resources.assets` 的这类对象字段里。
+- **要文案**（中文或英文）时，join `Data/StreamingAssets/Localization/*.csv`。
+- **要行为或实现**时，用 `inspect_game_api`（decompile）。
 - 大结果用 `out=<file>` 落盘（只回预览），再用 bash/python 处理。
