@@ -17,16 +17,16 @@ export default function (pi: ExtensionAPI) {
     name: "set_game_dir",
     label: "Set Game Directory",
     description:
-      "Record a concrete game install directory. Validates it with the game's own marker file; if it does not validate, the game is located and that path is recorded instead (WARN). Use try_set_game_dir when you have no path and want the paths located for you.",
-    promptSnippet: "Record a specific game directory (validates; falls back to locating it)",
+      "Record one game directory. The tool validates it with the game's own marker file. If the path does not validate, the tool locates the game and records that path instead, and returns WARN. Use try_set_game_dir when you have no path.",
+    promptSnippet: "Record one game directory. It validates the path, or locates the game.",
     promptGuidelines: [
-      "Use set_game_dir when you have a concrete game install directory to record (the player gave one, or you found one): it validates and records it.",
-      "If set_game_dir returns WARN, the path you passed did not validate and a different one was recorded - tell the player which one is in use.",
-      "If set_game_dir returns FAIL, nothing was recorded (neither the path you passed nor automatic discovery validated).",
-      "Use try_set_game_dir instead when you have no path: it locates the game and records the derived paths itself.",
+      "Use set_game_dir when you have one game directory to record, and the player gave it or you found it. It validates the path and records it.",
+      "If set_game_dir returns WARN, your path did not validate. The tool recorded a different path. Tell the player which path is in use.",
+      "If set_game_dir returns FAIL, the tool recorded nothing. Your path did not validate, and discovery failed.",
+      "Use try_set_game_dir when you have no path. It locates the game and records the derived paths.",
     ],
     parameters: Type.Object({
-      path: Type.String({ description: "Game install directory to record; relative paths use the workspace root." }),
+      path: Type.String({ description: "Game directory to record. Relative paths use the workspace root." }),
     }),
     async execute(_id, params, _s, _u, ctx) {
       const cwd = ctx.cwd;
@@ -35,7 +35,7 @@ export default function (pi: ExtensionAPI) {
         cfg = readModRepoConfig(cwd);
       } catch {
         throw new Error(
-          "INVALID_WORKSPACE_CONFIG: Cannot read mod-repo.json. Reopen or update the game workspace; do not edit its maintainer configuration.",
+          "INVALID_WORKSPACE_CONFIG: Cannot read mod-repo.json. Reopen or update the game workspace. Do not edit its maintainer configuration.",
         );
       }
       const out = setPathWithFallback(cwd, cfg, "gameDir", resolveUserPath(cwd, params.path));

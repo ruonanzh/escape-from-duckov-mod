@@ -12,7 +12,7 @@ export default function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "install_runtime",
     label: "Install Runtime",
-    description: "Return platform-specific instructions for installing .NET SDK >= 8, or report that it is already present. Read-only probing only: this tool does NOT run an installer, download software, or locate the game.",
+    description: "Returns instructions for installing .NET SDK >= 8 on this platform, or reports that it is already present. This tool only probes. It does not run an installer, does not download software, and does not locate the game.",
     promptSnippet: "Get SDK installation instructions when an SDK prerequisite is missing",
     promptGuidelines: ["Use install_runtime when check_runtime reports a missing dotnet SDK."],
     parameters: Type.Object({}),

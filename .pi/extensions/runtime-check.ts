@@ -21,11 +21,11 @@ export default function (pi: ExtensionAPI) {
     name: "check_runtime",
     label: "Check Runtime",
     description:
-      "Checks that the .NET SDK (>= 8.0) is installed and records the resolved dotnet path in .gamer-agent.local.json. It does not locate the game - game/mod paths belong to check_game_paths (verify) and try_set_game_dir / set_game_dir (ensure / record).",
+      "Checks that the .NET SDK (>= 8.0) is installed. It records the resolved dotnet path in .gamer-agent.local.json. It does not locate the game. Game and mod paths belong to check_game_paths, try_set_game_dir, and set_game_dir.",
     promptSnippet: "Check the .NET SDK when compilation needs it or the player asks about setup",
     promptGuidelines: [
       "Use check_runtime when the .NET SDK (>= 8) is needed for compilation, or when the player asks whether the environment is ready.",
-      "check_runtime only checks the SDK and records the dotnet path - game/mod paths are not its job: verify them with check_game_paths, ensure or record them with try_set_game_dir / set_game_dir.",
+      "check_runtime only checks the SDK and records the dotnet path. Game and mod paths are not its job. Verify them with check_game_paths. Ensure or record them with try_set_game_dir or set_game_dir.",
     ],
     parameters: Type.Object({}),
     async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {

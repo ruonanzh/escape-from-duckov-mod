@@ -31,19 +31,19 @@ export default function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "check_game_paths",
     description:
-      "Verify game-related directories (game install, Steam Workshop content, mod install target). Read-only: it never writes .gamer-agent.local.json, never scans Steam, never creates directories. Pass any subset of gameDir/workshopDir/modInstallDir to verify just those; omit them all to verify the paths currently remembered in .gamer-agent.local.json. Use it when the player tells you a path (to find out whether it is right) or to re-check remembered paths; use try_set_game_dir when the location is unknown and needs finding.",
-    promptSnippet: "Verify game/mod paths without scanning or writing",
+      "Verify three directories: the game directory, the Steam Workshop content directory, and the mod install directory. This tool is read-only. It never writes .gamer-agent.local.json, never scans Steam, and never creates a directory. Pass any of gameDir, workshopDir, or modInstallDir to verify those paths. Omit all three to verify the paths in .gamer-agent.local.json. Use it when the player gives you a path, or to re-check a remembered path. Use try_set_game_dir when the location is unknown.",
+    promptSnippet: "Verify game and mod paths without scanning or writing",
     promptGuidelines: [
-      "Use check_game_paths when the player gives you a path, or to confirm a remembered one: it verifies without scanning Steam and without writing state.",
-      "check_game_paths never writes .gamer-agent.local.json - verifying and recording are separate tools.",
-      "A failed check_game_paths changes nothing (read-only): follow its NEXT line to fix it (e.g. run try_set_game_dir to record the paths); it never creates or installs anything itself.",
+      "Use check_game_paths when the player gives you a path, or to confirm a remembered path. It verifies a path without scanning Steam and without writing state.",
+      "check_game_paths never writes .gamer-agent.local.json. Verifying and recording are separate tools.",
+      "A failed check_game_paths changes nothing. Follow its NEXT line to fix the problem. It never creates or installs anything.",
     ],
     parameters: Type.Object({
       gameDir: Type.Optional(
-        Type.String({ description: "Game install directory to verify; relative paths use the workspace root." }),
+        Type.String({ description: "Game directory to verify. Relative paths use the workspace root." }),
       ),
       workshopDir: Type.Optional(Type.String({ description: "Steam Workshop content directory to verify (optional)." })),
-      modInstallDir: Type.Optional(Type.String({ description: "Mod install target directory to verify (optional)." })),
+      modInstallDir: Type.Optional(Type.String({ description: "Mod install directory to verify (optional)." })),
     }),
     async execute(_id, params, _signal, _onUpdate, ctx) {
       const cwd = ctx.cwd;

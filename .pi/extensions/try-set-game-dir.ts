@@ -20,12 +20,12 @@ export default function (pi: ExtensionAPI) {
     name: "try_set_game_dir",
     label: "Ensure Game Directory",
     description:
-      "Makes sure the game directory is recorded and still valid for this platform, together with the mod install directory and the Steam Workshop directory derived from it. Takes no arguments: it either confirms the recorded paths are already correct, or locates the game and records them.",
+      "Makes sure the game directory is recorded and still valid for this platform. It also checks the mod install directory and the Steam Workshop directory derived from it. This tool takes no arguments. It confirms the recorded paths, or locates the game and records the paths.",
     promptSnippet: "Ensure the game directory is recorded (locates it when needed)",
     promptGuidelines: [
-      "Use try_set_game_dir when a task needs the game location (compiling, installing) and you are not sure the paths are recorded or still valid.",
-      "try_set_game_dir takes no arguments: it confirms the recorded paths or locates and records them, so you do not have to find the path yourself first.",
-      "try_set_game_dir only records paths in .gamer-agent.local.json; it never creates or changes anything inside the game.",
+      "Use try_set_game_dir when a task needs the game location, such as compiling or installing, and you are not sure the paths are recorded or still valid.",
+      "try_set_game_dir takes no arguments. It confirms the recorded paths or locates and records them. You do not have to find the path yourself.",
+      "try_set_game_dir only records paths in .gamer-agent.local.json. It never creates or changes anything inside the game.",
     ],
     parameters: Type.Object({}),
     async execute(_id, _params, _s, _u, ctx) {
@@ -35,7 +35,7 @@ export default function (pi: ExtensionAPI) {
         cfg = readModRepoConfig(cwd);
       } catch {
         throw new Error(
-          "INVALID_WORKSPACE_CONFIG: Cannot read mod-repo.json. Reopen or update the game workspace; do not edit its maintainer configuration.",
+          "INVALID_WORKSPACE_CONFIG: Cannot read mod-repo.json. Reopen or update the game workspace. Do not edit its maintainer configuration.",
         );
       }
       const r = ensureGameDir(cwd, cfg);
