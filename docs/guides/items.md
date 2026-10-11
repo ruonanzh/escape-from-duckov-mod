@@ -62,7 +62,7 @@ action=export, class=Item, match=["tags.list[].#name=Weapon"], field=["displayNa
 
 | 概念 | Tag / 写法 | 数量 |
 |---|---|---|
-| **武器（要“全部武器”看这行）** | `Weapon` **∪** `MeleeWeapon`（无单条命令，见下）| **172** |
+| **武器（要「全部武器」看这行）** | `Weapon` **∪** `MeleeWeapon`（无单条命令，见下）| **172** |
 | └ 主标签 | `tags.list[].#name=Weapon` | 158 |
 | └ 枪械 | `tags.list[].#name=Gun` | 124 |
 | └ 近战 | `tags.list[].#name=MeleeWeapon` | 48 |
@@ -95,7 +95,7 @@ action=export, class=Item, match=["tags.list[].#name=Weapon"], field=["displayNa
 > 那 14 件是：`Item_HammerL`(大锤) / `Item_HammerS` / `Item_Hammer_Tagilla`(Superfors DB) / `Item_Wrench`(扳手) / `Item_Wrench02` / `Item_Wrench03` / `Item_Shovel`(铁铲) / `Item_GolfClub`(高尔夫杆) / `Item_GoldDumbbell`(金哑铃) / `Item_SaltedFish`(咸鱼) / `Item_GiantSwordFish`(大剑鱼) —— 仓库里算工具/日用，但能当近战用。
 >
 > **常用选法**：
-> - “**全部武器**（172）= `Weapon` ∪ `MeleeWeapon`” —— **没有单命令**（`match` 只有 AND），两次调用再按 `typeID` 去重：
+> - 「**全部武器**（172）= `Weapon` ∪ `MeleeWeapon`」 —— **没有单命令**（`match` 只有 AND），两次调用再按 `typeID` 去重：
 >   ```
 >   action=export, class=Item, match=["tags.list[].#name=Weapon"],      field=["typeID","displayName","value","quality","stats.list[].key","stats.list[].baseValue"], out="/tmp/w1.tsv"
 >   action=export, class=Item, match=["tags.list[].#name=MeleeWeapon"], field=["typeID","displayName","value","quality","stats.list[].key","stats.list[].baseValue"], out="/tmp/w2.tsv"
@@ -133,13 +133,13 @@ for k, v in zip(keys, vals):
 ## 附录：全部 Tag（134 个）—— **不得当成 134 个品类**
 
 `Tag` 资产一**134 个**，但只有 **121 个真的挂在物品上**，且含义混三类：**品类**（这是什么）、**子类型**（品类细分）、**行为标记**（可修理、展示、锁定）。
-选物品时**从 A / B 里挑**；C 类当过滤条件可以，当“品类”会奇怪。数字是实测（多少件物品挂了这个 tag）。
+选物品时**从 A 或 B 里挑**。C 类当过滤条件可以，当「品类」会奇怪。数字是实测（多少件物品挂了这个 tag）。
 
 > **本表只用于「选对 tag 名」。数字会随版本变，精确值一律现查**：`action=export, class=Tag`（列出全部 tag）与计数（`match=["tags.list[].#name=X"]` 的返回行数）。表内数字与正文「常用分类对照」不一致时，**以现查为准**。
 
-### A. 主要品类（挑“要哪类物品”用这些）
+### A. 主要品类（挑「要哪类物品」用这些）
 
-| Tag | n | 说明（看名字/实例）|
+| Tag | n | 说明（看名字或实例）|
 |---|---|---|
 | `Accessory` | 263 | 枪械配件（总）|
 | `Formula` | 215 | 配方 / 蓝图（总）|

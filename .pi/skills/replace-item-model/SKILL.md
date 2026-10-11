@@ -34,7 +34,7 @@ description: 玩家想换**物品**（背包、防弹衣、头盔、弹匣、任
 generate_image(
   image="<玩家的图>",                       // 只给文字描述时省略。此时纯提示词出图。
   prompt="Redraw the item from the input as a clean, isolated in-game asset: keep ONLY the main item - if the input shows several objects, take the largest, centered one and ignore the rest. The whole item alone and complete - keep EVERY part of it; remove only what is not the item (the background, any floating pieces, text, frames). Put it on a plain uniform white background: no scenery, no props, no shadow, no smoke, no hands, no text. Keep the item's own design and colors the same, but render it in a CARTOON / toon-shaded style like the game's own assets (flat stylized colors, clean shading - not photoreal), and make it noticeably BULKIER and THICKER: heavy, sturdy proportions like a stylized low-poly game asset, about 0.50 m tall (game scale). Show it from the SIDE (a profile view that shows its thickness and depth), NOT a front view, and perfectly CENTERED in the frame, with a clear margin on all sides.",
-  out="your_mods/<mod>/.preview/<物品名>.preview.png")   // 中间图放 mod 目录下的 .preview/
+  out="your_mods/<目录名>/.preview/<物品名>.preview.png")   // 中间图放 mod 目录下的 .preview/
 ```
 
 - 这段配方里有 **8 件事都不得丢**：**只留主物品**（图里有多个物体时取**最大最居中**那个，其余全丢）、**整件物品都在**、**只移除不是它的东西**、**纯白均一背景**、**保持原设计与原颜色，并做卡通渲染**（不是照片感）、**加粗**、**侧视**、**居中留边**。
@@ -48,8 +48,8 @@ generate_image(
 
 ```
 generate_model(action="generate",
-               image="your_mods/<mod>/.preview/<物品名>.preview.png",   // 用 ③ 那张**已确认的**预览图
-               out="your_mods/<mod>/<物品名>.glb",                      // 模型名**按物品起**（backpack.glb）
+               image="your_mods/<目录名>/.preview/<物品名>.preview.png",   // 用 ③ 那张**已确认的**预览图
+               out="your_mods/<目录名>/<物品名>.glb",                      // 模型名**按物品起**（backpack.glb）
                faceLimit=3000)
 ```
 
@@ -61,7 +61,7 @@ generate_model(action="generate",
 
 这份流程只换**世界里的模型**，**不换图标**。背包格子与「使用时」那张图是游戏自带的。
 
-### 尺寸：**照游戏内尺寸做**（实测。**不是实物尺寸**）
+### 尺寸：**照游戏内尺寸做**（实测。**不按现实尺寸**）
 
 | 类别 | 典型最长边 |
 |---|---|
@@ -155,7 +155,7 @@ var res = ModelKit.ItemModel.Apply(item, loaded.Mesh, loaded.MainTexture, handhe
 | 物品**原样没变** | 匹配条件写错，或规则里 `world=关` | 确认 `typeIDs` 抄对了（抄错一位就「什么都没命中」），并确认 `world` 没关 |
 | **地上变了、手里没变** | 这条物品的 `handheld` 没开（默认关）| 加上 `"handheld": true`。会改行为，先问玩家。|
 | **手里还是那张 2D 图** | 这件物品本来没有「拿着」的模型，而 `handheld` **默认是关的** | 加 `"handheld": true`。会改行为，先问玩家。|
-| 模型**巨大或极小** | Tripo 会把**最长边归一到 ≈1 m**，不等于游戏内尺寸 | 先用 config 的 **`size`**（米。武器不写自动分档，物品不写则不缩放）；不够再重生成 |
+| 模型**巨大或极小** | Tripo 会把**最长边归一到 ≈1 m**，不等于游戏内尺寸 | 先用 config 的 **`size`**（米。武器不写就自动按游戏内尺寸，物品不写则不缩放）；不够再重生成 |
 
 ### 接口一览（完整清单见 [`docs/mod-kit-api.md`](../../docs/mod-kit-api.md)。签名用 `rg "public static" libs/mod-kit/ItemModel.cs` 现查）
 

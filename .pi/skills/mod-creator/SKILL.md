@@ -69,7 +69,7 @@ description: Escape From Duckov 的 C# mod 制作与修改。覆盖目录结构�
 - **动手前：先确认需求再动手**。先跟玩家对齐「这个 mod 是什么」（改什么、覆盖范围、产物的形态）。给出**一份 mod 内容描述**。玩家确认后再开始写代码。
 - **咨询与可行性**：按目标检索 `docs/api/`、`docs/data/` 与 `docs/mod-api.md`，确认 API 与数据依据。只是讨论时不必建目录，也不必准备环境。数据层版本见 `mod-repo.json` 的 `game.version`。不得臆测最新补丁行为。`docs/api/` 只是维护者反射 dump 的**公开**签名。查**私有成员、实现行为与当前版本**时，用 `inspect_game_api` 读托管 DLL（见「参考」）。
 - **实际制作与修改**：目录名与 mod 名是两个名字。目录名给 `create_mod_folder`，用小写 snake_case（小写字母、数字、下划线，字母开头）。mod 名写进 `info.ini` 的 `name`，是合法 C# 标识符，通常 PascalCase。写入仅限当前 session 绑定的目录。无绑定且准备写入时才调 `create_mod_folder`。有绑定就复用。目录缺失时先说明阻塞，不得另建第二个绑定。
-- **规范与实现**：`reference/example_mod/` 只作**骨架参考**（csproj、info.ini、ModBehaviour 的写法与命名）。保持 info.ini 的 mod 名、AssemblyName、RootNamespace 与 DLL 名一致（validate_mod 校验）。
+- **规范与实现**：`reference/example_mod/` 只作**骨架参考**（csproj、info.ini、ModBehaviour 的写法与命名）。保持 info.ini 的 mod 名、csproj 的 `AssemblyName`、`ModBehaviour.cs` 的 namespace 一致（validate_mod 校验）。
 - **产物落点**：编译产物放哪都行。`install_mod` 会自动找到 `<name>.dll`（mod 根**或 `bin/` 下**），并把它放到游戏 mod 目录**根**。游戏只从根加载 `<name>.dll`。所以用默认的 `bin/` 即可，不必手动整理。**不得**把 csproj 的 `OutputPath` 指到项目根。SDK 的默认排除会把项目根下的 `*.cs` 全排掉，产出**空壳 dll**（游戏里能看到，却勾不上）。确需如此时必须同时设 `EnableDefaultCompileItems=false`，并加显式 `Compile`。
 - **失败处理**：按错误定位修复。同类失败重复出现时先解决前置条件。不得无限「直到 PASS」。
 

@@ -194,7 +194,7 @@ field=["tags.entries[].value.#name","tags.entries[].weight","activeChance","inve
 
 **内部/测试项**（正常工作产物，但一般不想展示）：`DummyEnemyCharacterRandomPresetLv N`、无 `m_Name` 的 `Item`（如 `Formula_Blueprint` 模板）。要排除就在结果里按名字过滤。
 
-> 结论：**以游戏数据为准**；wiki 适合当“中文名/可读视图”参考，不代表原始字段值。
+> 结论：**以游戏数据为准**。wiki 适合当「中文名或可读视图」参考，不代表原始字段值。
 
 ## 通用提示
 

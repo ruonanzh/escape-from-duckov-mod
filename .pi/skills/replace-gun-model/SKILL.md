@@ -44,7 +44,7 @@ description: 玩家想换某把**枪械**的模型或外观时用（例如「把
 generate_image(
   image="<玩家的图>",                  // 只给文字时省略。此时纯提示词出图。
   prompt="Redraw the weapon from the input as a clean, isolated in-game asset: keep ONLY the main item - if the input shows several objects, take the largest, centered one and ignore the rest. The whole weapon alone and complete - keep EVERY part of it (stock, pad, magazine, sights, mounts); remove only what is not the weapon (the background, any floating pieces, text, frames). Put it on a plain uniform white background: no scenery, no props, no shadow, no smoke, no hands, no text. Keep the weapon's own design and colors the same, but render it in a CARTOON / toon-shaded style like the game's own assets (flat stylized colors, clean shading - not photoreal), and make it noticeably BULKIER and THICKER: a chunky barrel, a thick handguard and a stout stock - heavy, sturdy proportions like a stylized low-poly game asset. Side view with the barrel and muzzle pointing LEFT, and perfectly CENTERED in the frame, with a clear margin on all sides.",
-  out="your_mods/<mod>/.preview/<名字>.preview.png")   // 中间图放 mod 目录下的 .preview/
+  out="your_mods/<目录名>/.preview/<名字>.preview.png")   // 中间图放 mod 目录下的 .preview/
 ```
 
 - 这段配方里有 8 件事都**不得丢**：**只留主物品**（图里有多个物体时取**最大最居中**那个，其余全丢）、**整把武器都在**（部件一个不少）、**只移除不是武器的东西**（背景、飘浮物、文字、边框）、**纯白均一背景，无杂物**、**保持原设计与原颜色，并做卡通渲染**（不是照片感）、**加粗**、**朝向 LEFT**、**居中并留边**。
@@ -61,12 +61,12 @@ generate_image(
 
 ```
 generate_model(action="generate", image=".preview/<名字>.preview.png",
-               out="your_mods/<mod>/<武器名>.glb", faceLimit=3000)   // 目录在 ② 已建好；**模型名按武器起**（如 ak103.glb），不得固定叫 gun.glb
+               out="your_mods/<目录名>/<武器名>.glb", faceLimit=3000)   // 目录在 ② 已建好；**模型名按武器起**（如 ak103.glb），不得固定叫 gun.glb
 ```
 
 - 用 ③ 那张**已确认的预览图**做输入。**图到 3D 比纯文字准得多**（冷门型号尤其）。
 - 玩家只要一句话、没图时，用 `prompt="…"`。**提示词里也必须写朝向**。
-- 玩家自带 `.glb` 时，③④⑤ 全跳过，直接把他的文件放进 `your_mods/<mod>/`。
+- 玩家自带 `.glb` 时，③④⑤ 全跳过，直接把他的文件放进 `your_mods/<目录名>/`。
 
 > **朝向只能靠提示词**：`..., the barrel and muzzle point to the LEFT, the stock is on the right`
 > **「to the left」让枪口落在 +Z，也就是 Unity 前向**。进游戏不用再转。
@@ -75,9 +75,9 @@ generate_model(action="generate", image=".preview/<名字>.preview.png",
 ### ⑤ 图标
 
 ```
-generate_image(model="your_mods/<mod>/<武器名>.glb",
+generate_image(model="your_mods/<目录名>/<武器名>.glb",
                prompt="clean game inventory icon, side profile, centered, the weapon occupies about 80% of the frame width",
-               out="your_mods/<mod>/icon.png")
+               out="your_mods/<目录名>/icon.png")
 ```
 
 - 图**原生就是透明的**。运行时只做**尺寸对齐**（256² 与 PPU50），**不抠底、不裁方、也不调构图**。
@@ -93,7 +93,7 @@ generate_image(model="your_mods/<mod>/<武器名>.glb",
 | | | **≈ 70** | **数字只在本表维护**，别处不再重复写 |
 
 > **Tripo key**：放**单独的文件** `~/.gamer-agent-pi/api-keys.json`，内容 `{ "tripo": "tsk_..." }`。
-> 它是用户级文件，所有游戏仓库共用，不进 git。**这是临时方案**，将来由 app 的「管理 API keys」界面接管。
+> 它是本机的文件，所有游戏仓库共用，不进 git。**这是临时方案**，将来由 app 的「管理 API keys」界面接管。
 > 没有 key 时工具会抛 `TRIPO_NO_API_KEY`。这时**向玩家要一次**，写进去即可。
 > 余额用 `generate_model(action="balance")` 看。**不得反复重试刷积分**，不行就改提示词或问玩家。
 

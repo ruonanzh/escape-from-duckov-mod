@@ -35,7 +35,7 @@
 ### 1. 先看有哪些类：`classes`
 
 ```
-action=classes                       # 960 个类，12.9 万对象（含 GameObject、Transform 等内置类型）
+action=classes                       # 960 个类，12.9 万对象（含内置类型，例如 GameObject、Transform）
 ```
 
 ### 2. 物品分类看 **Tag** —— 这是游戏官方的分类法
@@ -52,7 +52,7 @@ action=export, class=Item, match=["tags.list[].#name=Key"]
 
 ### 3. 名字通常是**本地化 key**，要 join CSV
 
-`Item.displayName`、`Quest.displayName`、`Buff.displayName`、`Level_*` 等多是 **key**（例如 `Item_ButcherKnife`、`Buff_Pain`），不是玩家看到的文字。
+`Item.displayName`、`Quest.displayName`、`Buff.displayName`、`Level_*` 这几类多是 **key**（例如 `Item_ButcherKnife`、`Buff_Pain`），不是玩家看到的文字。
 
 - 文件：`<Data>/StreamingAssets/Localization/ChineseSimplified.csv`（表头 `key,value,version,sheet`。另有 `English`、`ChineseTraditional`、`Japanese`）
 - 实测：`Item_AnimalWeapon,空手`
@@ -113,7 +113,7 @@ PY
 
 ## 文本从哪来：本地化用**游戏自带**的，`docs/data/` 是旧快照
 
-- 优先：`<Data>/StreamingAssets/Localization/` 下的 `ChineseSimplified`、`ChineseTraditional`、`English`、`Japanese` 等 CSV（**实时、多语言、是超集**。含 `key,value,version,sheet`，sheet 就是 `Items`、`Quests`、`Buffs`）。
+- 优先：`<Data>/StreamingAssets/Localization/` 下的 CSV（**实时、多语言、是超集**。含 10 个语言：`ChineseSimplified`、`ChineseTraditional`、`English`、`French`、`German`、`Japanese`、`Korean`、`Portuguese`、`Russian`、`Spanish`。表头 `key,value,version,sheet`，sheet 就是 `Items`、`Quests`、`Buffs`）。
   - **同一个 key 可能在多个 sheet 里，且中文常常不在 `Items` 而在 `Default`**（实测：`Item_ButcherKnife` 在 `English.csv` 属 sheet=`Default`，在 `ChineseSimplified.csv` 属 sheet=`Items`）。所以**按 `key` 建索引就行**（上面的片段就是），不得「先去哪个 sheet 找」。
 - `docs/data/*.csv`（工作区里那份）是**维护者导出的快照**：同名 sheet 但**条目少得多**（例如 Items 892，本地化 2944），且可能落后于玩家版本。**能用游戏本体就用本体**。仅当不想开游戏时才当参考。
 - `docs/data/resources.csv`（`type,name` 资产清单）：用 `classes` 或 `export --class X` **现查**更准。
