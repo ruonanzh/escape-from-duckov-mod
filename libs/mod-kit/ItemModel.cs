@@ -1,24 +1,24 @@
-// ItemModel.cs —— **非武器物品**的外观替换（武器走 WeaponModel ✓ 两套互不掺和 ✗）。
+// ItemModel.cs —— **非武器物品**的外观替换（武器走 WeaponModel 两套互不掺和）。
 //
-// 事实（反编译 + 实测 ✓）：
-//   · 物品的世界外观 = 它自己的 `ItemGraphicInfo`（`item.ItemGraphic`）实例化出来的；
-//     没有 `ItemGraphic` 的物品退化成"图标精灵"（`CreateAGraphic`: 用 `spriteGraphicPfb` +
-//     `fallbackSprite.sprite = item.Icon`）→ 那种我们**不动** ✗（换不了外观 ✓ 直接跳过 ✓）
-//   · **非武器物品的图形里常常一个网格都没有** ✗（只有精灵，或者靠 `Setup(item)` 运行时补 ✓）
-//     —— 所以"关旧几何/找锚点"**不能**只认 `MeshRenderer`/`SkinnedMeshRenderer` ✗
-//   · `ItemAgent.AgentTypes = { normal, pickUp, handheld, equipment }` ✓ 与"武器/物品"无关 ✓
-//   · 游戏每次要显示时都 `Instantiate(item.ItemGraphic)` ✓
-//     → **就地改那个 prefab** = 以后每个实例都自动是对的 ✓
+// 事实（反编译 + 实测）：
+// · 物品的世界外观 = 它自己的 `ItemGraphicInfo`（`item.ItemGraphic`）实例化出来的；
+// 没有 `ItemGraphic` 的物品退化成"图标精灵"（`CreateAGraphic`: 用 `spriteGraphicPfb` +
+// `fallbackSprite.sprite = item.Icon`），于是 那种我们**不动** （换不了外观 直接跳过）
+// · **非武器物品的图形里常常一个网格都没有** （只有精灵，或者靠 `Setup(item)` 运行时补）
+// —— 所以"关旧几何/找锚点"**不得**只认 `MeshRenderer`/`SkinnedMeshRenderer`
+// · `ItemAgent.AgentTypes = { normal, pickUp, handheld, equipment }` 与"武器/物品"无关
+// · 游戏每次要显示时都 `Instantiate(item.ItemGraphic)`
+// 于是 **就地改那个 prefab** = 以后每个实例都自动是对的
 //
-// ⚠️ 血泪教训（归档那份从没测过的代码留下的 ✗）
-//   · **绝不把"克隆出来的模板"写回 `item.ItemGraphic`** ✗：
-//     模板被塞进 `DontDestroyOnLoad`，而 Unity 里 `Instantiate` 出来的副本**落在原物体所在的场景**
-//     → 之后每个实例都生在 DDOL 场景里 → **全都看不见** ✗
-//     （实测现象：整件背包连它原来的外观一起消失 ✗）
-//   · 所以这里**不克隆** ✓：直接改游戏自己的 prefab（只在运行时内存里 ✓ 不落盘 ✓ 可 `Restore()` ✓）
+// 血泪教训（归档那份从没测过的代码留下的）
+// · **绝不把"克隆出来的模板"写回 `item.ItemGraphic`**：
+// 模板被塞进 `DontDestroyOnLoad`，而 Unity 里 `Instantiate` 出来的副本**落在原物体所在的场景**
+// 于是 之后每个实例都生在 DDOL 场景里，于是 **全都看不见**
+// （实测现象：整件背包连它原来的外观一起消失）
+// · 所以这里**不克隆**：直接改游戏自己的 prefab（只在运行时内存里 不落盘 可 `Restore()`）
 //
-// 它不管什么：挂点/槽位/枪械零件命名（`WPN_*` / `ShowIf_*` / `HideIf_*` 那套是**武器专用** ✗）。
-// 物品这里只有三件事：**关掉原外观 → 挂上我们的模型 → 让游戏下次重建时也用它** ✓
+// 它不管什么：挂点/槽位/枪械零件命名（`WPN_*` / `ShowIf_*` / `HideIf_*` 那套是**武器专用**）。
+// 物品这里只有三件事：**关掉原外观，于是 挂上我们的模型，于是 让游戏下次重建时也用它**
 
 using System;
 using System.Collections.Generic;
@@ -27,96 +27,96 @@ using UnityEngine;
 
 namespace ModelKit
 {
-    /// <summary>把"我们的 mesh + 贴图"接到**非武器物品**上（改它自己的图形 ✓ 不克隆不 DDOL ✗）。</summary>
+    /// <summary>把"我们的 mesh + 贴图"接到**非武器物品**上（改它自己的图形 不克隆不 DDOL）。</summary>
     public static class ItemModel
     {
-        /// <summary>⭐ **当前模型的法线图** ✓ —— 由调用方在 `Apply*` 之前设一次 ✓（拿到的 `CachedModel.NormalTexture` ✓）。
-        /// <para>只影响**法线**那一张 ✓；**金属/光滑一律不碰** ✗（用户口径 ✓：先把法线单独拿回来看看 ✓）。</para>
-        /// <para>⚠️ 用字段而非参数 ✗ —— 否则要穿过 10+ 个签名 ✓；Unity 主线程单线程 ✓ 无并发 ✓。</para></summary>
+        /// <summary> **当前模型的法线图** —— 由调用方在 `Apply*` 之前设一次 （拿到的 `CachedModel.NormalTexture`）。
+        /// <para>只影响**法线**那一张；**金属/光滑一律不碰** （用户口径：先把法线单独拿回来看看）。</para>
+        /// <para> 用字段而非参数 —— 否则要穿过 10+ 个签名；Unity 主线程单线程 无并发。</para></summary>
         public static Texture2D CurrentNormalMap;
-        /// <summary>一次替换的结果 ✓（带 `Restore()` ✓ 热重载/卸载时能还原 ✓）</summary>
+        /// <summary>一次替换的结果 （带 `Restore()` 热重载/卸载时能还原）</summary>
         public sealed class Result
         {
             public bool Applied;
             public int TypeID;
             public string ItemName = "";
             public GameObject Instance;                       // 我们挂上去的子物体
-            /// <summary>⭐ "顺手一起做的那些"的结果 ✓（手持 / 场上实例两条 ✓）—— `Restore()` 要一起还原 ✗
-            /// <para>不还原会怎样 ✓（实测报过 ✓）：热重载后**旧的我们的 mesh 还在** ✗
-            /// → **改小时被旧的大的包住** ✗（看着"没生效" ✓）；登记也不注销 ✗ → **只能热更一次** ✗</para></summary>
+            /// <summary> "顺手一起做的那些"的结果 （手持 / 场上实例两条）—— `Restore()` 要一起还原
+            /// <para>不还原会怎样 （实测报过）：热重载后**旧的我们的 mesh 还在**
+            /// 于是 **改小时被旧的大的包住** （看着"没生效"）；登记也不注销，于是 **只能热更一次** </para></summary>
             public readonly List<Result> Nested = new List<Result>();
 
-            /// <summary>被我们关掉的旧外观（**任何**渲染器都可能 ✓ 含 SpriteRenderer ✓）</summary>
+            /// <summary>被我们关掉的旧外观（**任何**渲染器都可能 含 SpriteRenderer）</summary>
             public readonly List<Renderer> Hidden = new List<Renderer>();
 
-            /// <summary>我们在这层打过 `Marked` 的对象 ✓（`Restore()` 时**精确摘掉这一层** ✓）。
-            /// ⭐ 绝不用"全局扫描摘标记" ✗ —— 那会把**游戏对象上的标记**也摘掉 ✓
-            ///   → 下一轮 `Apply` 会去重处理**原物品模板** ✗ → 走成另一条分支 ✗（实测报过 ✓）</summary>
+            /// <summary>我们在这层打过 `Marked` 的对象 （`Restore()` 时**精确摘掉这一层**）。
+            /// 绝不用"全局扫描摘标记" —— 那会把**游戏对象上的标记**也摘掉
+            /// 于是 下一轮 `Apply` 会去重处理**原物品模板**，于是 走成另一条分支 （实测报过）</summary>
             public GameObject MarkedOn;
 
             public string AnchorName = "根";
             public bool CacheCleared;
 
-            /// <summary>true = **什么都没做**（已经换过了 ✓ / 本来就换不了 ✓）→ 调用方**别打日志** ✗
-            /// （之前靠比 `Report` 字符串 ✗ → 少一个字段就刷了 5000 行日志 ✓ 实测 ✓）</summary>
+            /// <summary>true = **什么都没做**（已经换过了 / 本来就换不了），于是 调用方**不得打日志**
+            /// （之前靠比 `Report` 字符串，于是 少一个字段就刷了 5000 行日志 实测）</summary>
             public bool NoOp;
             public string Report = "";
 
-            /// <summary>热重载/卸载：把关掉的开回来 + 抹掉我们挂的东西 ✓（幂等 ✓ 可重复调 ✓）</summary>
+            /// <summary>热重载/卸载：把关掉的开回来 + 抹掉我们挂的东西 （幂等 可重复调）</summary>
             public void Restore()
             {
                 if (MarkedOn != null)
                 {
-                    _patchedLayers.Remove(MarkedOn);                   // ⭐ 注销 ✓ → 之后能重新挂 ✓
+                    _patchedLayers.Remove(MarkedOn);                   // 注销，于是 之后能重新挂
                     var mk = MarkedOn.GetComponent<Marked>();
-                    if (mk != null) UnityEngine.Object.DestroyImmediate(mk);   // 摘掉我们打的标记 ✓ → 下次 Apply 才能重挂 ✓
+                    if (mk != null) UnityEngine.Object.DestroyImmediate(mk);   // 摘掉我们打的标记，于是 下次 Apply 才能重挂
                     MarkedOn = null;
                 }
                 for (int i = 0; i < Hidden.Count; i++)
                     if (Hidden[i] != null) Hidden[i].enabled = true;
                 Hidden.Clear();
                 if (Instance != null) { UnityEngine.Object.Destroy(Instance); Instance = null; }
-                for (int i = 0; i < Nested.Count; i++) if (Nested[i] != null) Nested[i].Restore();   // ⭐ 顺手做的一起还原 ✓
+                for (int i = 0; i < Nested.Count; i++) if (Nested[i] != null) Nested[i].Restore();   // 顺手做的一起还原
                 Nested.Clear();
                 Applied = false;
             }
         }
 
-        /// <summary>标记"这一层已经换成我们的了" ✓。
-        /// ⚠️ 必须挂在**被处理的那一层自己身上** ✓ —— 这样才能区分：
-        ///   · 图形层（我们改过 ✓ 它的**克隆**也会带着这个标记 ✓ → 不会重复挂 ✓）
-        ///   · agent 层（手里那层 ✓ 独立处理 ✓ 它自己的图标精灵才会被关掉 ✗ 以前漏了 ✓）</summary>
+        /// <summary>标记"这一层已经换成我们的了"。
+        /// 必须挂在**被处理的那一层自己身上** —— 这样才能区分：
+        /// · 图形层（我们改过 它的**克隆**也会带着这个标记，于是 不会重复挂）
+        /// · agent 层（手里那层 独立处理 它自己的图标精灵才会被关掉 以前漏了）</summary>
         public sealed class Marked : MonoBehaviour { }
 
-        /// <summary>⭐ 已经挂过的**层**（按该层自己的 `instanceID` ✓）。
-        /// <para>为什么不看 `Marked` ✗：我们 patch 过的 **prefab** 会把标记**遗传给所有实例** ✓
-        /// → 看标记会把"带遗传标记、但没挂过"的副本误跳过 ✗（掉落物 / 穿戴实例 ✓）。</para>
-        /// <para>为什么不看"这一层下的 `ModelKit_*`" ✗：我们的 mesh 是挂在**挂点**（`PickMount` 的结果 ✓）
-        /// 下面 ✗，**不是**这一层的直接子物体 ✓ → 子物体扫描同样会漏 ✓ → 变成**每轮重复挂** ✗
-        /// （诊断日志实锤 ✓：同名 mesh 每 0.5 秒多一个 ✓）。</para>
-        /// <para>⇒ 唯一可靠做法 = **登记表** ✓：挂上时记下这一层 ✓，`Restore()` 时注销 ✓</para></summary>
+        /// <summary> 已经挂过的**层**（按该层自己的 `instanceID`）。
+        /// <para>为什么不看 `Marked`：我们 patch 过的 **prefab** 会把标记**遗传给所有实例**
+        /// 于是 看标记会把"带遗传标记、但没挂过"的副本误跳过 （掉落物 / 穿戴实例）。</para>
+        /// <para>为什么不看"这一层下的 `ModelKit_*`"：我们的 mesh 是挂在**挂点**（`PickMount` 的结果）
+        /// 下面，**不是**这一层的直接子物体，于是 子物体扫描同样会漏，于是 变成**每轮重复挂**
+        /// （诊断日志实锤：同名 mesh 每 0.5 秒多一个）。</para>
+        /// <para>⇒ 唯一可靠做法 = **登记表**：挂上时记下这一层，`Restore()` 时注销 </para></summary>
         static readonly HashSet<GameObject> _patchedLayers = new HashSet<GameObject>();
         static int _patchedPruneAt;
 
-        /// <summary>⚠️ 为什么存 **GameObject 引用**而不是 `instanceID` ✗：
-        /// Unity 对象销毁后，它的 instanceID **可能被新对象复用** ✗ → 按 id 存会"认错人" ✓
-        /// （新对象被当成"已挂过" ✗ → 永远不挂 ✗）。按引用存：新对象是**另一个引用** ✓ 不受影响 ✓。</summary>
-        /// <summary>⭐ 这一层我们挂过没有 ✓（给"场上实例补挂"用 ✓ 判据唯一 ✓）</summary>
+        /// <summary> 为什么存 **GameObject 引用**而不是 `instanceID`：
+        /// Unity 对象销毁后，它的 instanceID **可能被新对象复用**，于是 按 id 存会"认错人"
+        /// （新对象被当成"已挂过"，于是 永远不挂）。按引用存：新对象是**另一个引用** 不受影响。</summary>
+        /// <summary> 这一层我们挂过没有 （给"场上实例补挂"用 判据唯一）</summary>
         public static bool IsPatched(GameObject layer) => layer != null && _patchedLayers.Contains(layer);
 
-        /// <summary>⭐ 登记"我们在这层挂过" ✓（**别的能力**（如武器侧）挂完也要调它 ✓
-        /// —— 否则共用登记表里没有它 ✓ → 扫描会把同一个实例**再挂一次** ✗ 实测：配件消失 ✓）</summary>
+        /// <summary> 登记"我们在这层挂过" （**别的能力**（如武器侧）挂完也要调它
+        /// —— 否则共用登记表里没有它，于是 扫描会把同一个实例**再挂一次** 实测：配件消失）</summary>
         public static void MarkPatched(GameObject layer) { if (layer != null) _patchedLayers.Add(layer); }
 
-        /// <summary>注销 ✓（`Restore()` 时用 ✓ 有借有还 ✓）</summary>
+        /// <summary>注销 （`Restore()` 时用 有借有还）</summary>
         public static void UnmarkPatched(GameObject layer) { if (layer != null) _patchedLayers.Remove(layer); }
 
-        /// <summary>⭐ 这一层（含**整棵子树**）里有没有我们挂的 mesh ✓。
-        /// <para>用途 ✓：跳过"**我们自己造的/已经带我们 mesh 的**图形" ✗
-        /// （糖果那种"我们造的图形" ✓ 它的实例天生带我们的 mesh ✓ → 不能再补一次 ✗
-        ///  否则 `PickMount` 会把**我们的 mesh** 当成"旧外观"关掉 ✓ → 物品直接消失 ✓ 实测 ✓）
-        /// ⚠️ 只对"图形实例"用 ✓：agent 身上我们挂的 mesh 叫 `WeaponModel` ✗ 不是 `ModelKit_*` ✓
-        ///   → 所以 agent 不会被这条误跳过 ✓（它靠登记表 ✓）</para></summary>
+        /// <summary> 这一层（含**整棵子树**）里有没有我们挂的 mesh。
+        /// <para>用途：跳过"**我们自己造的/已经带我们 mesh 的**图形"
+        /// （糖果那种"我们造的图形" 它的实例天生带我们的 mesh，于是 不得再补一次
+        /// 否则 `PickMount` 会把**我们的 mesh** 当成"旧外观"关掉，于是 物品直接消失 实测）
+        /// 只对"图形实例"用：agent 身上我们挂的 mesh 叫 `WeaponModel` 不是 `ModelKit_*`
+        /// 于是 所以 agent 不会被这条误跳过 （它靠登记表）</para></summary>
         public static bool HasOurMeshUnder(Transform t)
         {
             if (t == null) return false;
@@ -132,15 +132,15 @@ namespace ModelKit
         static void PrunePatched()
         {
             if (_patchedLayers.Count < 256 || Time.frameCount < _patchedPruneAt) return;
-            _patchedPruneAt = Time.frameCount + 300;                 // 别每帧数 ✗
-            _patchedLayers.RemoveWhere(g => g == null);              // 被游戏销毁的（掉落物被捡走 ✓）清掉 ✓
+            _patchedPruneAt = Time.frameCount + 300;                 // 不得每帧数
+            _patchedLayers.RemoveWhere(g => g == null);              // 被游戏销毁的（掉落物被捡走）清掉
         }
 
 
-        // ───────────────────────── 清实体缓存（让游戏下次重建 ✓）─────────────────────────
+        // ───────────────────────── 清实体缓存（让游戏下次重建）─────────────────────────
 
-        /// <summary>清掉"实体缓存"（社区做法 ✓）：游戏下次创建实体时会重新看 `item.ItemGraphic` ✓
-        /// ⚠️ 别自己去销毁/替换活着的实体 ✗（游戏还持有引用 → 那件物品会"选不中/用不了" ✗ 实测踩过）</summary>
+        /// <summary>清掉"实体缓存"（社区做法）：游戏下次创建实体时会重新看 `item.ItemGraphic`
+        /// 不得自己去销毁/替换活着的实体 （游戏还持有引用，于是 那件物品会"选不中/用不了" 实测踩过）</summary>
         public static bool ClearAgentCache(ItemStatsSystem.Item item)
         {
             var au = item != null ? item.AgentUtilities : null;
@@ -174,7 +174,7 @@ namespace ModelKit
             }
         }
 
-        /// <summary>把图形写到物品上 ✓（属性优先 ✓ 私有字段兜底 ✓ —— 工坊 mod 也是这两条 ✓）</summary>
+        /// <summary>把图形写到物品上 （属性优先 私有字段兜底 —— 工坊 mod 也是这两条）</summary>
         public static bool WriteGraphic(ItemStatsSystem.Item item, ItemGraphicInfo graphic)
         {
             if (item == null || graphic == null) return false;
@@ -184,13 +184,13 @@ namespace ModelKit
             return false;
         }
 
-        /// <summary>借一份游戏材质（给"本来没有图形"的物品用 ✓）：从**任意**一个游戏网格材质上取 ✓
-        /// —— shader/关键字都是游戏自己的 ✓ 不会像上次那样退回默认材质（粉色 ✗）</summary>
-        /// <para>⭐ 用户定 ✓：**固定用 `SodaCraft/SodaLit`** ✗ —— 不再“随便挑场景里第一个”✗。</para>
-        /// <para>旧做法会挑到**雾效/光效**材质 ✗（实测糖果借到 `SunFogTD` ✗）
-        /// → 一旦改它的属性 ⇒ **整个网格画不出来** ✓。</para>
-        /// <para>场景里有用了该 shader 的材质 ⇒ **克隆**它 ✓（保留关键字/参数 ✓ 不是零继承 ✗）；
-        /// 没有 ⇒ `Shader.Find` 兑底 ✓（参数用默认 ✓ 总比粉色强 ✓）。</para></summary>
+        /// <summary>借一份游戏材质（给"本来没有图形"的物品用）：从**任意**一个游戏网格材质上取
+        /// —— shader/关键字都是游戏自己的 不会像上次那样退回默认材质（粉色）</summary>
+        /// <para> 用户定：**固定用 `SodaCraft/SodaLit`** —— 不再“随便挑场景里第一个”。</para>
+        /// <para>旧做法会挑到**雾效/光效**材质 （实测糖果借到 `SunFogTD`）
+        /// 于是 一旦改它的属性 ⇒ **整个网格画不出来**。</para>
+        /// <para>场景里有用了该 shader 的材质 ⇒ **克隆**它 （保留关键字/参数 不是零继承）；
+        /// 没有 ⇒ `Shader.Find` 兑底 （参数用默认 总比粉色强）。</para></summary>
         public const string ItemShaderName = "SodaCraft/SodaLit";
         static Material _borrowed;
 
@@ -199,7 +199,7 @@ namespace ModelKit
             if (_borrowed != null) return _borrowed;
             try
             {
-                // ① 场景里找**用了这个 shader** 的材质 ⇒ **克隆**它 ✓（关键字/参数都保留 ✓）
+                // ① 场景里找**用了这个 shader** 的材质 ⇒ **克隆**它 （关键字/参数都保留）
                 foreach (var r in UnityEngine.Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
                 {
                     var m = r != null ? r.sharedMaterial : null;
@@ -209,7 +209,7 @@ namespace ModelKit
                     UnityEngine.Debug.Log($"[ItemModel] 借物品材质 ✓（{ItemShaderName} ✓ 克隆自 {r.gameObject.name} ✓）");
                     return _borrowed;
                 }
-                // ② 兑底 ✓：直接按名字取 shader（参数用默认 ✓）
+                // ② 兑底：直接按名字取 shader（参数用默认）
                 var sh2 = Shader.Find(ItemShaderName);
                 if (sh2 != null)
                 {
@@ -225,13 +225,13 @@ namespace ModelKit
 
         // ───────────────────────── 关旧外观 / 挂我们的 ─────────────────────────
 
-        /// <summary>取"挂点"：优先**包围盒最大**的渲染器（**任何类型** ✓ 含 SpriteRenderer ✓）；
-        /// 一个都没有（视觉靠 `Setup(item)` 运行时补的那种 ✓）→ 返回 null（挂到根 ✓）</summary>
+        /// <summary>取"挂点"：优先**包围盒最大**的渲染器（**任何类型** 含 SpriteRenderer）；
+        /// 一个都没有（视觉靠 `Setup(item)` 运行时补的那种），于是 返回 null（挂到根）</summary>
         static Renderer PickMount(Transform root)
         {
-            // ⭐ ① **先在"游戏声明的渲染器清单"里挑** ✓（`CharacterSubVisuals.renderers` ✓）
-            //    物品这边**不看名字** ✗（`WPN_*` 是武器语义 ✓）→ 清单里取"包围盒最大的网格" = 本体 ✓
-            //    关键 ✓：运行时挂的**灯/特效不在清单里** ✗✓（实测那盏 `SodaPointLight` 就是这么被排除的 ✓）
+            // ① **先在"游戏声明的渲染器清单"里挑** （`CharacterSubVisuals.renderers`）
+            // 物品这边**不看名字** （`WPN_*` 是武器语义），于是 清单里取"包围盒最大的网格" = 本体
+            // 关键：运行时挂的**灯/特效不在清单里** （实测那盏 `SodaPointLight` 就是这么被排除的）
             var declared = GameApi.DeclaredRenderers(root);
             if (declared.Count > 0)
             {
@@ -250,27 +250,27 @@ namespace ModelKit
                 if (pick != null) return pick;
             }
 
-            // ⭐ ② 回退：清单为空 / 没有那个组件 → 遍历 + 排灯/特效 + 比大小 ✓（不比以前差 ✓）
+            // ② 回退：清单为空 / 没有那个组件，于是 遍历 + 排灯/特效 + 比大小 （不比以前差）
             Renderer best = null;
             float bestSize = -1f;
             foreach (var r in root.GetComponentsInChildren<Renderer>(true))
             {
-                // ⭐ **只认真网格** ✓（跟武器那份 `WeaponModel` 同一句 ✓ 用户定的规矩 ✓）
-                //     ✗ 别把 Sprite / 灯光光晕 / 粒子 / 拖尾 之类算进来 ——
-                //     实测踩过：头盔图形上运行时挂了一盏 `SodaPointLight`，它的光晕 Sprite 比头盔还大 ✗
-                //     → "取最大的"就选中了灯 ✗ → 真模型被关、我们的模型挂到灯上 → **头盔消失** ✗
+                // **只认真网格** （跟武器那份 `WeaponModel` 同一句 用户定的规矩）
+                // 不得把 Sprite / 灯光光晕 / 粒子 / 拖尾 之类算进来 ——
+                // 实测踩过：头盔图形上运行时挂了一盏 `SodaPointLight`，它的光晕 Sprite 比头盔还大
+                // 于是 "取最大的"就选中了灯，于是 真模型被关、我们的模型挂到灯上，于是 **头盔消失**
                 if (!(r is MeshRenderer || r is SkinnedMeshRenderer)) continue;
                 if (r == null) continue;
-                if (r.gameObject.name.StartsWith("ModelKit_")) continue;      // 我们自己的不算 ✓
+                if (r.gameObject.name.StartsWith("ModelKit_")) continue;      // 我们自己的不算
 
-                // ⭐ 排除"灯 / 特效"那类渲染器 ✗ —— 实测踩过：头盔(921) 运行时挂了盏 `SodaPointLight`，
-                //    它的渲染器**也是 MeshRenderer** ✗ → 光靠"只认 mesh"拦不住 ✓ → 它会以"更大"胜出 ✗
-                //    → 真模型被关 + 我们的模型挂到灯上 → **头盔消失** ✗
+                // 排除"灯 / 特效"那类渲染器 —— 实测踩过：头盔(921) 运行时挂了盏 `SodaPointLight`，
+                // 它的渲染器**也是 MeshRenderer**，于是 光靠"只认 mesh"拦不住，于是 它会以"更大"胜出
+                // 于是 真模型被关 + 我们的模型挂到灯上，于是 **头盔消失**
                 Transform t = r.transform;
                 bool lightish = false;
                 for (int up = 0; up < 6 && t != null && t != root.parent; up++, t = t.parent)
                 {
-                    if (t.GetComponent<Light>() != null) { lightish = true; break; }     // 祖先里有灯 → 排除 ✓
+                    if (t.GetComponent<Light>() != null) { lightish = true; break; }     // 祖先里有灯，于是 排除
                     var n2 = t.gameObject.name;
                     if (n2.IndexOf("Light", StringComparison.OrdinalIgnoreCase) >= 0 ||
                         n2.IndexOf("Glow", StringComparison.OrdinalIgnoreCase) >= 0 ||
@@ -282,7 +282,7 @@ namespace ModelKit
                 }
                 if (lightish) continue;
 
-                // ⭐ 顶点太少的也不像本体 ✗（那些光晕/贴片常常只有几个顶点 ✓）
+                // 顶点太少的也不像本体 （那些光晕/贴片常常只有几个顶点）
                 try
                 {
                     var mf = r.GetComponent<MeshFilter>();
@@ -292,24 +292,24 @@ namespace ModelKit
 
                 float sz;
                 try { sz = r.bounds.size.magnitude; } catch { continue; }
-                if (sz > bestSize && sz < 5f) { bestSize = sz; best = r; }     // 只在"真网格"里比大小 ✓
+                if (sz > bestSize && sz < 5f) { bestSize = sz; best = r; }     // 只在"真网格"里比大小
             }
             return best;
         }
 
-        /// <summary>关掉 root 下**所有**旧外观（不限渲染器类型 ✗ 精灵也要关 ✓），记进 res ✓ 可还原 ✓</summary>
+        /// <summary>关掉 root 下**所有**旧外观（不限渲染器类型 精灵也要关），记进 res 可还原 </summary>
         static void HideOld(Transform root, Result res)
         {
             foreach (var r in root.GetComponentsInChildren<Renderer>(true))
             {
                 if (r == null) continue;
-                if (r.gameObject.name.StartsWith("ModelKit_")) continue;       // 我们自己的不动 ✓
+                if (r.gameObject.name.StartsWith("ModelKit_")) continue;       // 我们自己的不动
                 if (r.enabled) { r.enabled = false; res.Hidden.Add(r); }
             }
         }
 
-        /// <summary>把我们的 mesh 挂上去（挂在挂点上 ✓ 没有挂点就挂根 ✓）
-        /// 缩放补回"世界尺度 = 1" ✓（prefab 的缩放链不一定是 1 ✗）；材质**克隆游戏自己的**再换贴图 ✓</summary>
+        /// <summary>把我们的 mesh 挂上去（挂在挂点上 没有挂点就挂根）
+        /// 缩放补回"世界尺度 = 1" （prefab 的缩放链不一定是 1）；材质**克隆游戏自己的**再换贴图 </summary>
         static GameObject Attach(Transform root, Renderer mount, Mesh mesh, Texture2D texture, string itemName,
                                 Vector3 oldCenterWorld, Material fallbackMat = null, float scale = 1f)
         {
@@ -321,28 +321,28 @@ namespace ModelKit
                 Math.Abs(lossy.z) > 1e-6f ? 1f / lossy.z : 1f);
 
             var go = new GameObject("ModelKit_" + (string.IsNullOrEmpty(itemName) ? "item" : itemName));
-            // ⭐ 层：**默认用 `Default(0)`** ✓（我们的既定结论：层一律不动 ✓ 用 0 ✓）
-//   ⚠️ 只有一种例外 ✓：挂点在 `Character(9)` 上（穿戴/手里 ✓ 游戏自己设好的 ✓）→ 继承它 ✓
-//   否则（含 `UI(5)` ✗）一律 `0` ✓ —— `UI` 层会**发白 + 渲染在最前** ✗
+            // 层：**默认用 `Default(0)`** （我们的既定结论：层一律不动 用 0）
+// 只有一种例外：挂点在 `Character(9)` 上（穿戴/手里 游戏自己设好的），于是 继承它
+// 否则（含 `UI(5)`）一律 `0` —— `UI` 层会**发白 + 渲染在最前**
 { int wantLayer = mount != null ? mount.gameObject.layer : root.gameObject.layer;
-  // ⭐ 诊断（用户猜想 ✓：“是不是 layer 错了 ✗”）—— 把三个层号都打出来 ✓ 一看就知道 ✓
+  // 诊断（用户猜想：“是不是 layer 错了 ”）—— 把三个层号都打出来 一看就知道
   try { UnityEngine.Debug.Log($"[ItemModel] 层：root={root.gameObject.layer}｜mount={(mount != null ? mount.gameObject.layer.ToString() : "null")}｜我们的={(wantLayer == 9 ? 9 : 0)}｜对象={itemName}"); } catch { }
   if (wantLayer != 9) wantLayer = 0; go.layer = wantLayer; }
             go.transform.SetParent(parent, false);
-            // ⭐ 让"我们 mesh 的**包围盒中心**"落到"**被替掉的那个外观**的包围盒中心" ✓
-            //   旧零件的原点常常不在自己身上 ✗（比如原点在角色脚下、几何靠自身变换挪上去 ✓）
-            //   → 直接 localPosition = zero 就会摆错 ✗（实测：模型出现在角色脚下 ✗）
-            //   尺度仍保持**真实米制** ✓（不随旧模型大小缩放 ✗）
+            // 让"我们 mesh 的**包围盒中心**"落到"**被替掉的那个外观**的包围盒中心"
+            // 旧零件的原点常常不在自己身上 （比如原点在角色脚下、几何靠自身变换挪上去）
+            // 于是 直接 localPosition = zero 就会摆错 （实测：模型出现在角色脚下）
+            // 尺度仍保持**真实米制** （不随旧模型大小缩放）
             var want = parent.InverseTransformPoint(oldCenterWorld);
             go.transform.localPosition = want - Vector3.Scale(mesh.bounds.center, inv);
             go.transform.localRotation = Quaternion.identity;
-            go.transform.localScale = inv * scale;   // 抵消挂点缩放 ✓ × 适配系数（⭐ 由 localScale 承担 ✓ 不改 mesh 顶点 ✗）
+            go.transform.localScale = inv * scale;   // 抵消挂点缩放 × 适配系数（由 localScale 承担 不改 mesh 顶点）
 
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
             var mr = go.AddComponent<MeshRenderer>();
 
-            // 材质：优先用**网格**渲染器的（武器/装备类 ✓）；只有精灵的话它的材质是 sprite 专用的 ✗
-            // → 那就退而找 root 下任意一个 mesh 材质 ✓ 都没有才用默认 ✓
+            // 材质：优先用**网格**渲染器的（武器/装备类）；只有精灵的话它的材质是 sprite 专用的
+            // 于是 那就退而找 root 下任意一个 mesh 材质 都没有才用默认
             Material src = mount is MeshRenderer || mount is SkinnedMeshRenderer
                 ? (mount != null ? mount.sharedMaterial : null) : null;
             if (src == null)
@@ -350,27 +350,27 @@ namespace ModelKit
                 {
                     if (r is MeshRenderer || r is SkinnedMeshRenderer) { src = r.sharedMaterial; break; }
                 }
-            if (src == null) src = fallbackMat;            // ⭐ 兜底：调用方给的（例如"世界图形上我们刚挂的那份材质" ✓）
+            if (src == null) src = fallbackMat;            // 兜底：调用方给的（例如"世界图形上我们刚挂的那份材质"）
             if (src == null) UnityEngine.Debug.LogWarning("[ItemModel] ⚠️ 借不到游戏材质 ✗ → 会用 Unity 默认材质（**粉色** ✗）");
             var one = src != null ? new Material(src) : null;
             if (one != null)
             {
-                GameApi.ApplyOurTexture(one, texture);                        // ⭐ 换 baseColor + **清其它槽** ✓
-                GameApi.ApplyNormalMap(one, CurrentNormalMap, itemName);      // ⭐ 只加法线 ✓（不碰金属/光滑 ✗）
+                GameApi.ApplyOurTexture(one, texture);                        // 换 baseColor + **清其它槽**
+                GameApi.ApplyNormalMap(one, CurrentNormalMap, itemName);      // 只加法线 （不碰金属/光滑）
             }
             int sub = Mathf.Max(1, mesh.subMeshCount);
-            var mats = new Material[sub];                    // 每个 submesh 一个材质槽（别让 Unity 去猜 ✓）
+            var mats = new Material[sub];                    // 每个 submesh 一个材质槽（不得让 Unity 去猜）
             for (int i = 0; i < sub; i++) mats[i] = one;
             mr.sharedMaterials = mats;
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
             return go;
         }
 
-        /// <summary>核心：**就地**把一个"外观物体"换成我们的（prefab 或场上实例都一样 ✓）</summary>
-        /// <summary>⭐ 只对"**场上的图形克隆**"补挂 ✓（掉落/展示那条 ✗ 不能只改共享 prefab ✗）。
-        /// <para>原理 ✓：游戏 `ItemGraphicInfo.CreateAGraphic` = `Instantiate(item.ItemGraphic)` ✓
-        /// —— **已经在场上的副本**不会跟着 prefab 变 ✗（掉落物 / 换场景遗留 ✓）→ 逐个补 ✓。</para>
-        /// <para>⚠️ 只传**克隆**进来 ✓（调用方筛过 ✓）；共享 prefab **绝不要**走这里 ✗</para></summary>
+        /// <summary>核心：**就地**把一个"外观物体"换成我们的（prefab 或场上实例都一样）</summary>
+        /// <summary> 只对"**场上的图形克隆**"补挂 （掉落/展示那条 不得只改共享 prefab）。
+        /// <para>原理：游戏 `ItemGraphicInfo.CreateAGraphic` = `Instantiate(item.ItemGraphic)`
+        /// —— **已经在场上的副本**不会跟着 prefab 变 （掉落物 / 换场景遗留），于是 逐个补。</para>
+        /// <para> 只传**克隆**进来 （调用方筛过）；共享 prefab **绝不得**走这里 </para></summary>
         public static Result ApplyToGraphicClone(ItemGraphicInfo clone, string itemName, int typeID, Mesh mesh, Texture2D texture, float scale = 1f)
             => clone == null ? new Result { Report = "克隆为空 ✗" } : ApplyToTransform(clone.transform, itemName, typeID, mesh, texture, scale);
 
@@ -379,24 +379,24 @@ namespace ModelKit
             var res = new Result { TypeID = typeID, ItemName = itemName ?? "" };
             if (root == null || mesh == null) { res.Report = "外观为空或网格为空 ✗"; return res; }
 
-            // 幂等 ✓：判据是“这**一层自己**下边有没有我们的 mesh” ✗ —— **不能看 `Marked`** ✗：
-            //   ⭐ 我们 patch 过的 **prefab** 会把 `Marked` **遗传给它的所有实例** ✓
-            //   → 看 `Marked` 会把"带遗传标记、但自己没挂过"的副本（掉落物 ✓ / 早于 patch 创建的穿戴实例 ✓）误跳过 ✗
-            //   → 表现：**它们永远是旧模型 / 热更不生效** ✗（实测报过两次 ✓）
+            // 幂等：判据是“这**一层自己**下边有没有我们的 mesh” —— **不得看 `Marked`**：
+            // 我们 patch 过的 **prefab** 会把 `Marked` **遗传给它的所有实例**
+            // 于是 看 `Marked` 会把"带遗传标记、但自己没挂过"的副本（掉落物 / 早于 patch 创建的穿戴实例）误跳过
+            // 于是 表现：**它们永远是旧模型 / 热更不生效** （实测报过两次）
             PrunePatched();
             if (_patchedLayers.Contains(root.gameObject))
             { res.Applied = false; res.NoOp = true; res.Report = "这一层已经换过了 ✓"; return res; }
 
             var mount = PickMount(root);
             res.AnchorName = mount != null ? mount.gameObject.name : "根";
-            // 旧外观的中心要在**关掉之前**取 ✓（用 localBounds × 矩阵 ✓ 禁用后 AABB 可能不更新 ✗）
+            // 旧外观的中心要在**关掉之前**取 （用 localBounds × 矩阵 禁用后 AABB 可能不更新）
             Vector3 oldCenter = mount != null
                 ? mount.transform.TransformPoint(mount.localBounds.center)
                 : root.position;
             HideOld(root, res);
             res.Instance = Attach(root, mount, mesh, texture, itemName, oldCenter, null, scale);
-            if (root.GetComponent<Marked>() == null) root.gameObject.AddComponent<Marked>();   // 打标记（调试用 ✓）
-            _patchedLayers.Add(root.gameObject);                                                // ⭐ 真正可靠的登记（引用 ✓）
+            if (root.GetComponent<Marked>() == null) root.gameObject.AddComponent<Marked>();   // 打标记（调试用）
+            _patchedLayers.Add(root.gameObject);                                                // 真正可靠的登记（引用）
             res.MarkedOn = root.gameObject;
             res.Applied = true;
             res.Report = $"关旧外观 {res.Hidden.Count} 个｜挂到 '{res.AnchorName}'"
@@ -411,10 +411,10 @@ namespace ModelKit
         static string Fmt(Vector3 v)
             => "(" + v.x.ToString("0.###") + "," + v.y.ToString("0.###") + "," + v.z.ToString("0.###") + ")";
 
-        // ───────────────────────── 手持 / 装备（agent 那条 ✓ 工坊验证过）─────────────────────────
+        // ───────────────────────── 手持 / 装备（agent 那条 工坊验证过）─────────────────────────
 
-        /// <summary>拿在手里用哪个模板：① 物品自带的 `agents["Handheld"]` ✓ ② 游戏的通用手持 agent ✓
-        /// （工坊 mod `三角洲模型合集` 就是按这个顺序取的 ✓ r9 验证）</summary>
+        /// <summary>拿在手里用哪个模板：① 物品自带的 `agents["Handheld"]` ② 游戏的通用手持 agent
+        /// （工坊 mod `三角洲模型合集` 就是按这个顺序取的 r9 验证）</summary>
         static ItemStatsSystem.ItemAgent HandheldTemplate(ItemStatsSystem.Item item)
         {
             try
@@ -422,7 +422,7 @@ namespace ModelKit
                 var t = item.AgentUtilities != null ? item.AgentUtilities.GetPrefab("Handheld") : null;
                 if (t != null) return t;
             }
-            catch { /* 物品没有就退到通用模板 ✓ */ }
+            catch { /* 物品没有就退到通用模板 */ }
             try
             {
                 var p = Duckov.Utilities.GameplayDataSettings.Prefabs;
@@ -432,20 +432,20 @@ namespace ModelKit
             return null;
         }
 
-        /// <summary>⭐ 把"拿在手里/装备"那条也换成我们的模型 ✓
+        /// <summary> 把"拿在手里/装备"那条也换成我们的模型
         ///
-        /// 做法（工坊验证 ✓）：造一个 `ItemAgent` 模板 → **清掉它自带的视觉**（原来那张图标精灵 ✓ 就是你看到的"图片" ✗）
-        /// → 挂上我们的 mesh → 用 `agents["Handheld"]` 写回去 → 清实体缓存 ✓
+        /// 做法（工坊验证）：造一个 `ItemAgent` 模板，于是 **清掉它自带的视觉**（原来那张图标精灵 就是你看到的"图片"）
+        /// 于是 挂上我们的 mesh，于是 用 `agents["Handheld"]` 写回去，于是 清实体缓存
         ///
-        /// ⚠️ 这里用 `DontDestroyOnLoad` 是**对的** ✓（工坊也这么做 ✓）：agent 是**模板** ✓，
-        ///    游戏会把实例 `SetParent` 到持有者身上 ✓ → 换场景不受影响 ✓
-        ///    （我上次踩的坑是反的 ✗：DDOL 的是**图形**实例 ✗，游戏只是 `Instantiate` 它 ✗ → 副本留在 DDOL 场景 → 看不见 ✗）</summary>
+        /// 这里用 `DontDestroyOnLoad` 是**对的** （工坊也这么做）：agent 是**模板**，
+        /// 游戏会把实例 `SetParent` 到持有者身上，于是 换场景不受影响
+        /// （我上次踩的坑是反的：DDOL 的是**图形**实例，游戏只是 `Instantiate` 它，于是 副本留在 DDOL 场景，于是 看不见）</summary>
         public static Result ApplyHandheld(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture, float scale = 1f)
         {
             var res = new Result { TypeID = item != null ? item.TypeID : 0, ItemName = item != null ? item.name : "" };
             if (item == null || mesh == null) { res.Report = "物品或网格为空 ✗"; return res; }
 
-            // 已经换过就不重复造（我们造的 agent 名字带前缀 ✓）
+            // 已经换过就不重复造（我们造的 agent 名字带前缀）
             try
             {
                 var cur = item.AgentUtilities != null ? item.AgentUtilities.GetPrefab("Handheld") : null;
@@ -463,14 +463,14 @@ namespace ModelKit
             catch (Exception ex) { res.Report = "克隆手持模板失败 ✗：" + ex.Message; return res; }
 
             agent.gameObject.name = "ModelKit_Hand_" + (string.IsNullOrEmpty(item.name) ? "item" : item.name);
-            UnityEngine.Object.DontDestroyOnLoad(agent.gameObject);        // ⚠️ 模板要活着 ✓（见上面注释 ✓）
+            UnityEngine.Object.DontDestroyOnLoad(agent.gameObject);        // 模板要活着 （见上面注释）
 
-            var kids = new List<Transform>();                              // 先收集再删 ✓（边遍历边删会错 ✗）
+            var kids = new List<Transform>();                              // 先收集再删 （边遍历边删会错）
             foreach (Transform c in agent.transform) kids.Add(c);
             foreach (var c in kids) if (c != null) UnityEngine.Object.Destroy(c.gameObject);
 
-            // ⭐ 材质兜底：agent 模板自己的视觉被我们清掉了 ✗ → 借**世界图形上我们刚挂的那份材质** ✓
-            //   （同一套 shader/贴图 ✓ 不然 Unity 会用默认材质 = **粉色** ✗ 就是刚才那个现象 ✓）
+            // 材质兜底：agent 模板自己的视觉被我们清掉了，于是 借**世界图形上我们刚挂的那份材质**
+            // （同一套 shader/贴图 不然 Unity 会用默认材质 = **粉色** 就是刚才那个现象）
             Material fallback = null;
             var g = item.ItemGraphic;
             if (g != null)
@@ -486,9 +486,9 @@ namespace ModelKit
             if (agent.gameObject.GetComponent<Marked>() == null) agent.gameObject.AddComponent<Marked>();
             res.MarkedOn = agent.gameObject;
 
-            // ⚠️ **agent 模板也要挪到世界外** ✗（跟图形那条同理 ✓ 实测：载入画面里又看到一把枪 ✗）
-            //   游戏拿它时会 `Instantiate` 副本 ✓ → `ChangeHoldItem` 里 `SetParent(手部 socket)` + `localPosition = 0` ✓
-            //   → 所以挪到 -5000 只影响**模板本身** ✓ 不影响它生成的副本 ✓
+            // **agent 模板也要挪到世界外** （跟图形那条同理 实测：载入画面里又看到一把枪）
+            // 游戏拿它时会 `Instantiate` 副本，于是 `ChangeHoldItem` 里 `SetParent(手部 socket)` + `localPosition = 0`
+            // 于是 所以挪到 -5000 只影响**模板本身** 不影响它生成的副本
             agent.transform.SetParent(null);
             agent.transform.position = new Vector3(0f, -5000f, 0f);
 
@@ -508,12 +508,12 @@ namespace ModelKit
             return res;
         }
 
-        /// <summary>⚠️ 把 `AddComponent` 出来的 `ItemGraphicInfo` 的**必需字段初始化好** ✗
+        /// <summary> 把 `AddComponent` 出来的 `ItemGraphicInfo` 的**必需字段初始化好**
         ///
-        /// 反编译依据 ✓：游戏 `CreateAGraphic` → `Setup(item)` → `RefreshSubGraphics()`，里面**必然**执行
-        ///   `foreach (ItemGraphicSocket socket in sockets)` ✓ + 用 `subGraphics` / `socketsDictionary` ✓
-        /// 而 `AddComponent` 造出来的这些字段**全是 null** ✗ → 必抛空引用 ✗ → 游戏就用不了我们的图形 ✗
-        /// （工坊 mod 用 AssetBundle 里的**正经 prefab** ✓ 所以它碰不到这个坑 ✓；我们只能自己补 ✓）</summary>
+        /// 反编译依据：游戏 `CreateAGraphic`，于是 `Setup(item)`，于是 `RefreshSubGraphics()`，里面**必然**执行
+        /// `foreach (ItemGraphicSocket socket in sockets)` + 用 `subGraphics` / `socketsDictionary`
+        /// 而 `AddComponent` 造出来的这些字段**全是 null**，于是 必抛空引用，于是 游戏就用不了我们的图形
+        /// （工坊 mod 用 AssetBundle 里的**正经 prefab** 所以它碰不到这个坑；我们只能自己补）</summary>
         static void InitGraphicFields(ItemGraphicInfo g)
         {
             const BindingFlags F = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
@@ -533,9 +533,9 @@ namespace ModelKit
                     fDic.SetValue(g, new Dictionary<string, ItemGraphicInfo.ItemGraphicSocket>());
 
                 var fBuilt = t.GetField("dicBuilt", F);
-                if (fBuilt != null) fBuilt.SetValue(g, true);       // 别让它再去建一次 ✗
+                if (fBuilt != null) fBuilt.SetValue(g, true);       // 不得让它再去建一次
 
-                // groundPoint：给一个空子物体 ✓（SnapGroundPointToParent 会用到 ✓）
+                // groundPoint：给一个空子物体 （SnapGroundPointToParent 会用到）
                 var fGp = t.GetField("groundPoint", F);
                 if (fGp != null && fGp.GetValue(g) == null)
                 {
@@ -545,17 +545,17 @@ namespace ModelKit
                     fGp.SetValue(g, gp.transform);
                 }
             }
-            catch { /* 补不上也别炸 ✓ 大不了这件换不成 ✓ */ }
+            catch { /* 补不上也别炸 大不了这件换不成 */ }
         }
 
-        /// <summary>给"本来没有图形"的物品**造一份世界图形**（用它替换 2D 图片兜底 ✓）：
-        /// 运行时新建一个带 `ItemGraphicInfo` 的物体 ✓ 挂上我们的 mesh ✓ 写回 `item.ItemGraphic` ✓
+        /// <summary>给"本来没有图形"的物品**造一份世界图形**（用它替换 2D 图片兜底）：
+        /// 运行时新建一个带 `ItemGraphicInfo` 的物体 挂上我们的 mesh 写回 `item.ItemGraphic`
         ///
-        /// ⚠️ **不 `DontDestroyOnLoad`** ✗（上次"整件消失"就是踩了 DDOL ✗）：
-        ///    它活在**当前场景** ✓ 换场景后自然失效 → 游戏回退到 2D 图片 ✓（优雅降级 ✓）
-        ///    → mod 每秒的复查会**再造一份** ✓</summary>
-        /// <summary>我们**造出来的**图形（按 typeID 缓存 ✓）—— 复用同一个 ✓ 别每次造新的 ✗
-        /// ⚠️ 游戏会**重建物品预制体** ✗ → 我们写进去的引用会被冲掉 ✓ → 那就把这个**同一个**对象再写回去 ✓</summary>
+        /// **不 `DontDestroyOnLoad`** （上次"整件消失"就是踩了 DDOL）：
+        /// 它活在**当前场景** 换场景后自然失效，于是 游戏回退到 2D 图片 （优雅降级）
+        /// 于是 mod 每秒的复查会**再造一份** </summary>
+        /// <summary>我们**造出来的**图形（按 typeID 缓存）—— 复用同一个 不得每次造新的
+        /// 游戏会**重建物品预制体**，于是 我们写进去的引用会被冲掉，于是 那就把这个**同一个**对象再写回去 </summary>
         static ItemGraphicInfo MakeGraphicForItem(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture, Result res)
         {
 
@@ -567,41 +567,41 @@ namespace ModelKit
             }
             catch (Exception) { return null; }
 
-            InitGraphicFields(g);                               // ⭐ 先把它缺的字段补齐 ✓（否则游戏一用就空引用 ✗）
+            InitGraphicFields(g);                               // 先把它缺的字段补齐 （否则游戏一用就空引用）
 
-            var fallback = BorrowMaterial();                    // 借一份游戏材质 ✓（免得上默认材质变粉色 ✗）
+            var fallback = BorrowMaterial();                    // 借一份游戏材质 （免得上默认材质变粉色）
             res.Instance = Attach(g.transform, null, mesh, texture, item.name, g.transform.position, fallback);
-            // ⭐ **层要跟着物品走** ✗ —— `Attach` 在 mount==null 时用的是 root 的层 ✓
-            //   而 root 是我们 `new GameObject()` 出来的 → **layer = 0（Default）** ✗
-            //   游戏显示这个世界模型时按层过滤 → Default 层的 mesh **看不见** ✗（实测：糖果消失 ✓）
-            //   ⚠️ **层：一律不设** ✗（实测证据 ✓）：游戏**掉落物**的图形 prefab 层就是 **0（Default）** ✓
-            //      而且游戏里这些掉落物**看得见** ✓（`InteractablePickup.CreateGraphic` 里**没有任何设层代码** ✓）
-            //      → 我们造的图形就保持 `new GameObject()` 的默认层（0 ✓）= 和游戏资产完全一致 ✓
-            //   我先后猜过"Default 看不见"✗ / "用物品自己的层"✗（→ 发白+渲染在最前 ✓）/ "用 Character"✗（→ 看不见 ✓）
-            //   —— 三次都错 ✓ 根因是**猜层值** ✗ 而不是照游戏的做法（**不动层** ✓）
-            //   ⇒ **层一律不动** ✓（游戏自己的掉落物图形就是 0 层 ✓ 那个值可见 ✓ 不用我们设 ✗）
+            // **层要跟着物品走** —— `Attach` 在 mount==null 时用的是 root 的层
+            // 而 root 是我们 `new GameObject()` 出来的，于是 **layer = 0（Default）**
+            // 游戏显示这个世界模型时按层过滤，于是 Default 层的 mesh **看不见** （实测：糖果消失）
+            // **层：一律不设** （实测证据）：游戏**掉落物**的图形 prefab 层就是 **0（Default）**
+            // 而且游戏里这些掉落物**看得见** （`InteractablePickup.CreateGraphic` 里**没有任何设层代码**）
+            // 于是 我们造的图形就保持 `new GameObject()` 的默认层（0）= 和游戏资产完全一致
+            // 我先后猜过"Default 看不见" / "用物品自己的层"（，于是 发白+渲染在最前）/ "用 Character"（，于是 看不见）
+            // —— 三次都错 根因是**猜层值** 而不是照游戏的做法（**不动层**）
+            // ⇒ **层一律不动** （游戏自己的掉落物图形就是 0 层 那个值可见 不用我们设）
             if (g.gameObject.GetComponent<Marked>() == null) g.gameObject.AddComponent<Marked>();
             res.MarkedOn = g.gameObject;
 
-            if (!WriteGraphic(item, g)) return null;            // 写回 item.ItemGraphic ✓
+            if (!WriteGraphic(item, g)) return null;            // 写回 item.ItemGraphic
             return g;
         }
 
-        // ───────────────── 用"动态条目"覆盖原物品（工坊那条路 ✓ 稳 ✓）─────────────────
+        // ───────────────── 用"动态条目"覆盖原物品（工坊那条路 稳）─────────────────
 
-        /// <summary>⭐ 给**没有 ItemGraphic** 的物品换成 3D：**克隆它自己的物品预制体** ✓
-        /// → 克隆里的图形换成我们的 ✓ → `useSpriteForPickup=false` ✓ → **`AddDynamicEntry`** 注册 ✓
+        /// <summary> 给**没有 ItemGraphic** 的物品换成 3D：**克隆它自己的物品预制体**
+        /// 于是 克隆里的图形换成我们的，于是 `useSpriteForPickup=false`，于是 **`AddDynamicEntry`** 注册
         ///
-        /// 为什么必须这样 ✓（反编译实证 ✓）：
-        ///   · 直接往 **实例** 的 `itemGraphic` 写引用 ✗ → 游戏**关卡加载时重建物品预制体**会把引用冲掉 ✗（实测 ✓）
-        ///   · `GetPrefab` / `InstantiateAsync_Local` 都是**先查 `dynamicDic`** ✓ → 注册进去就**遮蔽原物品** ✓
-        ///     而 `dynamicDic` 是游戏自己持有的**运行时字典** ✓ → **重建冲不掉** ✓✓（工坊 mod 就靠这个 ✓）
-        ///   · 游戏对"占用已有 typeID"会 log 一句警告 ✓（"This will override the main game's item" ✓）→ 是**允许**的用法 ✓
+        /// 为什么必须这样 （反编译实证）：
+        /// · 直接往 **实例** 的 `itemGraphic` 写引用，于是 游戏**关卡加载时重建物品预制体**会把引用冲掉 （实测）
+        /// · `GetPrefab` / `InstantiateAsync_Local` 都是**先查 `dynamicDic`**，于是 注册进去就**遮蔽原物品**
+        /// 而 `dynamicDic` 是游戏自己持有的**运行时字典**，于是 **重建冲不掉** （工坊 mod 就靠这个）
+        /// · 游戏对"占用已有 typeID"会 log 一句警告 （"This will override the main game's item"），于是 是**允许**的用法
         ///
-        /// ⚠️ 只克隆、只改图形 ✓：数值/插槽/图标/变量全部继承原件 ✓（`Object.Instantiate` 是完整拷贝 ✓）</summary>
-        /// <summary>已经注册过的 typeID ✓ —— **同一个只注册一次** ✗ 否则会自增克隆（实测：主界面越来越卡直到卡死 ✗）</summary>
+        /// 只克隆、只改图形：数值/插槽/图标/变量全部继承原件 （`Object.Instantiate` 是完整拷贝）</summary>
+        /// <summary>已经注册过的 typeID —— **同一个只注册一次** 否则会自增克隆（实测：主界面越来越卡直到卡死）</summary>
         static readonly HashSet<int> _dynDone = new HashSet<int>();
-        /// <summary>已注册动态条目时用的那个图形 ✓ —— 后续给"别的实例"补写时要复用它 ✓</summary>
+        /// <summary>已注册动态条目时用的那个图形 —— 后续给"别的实例"补写时要复用它 </summary>
         static readonly Dictionary<int, ItemGraphicInfo> _dynGraphic = new Dictionary<int, ItemGraphicInfo>();
 
         public static Result RegisterDynamicOverride(int typeID, Mesh mesh, Texture2D texture,
@@ -612,8 +612,8 @@ namespace ModelKit
             if (mesh == null) { res.Report = "网格为空 ✗"; return res; }
             if (_dynDone.Contains(typeID))
             {
-                // ⭐ 注册只做一次 ✓（断自增循环 ✓）—— 但**实例补写每次都要做** ✗
-                //   （玩家后来才拿到的每一颗都是"老实例" ✗ 不补写就永远是贴图 ✗ 实测踩到 ✓）
+                // 注册只做一次 （断自增循环）—— 但**实例补写每次都要做**
+                // （玩家后来才拿到的每一颗都是"老实例" 不补写就永远是贴图 实测踩到）
                 if (alsoFixThisInstance != null && _dynGraphic.TryGetValue(typeID, out var g0) && g0 != null)
                 {
                     if (WriteGraphic(alsoFixThisInstance, g0))
@@ -634,52 +634,52 @@ namespace ModelKit
             if (src == null) { res.Report = $"typeID={typeID} 找不到原物品 ✗"; return res; }
 
             ItemStatsSystem.Item item;
-            try { item = UnityEngine.Object.Instantiate(src); }                  // ① 克隆物品 ✓（完整拷贝 ✓）
+            try { item = UnityEngine.Object.Instantiate(src); }                  // ① 克隆物品 （完整拷贝）
             catch (Exception ex) { res.Report = "克隆物品失败 ✗：" + ex.Message; return res; }
 
             item.gameObject.name = "ModelKit_item_" + src.name;
-            UnityEngine.Object.DontDestroyOnLoad(item.gameObject);                // ② 它不在场景里 ✓ 工坊也这么做 ✓
+            UnityEngine.Object.DontDestroyOnLoad(item.gameObject);                // ② 它不在场景里 工坊也这么做
 
-            // ③ 图形：原件有就**克隆它**（原件保持干净 ✓ 完全可逆 ✓），没有就造一个 ✓
+            // ③ 图形：原件有就**克隆它**（原件保持干净 完全可逆），没有就造一个
             ItemGraphicInfo g = null;
             if (item.ItemGraphic != null)
             {
                 var gsrc = item.ItemGraphic;
-                g = UnityEngine.Object.Instantiate(gsrc);                         // ⚠️ 只克隆 ✓ **绝不动原件** ✗
+                g = UnityEngine.Object.Instantiate(gsrc);                         // 只克隆 **绝不动原件**
                 g.gameObject.name = "ModelKit_graphic_" + src.name;
             }
             else
             {
-                g = MakeGraphicForItem(item, mesh, texture, res);                 // 造一个 ✓
+                g = MakeGraphicForItem(item, mesh, texture, res);                 // 造一个
                 if (g == null) { res.Report = "造图形失败 ✗"; return res; }
             }
 
-            // ⚠️⚠️ **绝不能把图形挂成物品的子物体** ✗✗（实测 ✓ 用户一眼指出 ✓）
-            //   物品预制体的 GameObject 是**活的** ✓ → 我们的 mesh 会**跟着那件物品渲染** ✗
-            //     · 玩家身上那颗 → "一把枪跟着玩家" ✗
-            //     · 扔到地上 → "枪跟着糖果到地上" ✗
-            //   游戏自己的图形是**独立资源** ✓ 从不挂在物品下面 ✓ → 所以"就地改"那条没事 ✓
-            //   正解 = **独立**（SetParent(null) ✓）+ **挪到世界外**（y=-5000 ✓）+ DDOL ✓
-            //   （游戏 `CreateAGraphic` 实例化副本之后会 `SetParent(显示位置)` + `localPosition = 0` ✓
-            //     所以 -5000 只影响**模板本身** ✓ 不影响它生成的副本 ✓）
+            // **绝不得把图形挂成物品的子物体** （实测 用户一眼指出）
+            // 物品预制体的 GameObject 是**活的**，于是 我们的 mesh 会**跟着那件物品渲染**
+            // · 玩家身上那颗，于是 "一把枪跟着玩家"
+            // · 扔到地上，于是 "枪跟着糖果到地上"
+            // 游戏自己的图形是**独立资源** 从不挂在物品下面，于是 所以"就地改"那条没事
+            // 正解 = **独立**（SetParent(null)）+ **挪到世界外**（y=-5000）+ DDOL
+            // （游戏 `CreateAGraphic` 实例化副本之后会 `SetParent(显示位置)` + `localPosition = 0`
+            // 所以 -5000 只影响**模板本身** 不影响它生成的副本）
             g.transform.SetParent(null);
             g.transform.position = new Vector3(0f, -5000f, 0f);
             UnityEngine.Object.DontDestroyOnLoad(g.gameObject);
 
-            InitGraphicFields(g);                                                 // ④ 补字段 ✓（否则游戏一用就空引用 ✗）
+            InitGraphicFields(g);                                                 // ④ 补字段 （否则游戏一用就空引用）
             var mount = PickMount(g.transform);
             HideOld(g.transform, res);
             res.Instance = Attach(g.transform, mount, mesh, texture, src.name, g.transform.position,
                                   mount != null ? mount.sharedMaterial : BorrowMaterial());
-            // 层同上：**一律不动** ✓（游戏掉落物图形就是 0 层 ✓ 可见 ✓）
+            // 层同上：**一律不动** （游戏掉落物图形就是 0 层 可见）
             if (g.gameObject.GetComponent<Marked>() == null) g.gameObject.AddComponent<Marked>();
             res.MarkedOn = g.gameObject;
 
             if (!WriteGraphic(item, g)) { res.Report = "写回克隆的 itemGraphic 失败 ✗"; return res; }   // ⑤
-            item.useSpriteForPickup = false;                                      // ⑥ 用模型不用精灵 ✓
+            item.useSpriteForPickup = false;                                      // ⑥ 用模型不用精灵
 
-            // ⑦ ⭐ **也写到"当前这颗实例"上** ✓ —— 动态条目只影响"以后新实例化的" ✗，
-            //    而玩家手里那颗是**我们换之前就存在的** ✗（`ItemGraphic=null` ✓）→ 丢地上照样是贴图 ✗（实测 ✓）
+            // ⑦ **也写到"当前这颗实例"上** —— 动态条目只影响"以后新实例化的"，
+            // 而玩家手里那颗是**我们换之前就存在的** （`ItemGraphic=null`），于是 丢地上照样是贴图 （实测）
             bool instanceFixed = false;
             if (alsoFixThisInstance != null && !ReferenceEquals(alsoFixThisInstance, item))
             {
@@ -688,7 +688,7 @@ namespace ModelKit
                     instanceFixed = WriteGraphic(alsoFixThisInstance, g);
                     if (instanceFixed)
                     {
-                        alsoFixThisInstance.useSpriteForPickup = false;   // 实例上也要设 ✗ 不然 pickup 还走精灵 ✓
+                        alsoFixThisInstance.useSpriteForPickup = false;   // 实例上也要设 不然 pickup 还走精灵
                         ClearAgentCache(alsoFixThisInstance);
                     }
                 }
@@ -696,22 +696,22 @@ namespace ModelKit
             }
 
             bool ok = false;
-            try { ok = ItemStatsSystem.ItemAssetsCollection.AddDynamicEntry(item); }   // ⑦ **注册动态条目** ✓
+            try { ok = ItemStatsSystem.ItemAssetsCollection.AddDynamicEntry(item); }   // ⑦ **注册动态条目**
             catch (Exception ex) { res.Report = "注册动态条目抛错 ✗：" + ex.Message; return res; }
             if (!ok) { res.Report = "AddDynamicEntry 返回 false ✗"; return res; }
 
-            _dynDone.Add(typeID);                                  // 记下 ✓ 只注册一次 ✓
-            _dynGraphic[typeID] = g;                               // 存起来 ✓ 后续实例补写要用它 ✓
+            _dynDone.Add(typeID);                                  // 记下 只注册一次
+            _dynGraphic[typeID] = g;                               // 存起来 后续实例补写要用它
 
-            // ⭐⭐ 关键 ✓：**也要把"手持 agent"写到克隆上** ✗
-            //   `ItemExtensions.CreateHandheldAgent` 是先查 `GetPrefab("Handheld"的hash)` ✓ 拿不到才用游戏通用模板 ✓
-            //     · 大急救箱 ✓ 玩家身上那件被"逐实例补写"过 ✓ → 手里是我们的枪 ✓
-            //     · 糖果 ✗ maxStack>1 → 每用一次会**从预制体造新实例** ✓ → 而克隆上**没有** Handheld ✗
-            //        → 新实例查到的是**游戏通用模板** = 那张图 ✗（这就是"糖果手里还是图片"的根因 ✓）
+            // 关键：**也要把"手持 agent"写到克隆上**
+            // `ItemExtensions.CreateHandheldAgent` 是先查 `GetPrefab("Handheld"的hash)` 拿不到才用游戏通用模板
+            // · 大急救箱 玩家身上那件被"逐实例补写"过，于是 手里是我们的枪
+            // · 糖果 maxStack>1，于是 每用一次会**从预制体造新实例**，于是 而克隆上**没有** Handheld
+            // 于是 新实例查到的是**游戏通用模板** = 那张图 （这就是"糖果手里还是图片"的根因）
             if (alsoHandheld)
             {
-                try { var rh = ApplyHandheld(item, mesh, texture, ModelSize.FactorFor(typeID, 0f, mesh)); if (rh != null) res.Nested.Add(rh); }   // ⭐ 结果入册 ✓
-                catch { /* 写不上不影响世界那条 ✓ */ }
+                try { var rh = ApplyHandheld(item, mesh, texture, ModelSize.FactorFor(typeID, 0f, mesh)); if (rh != null) res.Nested.Add(rh); }   // 结果入册
+                catch { /* 写不上不影响世界那条 */ }
             }
             res.CacheCleared = ClearAgentCache(item);
             res.AnchorName = "动态条目（克隆物品）";
@@ -725,21 +725,21 @@ namespace ModelKit
 
         // ───────────────────────── 对外入口 ─────────────────────────
 
-        /// <summary>**主入口**：换一件物品：**它的模板** + **场上已有的实例** 一起换 ✓
-        /// ⚠️ 没有 `ItemGraphic` 的物品（纯图标那种 ✓）会被**跳过** ✓（换不了外观 ✗ 不是失败 ✓）</summary>
+        /// <summary>**主入口**：换一件物品：**它的模板** + **场上已有的实例** 一起换
+        /// 没有 `ItemGraphic` 的物品（纯图标那种）会被**跳过** （换不了外观 不是失败）</summary>
         public static Result Apply(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture, bool handheld = false, float size = 0f)
         {
             var res = new Result { TypeID = item != null ? item.TypeID : 0, ItemName = item != null ? item.name : "" };
             if (item == null) { res.Report = "物品为空 ✗"; return res; }
-            // ⭐ 适配系数（**只武器有** ✓：按 `GunType_*` tag ✓；config 的 `size` 可覆盖 ✓）
+            // 适配系数（**只武器有**：按 `GunType_*` tag；config 的 `size` 可覆盖）
             float scale = ModelSize.Factor(mesh, ModelSize.For(item.TypeID, size > 0f ? (float?)size : null));
 
             var graphic = item.ItemGraphic;
             if (graphic == null)
             {
-                // ⭐ 这件物品本来没有世界图形（游戏会画一张 **2D 图片** 兜底 ✓）
-                //   → 我们**造一份图形**写进去 ✓ 游戏下次就用我们的 ✓（= **替换**那个兜底 ✓ 不是删它 ✗）
-                // 走"克隆 + 动态条目"那条 ✓（写实例引用会被关卡重建冲掉 ✗ 实测 ✓）
+                // 这件物品本来没有世界图形（游戏会画一张 **2D 图片** 兜底）
+                // 于是 我们**造一份图形**写进去 游戏下次就用我们的 （= **替换**那个兜底 不是删它）
+                // 走"克隆 + 动态条目"那条 （写实例引用会被关卡重建冲掉 实测）
                 var dyn = RegisterDynamicOverride(item.TypeID, mesh, texture, alsoFixThisInstance: item,
                                                   alsoHandheld: handheld);
                 res.Report = dyn.Report;
@@ -751,22 +751,22 @@ namespace ModelKit
                 return res;
             }
 
-            // ⭐⭐ **不再改共享 prefab** ✗ —— 今天两条 bug 的**共同根因** ✓（实测 ✓）：
-            //   · 给 prefab 加 mesh ✓ → 之后**新建**的实例会**继承**一份 ✓
-            //     扫描又挂一份 ✓ → **同一层两个 mesh** ✓（实测 `同门兄弟数=2` ✓）
-            //     视觉上大的盖住小的 ✓ = "**改小看不见**" ✓ + "先小后大" ✓
-            //   · 而且两条路还各用不同名字（`item.name` ✗ / `owner.name+"(Clone)"` ✓）→ 极难查 ✓
-            //   ⇒ 统一成：**只改实例** ✓ = `ApplyToInstance`（立刻 ✓）+ 扫描（≤0.5 秒 ✓）
-            //     共享 prefab **原封不动** ✓（更安全 ✓ 更好还原 ✓ 也不会再"遗传" ✗）
+            // **不再改共享 prefab** —— 今天两条 bug 的**共同根因** （实测）：
+            // · 给 prefab 加 mesh，于是 之后**新建**的实例会**继承**一份
+            // 扫描又挂一份，于是 **同一层两个 mesh** （实测 `同门兄弟数=2`）
+            // 视觉上大的盖住小的 = "**改小看不见**" + "先小后大"
+            // · 而且两条路还各用不同名字（`item.name` / `owner.name+"(Clone)"`），于是 极难查
+            // ⇒ 统一成：**只改实例** = `ApplyToInstance`（立刻）+ 扫描（≤0.5 秒）
+            // 共享 prefab **原封不动** （更安全 更好还原 也不会再"遗传"）
 
-            // ① 场上已经拿在手里 / 装备着的那一个：就地换 ✓（唯一"立即生效"的那条 ✓）
+            // ① 场上已经拿在手里 / 装备着的那一个：就地换 （唯一"立即生效"的那条）
             var ri = ApplyToInstance(item, mesh, texture, scale);
             res.TypeID = item.TypeID;
             res.ItemName = item.name ?? "";
             if (ri != null)
             {
-                res.Nested.Add(ri);                 // ⭐ 入册 ✓（有借有还 ✓）
-                res.Applied = ri.Applied;           // ⭐ 让调用方看到"实例那条"的结果 ✓
+                res.Nested.Add(ri);                 // 入册 （有借有还）
+                res.Applied = ri.Applied;           // 让调用方看到"实例那条"的结果
                 res.NoOp = ri.NoOp;
                 res.Instance = ri.Instance;
                 res.AnchorName = ri.AnchorName;
@@ -775,12 +775,12 @@ namespace ModelKit
             }
             else res.Report = "没有 ActiveAgent ✗（没拿在手里/没装备 ✓）—— 稍后由扫描补 ✓";
 
-            // ④ 清缓存 → 游戏下次建实体时会读**改过的 prefab** ✓
+            // ④ 清缓存，于是 游戏下次建实体时会读**改过的 prefab**
             if (!res.CacheCleared) res.CacheCleared = ClearAgentCache(item);
             return res;
         }
 
-        /// <summary>③ 只改**场上这一个**实例（不动模板 ✓ 调试/局部用 ✓）：走它的 `ActiveAgent`（手持/装备 ✓）</summary>
+        /// <summary>③ 只改**场上这一个**实例（不动模板 调试/局部用）：走它的 `ActiveAgent`（手持/装备）</summary>
         public static Result ApplyToInstance(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture, float scale = 1f)
         {
             var res = new Result { TypeID = item != null ? item.TypeID : 0, ItemName = item != null ? item.name : "" };
@@ -788,7 +788,7 @@ namespace ModelKit
             var active = item.ActiveAgent;
             if (active == null) { res.Report = "没有 ActiveAgent ✗（没拿在手里/没装备 ✓）"; return res; }
 
-            // 已经换过就不重复挂 ✓
+            // 已经换过就不重复挂
             foreach (Transform child in active.transform)
                 if (child.name.StartsWith("ModelKit_")) { res.Report = "这个实例已经换过了 ✓"; return res; }
 
@@ -797,13 +797,13 @@ namespace ModelKit
             return r;
         }
 
-        // ───────────── 只读诊断（config 顶层 `"debug": true` 打开 ✓ 默认关 ✓）─────────────
-        /// <summary>调试开关 ✓（mod 从 config 读 ✓）</summary>
+        // ───────────── 只读诊断（config 顶层 `"debug": true` 打开 默认关）─────────────
+        /// <summary>调试开关 （mod 从 config 读）</summary>
         public static bool DebugOn;
         static readonly HashSet<int> _dumpSeen = new HashSet<int>();
 
-        /// <summary>同一个父级下"名字以 `ModelKit_` 开头"的兄弟有几个 ✓（含自己 ✓）
-        /// —— **>1 就说明我们挂重了** ✗（旧实例没被销毁 ✓ 实测发现 ✓）</summary>
+        /// <summary>同一个父级下"名字以 `ModelKit_` 开头"的兄弟有几个 （含自己）
+        /// —— **>1 就说明我们挂重了** （旧实例没被销毁 实测发现）</summary>
         static int SiblingCount(Transform t)
         {
             if (t == null || t.parent == null) return t == null ? 0 : 1;
@@ -813,7 +813,7 @@ namespace ModelKit
             return n;
         }
 
-        /// <summary>祖先链 ✓（最多 6 层 ✓）—— 看"这是挂在角色身上还是掉在地上" ✓</summary>
+        /// <summary>祖先链 （最多 6 层）—— 看"这是挂在角色身上还是掉在地上" </summary>
         static string AncestorChain(Transform t)
         {
             var sb = new System.Text.StringBuilder();
@@ -822,28 +822,28 @@ namespace ModelKit
             return sb.ToString();
         }
 
-        /// <summary>把场上"我们造的物体"逐个打一行 ✓（名字/层/激活/场景/世界位置/世界缩放/父节点 ✓
-        /// + 每个渲染器的层/开关/材质/世界包围盒 ✓）。
-        /// 用途：排查"某条路看不见"（比如掉在地上没了 ✓）—— **先量 ✓ 别猜 ✗**</summary>
+        /// <summary>把场上"我们造的物体"逐个打一行 （名字/层/激活/场景/世界位置/世界缩放/父节点
+        /// + 每个渲染器的层/开关/材质/世界包围盒）。
+        /// 用途：排查"某条路看不见"（比如掉在地上没了）—— **先量 不得猜 **</summary>
         public static void DumpNewObjects()
         {
             if (!DebugOn) return;
-            if (Time.frameCount % 30 != 0) return;      // ⚠️ 节流：全场景扫描很贵 ✗ → 每 ~0.5 秒一次
+            if (Time.frameCount % 30 != 0) return;      // 节流：全场景扫描很贵，于是 每 ~0.5 秒一次
             try
             {
                 foreach (var go in UnityEngine.Resources.FindObjectsOfTypeAll<GameObject>())
                 {
                     if (go == null || !go.name.StartsWith("ModelKit_")) continue;
-                    if (!_dumpSeen.Add(go.GetInstanceID())) continue;      // 只打"新出现"的 ✓ 不刷屏 ✓
+                    if (!_dumpSeen.Add(go.GetInstanceID())) continue;      // 只打"新出现"的 不刷屏
                     var t = go.transform;
                     var sb = new System.Text.StringBuilder();
                     sb.Append($"[ItemModel][诊断] {go.name}｜层={go.layer}｜激活={go.activeInHierarchy}｜场景='{go.scene.name}'")
                       .Append($"｜世界位置={t.position}｜世界缩放={t.lossyScale}｜父='{(t.parent != null ? t.parent.name : "null")}'")
                       .Append($"｜子物体={t.childCount}")
-                      // ⭐ 祖先链 ✓（区分"拿在手里/穿在身上"和"掉在地上"用 ✓ 一次就能定案 ✓）
+                      // 祖先链 （区分"拿在手里/穿在身上"和"掉在地上"用 一次就能定案）
                       .Append($"｜祖先链={AncestorChain(t)}")
-                      // ⭐ 关键指标 ✓：**同一个父级下**我们挂的 mesh 有几个 ✓
-                      //    >1 就是"旧实例没销毁 ✗"（视觉上大的盖小的 ✓ = 改小看不见 ✓）
+                      // 关键指标：**同一个父级下**我们挂的 mesh 有几个
+                      // >1 就是"旧实例没销毁 "（视觉上大的盖小的 = 改小看不见）
                       .Append($"｜同门兄弟数={SiblingCount(t)}");
                     foreach (var r in go.GetComponentsInChildren<Renderer>(true))
                         sb.Append($"｜{r.GetType().Name}'{r.name}':层={r.gameObject.layer},开={r.enabled},"

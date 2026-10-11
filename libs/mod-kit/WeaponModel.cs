@@ -1,19 +1,19 @@
 // WeaponModel.cs —— 把外部模型（GltfLoader 读出的 Mesh + 贴图）换到**手持武器**上。
 //
-// 调用方（mod）只需要：找到玩家手里那把枪 + 给出 Mesh/贴图 → 调 Apply()。
+// 调用方（mod）只需要：找到玩家手里那把枪 + 给出 Mesh/贴图，于是 调 Apply()。
 // 这里把"每次都必须做对的事"集中在一处（都是实机踩过才定下来的）：
 //
-//   ① 只换**旧模型零件**：`WPN_*`（枪身）与 `HideIf_*`（原枪自带的默认件）
-//      —— `ShowIf_*`（配件本身的模型）与特效（MuzzleFlash/Particle）**不能动** ✗ 归游戏管
-//   ② 挂到**原枪身零件**的变换帧下（不是根节点 ✗）：同原点/同朝向
-//      并且把缩放补回世界尺度 1（prefab 内部有缩放链 —— 直接挂会缩到看不见 ✗ 踩过）
-//   ③ **对齐**：以游戏那把枪自己的局部包围盒为基准（"原点的归一化位置"对齐）
-//      —— 比"猜握把"可靠 ✓（游戏那把枪的原点就是手的位置 ✓）
-//   ④ 材质：**克隆游戏材质**（URP shader 才渲染得出来 ✗）+ 只把贴图换成我们的
+// ① 只换**旧模型零件**：`WPN_*`（枪身）与 `HideIf_*`（原枪自带的默认件）
+// —— `ShowIf_*`（配件本身的模型）与特效（MuzzleFlash/Particle）**不得动** 归游戏管
+// ② 挂到**原枪身零件**的变换帧下（不是根节点）：同原点/同朝向
+// 并且把缩放补回世界尺度 1（prefab 内部有缩放链 —— 直接挂会缩到看不见 踩过）
+// ③ **对齐**：以游戏那把枪自己的局部包围盒为基准（"原点的归一化位置"对齐）
+// —— 比"猜握把"可靠 （游戏那把枪的原点就是手的位置）
+// ④ 材质：**克隆游戏材质**（URP shader 才渲染得出来）+ 只把贴图换成我们的
 //
-// 不做的事：不改数值/行为 ✓ 不碰背包里的模板（只动运行时手里那把活实体 ✓）
+// 不做的事：不改数值/行为 不碰背包里的模板（只动运行时手里那把活实体）
 
-using System;   // StringComparison / StringComparer ✓
+using System;   // StringComparison / StringComparer
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -25,35 +25,35 @@ namespace ModelKit
         {
             public bool Applied;
             public GameObject Instance;
-        /// <summary>⭐ 我们挂在哪一层 ✓（登记/注销共用表用 ✗ 否则扫描会重复挂 ✓）</summary>
+        /// <summary> 我们挂在哪一层 （登记/注销共用表用 否则扫描会重复挂）</summary>
         public GameObject MarkedOn;
             public string Report = "";
-            /// <summary>config 里声明的槽位 → 我们模型局部坐标（米）的换算结果 ✓（供 step 2 把配件挂到我们形状上用 ✓）</summary>
+            /// <summary>config 里声明的槽位，于是 我们模型局部坐标（米）的换算结果 （供 step 2 把配件挂到我们形状上用）</summary>
             public readonly Dictionary<string, Vector3> SlotPoints = new Dictionary<string, Vector3>();
-            /// <summary>对齐用到了什么（日志用 ✓）</summary>
+            /// <summary>对齐用到了什么（日志用）</summary>
             public string AlignSource = "";
-            /// <summary>被我们**禁用掉的旧零件**（热重载/卸载时用来恢复 ✗ 否则枪会整个不见 ✗）</summary>
+            /// <summary>被我们**禁用掉的旧零件**（热重载/卸载时用来恢复 否则枪会整个不见）</summary>
             public readonly List<Renderer> Hidden = new List<Renderer>();
-            /// <summary>被我们**搬过位置**的游戏挂点（`Sockets/<槽位>`）→ 原 localPosition ✓（恢复用 ✓）</summary>
+            /// <summary>被我们**搬过位置**的游戏挂点（`Sockets/<槽位>`），于是 原 localPosition （恢复用）</summary>
             public readonly Dictionary<Transform, Vector3> MovedSockets = new Dictionary<Transform, Vector3>();
-            /// <summary>把我们禁用过的旧零件**恢复显示** ✓（幂等 ✓）</summary>
+            /// <summary>把我们禁用过的旧零件**恢复显示** （幂等）</summary>
             public void RestoreHidden()
             {
                 foreach (var r in Hidden) if (r != null) r.enabled = true;
                 Hidden.Clear();
             }
-            /// <summary>把改过的东西**全部还原** ✓（幂等 ✓）：旧零件显示 ✓ + 搬过的挂点位置 ✓</summary>
+            /// <summary>把改过的东西**全部还原** （幂等）：旧零件显示 + 搬过的挂点位置 </summary>
             public void Restore()
             {
                 RestoreHidden();
                 foreach (var kv in MovedSockets) if (kv.Key != null) kv.Key.localPosition = kv.Value;
                 MovedSockets.Clear();
-                ItemModel.UnmarkPatched(MarkedOn);   // ⭐ 注销 ✓（有借有还 ✓）
+                ItemModel.UnmarkPatched(MarkedOn);   // 注销 （有借有还）
                 MarkedOn = null;
             }
         }
 
-        /// <summary>游戏定的 5 个挂点名 ✓（旧文档实测：prefab 的 `Sockets` 容器下就这 5 个子节点 ✓）</summary>
+        /// <summary>游戏定的 5 个挂点名 （旧文档实测：prefab 的 `Sockets` 容器下就这 5 个子节点）</summary>
         static readonly string[] SlotNames = { "Scope", "Tec", "Muzzle", "Stock", "Grip" };
         static bool IsSlotName(string n)
         {
@@ -61,8 +61,8 @@ namespace ModelKit
             return false;
         }
 
-        /// <summary>找游戏自己的挂点：优先 `Sockets/<槽位>` ✓；没有 `Sockets` 容器就退化成“名字正好等于槽位名的 Transform”✓
-        /// （**不会**误抓 `ShowIf_Scope` / `HideIf_Scope` ✓ —— 那些名字不全等 ✓）</summary>
+        /// <summary>找游戏自己的挂点：优先 `Sockets/<槽位>`；没有 `Sockets` 容器就退化成“名字正好等于槽位名的 Transform”
+        /// （**不会**误抓 `ShowIf_Scope` / `HideIf_Scope` —— 那些名字不全等）</summary>
         static Dictionary<string, Transform> FindSockets(Transform root)
         {
             var map = new Dictionary<string, Transform>(StringComparer.OrdinalIgnoreCase);
@@ -82,18 +82,18 @@ namespace ModelKit
         }
 
         /// <summary>把手持武器的模型换成给进来的 Mesh+贴图。root 一般是 `itemGraphic.gameObject` 或手持实体的 GameObject。</summary>
-        /// <param name="slots">可选：config.json 的槽位（**比例** ✓ 键如 Muzzle/Stock/Scope/Tec/Grip，以及可选的 pivot）；
-        /// 每个值 [L,H,D] 均为 0~1：**L 沿 Z（枪口 +Z ✓）· H 沿 Y · D 沿 X**（= 模型自身包围盒的比例 ✓）。
-        /// 作用：① 换算成我们模型局部坐标（记入 Result.SlotPoints ✓）② 有 `pivot` 就用它当对齐基准（比包围盒映射准 ✓）。</param>
+        /// <param name="slots">可选：config.json 的槽位（**比例** 键如 Muzzle/Stock/Scope/Tec/Grip，以及可选的 pivot）；
+        /// 每个值 [L,H,D] 均为 0~1：**L 沿 Z（枪口 +Z）· H 沿 Y · D 沿 X**（= 模型自身包围盒的比例）。
+        /// 作用：① 换算成我们模型局部坐标（记入 Result.SlotPoints）② 有 `pivot` 就用它当对齐基准（比包围盒映射准）。</param>
         public static Result Apply(Transform root, Mesh mesh, Texture2D texture, Vector3 extraOffset = default, Dictionary<string, Vector3> slots = null, float scale = 1f)
         {
             var res = new Result();
             if (root == null || mesh == null) { res.Report = "缺少 root 或 mesh"; return res; }
 
-            // ① 选"枪身"锚点 —— 顺序：**游戏声明的清单** → 只认网格 → 排配件/默认件 → 名字**含** WPN_ → 最大
-            //    ⚠️ 实测（124 把武器）✓：单靠"以 WPN_ 开头"只覆盖 44% ✗ —— 很多枪身叫 `Pfb_WPN_TOZ66_S_1` ✓
-            //      所以这里改成**子串包含** `WPN_` ✓（覆盖率 ~70%+ ✓）；剩下的靠"清单里取最大" ✓
-            //    清单的价值 ✓：运行时挂的**灯/特效不在里面** ✗✓（不会再挑到灯 ✓）
+            // ① 选"枪身"锚点 —— 顺序：**游戏声明的清单**，于是 只认网格，于是 排配件/默认件，于是 名字**含** WPN_，于是 最大
+            // 实测（124 把武器）：单靠"以 WPN_ 开头"只覆盖 44% —— 很多枪身叫 `Pfb_WPN_TOZ66_S_1`
+            // 所以这里改成**子串包含** `WPN_` （覆盖率 ~70%+）；剩下的靠"清单里取最大"
+            // 清单的价值：运行时挂的**灯/特效不在里面** （不会再挑到灯）
             Renderer anchor = null; float best = -1f;
             var candidates = GameApi.DeclaredRenderers(root);
             bool fromDeclared = candidates.Count > 0;
@@ -107,7 +107,7 @@ namespace ModelKit
                 var n = r.gameObject.name;
                 if (n.StartsWith("ShowIf_") || n.StartsWith("HideIf_")) continue;
                 if (n.IndexOf("WPN_", StringComparison.OrdinalIgnoreCase) >= 0)
-                { anchor = r; best = r.bounds.size.magnitude; break; }        // 枪身 ✓ 立刻选中 ✓
+                { anchor = r; best = r.bounds.size.magnitude; break; }        // 枪身 立刻选中
                 float sz = r.bounds.size.magnitude;
                 if (sz > best && sz < 5f) { best = sz; anchor = r; }
             }
@@ -133,7 +133,7 @@ namespace ModelKit
                 Mathf.Abs(lossy.y) > 1e-6f ? 1f / lossy.y : 1f,
                 Mathf.Abs(lossy.z) > 1e-6f ? 1f / lossy.z : 1f);
             go.transform.localScale = inv * scale;
-            ItemModel.MarkPatched(root.gameObject);   // ⭐ 登记 ✓（与物品侧共用同一张表 ✓）   // 抵消挂点缩放 ✓ × 适配系数（⭐ 由 localScale 承担 ✓ 不改 mesh 顶点 ✗）
+            ItemModel.MarkPatched(root.gameObject);   // 登记 （与物品侧共用同一张表） // 抵消挂点缩放 × 适配系数（由 localScale 承担 不改 mesh 顶点）
             go.transform.localRotation = Quaternion.identity;
 
             var mf = go.AddComponent<MeshFilter>();
@@ -141,7 +141,7 @@ namespace ModelKit
             var mr = go.AddComponent<MeshRenderer>();
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
 
-            // 材质：克隆游戏材质（URP ✓）+ 换我们的贴图
+            // 材质：克隆游戏材质（URP）+ 换我们的贴图
             var srcMat = anchor != null ? anchor.sharedMaterial : null;
             if (srcMat == null)
                 foreach (var r in root.GetComponentsInChildren<Renderer>(true))
@@ -150,14 +150,14 @@ namespace ModelKit
             if (one != null)
             {
                 one.name = "WeaponModel_mat";
-                GameApi.ApplyOurTexture(one, texture);       // ⭐ 换贴图 + **清其它槽** ✓（与物品共用一套 ✓）
+                GameApi.ApplyOurTexture(one, texture);       // 换贴图 + **清其它槽** （与物品共用一套）
             }
             int subCount = Mathf.Max(1, mesh.subMeshCount);
             var mats = new Material[subCount];
             for (int i = 0; i < subCount; i++) mats[i] = one;
             mr.sharedMaterials = mats;
 
-            // ④ 对齐：默认以游戏那把枪的局部包围盒为基准（原点在它包围盒里的归一化位置 → 映射到我们包围盒同一位置）
+            // ④ 对齐：默认以游戏那把枪的局部包围盒为基准（原点在它包围盒里的归一化位置，于是 映射到我们包围盒同一位置）
             Vector3 target = Vector3.zero;
             res.AlignSource = "按原枪包围盒归一化映射";
             if (anchor != null)
@@ -173,8 +173,8 @@ namespace ModelKit
                                      myB.min.z + frac.z * myB.size.z);
             }
 
-            // ⭐ slots：先把每个 [L,H,D] 比例换算成“我们模型局部坐标里的点” ✓；
-            //    然后有 pivot → 用它当对齐基准（比包围盒映射准 ✓）；否则 Muzzle+Stock 都给 → 用它们的中点 ✓
+            // slots：先把每个 [L,H,D] 比例换算成“我们模型局部坐标里的点”；
+            // 然后有 pivot，于是 用它当对齐基准（比包围盒映射准）；否则 Muzzle+Stock 都给，于是 用它们的中点
             if (slots != null && slots.Count > 0)
             {
                 var b = mr.localBounds;
@@ -182,9 +182,9 @@ namespace ModelKit
                 {
                     var k = kv.Value;
                     res.SlotPoints[kv.Key] = new Vector3(
-                        b.min.x + Mathf.Clamp01(k.z) * b.size.x,   // D → X ✓
-                        b.min.y + Mathf.Clamp01(k.y) * b.size.y,   // H → Y ✓
-                        b.min.z + Mathf.Clamp01(k.x) * b.size.z);  // L → Z ✓（枪口 +Z）
+                        b.min.x + Mathf.Clamp01(k.z) * b.size.x,   // D，于是 X
+                        b.min.y + Mathf.Clamp01(k.y) * b.size.y,   // H，于是 Y
+                        b.min.z + Mathf.Clamp01(k.x) * b.size.z);  // L，于是 Z （枪口 +Z）
                 }
                 if (res.SlotPoints.TryGetValue("pivot", out var pv))
                 { target = pv; res.AlignSource = "slots.pivot"; }
@@ -193,19 +193,19 @@ namespace ModelKit
             }
             go.transform.localPosition = extraOffset - target;
 
-            // ⑤ slots → 把**游戏自己的挂点**（`Sockets/<槽位>`）搬到我模型上的对应位置 ✓
-            //    游戏随后会把配件 instance 挂到那个 socket 上 ✓ → 配件就落在**我们模型的形状**上 ✓✓
-            //    ⭐ 只动“挂点” ✗ 不动配件 ✓（不去跟游戏的装配逻辑打架 ✓）
+            // ⑤ slots，于是 把**游戏自己的挂点**（`Sockets/<槽位>`）搬到我模型上的对应位置
+            // 游戏随后会把配件 instance 挂到那个 socket 上，于是 配件就落在**我们模型的形状**上
+            // 只动“挂点” 不动配件 （不去跟游戏的装配逻辑打架）
             int moved = 0;
             if (res.SlotPoints.Count > 0)
             {
                 var sockets = FindSockets(root);
                 foreach (var kv in res.SlotPoints)
                 {
-                    if (string.Equals(kv.Key, "pivot", StringComparison.OrdinalIgnoreCase)) continue;   // pivot 不是挂点 ✓（它是手抓位置 ✓）
+                    if (string.Equals(kv.Key, "pivot", StringComparison.OrdinalIgnoreCase)) continue;   // pivot 不是挂点 （它是手抓位置）
                     if (!sockets.TryGetValue(kv.Key, out var sk) || sk == null) continue;
-                    if (!res.MovedSockets.ContainsKey(sk)) res.MovedSockets[sk] = sk.localPosition;      // 记原值 ✓ 便于恢复 ✓
-                    sk.position = go.transform.TransformPoint(kv.Value);   // 用**世界坐标**赋值 → 自动处理缩放/父子 ✓✓
+                    if (!res.MovedSockets.ContainsKey(sk)) res.MovedSockets[sk] = sk.localPosition;      // 记原值 便于恢复
+                    sk.position = go.transform.TransformPoint(kv.Value);   // 用**世界坐标**赋值，于是 自动处理缩放/父子
                     moved++;
                 }
             }

@@ -42,14 +42,14 @@ namespace ModelKit
 
         public bool Has(string key) => Kind == JsonKind.Object && Object.ContainsKey(key);
 
-        // 安全读取：缺键/类型不对时返回 fallback（不再 NRE ✓ —— 实测踩过：config 少一个键就抛异常 ✓）
+        // 安全读取：缺键/类型不对时返回 fallback（不再 NRE —— 实测踩过：config 少一个键就抛异常）
         public string GetStr(string key, string fallback = null) { var v = this[key]; return v != null ? v.AsString(fallback) : fallback; }
         public int GetInt(string key, int fallback = 0) { var v = this[key]; return v != null ? v.AsInt(fallback) : fallback; }
         public bool GetBool(string key, bool fallback = false) { var v = this[key]; return v != null && v.Kind == JsonKind.Bool ? v.Bool : fallback; }
         public float GetFloat(string key, float fallback = 0f) { var v = this[key]; return v != null ? v.AsFloat(fallback) : fallback; }
     }
 
-    /// <summary>JSON 解析失败（本文件自带，不依赖别处 ✓）</summary>
+    /// <summary>JSON 解析失败（本文件自带，不依赖别处）</summary>
     public sealed class JsonException : System.Exception
     {
         public JsonException(string message) : base(message) { }
@@ -57,9 +57,9 @@ namespace ModelKit
 
     public static class Json
     {
-        /// <summary>读一个**字符串数组**字段（例 `"targets": ["Item_SMG_MP5_Normal"]` ✓）。
-        /// ⚠️ **只收数组** ✗ —— 写成单个字符串会被忽略 ✓（保持一种写法，避免"有时行有时不行" ✗）；
-        /// 解析结果会在启动日志里打出来 ✓（`targets=[…]`）→ 写错了看得见 ✓</summary>
+        /// <summary>读一个**字符串数组**字段（例 `"targets": ["Item_SMG_MP5_Normal"]`）。
+        /// **只收数组** —— 写成单个字符串会被忽略 （保持一种写法，避免"有时行有时不行"）；
+        /// 解析结果会在启动日志里打出来 （`targets=[…]`），于是 写错了看得见 </summary>
         public static System.Collections.Generic.List<string> Strings(JsonValue j, string key)
         {
             var outp = new System.Collections.Generic.List<string>();

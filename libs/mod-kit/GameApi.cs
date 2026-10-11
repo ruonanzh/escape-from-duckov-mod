@@ -1,10 +1,10 @@
 // GameApi.cs —— 与 Duckov 角色系统打交道的小工具（找角色 / 拿模型 / 隐藏原外观）。
 //
 // 这些是"换角色外观"时每次都要做对的事，写在一处，mod 直接调用：
-//   · 找玩家：CharacterMainControl.IsMainCharacter（FindObjectsOfType 的第一个可能是 NPC）
-//   · 找特定角色：按 GameObject 名 / 模型名过滤
-//   · 隐藏原外观：只压"蒙皮网格"（角色本体），保留 MeshRenderer（装备、手里的枪）
-//   · 层：可见 = Character(9)，隐藏 = SpecialCamera(31)（实测）
+// · 找玩家：CharacterMainControl.IsMainCharacter（FindObjectsOfType 的第一个可能是 NPC）
+// · 找特定角色：按 GameObject 名 / 模型名过滤
+// · 隐藏原外观：只压"蒙皮网格"（角色本体），保留 MeshRenderer（装备、手里的枪）
+// · 层：可见 = Character(9)，隐藏 = SpecialCamera(31)（实测）
 
 using System.Collections.Generic;
 using System.Linq;
@@ -18,10 +18,10 @@ namespace ModelKit
         public static int VisibleLayer => LayerMask.NameToLayer("Character");
         public static int HiddenLayer => LayerMask.NameToLayer("SpecialCamera");
 
-        /// <summary>全部角色（玩家 + NPC + 宠物）。在关卡里才有，主菜单是空的 → 需要等。</summary>
+        /// <summary>全部角色（玩家 + NPC + 宠物）。在关卡里才有，主菜单是空的，于是 需要等。</summary>
         public static CharacterMainControl[] AllCharacters() => Object.FindObjectsOfType<CharacterMainControl>();
 
-        /// <summary>玩家。用 IsMainCharacter 判定 —— 不要拿 FindObjectsOfType 的第一个，那可能是 NPC。</summary>
+        /// <summary>玩家。用 IsMainCharacter 判定 —— 不得拿 FindObjectsOfType 的第一个，那可能是 NPC。</summary>
         public static CharacterMainControl FindMainCharacter()
             => AllCharacters().FirstOrDefault(c => c != null && c.IsMainCharacter);
 
@@ -83,7 +83,7 @@ namespace ModelKit
         }
 
         /// <summary>把一件物品塞给玩家（作新增物品的演示/自测用）：`PickupItem` 失败就退到 `inventory.AddItem`。
-        /// ⚠️ `CharacterMainControl.itemControl` 是**私有字段**（`CharacterItemControl`），只能反射拿。</summary>
+        /// `CharacterMainControl.itemControl` 是**私有字段**（`CharacterItemControl`），只能反射拿。</summary>
         public static bool GiveItemToPlayer(ItemStatsSystem.Item item)
         {
             var player = FindMainCharacter();
@@ -115,7 +115,7 @@ namespace ModelKit
         }
 
         /// <summary>把"角色本体（蒙皮网格）"压到隐藏层；装备/手里武器的 MeshRenderer 保持可见。
-        /// 返回被隐藏的数量。注意：游戏可能把它们又显示回来 → 需要周期性重申（见 <see cref="KeepSkinHidden"/>）。</summary>
+        /// 返回被隐藏的数量。注意：游戏可能把它们又显示回来，于是 需要周期性重申（见 <see cref="KeepSkinHidden"/>）。</summary>
         public static int HideCharacterSkin(CharacterModel cm, IEnumerable<GameObject> keepUnder = null)
         {
             if (cm == null) return 0;
@@ -137,49 +137,49 @@ namespace ModelKit
             HideCharacterSkin(cm, keepUnder);   // 幂等
         }
 
-        /// <summary>把"我们的基础色贴图"套到一份**从游戏材质克隆来的**材质上 ✓，并**清掉其它槽** ✗。
-        /// 武器 ✓ 物品 ✓ **共用同一套** ✓（用户要求一套逻辑 ✓）。
+        /// <summary>把"我们的基础色贴图"套到一份**从游戏材质克隆来的**材质上，并**清掉其它槽**。
+        /// 武器 物品 **共用同一套** （用户要求一套逻辑）。
         ///
-        /// 为什么必须清 ✗：克隆来的材质带着**游戏原来的**发光/法线/遮蔽图 ✗，而我们的 UV 与它不同 ✗
-        ///   → 会采样出一片**脏 / 发光斑** ✗（实测：头盔上出现紫粉色发光斑 ✓）
-        /// ⚠️ 属性名随管线不同 ✓ → 逐个 `HasProperty` 探 ✓（URP `_BaseMap`/`_BaseColor` ✓ 旧 API `_MainTex`/`_Color` ✓）</summary>
+        /// 为什么必须清：克隆来的材质带着**游戏原来的**发光/法线/遮蔽图，而我们的 UV 与它不同
+        /// 于是 会采样出一片**脏 / 发光斑** （实测：头盔上出现紫粉色发光斑）
+        /// 属性名随管线不同，于是 逐个 `HasProperty` 探 （URP `_BaseMap`/`_BaseColor` 旧 API `_MainTex`/`_Color`）</summary>
         public static void ApplyOurTexture(Material mat, Texture2D tex)
         {
             if (mat == null) return;
             try
             {
-                // ① 基础色贴图 ✓
+                // ① 基础色贴图
                 if (tex != null)
                 {
                     if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
                     else if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", tex);
-                    else mat.mainTexture = tex;                       // 最后兜底 ✓
+                    else mat.mainTexture = tex;                       // 最后兜底
                 }
-                // ② 基础色 tint 清成白 ✓（两套属性名都试 ✓）
+                // ② 基础色 tint 清成白 （两套属性名都试）
                 if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", Color.white);
                 if (mat.HasProperty("_Color")) mat.SetColor("_Color", Color.white);
                 try { mat.color = Color.white; } catch { }
 
-                // ③ **关发光** ✗（头盔紫斑的来源 ✓）
+                // ③ **关发光** （头盔紫斑的来源）
                 if (mat.HasProperty("_EmissionMap")) mat.SetTexture("_EmissionMap", null);
                 if (mat.HasProperty("_EmissionColor")) mat.SetColor("_EmissionColor", Color.black);
                 mat.DisableKeyword("_EMISSION");
 
-                // ④ **清掉"和我们 UV 对不上"的图** ✗（留着只会脏 ✓）
+                // ④ **清掉"和我们 UV 对不上"的图** （留着只会脏）
                 var slots = new string[] { "_BumpMap", "_NormalMap", "_OcclusionMap", "_MetallicGlossMap",
                                            "_SpecGlossMap", "_DetailMask", "_DetailAlbedoMap", "_ParallaxMap" };
                 for (int i = 0; i < slots.Length; i++)
                     if (mat.HasProperty(slots[i])) mat.SetTexture(slots[i], null);
             }
-            catch { /* 材质换不上不该炸 ✓ */ }
+            catch { /* 材质换不上不该炸 */ }
         }
 
-        /// <summary>⭐ **只接法线** ✓（用户口径 ✓：“把法线拿回来看看” ✓）。
-        /// <para>⚠️ **金属/光滑一律不碰** ✗ —— 数值与那张 ORM 图都不动 ✓。</para>
-        /// <para>⭐ **白名单** ✗：只在 shader 名以 **`SodaCraft/`** 开头时才接 ✓
-        ///（游戏自己的 3D 物品/角色 shader ✓：`SodaLit` ✓ `SodaLit_EdgeLight` ✓ `SodaCharacter` ✓）。
-        /// 其他 shader（例如雾效 ✓ 精灵 ✓ UI ✓）**一律跳过** ✗ —— 实测：给非 3D shader 改属性会让**整个网格画不出来** ✓。</para>
-        /// <para>法线是 **数据** ✗ ⇒ 必须**线性**读 ✓（加载器已处理 ✓）；glTF 与 Unity 同为 OpenGL 约定 +Y ✓ **不翻转** ✓。</para></summary>
+        /// <summary> **只接法线** （用户口径：“把法线拿回来看看”）。
+        /// <para> **金属/光滑一律不碰** —— 数值与那张 ORM 图都不动。</para>
+        /// <para> **白名单**：只在 shader 名以 **`SodaCraft/`** 开头时才接
+        ///（游戏自己的 3D 物品/角色 shader：`SodaLit` `SodaLit_EdgeLight` `SodaCharacter`）。
+        /// 其他 shader（例如雾效 精灵 UI）**一律跳过** —— 实测：给非 3D shader 改属性会让**整个网格画不出来**。</para>
+        /// <para>法线是 **数据** ⇒ 必须**线性**读 （加载器已处理）；glTF 与 Unity 同为 OpenGL 约定 +Y **不翻转**。</para></summary>
         public static void ApplyNormalMap(Material mat, Texture2D normal, string tag = null)
         {
             if (mat == null || normal == null) return;
@@ -196,12 +196,12 @@ namespace ModelKit
                 else { UnityEngine.Debug.Log($"[NormalMap] {tag}｜shader 没有法线槽 ✗（shader={shName}）"); return; }
                 UnityEngine.Debug.Log($"[NormalMap] {tag}｜法线✓｜shader={shName}");
             }
-            catch { /* 接不上不该炸 ✓ */ }
+            catch { /* 接不上不该炸 */ }
         }
 
-        /// <summary>⭐ 游戏**自己声明**的"这套外观用哪些渲染器" ✓ —— 图形根上的 `CharacterSubVisuals.renderers` ✓。
-        /// 实测价值 ✓：运行时挂上去的**灯 / 特效不在这个清单里** ✗ → 用它找"本体"最准 ✓（比"取最大"稳 ✓）。
-        /// 武器/物品两边都适用 ✓（物品清单通常只有 1 个 = 本体 ✓；武器清单含 枪身+配件 ✓ 需再筛 ✓）</summary>
+        /// <summary> 游戏**自己声明**的"这套外观用哪些渲染器" —— 图形根上的 `CharacterSubVisuals.renderers`。
+        /// 实测价值：运行时挂上去的**灯 / 特效不在这个清单里**，于是 用它找"本体"最准 （比"取最大"稳）。
+        /// 武器/物品两边都适用 （物品清单通常只有 1 个 = 本体；武器清单含 枪身+配件 需再筛）</summary>
         public static List<Renderer> DeclaredRenderers(Transform root)
         {
             var outp = new List<Renderer>();
@@ -212,40 +212,40 @@ namespace ModelKit
                 if (sv != null && sv.renderers != null)
                     foreach (var r in sv.renderers) if (r != null) outp.Add(r);
             }
-            catch { /* 老版本/没有这个组件 → 返回空 ✓ 调用方会走回退逻辑 ✓ */ }
+            catch { /* 老版本/没有这个组件，于是 返回空 调用方会走回退逻辑 */ }
             return outp;
         }
 
-        /// <summary>⭐ 枚举**所有已加载的物品对象**（含物品模板 prefab 与场上实例 ✓）。
-        /// 用途：按名字/typeID 找齐"该换模型的物品" ✓（和 <see cref="WeaponIcon.ApplyToAllMatching"/> 同一个枚举方式 ✓）</summary>
+        /// <summary> 枚举**所有已加载的物品对象**（含物品模板 prefab 与场上实例）。
+        /// 用途：按名字/typeID 找齐"该换模型的物品" （和 <see cref="WeaponIcon.ApplyToAllMatching"/> 同一个枚举方式）</summary>
         public static IEnumerable<ItemStatsSystem.Item> AllItems()
             => Resources.FindObjectsOfTypeAll<ItemStatsSystem.Item>().Where(i => i != null);
 
-        /// <summary>名字匹配（大小写不敏感的子串 ✓）：`target` 就是拿它去匹配物品的**对象名**。
-        /// 例：`"Backpack"` 会命中 `Item_Backpack_Lv_3` ✓</summary>
+        /// <summary>名字匹配（大小写不敏感的子串）：`target` 就是拿它去匹配物品的**对象名**。
+        /// 例：`"Backpack"` 会命中 `Item_Backpack_Lv_3` </summary>
         public static bool NameMatches(ItemStatsSystem.Item item, string target)
             => !string.IsNullOrEmpty(target) && item != null && item.name != null
                && item.name.IndexOf(target, System.StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
-    /// <summary>目标尺寸（米）✓：把模型**等比**缩放到"游戏里那一档" ✓
-    /// <para>优先级：config 的 `size`（玩家显式 ✓）&gt; 游戏 tag 推断 ✓ &gt; null（**不缩放** ✓）。</para>
-    /// <para>表里的数字全部来自**离线实测**（游戏自己那些模型的最长边 ✓）：
-    /// 枪按 `GunType_*` 分档 ✓；装备按 `Helmat`/`Backpack`/`FaceMask`/`Headset`/`Equipment` ✓；
-    /// 普通物品（糖果/医疗 ✓）与近战/弓弩 → **不缩放** ✓。</para>
-    /// <para>⚠️ 缩放是在**加载期**对 mesh 顶点做一次 ✓ → 世界/手持/实例三条路自动一致 ✓。</para></summary>
+    /// <summary>目标尺寸（米）：把模型**等比**缩放到"游戏里那一档"
+    /// <para>优先级：config 的 `size`（玩家显式）&gt; 游戏 tag 推断 &gt; null（**不缩放**）。</para>
+    /// <para>表里的数字全部来自**离线实测**（游戏自己那些模型的最长边）：
+    /// 枪按 `GunType_*` 分档；装备按 `Helmat`/`Backpack`/`FaceMask`/`Headset`/`Equipment`；
+    /// 普通物品（糖果/医疗）与近战/弓弩，于是 **不缩放**。</para>
+    /// <para> 缩放是在**加载期**对 mesh 顶点做一次，于是 世界/手持/实例三条路自动一致。</para></summary>
     public static class ModelSize
     {
         static readonly string[] GunTags = { "GunType_PST", "GunType_SMG", "GunType_AR", "GunType_BR", "GunType_SHT", "GunType_SNP", "GunType_MAG" };
         static readonly float[] GunSizes = { 0.44f, 0.85f, 1.00f, 1.25f, 1.05f, 1.35f, 1.45f };
-        // ⭐ 装备/物品 **一律不缩放** ✓（用户定稿：实测头盔按 0.65 缩完太小 ✗ → 除武器外 scale = 1 ✓）
+        // 装备/物品 **一律不缩放** （用户定稿：实测头盔按 0.65 缩完太小，于是 除武器外 scale = 1）
 
-        /// <summary>该物品的**目标最长边**（米 ✓）；null = 不缩放（scale 保持 1 ✓）。
-        /// <para>⭐ 只有**武器**有档位 ✓（按游戏自己的 `GunType_*` tag ✓）；装备/物品一律 null ✓。</para>
-        /// <paramref name="explicitSize"/> 是 config 的 `size`（≤0 = 没填 ✓）—— 任何物品都能用它手动指定 ✓</summary>
+        /// <summary>该物品的**目标最长边**（米）；null = 不缩放（scale 保持 1）。
+        /// <para> 只有**武器**有档位 （按游戏自己的 `GunType_*` tag）；装备/物品一律 null。</para>
+        /// <paramref name="explicitSize"/> 是 config 的 `size`（≤0 = 没填）—— 任何物品都能用它手动指定 </summary>
         public static float? For(int typeID, float? explicitSize)
         {
-            if (explicitSize.HasValue && explicitSize.Value > 0f) return explicitSize;   // 玩家填了 → 听玩家的 ✓
+            if (explicitSize.HasValue && explicitSize.Value > 0f) return explicitSize;   // 玩家填了，于是 听玩家的
             try
             {
                 var item = GameApi.AllItems().FirstOrDefault(i => i != null && i.TypeID == typeID);
@@ -255,21 +255,21 @@ namespace ModelKit
                 if (tags.Contains("Weapon"))
                 {
                     for (int i = 0; i < GunTags.Length; i++) if (tags.Contains(GunTags[i])) return GunSizes[i];
-                    // 有 `Gun` 但没细分枪种（例如弓弩 ✓）→ 1.00 m 兜底 ✓（= 与现状一致 ✓ 不缩放 ✓）
+                    // 有 `Gun` 但没细分枪种（例如弓弩），于是 1.00 m 兜底 （= 与现状一致 不缩放）
                     if (tags.Contains("Gun")) return 1.00f;
-                    return null;                       // 近战等 ✓ 先不管 ✓
+                    return null;                       // 近战等 先不管
                 }
-                // ⭐ 装备（头盔/背包/耳机/面具 ✓）与普通物品（糖果/医疗 ✓）→ **不缩放** ✓（定稿 ✓）
+                // 装备（头盔/背包/耳机/面具）与普通物品（糖果/医疗），于是 **不缩放** （定稿）
             }
             catch { }
             return null;
         }
 
-        /// <summary>一步到位（mod 侧用 ✓）：`For(typeID, size)` → `Factor(mesh, ·)` ✓（`size` ≤0 = 没填 ✓）</summary>
+        /// <summary>一步到位（mod 侧用）：`For(typeID, size)`，于是 `Factor(mesh, ·)` （`size` ≤0 = 没填）</summary>
         public static float FactorFor(int typeID, float size, Mesh mesh)
             => Factor(mesh, For(typeID, size > 0f ? (float?)size : null));
 
-        /// <summary>模型当前的最长边（米 ✓）——用来算"该乘多少 scale" ✓</summary>
+        /// <summary>模型当前的最长边（米）——用来算"该乘多少 scale" </summary>
         public static float Longest(Mesh mesh)
         {
             if (mesh == null) return 0f;
@@ -277,7 +277,7 @@ namespace ModelKit
             return Mathf.Max(s.x, Mathf.Max(s.y, s.z));
         }
 
-        /// <summary>该乘的 scale 系数 ✓（= target / 当前最长边 ✓；没目标或离谱 → 1 ✓）—— **不碰 mesh 顶点** ✓
+        /// <summary>该乘的 scale 系数 （= target / 当前最长边；没目标或离谱，于是 1）—— **不碰 mesh 顶点**
         public static float Factor(Mesh mesh, float? target)
         {
             float longest = Longest(mesh);
