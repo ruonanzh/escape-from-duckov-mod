@@ -33,12 +33,12 @@ description: 玩家想换**物品**（背包、防弹衣、头盔、弹匣、任
 ```
 generate_image(
   image="<玩家的图>",                       // 只给文字描述时省略。此时纯提示词出图。
-  prompt="Redraw the item from the input as a clean, isolated in-game asset: keep ONLY the main item - if the input shows several objects, take the largest, centered one and ignore the rest. The whole item alone and complete - keep EVERY part of it; remove only what is not the item (the background, any floating pieces, text, frames). Put it on a plain uniform white background: no scenery, no props, no shadow, no smoke, no hands, no text. Keep the item's own design and colors the same, but render it in a CARTOON / toon-shaded style like the game's own assets (flat stylized colors, clean shading - not photoreal), and make it noticeably BULKIER and THICKER: heavy, sturdy proportions like a stylized low-poly game asset, about 0.55 m tall (game scale). Show it from the SIDE (a profile view that shows its thickness and depth), NOT a front view, and perfectly CENTERED in the frame, with a clear margin on all sides.",
+  prompt="Redraw the item from the input as a clean, isolated in-game asset: keep ONLY the main item - if the input shows several objects, take the largest, centered one and ignore the rest. The whole item alone and complete - keep EVERY part of it; remove only what is not the item (the background, any floating pieces, text, frames). Put it on a plain uniform white background: no scenery, no props, no shadow, no smoke, no hands, no text. Keep the item's own design and colors the same, but render it in a CARTOON / toon-shaded style like the game's own assets (flat stylized colors, clean shading - not photoreal), and make it noticeably BULKIER and THICKER: heavy, sturdy proportions like a stylized low-poly game asset, about 0.50 m tall (game scale). Show it from the SIDE (a profile view that shows its thickness and depth), NOT a front view, and perfectly CENTERED in the frame, with a clear margin on all sides.",
   out="your_mods/<mod>/.preview/<物品名>.preview.png")   // 中间图放 mod 目录下的 .preview/
 ```
 
 - 这段配方里有 **8 件事都不得丢**：**只留主物品**（图里有多个物体时取**最大最居中**那个，其余全丢）、**整件物品都在**、**只移除不是它的东西**、**纯白均一背景**、**保持原设计与原颜色，并做卡通渲染**（不是照片感）、**加粗**、**侧视**、**居中留边**。
-- `about 0.55 m tall (game scale)` 那句里的数字**按物品类别换**（见 §1 末尾的尺寸表）。
+- `about 0.50 m tall (game scale)` 那句里的数字**按物品类别换**（见 §1 末尾的尺寸表）。
 - 出图后**把文件路径给玩家**（工具返回里就是绝对路径），再问他「就要这个吗」。
   **图大于 1.5MB 时工具不会内联显示**，所以**必须把路径写出来**。
 - `.preview/` 放在 mod 目录下。`install_mod` 会跳过它（不进游戏）。
@@ -65,13 +65,13 @@ generate_model(action="generate",
 
 | 类别 | 典型最长边 |
 |---|---|
-| 背包 | **0.55 m** |
-| 防弹衣（身体）| **0.80 m** |
+| 背包 | **0.50 m** |
+| 防弹衣（身体）| **0.67 m** |
 | 头盔（头部）| **0.65 m** |
-| 面具（面部）| **0.65 m** |
+| 面具（面部）| **0.63 m** |
 | 耳机 | **0.78 m** |
 
-- 这行数字**写进 ③ 的 `prompt=` 里**（就是 `about 0.55 m tall (game scale)` 那句）。
+- 这行数字**写进 ③ 的 `prompt=` 里**（就是 `about 0.50 m tall (game scale)` 那句）。
 - 这些数**比实物大**（头盔实物约 0.3 m，游戏里 0.65 m），所以**照游戏那一档**。
 - **建模三条**：① **原点随便**（运行时按「包围盒中心」对齐）② **朝向正着**（Y 上，Z 前）③ **尽量左右对称**。
 
