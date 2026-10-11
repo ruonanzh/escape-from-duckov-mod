@@ -40,11 +40,11 @@
 | `ItemModel.ItemShaderName` | 常量，等于 `"SodaCraft/SodaLit"`。只影响本来没有 `itemGraphic` 的物品（例如糖果）。给它们借材质时**固定用这个 shader**。 |
 | `ItemModel.CurrentNormalMap` | **调 `Apply*` 之前必须设**，等于 `CachedModel.NormalTexture`。它决定附在材质上的法线图。确实没有时就显式设 `null`。**只给物品**，武器不设。 |
 
-## 4. 尺寸档位（config `size` 的上游）
+## 4. 尺寸（config `size` 的上游）
 
 | API | 什么时候用 |
 |---|---|
-| `ModelSize.For(typeID, explicitSize)` | 这件物品的目标长度（米）。`explicitSize` 等于 config 的 `size`。武器按 `GunType_*` 自动分档，其它返回 `null`（不缩放） |
+| `ModelSize.For(typeID, explicitSize)` | 这件物品的目标长度（米）。`explicitSize` 等于 config 的 `size`。武器按 `GunType_*` 自动给出游戏内尺寸，其它返回 `null`（不缩放） |
 | `ModelSize.FactorFor(typeID, size, mesh)` | 一步拿到"该乘多少 scale"（mod 侧最常用） |
 | `ModelSize.Factor(mesh, target)` / `Longest(mesh)` | 只要系数或只要最长边时用 |
 
