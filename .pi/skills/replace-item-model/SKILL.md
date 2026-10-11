@@ -128,7 +128,7 @@ var loaded = ModelKit.GltfLoader.LoadFile(路径, "auto");     // 返回 Mesh �
 var res = ModelKit.ItemModel.Apply(item, loaded.Mesh, loaded.MainTexture, handheld: 开关);
 
 // handheld：是否**连「拿在手里」那条也换**（它会改行为：变成「可拿在手里」与「UI 可选中」。见 §4）
-// res.Report 里写着做了什么（关旧外观 N 个、挂到哪个挂点、有没有走「克隆加动态条目」）；
+// res.Report 用英文写着做了什么：旧外观数、挂到的挂点、有没有走「克隆加动态条目」。
 // res.Restore() 能全还原（热重载用）
 ```
 

@@ -38,7 +38,7 @@ namespace ModelKit
         {
             var r = new Loaded();
             if (data.Length < 20 || data[0] != 'g' || data[1] != 'l' || data[2] != 'T' || data[3] != 'F')
-                throw new Exception("不是 GLB 文件（magic 不对）");
+                throw new Exception("not a GLB file (wrong magic)");
 
             // ① 拆 chunk：JSON + BIN
             int off = 12; string json = null; byte[] bin = null;
@@ -51,13 +51,13 @@ namespace ModelKit
                 else if (type == 0x004E4942 && start + (int)len <= data.Length) { bin = new byte[len]; Buffer.BlockCopy(data, start, bin, 0, (int)len); }
                 off = start + (int)len;
             }
-            if (json == null || bin == null) throw new Exception("GLB 缺少 JSON 或 BIN chunk");
+            if (json == null || bin == null) throw new Exception("the GLB has no JSON or BIN chunk");
 
             var doc = Json.Parse(json);
             var accessors = doc["accessors"];
             var views = doc["bufferViews"];
             var meshes = doc["meshes"];
-            if (meshes == null || meshes.Count == 0) throw new Exception("glTF 里没有 meshes");
+            if (meshes == null || meshes.Count == 0) throw new Exception("the glTF has no meshes");
 
             var verts = new List<Vector3>();
             var norms = new List<Vector3>();
@@ -121,7 +121,7 @@ namespace ModelKit
             r.MainTexture = LoadBaseColor(doc, views, bin);
             // 法线 —— 只读这一张 （**不读 ORM**：金属/光滑一律不碰）
             r.NormalTexture = LoadNormal(doc, views, bin);
-            r.Report = $"GLB：顶点 {r.VertexCount}，三角面 {r.TriangleCount}，贴图 {(r.MainTexture != null ? r.MainTexture.name + $" {r.MainTexture.width}x{r.MainTexture.height}" : "无")}，法线 {(r.NormalTexture != null ? "有" : "无")}；包围盒 {mesh.bounds.size}；握把归零 {grip}";
+            r.Report = $"GLB: vertices {r.VertexCount}, triangles {r.TriangleCount}, texture {(r.MainTexture != null ? r.MainTexture.name + $" {r.MainTexture.width}x{r.MainTexture.height}" : "none")}, normal map {(r.NormalTexture != null ? "yes" : "no")}, bounds {mesh.bounds.size}, grip zeroed {grip}";
             return r;
         }
 

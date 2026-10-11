@@ -22,16 +22,16 @@ namespace ModelKit
         /// <summary>把 pngPath 设为 item 的图标（白底，于是 透明）。返回说明文本（失败也不抛，图标不是必须的）。</summary>
         public static string Apply(ItemStatsSystem.Item item, string pngPath)
         {
-            if (item == null) return "没有物品，跳过";
-            if (string.IsNullOrEmpty(pngPath) || !File.Exists(pngPath)) return "没有图标文件，跳过";
+            if (item == null) return "no item: skipped";
+            if (string.IsNullOrEmpty(pngPath) || !File.Exists(pngPath)) return "no icon file: skipped";
 
             Texture2D tex;
             try
             {
                 tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                if (!tex.LoadImage(File.ReadAllBytes(pngPath))) return "图标读不出来（不是 PNG/JPG？）";
+                if (!tex.LoadImage(File.ReadAllBytes(pngPath))) return "cannot read the icon (not a PNG or JPG?)";
             }
-            catch (Exception e) { return $"图标读取失败：{e.Message}"; }
+            catch (Exception e) { return $"icon load failed: {e.Message}"; }
 
             int n = tex.width * tex.height;
             var px = tex.GetPixels32();
@@ -65,9 +65,9 @@ namespace ModelKit
                     if (SetSpritesEverywhere(other, sprite) > 0) tpl++;
                 }
             }
-            catch (Exception e) { return $"图标已设到实例（{tex.width}x{tex.height}），模板扫描失败：{e.Message}"; }
+            catch (Exception e) { return $"icon set on the instance ({tex.width}x{tex.height}), but the template scan failed: {e.Message}"; }
 
-            return $"图标已设置：{tex.width}x{tex.height} @PPU50；实例写入 {(set > 0 ? "成功" : "失败")}，同 typeID 模板 {tpl} 个";
+            return $"icon set: {tex.width}x{tex.height} @PPU50; instance write {(set > 0 ? "ok" : "failed")}; templates with the same typeID: {tpl}";
         }
 
         /// <summary>把 item 上**所有** Sprite 字段/属性都盖上（不猜字段名）：

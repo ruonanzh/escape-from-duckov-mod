@@ -188,13 +188,13 @@ namespace ModelKit
                 string shName = mat.shader != null ? mat.shader.name : "";
                 if (!shName.StartsWith("SodaCraft/", System.StringComparison.Ordinal))
                 {
-                    UnityEngine.Debug.Log($"[NormalMap] {tag}｜**跳过** ✗（shader={shName} 不在白名单里 ✓）");
+                    UnityEngine.Debug.Log($"[NormalMap] {tag} | skipped: the shader is not in the allow list (shader={shName})");
                     return;
                 }
                 if (mat.HasProperty("_BumpMap")) { mat.SetTexture("_BumpMap", normal); mat.EnableKeyword("_NORMALMAP"); }
                 else if (mat.HasProperty("_NormalMap")) { mat.SetTexture("_NormalMap", normal); mat.EnableKeyword("_NORMALMAP"); }
-                else { UnityEngine.Debug.Log($"[NormalMap] {tag}｜shader 没有法线槽 ✗（shader={shName}）"); return; }
-                UnityEngine.Debug.Log($"[NormalMap] {tag}｜法线✓｜shader={shName}");
+                else { UnityEngine.Debug.Log($"[NormalMap] {tag} | the shader has no normal map slot (shader={shName})"); return; }
+                UnityEngine.Debug.Log($"[NormalMap] {tag} | normal map applied (shader={shName})");
             }
             catch { /* 接不上不该炸 */ }
         }

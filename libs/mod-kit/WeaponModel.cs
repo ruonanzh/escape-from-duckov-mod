@@ -88,7 +88,7 @@ namespace ModelKit
         public static Result Apply(Transform root, Mesh mesh, Texture2D texture, Vector3 extraOffset = default, Dictionary<string, Vector3> slots = null, float scale = 1f)
         {
             var res = new Result();
-            if (root == null || mesh == null) { res.Report = "缺少 root 或 mesh"; return res; }
+            if (root == null || mesh == null) { res.Report = "missing root or mesh"; return res; }
 
             // ① 选"枪身"锚点 —— 顺序：**游戏声明的清单**，于是 只认网格，于是 排配件/默认件，于是 名字**含** WPN_，于是 最大
             // 实测（124 把武器）：单靠"以 WPN_ 开头"只覆盖 44% —— 很多枪身叫 `Pfb_WPN_TOZ66_S_1`
@@ -159,7 +159,7 @@ namespace ModelKit
 
             // ④ 对齐：默认以游戏那把枪的局部包围盒为基准（原点在它包围盒里的归一化位置，于是 映射到我们包围盒同一位置）
             Vector3 target = Vector3.zero;
-            res.AlignSource = "按原枪包围盒归一化映射";
+            res.AlignSource = "normalized bounds mapping from the original gun";
             if (anchor != null)
             {
                 var refB = anchor.localBounds;
@@ -189,7 +189,7 @@ namespace ModelKit
                 if (res.SlotPoints.TryGetValue("pivot", out var pv))
                 { target = pv; res.AlignSource = "slots.pivot"; }
                 else if (res.SlotPoints.TryGetValue("Muzzle", out var mz) && res.SlotPoints.TryGetValue("Stock", out var st))
-                { target = (mz + st) * 0.5f; res.AlignSource = "slots.Muzzle+Stock 中点"; }
+                { target = (mz + st) * 0.5f; res.AlignSource = "slots.Muzzle+Stock midpoint"; }
             }
             go.transform.localPosition = extraOffset - target;
 
@@ -211,15 +211,15 @@ namespace ModelKit
             }
 
             res.Applied = true; res.MarkedOn = root.gameObject; res.Instance = go;
-            res.Report = $"已换模型：隐藏旧零件 {hidden} 个（保留 {kept} 个：配件/特效）；锚点={(anchor != null ? anchor.name : "根节点")}；"
-                       + $"材质={(one != null ? one.name + "/" + (one.shader != null ? one.shader.name : "?") : "无")}；"
-                       + $"对齐={res.AlignSource}；"
-                       + (moved > 0 ? $"挂点已搬 {moved} 个；" : "")
+            res.Report = $"model swapped: hid {hidden} old parts (kept {kept}: attachments or effects); anchor={(anchor != null ? anchor.name : "root")}; "
+                       + $"material={(one != null ? one.name + "/" + (one.shader != null ? one.shader.name : "?") : "none")}; "
+                       + $"align={res.AlignSource}; "
+                       + (moved > 0 ? $"moved {moved} sockets; " : "")
                        + (res.SlotPoints.Count > 0
-                           ? $"槽位(局部米)={string.Join(" ", System.Linq.Enumerable.Select(res.SlotPoints, kv => kv.Key + "=" + kv.Value.ToString("F3")))}；"
+                           ? $"slots (local m)={string.Join(" ", System.Linq.Enumerable.Select(res.SlotPoints, kv => kv.Key + "=" + kv.Value.ToString("F3")))}; "
                            : "")
-                       + $"我们的包围盒={mesh.bounds.size}；原枪身包围盒={(anchor != null ? anchor.localBounds.size.ToString() : "-")}"
-                       + $"；scale={scale:0.###}" + (scale != 1f ? $"（⭐ 由 config `size` 或 `GunType_*` 档位得出 ✓）" : "（无适配 ✓）");
+                       + $"our bounds={mesh.bounds.size}; original gun bounds={(anchor != null ? anchor.localBounds.size.ToString() : "-")}"
+                       + $" scale={scale:0.###}" + (scale != 1f ? $" (from config `size` or the `GunType_*` size)" : " (no scaling)");
             return res;
         }
     }

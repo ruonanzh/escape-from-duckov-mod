@@ -54,7 +54,7 @@ namespace ModelKit
             /// 于是 下一轮 `Apply` 会去重处理**原物品模板**，于是 走成另一条分支 （实测报过）</summary>
             public GameObject MarkedOn;
 
-            public string AnchorName = "根";
+            public string AnchorName = "root";
             public bool CacheCleared;
 
             /// <summary>true = **什么都没做**（已经换过了 / 本来就换不了），于是 调用方**不得打日志**
@@ -206,7 +206,7 @@ namespace ModelKit
                     if (m == null || m.shader == null) continue;
                     if (!string.Equals(m.shader.name, ItemShaderName, StringComparison.Ordinal)) continue;
                     _borrowed = new Material(m); _borrowed.name = "ModelKit_item_mat";
-                    UnityEngine.Debug.Log($"[ItemModel] 借物品材质 ✓（{ItemShaderName} ✓ 克隆自 {r.gameObject.name} ✓）");
+                    UnityEngine.Debug.Log($"[ItemModel] borrowed the item material ({ItemShaderName}, cloned from {r.gameObject.name})");
                     return _borrowed;
                 }
                 // ② 兑底：直接按名字取 shader（参数用默认）
@@ -214,10 +214,10 @@ namespace ModelKit
                 if (sh2 != null)
                 {
                     _borrowed = new Material(sh2); _borrowed.name = "ModelKit_item_mat";
-                    UnityEngine.Debug.Log($"[ItemModel] 借物品材质 ✓（{ItemShaderName} ✓ Shader.Find 兑底 ✓）");
+                    UnityEngine.Debug.Log($"[ItemModel] borrowed the item material ({ItemShaderName}, from Shader.Find)");
                     return _borrowed;
                 }
-                UnityEngine.Debug.LogWarning($"[ItemModel] ⚠️ 找不到 {ItemShaderName} ✗ → 会用默认材质（**粉色** ✗）");
+                UnityEngine.Debug.LogWarning($"[ItemModel] cannot find {ItemShaderName}; Unity will use the default material (pink)");
             }
             catch { }
             return null;
@@ -326,7 +326,7 @@ namespace ModelKit
 // 否则（含 `UI(5)`）一律 `0` —— `UI` 层会**发白 + 渲染在最前**
 { int wantLayer = mount != null ? mount.gameObject.layer : root.gameObject.layer;
   // 诊断（用户猜想：“是不是 layer 错了 ”）—— 把三个层号都打出来 一看就知道
-  try { UnityEngine.Debug.Log($"[ItemModel] 层：root={root.gameObject.layer}｜mount={(mount != null ? mount.gameObject.layer.ToString() : "null")}｜我们的={(wantLayer == 9 ? 9 : 0)}｜对象={itemName}"); } catch { }
+  try { UnityEngine.Debug.Log($"[ItemModel] layers: root={root.gameObject.layer} | mount={(mount != null ? mount.gameObject.layer.ToString() : "null")} | ours={(wantLayer == 9 ? 9 : 0)} | item={itemName}"); } catch { }
   if (wantLayer != 9) wantLayer = 0; go.layer = wantLayer; }
             go.transform.SetParent(parent, false);
             // 让"我们 mesh 的**包围盒中心**"落到"**被替掉的那个外观**的包围盒中心"
@@ -351,7 +351,7 @@ namespace ModelKit
                     if (r is MeshRenderer || r is SkinnedMeshRenderer) { src = r.sharedMaterial; break; }
                 }
             if (src == null) src = fallbackMat;            // 兜底：调用方给的（例如"世界图形上我们刚挂的那份材质"）
-            if (src == null) UnityEngine.Debug.LogWarning("[ItemModel] ⚠️ 借不到游戏材质 ✗ → 会用 Unity 默认材质（**粉色** ✗）");
+            if (src == null) UnityEngine.Debug.LogWarning("[ItemModel] cannot borrow a game material; Unity will use the default material (pink)");
             var one = src != null ? new Material(src) : null;
             if (one != null)
             {
@@ -372,12 +372,12 @@ namespace ModelKit
         /// —— **已经在场上的副本**不会跟着 prefab 变 （掉落物 / 换场景遗留），于是 逐个补。</para>
         /// <para> 只传**克隆**进来 （调用方筛过）；共享 prefab **绝不得**走这里 </para></summary>
         public static Result ApplyToGraphicClone(ItemGraphicInfo clone, string itemName, int typeID, Mesh mesh, Texture2D texture, float scale = 1f)
-            => clone == null ? new Result { Report = "克隆为空 ✗" } : ApplyToTransform(clone.transform, itemName, typeID, mesh, texture, scale);
+            => clone == null ? new Result { Report = "the clone is null" } : ApplyToTransform(clone.transform, itemName, typeID, mesh, texture, scale);
 
         public static Result ApplyToTransform(Transform root, string itemName, int typeID, Mesh mesh, Texture2D texture, float scale = 1f)
         {
             var res = new Result { TypeID = typeID, ItemName = itemName ?? "" };
-            if (root == null || mesh == null) { res.Report = "外观为空或网格为空 ✗"; return res; }
+            if (root == null || mesh == null) { res.Report = "the graphic is null or the mesh is null"; return res; }
 
             // 幂等：判据是“这**一层自己**下边有没有我们的 mesh” —— **不得看 `Marked`**：
             // 我们 patch 过的 **prefab** 会把 `Marked` **遗传给它的所有实例**
@@ -385,10 +385,10 @@ namespace ModelKit
             // 于是 表现：**它们永远是旧模型 / 热更不生效** （实测报过两次）
             PrunePatched();
             if (_patchedLayers.Contains(root.gameObject))
-            { res.Applied = false; res.NoOp = true; res.Report = "这一层已经换过了 ✓"; return res; }
+            { res.Applied = false; res.NoOp = true; res.Report = "this layer is already swapped"; return res; }
 
             var mount = PickMount(root);
-            res.AnchorName = mount != null ? mount.gameObject.name : "根";
+            res.AnchorName = mount != null ? mount.gameObject.name : "root";
             // 旧外观的中心要在**关掉之前**取 （用 localBounds × 矩阵 禁用后 AABB 可能不更新）
             Vector3 oldCenter = mount != null
                 ? mount.transform.TransformPoint(mount.localBounds.center)
@@ -399,12 +399,12 @@ namespace ModelKit
             _patchedLayers.Add(root.gameObject);                                                // 真正可靠的登记（引用）
             res.MarkedOn = root.gameObject;
             res.Applied = true;
-            res.Report = $"关旧外观 {res.Hidden.Count} 个｜挂到 '{res.AnchorName}'"
+            res.Report = $"hid {res.Hidden.Count} old parts | mounted to '{res.AnchorName}'"
                        + (mount != null
-                          ? $"(世界 {Fmt(mount.transform.position)} 缩放 {Fmt(mount.transform.lossyScale)} 旧外观中心 {Fmt(oldCenter)})"
-                          : "(没有可用的挂点 → 挂根 ✓)")
-                       + $"｜mesh 顶点={mesh.vertexCount} 子网格={mesh.subMeshCount}"
-                       + $"｜材质={(texture != null ? "已换贴图" : "游戏原材质")}";
+                          ? $"(world {Fmt(mount.transform.position)} scale {Fmt(mount.transform.lossyScale)} old center {Fmt(oldCenter)})"
+                          : "(no usable mount; used the root)")
+                       + $"| mesh vertices={mesh.vertexCount} submeshes={mesh.subMeshCount}"
+                       + $"| material={(texture != null ? "texture replaced" : "game material")}";
             return res;
         }
 
@@ -443,24 +443,24 @@ namespace ModelKit
         public static Result ApplyHandheld(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture, float scale = 1f)
         {
             var res = new Result { TypeID = item != null ? item.TypeID : 0, ItemName = item != null ? item.name : "" };
-            if (item == null || mesh == null) { res.Report = "物品或网格为空 ✗"; return res; }
+            if (item == null || mesh == null) { res.Report = "the item is null or the mesh is null"; return res; }
 
             // 已经换过就不重复造（我们造的 agent 名字带前缀）
             try
             {
                 var cur = item.AgentUtilities != null ? item.AgentUtilities.GetPrefab("Handheld") : null;
                 if (cur != null && cur.gameObject != null && cur.gameObject.name.StartsWith("ModelKit_"))
-                { res.Applied = false; res.NoOp = true; res.Report = "手持已经换过了 ✓"; return res; }
+                { res.Applied = false; res.NoOp = true; res.Report = "the handheld is already swapped"; return res; }
             }
             catch { }
 
             var tmpl = HandheldTemplate(item);
             if (tmpl == null || tmpl.gameObject == null)
-            { res.Report = "找不到手持 agent 模板 ✗（这件物品不能拿在手里 ✓）"; return res; }
+            { res.Report = "no handheld agent template (this item cannot be held)"; return res; }
 
             ItemStatsSystem.ItemAgent agent;
             try { agent = UnityEngine.Object.Instantiate(tmpl); }
-            catch (Exception ex) { res.Report = "克隆手持模板失败 ✗：" + ex.Message; return res; }
+            catch (Exception ex) { res.Report = "cannot clone the handheld template: " + ex.Message; return res; }
 
             agent.gameObject.name = "ModelKit_Hand_" + (string.IsNullOrEmpty(item.name) ? "item" : item.name);
             UnityEngine.Object.DontDestroyOnLoad(agent.gameObject);        // 模板要活着 （见上面注释）
@@ -496,15 +496,15 @@ namespace ModelKit
             {
                 var au = item.AgentUtilities;
                 if (au == null || !GameApi.SetAgentPrefab(au, "Handheld", agent))
-                { res.Report = "写回 agents[Handheld] 失败 ✗"; return res; }
+                { res.Report = "cannot write back agents[Handheld]"; return res; }
                 res.CacheCleared = ClearAgentCache(item);
             }
-            catch (Exception ex) { res.Report = "写回手持 agent 失败 ✗：" + ex.Message; return res; }
+            catch (Exception ex) { res.Report = "cannot write back the handheld agent: " + ex.Message; return res; }
 
             res.Applied = true;
-            res.AnchorName = "手持 agent";
-            res.Report = $"（拿在手里那条 ✓）清掉模板自带视觉 {kids.Count} 个｜挂上我们的 mesh 顶点={mesh.vertexCount}"
-                       + $"｜清缓存={(res.CacheCleared ? "是" : "否")}";
+            res.AnchorName = "handheld agent";
+            res.Report = $"(the handheld path) removed {kids.Count} template visuals | mounted our mesh, vertices={mesh.vertexCount}"
+                       + $" | cache cleared={(res.CacheCleared ? "yes" : "no")}";
             return res;
         }
 
@@ -609,7 +609,7 @@ namespace ModelKit
                                                      bool alsoHandheld = false)
         {
             var res = new Result { TypeID = typeID };
-            if (mesh == null) { res.Report = "网格为空 ✗"; return res; }
+            if (mesh == null) { res.Report = "the mesh is null"; return res; }
             if (_dynDone.Contains(typeID))
             {
                 // 注册只做一次 （断自增循环）—— 但**实例补写每次都要做**
@@ -621,21 +621,21 @@ namespace ModelKit
                         alsoFixThisInstance.useSpriteForPickup = false;
                         ClearAgentCache(alsoFixThisInstance);
                         res.Applied = true;
-                        res.Report = "已注册过 ✓（这次只补写当前实例 ✓ + 关掉它的 useSpriteForPickup ✓）";
+                        res.Report = "already registered; wrote the current instance and cleared its useSpriteForPickup";
                         return res;
                     }
                 }
-                res.NoOp = true; res.Report = "已经注册过动态条目 ✓"; return res;
+                res.NoOp = true; res.Report = "the dynamic entry is already registered"; return res;
             }
 
             ItemStatsSystem.Item src = null;
             try { src = ItemStatsSystem.ItemAssetsCollection.GetPrefab(typeID); }
-            catch (Exception ex) { res.Report = "取原物品失败 ✗：" + ex.Message; return res; }
-            if (src == null) { res.Report = $"typeID={typeID} 找不到原物品 ✗"; return res; }
+            catch (Exception ex) { res.Report = "cannot get the source item: " + ex.Message; return res; }
+            if (src == null) { res.Report = $"no source item for typeID={typeID}"; return res; }
 
             ItemStatsSystem.Item item;
             try { item = UnityEngine.Object.Instantiate(src); }                  // ① 克隆物品 （完整拷贝）
-            catch (Exception ex) { res.Report = "克隆物品失败 ✗：" + ex.Message; return res; }
+            catch (Exception ex) { res.Report = "cannot clone the item: " + ex.Message; return res; }
 
             item.gameObject.name = "ModelKit_item_" + src.name;
             UnityEngine.Object.DontDestroyOnLoad(item.gameObject);                // ② 它不在场景里 工坊也这么做
@@ -651,7 +651,7 @@ namespace ModelKit
             else
             {
                 g = MakeGraphicForItem(item, mesh, texture, res);                 // 造一个
-                if (g == null) { res.Report = "造图形失败 ✗"; return res; }
+                if (g == null) { res.Report = "cannot make the graphic"; return res; }
             }
 
             // **绝不得把图形挂成物品的子物体** （实测 用户一眼指出）
@@ -675,7 +675,7 @@ namespace ModelKit
             if (g.gameObject.GetComponent<Marked>() == null) g.gameObject.AddComponent<Marked>();
             res.MarkedOn = g.gameObject;
 
-            if (!WriteGraphic(item, g)) { res.Report = "写回克隆的 itemGraphic 失败 ✗"; return res; }   // ⑤
+            if (!WriteGraphic(item, g)) { res.Report = "cannot write back the cloned itemGraphic"; return res; }   // ⑤
             item.useSpriteForPickup = false;                                      // ⑥ 用模型不用精灵
 
             // ⑦ **也写到"当前这颗实例"上** —— 动态条目只影响"以后新实例化的"，
@@ -697,8 +697,8 @@ namespace ModelKit
 
             bool ok = false;
             try { ok = ItemStatsSystem.ItemAssetsCollection.AddDynamicEntry(item); }   // ⑦ **注册动态条目**
-            catch (Exception ex) { res.Report = "注册动态条目抛错 ✗：" + ex.Message; return res; }
-            if (!ok) { res.Report = "AddDynamicEntry 返回 false ✗"; return res; }
+            catch (Exception ex) { res.Report = "AddDynamicEntry threw: " + ex.Message; return res; }
+            if (!ok) { res.Report = "AddDynamicEntry returned false"; return res; }
 
             _dynDone.Add(typeID);                                  // 记下 只注册一次
             _dynGraphic[typeID] = g;                               // 存起来 后续实例补写要用它
@@ -714,12 +714,12 @@ namespace ModelKit
                 catch { /* 写不上不影响世界那条 */ }
             }
             res.CacheCleared = ClearAgentCache(item);
-            res.AnchorName = "动态条目（克隆物品）";
+            res.AnchorName = "dynamic entry (cloned item)";
             res.Applied = true;
-            res.Report = "没有 ItemGraphic → **克隆物品预制体 + 注册动态条目**（遮蔽原物品 ✓ 关卡重建冲不掉 ✓）"
-                       + $"｜当前实例也补写了={(instanceFixed ? "是 ✓" : "否 ✗")}"
-                       + $"｜关旧外观 {res.Hidden.Count} 个｜mesh 顶点={mesh.vertexCount}"
-                       + $"｜清缓存={(res.CacheCleared ? "是" : "否")}";
+            res.Report = "no ItemGraphic: cloned the item prefab and registered a dynamic entry (it overrides the original and survives a level rebuild)"
+                       + $" | current instance written={(instanceFixed ? "yes" : "no")}"
+                       + $" | hid {res.Hidden.Count} old parts | mesh vertices={mesh.vertexCount}"
+                       + $" | cache cleared={(res.CacheCleared ? "yes" : "no")}";
             return res;
         }
 
@@ -730,7 +730,7 @@ namespace ModelKit
         public static Result Apply(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture, bool handheld = false, float size = 0f)
         {
             var res = new Result { TypeID = item != null ? item.TypeID : 0, ItemName = item != null ? item.name : "" };
-            if (item == null) { res.Report = "物品为空 ✗"; return res; }
+            if (item == null) { res.Report = "the item is null"; return res; }
             // 适配系数（**只武器有**：按 `GunType_*` tag；config 的 `size` 可覆盖）
             float scale = ModelSize.Factor(mesh, ModelSize.For(item.TypeID, size > 0f ? (float?)size : null));
 
@@ -771,9 +771,9 @@ namespace ModelKit
                 res.Instance = ri.Instance;
                 res.AnchorName = ri.AnchorName;
                 res.Hidden.AddRange(ri.Hidden);
-                res.Report = "（只改实例 ✓）" + ri.Report;
+                res.Report = "(instance only) " + ri.Report;
             }
-            else res.Report = "没有 ActiveAgent ✗（没拿在手里/没装备 ✓）—— 稍后由扫描补 ✓";
+            else res.Report = "no ActiveAgent (not held and not equipped); the scan will fill it later";
 
             // ④ 清缓存，于是 游戏下次建实体时会读**改过的 prefab**
             if (!res.CacheCleared) res.CacheCleared = ClearAgentCache(item);
@@ -784,13 +784,13 @@ namespace ModelKit
         public static Result ApplyToInstance(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture, float scale = 1f)
         {
             var res = new Result { TypeID = item != null ? item.TypeID : 0, ItemName = item != null ? item.name : "" };
-            if (item == null || mesh == null) { res.Report = "物品或网格为空 ✗"; return res; }
+            if (item == null || mesh == null) { res.Report = "the item is null or the mesh is null"; return res; }
             var active = item.ActiveAgent;
-            if (active == null) { res.Report = "没有 ActiveAgent ✗（没拿在手里/没装备 ✓）"; return res; }
+            if (active == null) { res.Report = "no ActiveAgent (not held and not equipped)"; return res; }
 
             // 已经换过就不重复挂
             foreach (Transform child in active.transform)
-                if (child.name.StartsWith("ModelKit_")) { res.Report = "这个实例已经换过了 ✓"; return res; }
+                if (child.name.StartsWith("ModelKit_")) { res.Report = "this instance is already swapped"; return res; }
 
             var r = ApplyToTransform(active.transform, item.name, item.TypeID, mesh, texture, scale);
             r.CacheCleared = false;
@@ -818,7 +818,7 @@ namespace ModelKit
         {
             var sb = new System.Text.StringBuilder();
             for (int i = 0; i < 6 && t != null; i++, t = t.parent)
-            { if (i > 0) sb.Append(" ← "); sb.Append(t.name); }
+            { if (i > 0) sb.Append(" <- "); sb.Append(t.name); }
             return sb.ToString();
         }
 
@@ -837,21 +837,21 @@ namespace ModelKit
                     if (!_dumpSeen.Add(go.GetInstanceID())) continue;      // 只打"新出现"的 不刷屏
                     var t = go.transform;
                     var sb = new System.Text.StringBuilder();
-                    sb.Append($"[ItemModel][诊断] {go.name}｜层={go.layer}｜激活={go.activeInHierarchy}｜场景='{go.scene.name}'")
-                      .Append($"｜世界位置={t.position}｜世界缩放={t.lossyScale}｜父='{(t.parent != null ? t.parent.name : "null")}'")
-                      .Append($"｜子物体={t.childCount}")
+                    sb.Append($"[ItemModel][diag] {go.name} | layer={go.layer} | active={go.activeInHierarchy} | scene='{go.scene.name}'")
+                      .Append($" | world pos={t.position} | world scale={t.lossyScale} | parent='{(t.parent != null ? t.parent.name : "null")}'")
+                      .Append($" | children={t.childCount}")
                       // 祖先链 （区分"拿在手里/穿在身上"和"掉在地上"用 一次就能定案）
-                      .Append($"｜祖先链={AncestorChain(t)}")
+                      .Append($" | ancestors={AncestorChain(t)}")
                       // 关键指标：**同一个父级下**我们挂的 mesh 有几个
                       // >1 就是"旧实例没销毁 "（视觉上大的盖小的 = 改小看不见）
-                      .Append($"｜同门兄弟数={SiblingCount(t)}");
+                      .Append($" | siblings={SiblingCount(t)}");
                     foreach (var r in go.GetComponentsInChildren<Renderer>(true))
-                        sb.Append($"｜{r.GetType().Name}'{r.name}':层={r.gameObject.layer},开={r.enabled},"
-                                + $"材质='{(r.sharedMaterial != null ? r.sharedMaterial.name : "null")}',世界包围盒={r.bounds.size}");
+                        sb.Append($" | {r.GetType().Name}'{r.name}': layer={r.gameObject.layer}, enabled={r.enabled}, "
+                                + $"material='{(r.sharedMaterial != null ? r.sharedMaterial.name : "null")}', world bounds={r.bounds.size}");
                     Debug.Log(sb.ToString());
                 }
             }
-            catch (Exception ex) { Debug.LogWarning("[ItemModel] 诊断抛错：" + ex.Message); }
+            catch (Exception ex) { Debug.LogWarning("[ItemModel] diagnostic failed: " + ex.Message); }
         }
     }
 }
