@@ -50,7 +50,7 @@ export default function (pi: ExtensionAPI) {
       const repoRoot = ctx.cwd;
       if (!params.modDir?.trim())
         throw new Error(
-          "INVALID_MOD_DIR: Provide an existing mod directory, e.g. your_mods/MyMod.",
+          "INVALID_MOD_DIR: Provide an existing mod directory, for example your_mods/MyMod.",
         );
       const modDir = resolve(repoRoot, params.modDir);
       const errors: string[] = [];
@@ -60,7 +60,7 @@ export default function (pi: ExtensionAPI) {
       // 0. mod 目录存在（不存在 = 参数错误/前置条件不满足，throw 标记 isError）
       if (!statSync(modDir, { throwIfNoEntry: false })?.isDirectory()) {
         throw new Error(
-          `INVALID_MOD_DIR: ${modDir} is not a directory. Check the session's bound path or ask the player to restore it; do not create a replacement merely to validate.`,
+          `INVALID_MOD_DIR: ${modDir} is not a directory. Check the session's bound path, or ask the player to restore it. Do not create a replacement only to validate.`,
         );
       }
 
@@ -123,11 +123,11 @@ export default function (pi: ExtensionAPI) {
           : findDotnet();
       if (!dotnet) {
         warnings.push(
-           "dotnet not found - compile check skipped. Run check_runtime (SDK only); use install_runtime only for SDK installation instructions.",
+           "dotnet not found - compile check skipped. Run check_runtime (SDK only). Use install_runtime only for SDK installation instructions.",
         );
       } else if (!state.gameDir) {
         warnings.push(
-           "game dir not found - compile check skipped. Run try_set_game_dir to discover and record the game directory (or set_game_dir with an explicit path); SDK installation cannot fix game location.",
+           "game directory not found - compile check skipped. Run try_set_game_dir to discover and record the game directory (or set_game_dir with an explicit path). SDK installation cannot fix the game location.",
         );
       } else if (csproj && staticOk) {
         try {
@@ -154,7 +154,7 @@ export default function (pi: ExtensionAPI) {
       const artifactPresent = dllCandidates.some((p) => existsSync(p));
       if (compilation === "passed" && !artifactPresent) {
         errors.push(
-          `missing ${modName}.dll after build; check AssemblyName and the output directory`,
+          `missing ${modName}.dll after build. Check AssemblyName and the output directory.`,
         );
       }
 
@@ -188,7 +188,7 @@ export default function (pi: ExtensionAPI) {
       const ok = errors.length === 0 && compilation === "passed";
       const status = ok ? "passed" : errors.length ? "failed" : "partial";
       const nextAction = ok
-        ? "Report validation and compilation passed; in-game loading and behavior still require testing."
+        ? "Report that validation and compilation passed. In-game loading and behavior still require testing."
         : errors.length
           ? "Inspect the reported errors. Fix only in an authorized mod-development session, then validate again."
            : "Resolve the skipped compilation prerequisites first (check_runtime for the .NET SDK, try_set_game_dir for the game directory), then re-run validate_mod. An existing DLL is not proof of a build in this run.";
@@ -198,7 +198,7 @@ export default function (pi: ExtensionAPI) {
       ];
       if (ok)
         lines.push(
-          `PASS: ${basename(modDir)} is valid (compiled; not tested in-game).`,
+          `PASS: ${basename(modDir)} is valid (compiled, not tested in-game).`,
         );
       else if (status === "partial")
         lines.push(

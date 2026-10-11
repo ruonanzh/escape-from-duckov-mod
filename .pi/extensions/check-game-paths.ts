@@ -155,7 +155,7 @@ export default function (pi: ExtensionAPI) {
         // 契约声明有创意工坊、但还没记录 workshopDir 时也只是警告，而且仅在必填项全对时才提
         if (workshop === true && failed.length === 0 && !remembered(state.workshopDir)) {
           lines.push(
-            "WARN: workshopDir (not recorded) - this game has a Workshop; recording it lets you read existing Workshop content for reference.",
+            "WARN: workshopDir (not recorded). This game has a Workshop. When you record this path, you can read existing Workshop content for reference.",
           );
           lines.push("  NEXT: run try_set_game_dir (no arguments) - the Workshop directory is derived together with the game directory.");
           warnings.push("workshopDir");
@@ -165,7 +165,7 @@ export default function (pi: ExtensionAPI) {
       const ok = failed.length === 0;
       if (!ok) {
         lines.push(
-          `NOTE: nothing was changed (this tool is read-only). State lives only in this workspace's ${statePath(cwd)}; to record the paths, run try_set_game_dir (no arguments); only ask the player if discovery fails.`,
+          `NOTE: nothing was changed (this tool is read-only). State lives only in this workspace's ${statePath(cwd)}. To record the paths, run try_set_game_dir (no arguments). Ask the player only if discovery fails.`,
         );
       }
 

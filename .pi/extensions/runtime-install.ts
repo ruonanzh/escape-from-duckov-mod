@@ -19,7 +19,7 @@ export default function (pi: ExtensionAPI) {
     async execute(_toolCallId, _params, _signal, _onUpdate, _ctx) {
       const dotnet = probeDotnet();
       if (dotnet.found && (dotnet.major ?? 0) >= 8) {
-        return { content: [{ type: "text", text: `SKIP: dotnet SDK ${dotnet.version} already present; no installation performed.` }], details: { ok: true } };
+        return { content: [{ type: "text", text: `SKIP: dotnet SDK ${dotnet.version} already present. The tool performed no installation.` }], details: { ok: true } };
       }
 
       const lines = ["INSTRUCTIONS PROVIDED: No installation has been performed.", "Install .NET SDK 8.0 - user-level install (no admin/UAC, recommended):"];
@@ -45,7 +45,7 @@ export default function (pi: ExtensionAPI) {
       }
       lines.push(
         "",
-        "Note: we only guide the install; uninstalling is up to you",
+        "Note: this tool only guides the install. Uninstalling is your choice.",
         "(delete ~/.dotnet, or `brew uninstall --cask dotnet-sdk` / `winget uninstall Microsoft.DotNet.SDK.8`).",
         "NEXT: after installing, call check_runtime again.",
       );

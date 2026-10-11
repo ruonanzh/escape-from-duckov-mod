@@ -62,7 +62,7 @@ export default function (pi: ExtensionAPI) {
           : "modInstallDir (none - mod-repo.json declares no mod install path for this platform)",
         r.workshopDir
           ? `workshopDir (derived, read-only reference) ${r.workshopDir}`
-          : "workshopDir (not found; optional)",
+          : "workshopDir (not found, optional)",
       ];
       for (const w of r.warnings) lines.push(`WARN: ${w}`);
       return {

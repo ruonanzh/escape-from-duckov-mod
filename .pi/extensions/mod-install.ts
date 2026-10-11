@@ -219,7 +219,7 @@ export default function (pi: ExtensionAPI) {
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       if (!params.modDir?.trim())
         throw new Error(
-          "INVALID_MOD_DIR: Provide an existing mod directory, e.g. your_mods/MyMod.",
+          "INVALID_MOD_DIR: Provide an existing mod directory, for example your_mods/MyMod.",
         );
       const modDir = resolve(ctx.cwd, params.modDir);
       if (!statSync(modDir, { throwIfNoEntry: false })?.isDirectory()) {
@@ -249,7 +249,7 @@ export default function (pi: ExtensionAPI) {
           content: [
             {
               type: "text",
-              text: "FAIL: install target not found (no usable modInstallDir in .gamer-agent.local.json).\nNEXT: run try_set_game_dir first; if it cannot find the game, ask the player for the installed game directory.",
+              text: "FAIL: install target not found (no usable modInstallDir in .gamer-agent.local.json).\nNEXT: run try_set_game_dir first. If it cannot find the game, ask the player for the installed game directory.",
             },
           ],
           details: { ok: false, reason: "TARGET_NOT_FOUND" },
@@ -270,7 +270,7 @@ export default function (pi: ExtensionAPI) {
                 (targetStat
                   ? "exists but is not a directory."
                   : "is not an absolute path.") +
-                "\nNEXT: run try_set_game_dir (no arguments) to re-derive the game's Mods directory; if it still looks wrong, ask the player where the game is installed.",
+                "\nNEXT: run try_set_game_dir (no arguments) to re-derive the game's Mods directory. If it still looks wrong, ask the player where the game is installed.",
             },
           ],
           details: { ok: false, reason: "TARGET_INVALID" },
@@ -335,7 +335,7 @@ export default function (pi: ExtensionAPI) {
           content: [
             {
               type: "text",
-              text: `FAIL: ${identity.name}.dll not found in ${modDir} (looked in the mod folder and under bin/).\nNEXT: run validate_mod to compile the mod, then install again.`,
+              text: `FAIL: ${identity.name}.dll not found in ${modDir} (looked in the mod directory and under bin/).\nNEXT: run validate_mod to compile the mod, then install again.`,
             },
           ],
           details: { ok: false, reason: "MISSING_DLL", modName: identity.name },
@@ -445,20 +445,20 @@ export default function (pi: ExtensionAPI) {
       }
       if (mismatched) {
         notes.push(
-          `\nNOTE: the installed folder is named ${modName} (the your_mods directory name), while the mod declares name ${identity.name} - that difference is fine: the game loads <name>.dll by the declared name, not by the folder name.`,
+          `\nNOTE: the installed directory is named ${modName} (the your_mods directory name), and the mod declares name ${identity.name}. That difference is fine. The game loads <name>.dll by the declared name, not by the directory name.`,
         );
       }
       if (duplicateDir) {
         notes.push(
-          `\nNOTE: the same mod (name ${identity.name}) is also installed as ${duplicateDir}; this tool did not touch it - tell the player which one to enable, and remove the other manually if it is stale.`,
+          `\nNOTE: the same mod (name ${identity.name}) is also installed as ${duplicateDir}. This tool did not touch it. Tell the player which one to enable. If the other one is stale, the player must remove it.`,
         );
       }
       const extraNotes = notes.join("");
       const note = renamed
         ? `\nNOTE: ${identity.name} was already taken by ${occupiedBy ? `another mod (${occupiedBy})` : "content this tool did not install"}, ` +
-          `so it was installed as ${basename(installDir)} instead; the existing folder was left untouched.` +
+          `so it was installed as ${basename(installDir)} instead. The existing directory was left untouched.` +
           `\nNEXT: tell the player it installs as ${basename(installDir)} (its in-game name is still ${identity.name}), then let them launch the game.`
-        : `\nNEXT: ask the player to launch the game and confirm the mod loads; restart the game if it was already running.`;
+        : `\nNEXT: ask the player to launch the game and confirm the mod loads. Restart the game if it was already running.`;
 
       return {
         content: [
