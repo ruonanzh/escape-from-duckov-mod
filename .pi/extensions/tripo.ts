@@ -191,12 +191,12 @@ export default function (pi: ExtensionAPI) {
     name: "generate_image",
     label: "Generate Image (Tripo)",
     description:
-      "Make one square PNG from a 3D model, a Tripo task id, a reference picture, or a description alone. With prompt a new image is generated (a few credits); with model= or taskId= given and no prompt, you get that model's own render for free. Saves the file to out= and returns PASS with the path. Needs the Tripo API key (~/.gamer-agent-pi/api-keys.json, key 'tripo').",
+      "Make one square PNG from a 3D model, a Tripo task id, a reference picture, or a description alone. With prompt, the tool generates a new image and spends a few credits. With model= or taskId= given and no prompt, you get that model's own render for free. The tool saves the file to out= and returns PASS with the path. It needs the Tripo API key in ~/.gamer-agent-pi/api-keys.json, under the key 'tripo'.",
     promptSnippet: "Make a square PNG (preview or icon) from a model or a reference picture",
     promptGuidelines: [
-      "Use generate_image when a capability needs a 2D image file: it saves a square PNG to out= and returns PASS with the path.",
-      "Use generate_image with prompt= to get a new image (a few credits) drawn from the description, a reference picture, or a model; omit prompt= and pass model= or taskId= to get the model's own render for free (that render is the model's raw view, not a composed icon).",
-      "Use generate_image with styleRef= only when a picture of the game's own assets is already at hand (the user gave a screenshot, or a file already lives in the workspace); do NOT spend turns hunting for one. What to write in prompt= and where the file must go are described in the capability skill.",
+      "Use generate_image when a capability needs a 2D image file. It saves a square PNG to out= and returns PASS with the path.",
+      "Use generate_image with prompt= to get a new image drawn from the description, a reference picture, or a model. This spends a few credits. Omit prompt= and pass model= or taskId= to get the model's own render for free. That render is the model's raw view, not a composed icon.",
+      "Use generate_image with styleRef= only when a picture of the game's own assets is already at hand. The player gave a screenshot, or a file already lives in the workspace. Do not spend turns searching for one. The capability skill describes what to write in prompt= and where the file must go.",
     ],
     parameters: Type.Object({
       model: Type.Optional(Type.String({ description: "A .glb to work from (its own render, or the base for a styled image)." })),
@@ -360,12 +360,12 @@ export default function (pi: ExtensionAPI) {
     name: "generate_model",
     label: "Generate Model (Tripo)",
     description:
-      "Generate a 3D model (GLB) with Tripo from a text prompt or a reference picture, saved to out=. Downloads it immediately (the remote URL expires in 5 minutes) and exports it in the game's orientation convention (front = +Z). Costs credits (~40 for a textured low-poly model plus ~10 for the format conversion) - do not call it in a loop. Needs the Tripo API key (~/.gamer-agent-pi/api-keys.json, key 'tripo').",
+      "Generate a 3D model (GLB) with Tripo from a text prompt or a reference picture, and save it to out=. The tool downloads the model immediately, because the remote URL expires in 5 minutes. It exports the model in the game's orientation convention (front = +Z). This costs credits: about 40 for a textured low-poly model, plus about 10 for the format conversion. Do not call it in a loop. It needs the Tripo API key in ~/.gamer-agent-pi/api-keys.json, under the key 'tripo'.",
     promptSnippet: "Generate a 3D model (GLB) with Tripo from a prompt or image",
     promptGuidelines: [
-      "Use generate_model only when no model file exists yet - if the user already has a .glb, use that file.",
-      "Use generate_model with image= when there is a picture to build from (far more accurate than text alone), or with prompt= when there is only a description; faceLimit= caps the triangles (default 3000).",
-      "Do not call generate_model repeatedly for a better result: each call costs credits and the API rate-limits short bursts.",
+      "Use generate_model only when no model file exists yet. If the player already has a .glb, use that file.",
+      "Use generate_model with image= when a picture is available to build from. An image is far more accurate than text alone. Use prompt= when there is only a description. faceLimit= caps the triangles (default 3000).",
+      "Do not call generate_model again for a better result. Each call costs credits, and the API rate-limits short bursts.",
     ],
     parameters: Type.Object({
       action: Type.Union(

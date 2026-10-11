@@ -27,13 +27,13 @@ export default function (pi: ExtensionAPI) {
     name: "inspect_game_api",
     label: "Inspect Game API",
     description:
-      "Read the game's managed DLLs when docs/api is not enough: find types/members, see private members, decompile to C#, dump IL, or scan string literals. Actions: search / members / decompile / il / strings. To read them it builds its own vendored C# probe under tools/ (build output is gitignored); it never changes the game, the mod, or workspace sources.",
-    promptSnippet: "Inspect game managed DLLs (members/C#/IL) when docs/api is not enough",
+      "Read the game's managed DLLs when docs/api is not enough. Find types or members, see private members, decompile to C#, dump IL, or scan string literals. The actions are search, members, decompile, il, and strings. The tool builds its own vendored C# probe under tools/. The build output is gitignored. It never changes the game, the mod, or workspace sources.",
+    promptSnippet: "Inspect game managed DLLs (members, C#, IL) when docs/api is not enough",
     promptGuidelines: [
-      "Use inspect_game_api when docs/api does not answer it: private members, the real implementation/behavior, or to confirm the current game version.",
-      "inspect_game_api is read-only (it reads the DLL files, it does not run the game code). start with action=search to find the type, then members/decompile/il on it.",
-      "Prefer docs/api and docs/data first; reach for inspect_game_api when they are insufficient or possibly stale.",
-      "inspect_game_api search and strings cap at 500 rows per call. Narrow the target, or page with offset (500, 1000, ...) - paging is the fallback, not the default.",
+      "Use inspect_game_api when docs/api does not answer the question. Use it for private members, the real implementation or behavior, or to confirm the current game version.",
+      "inspect_game_api is read-only. It reads the DLL files, and it does not run the game code. Start with action=search to find the type. Then use members, decompile, or il on it.",
+      "Prefer docs/api and docs/data first. Use inspect_game_api when they are insufficient or possibly stale.",
+      "inspect_game_api search and strings cap at 500 rows per call. Narrow the target, or page with offset. Increase the offset by 500 each time. Paging is the fallback, not the default.",
     ],
     parameters: Type.Object({
       action: Type.Union(
