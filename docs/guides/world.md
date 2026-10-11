@@ -187,8 +187,8 @@ field=["tags.entries[].value.#name","tags.entries[].weight","activeChance","inve
 
 | 字段 | 我们（原始数据）| wiki（加工后）|
 |---|---|---|
-| `Quest.questGiverID` | **数字 id**（1/2/3…）| NPC 名（`Jeff`/`Alex`…）|
-| `CharacterRandomPreset.team` | **数字**（0/1/3…）| 名（`scav`/`usec`/`lab`…）|
+| `Quest.questGiverID` | **数字 id**（例如 1、2、3）| NPC 名（例如 `Jeff`、`Alex`）|
+| `CharacterRandomPreset.team` | **数字**（例如 0、1、3）| 名（例如 `scav`、`usec`、`lab`）|
 | `Buff.hide=1` / 隐藏项 | **照实列出**（Buff 115）| **过滤掉**（只显 89）|
 | `CharacterRandomPreset.isBoss` | **原始字段**（61 个为 1）| 有 12 个标了 false（与数据不符）|
 

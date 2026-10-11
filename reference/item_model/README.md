@@ -100,7 +100,7 @@
 注册动态条目后要**跳过自己的克隆**（`ModelKit_item_*`），且同一 typeID **只注册一次**。
      否则「克隆，又被扫到，再克隆」，会**无限增长卡死**（实测）。
 不得每帧扫全场景物品（`FindObjectsOfTypeAll<Item>` 很贵）。要节流。
-造出来的 `ItemGraphicInfo` 字段是 null。游戏 `Setup` 会空引用，图形用不了。要补齐 sockets、groundPoints 等。
+造出来的 `ItemGraphicInfo` 字段是 null。游戏 `Setup` 会空引用，图形用不了。要补齐 sockets 与 groundPoints 字段。
 借不到游戏材质时 Unity 会用默认材质，也就是**粉色**。借「任意一个游戏网格材质」。
 ```
 

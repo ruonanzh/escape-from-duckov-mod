@@ -87,4 +87,4 @@ ev.start();
 
 ## 6. 资源 API 签名
 
-`docs/api/unity-resources.md` 含 `Resources`、`AssetBundle`、`Texture2D`、`Sprite`、`Material`、`Mesh`、`AudioSource`、`AudioClip`、`FMODUnity.*` 等 23 个类型的完整签名（DeclaredOnly）。
+`docs/api/unity-resources.md` 含 23 个类型的完整签名（DeclaredOnly）：`Resources`、`AssetBundle`、`Texture2D`、`Sprite`、`Material`、`Mesh`、`AudioSource`、`AudioClip`、`FMODUnity.*`。

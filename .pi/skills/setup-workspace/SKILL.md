@@ -17,7 +17,7 @@ description: Escape From Duckov 的环境与路径准备。定位游戏目录、
 | `gameDir` | 游戏安装目录（Steam 库里的 `steamapps/common/Escape from Duckov`）| 玩家给的，或 `try_set_game_dir` 自动发现 | 编译引用 DLL、install_mod 拼安装目标 |
 | `workshopDir` | Steam 创意工坊内容目录（`steamapps/workshop/content/3167020`）| **由 `gameDir` 自动派生**（可以省略）| **只读参考**：读工坊里现成 mod 的脚本或资源。**不参与安装** |
 | `modInstallDir` | mod 安装目标（游戏目录内的 macOS 路径 `Duckov.app/Contents/Mods`，或 Windows 路径 `Duckov_Data/Mods`）| **由 `gameDir` 自动派生**（可以省略）| install_mod 复制产物到此 |
-| `managedDir` | 编译引用托管程序集（`TeamSoda.*.dll` 等）的目录 | **由 `gameDir` + `mod-repo.json` 现算**（工具**不信任**文件里的旧值）| 编译（`validate_mod`）|
+| `managedDir` | 编译引用托管程序集（例如 `TeamSoda.*.dll`）的目录 | **由 `gameDir` + `mod-repo.json` 现算**（工具**不信任**文件里的旧值）| 编译（`validate_mod`）|
 | `runtime` | 运行时缓存：`dotnet` 可执行文件路径与版本 | `check_runtime` 探测后写入 | 编译时定位 dotnet |
 
 **两条派生路径可以不管**：把 `gameDir` 弄对（`try_set_game_dir` 或 `set_game_dir`），`workshopDir` 与 `modInstallDir` 会在**当前平台**上一起算好并记录。
