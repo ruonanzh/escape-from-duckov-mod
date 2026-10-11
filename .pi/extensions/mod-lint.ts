@@ -35,9 +35,9 @@ export default function (pi: ExtensionAPI) {
     description:
       "Validate info.ini and the C# source files in an existing mod directory. A relative modDir uses the workspace root. When the SDK and the game paths are ready, it runs dotnet build. The build may restore dependencies and write build output. It does not edit source and does not test gameplay. The output text uses PASS, FAIL, or PARTIAL, and a NEXT line. Skipped compilation is PARTIAL, never a full PASS.",
     promptSnippet:
-      "Check an existing C# mod and compile it when runtime prerequisites are ready",
+      "Validate an existing C# mod and compile it when runtime prerequisites are ready",
     promptGuidelines: [
-      "Use validate_mod for changed code or requested validation. It can compile, so do not repeat the same dotnet build. Check the PARTIAL status in the output text. Resolve the skipped-compilation prerequisites before you claim success.",
+      "Use validate_mod for changed code or requested validation. It can compile, so do not repeat the same dotnet build. Read the PARTIAL status in the output text. Resolve the skipped-compilation prerequisites before you claim success.",
     ],
     parameters: Type.Object({
       modDir: Type.String({

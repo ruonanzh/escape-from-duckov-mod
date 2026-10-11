@@ -20,11 +20,11 @@ export default function (pi: ExtensionAPI) {
     name: "try_set_game_dir",
     label: "Ensure Game Directory",
     description:
-      "Makes sure the game directory is recorded and still valid for this platform. It also checks the mod install directory and the Steam Workshop directory derived from it. This tool takes no arguments. It confirms the recorded paths, or locates the game and records the paths.",
+      "Makes sure the game directory is recorded and still valid for this platform. It also checks the mod install directory and the Steam Workshop directory derived from it. This tool takes no arguments. It checks the recorded paths, or locates the game and records the paths.",
     promptSnippet: "Ensure the game directory is recorded (locates it when needed)",
     promptGuidelines: [
-      "Use try_set_game_dir when a task needs the game location, such as compiling or installing, and you are not sure the paths are recorded or still valid.",
-      "try_set_game_dir takes no arguments. It confirms the recorded paths or locates and records them. You do not have to find the path yourself.",
+      "Use try_set_game_dir when a task needs the game location, such as compiling or installing. Use it when you are not sure the paths are recorded or still valid.",
+      "try_set_game_dir takes no arguments. It checks the recorded paths or locates and records them. You do not have to find the path yourself.",
       "try_set_game_dir only records paths in .gamer-agent.local.json. It never creates or changes anything inside the game.",
     ],
     parameters: Type.Object({}),

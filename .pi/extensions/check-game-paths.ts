@@ -31,19 +31,19 @@ export default function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "check_game_paths",
     description:
-      "Verify three directories: the game directory, the Steam Workshop content directory, and the mod install directory. This tool is read-only. It never writes .gamer-agent.local.json, never scans Steam, and never creates a directory. Pass any of gameDir, workshopDir, or modInstallDir to verify those paths. Omit all three to verify the paths in .gamer-agent.local.json. Use it when the player gives you a path, or to re-check a remembered path. Use try_set_game_dir when the location is unknown.",
-    promptSnippet: "Verify game and mod paths without scanning or writing",
+      "Check three directories: the game directory, the Steam Workshop content directory, and the mod install directory. This tool is read-only. It never writes .gamer-agent.local.json, never scans Steam, and never creates a directory. Pass any of gameDir, workshopDir, or modInstallDir to check those paths. Omit all three to check the paths in .gamer-agent.local.json. Use it when the player gives you a path, or to re-check a remembered path. Use try_set_game_dir when the location is unknown.",
+    promptSnippet: "Check game and mod paths without scanning or writing",
     promptGuidelines: [
-      "Use check_game_paths when the player gives you a path, or to confirm a remembered path. It verifies a path without scanning Steam and without writing state.",
-      "check_game_paths never writes .gamer-agent.local.json. Verifying and recording are separate tools.",
+      "Use check_game_paths when the player gives you a path, or to check a remembered path. It verifies a path without scanning Steam and without writing state.",
+      "check_game_paths never writes .gamer-agent.local.json. Checking and recording are separate tools.",
       "A failed check_game_paths changes nothing. Follow its NEXT line to fix the problem. It never creates or installs anything.",
     ],
     parameters: Type.Object({
       gameDir: Type.Optional(
-        Type.String({ description: "Game directory to verify. Relative paths use the workspace root." }),
+        Type.String({ description: "Game directory to check. Relative paths use the workspace root." }),
       ),
-      workshopDir: Type.Optional(Type.String({ description: "Steam Workshop content directory to verify (optional)." })),
-      modInstallDir: Type.Optional(Type.String({ description: "Mod install directory to verify (optional)." })),
+      workshopDir: Type.Optional(Type.String({ description: "Steam Workshop content directory to check (optional)." })),
+      modInstallDir: Type.Optional(Type.String({ description: "Mod install directory to check (optional)." })),
     }),
     async execute(_id, params, _signal, _onUpdate, ctx) {
       const cwd = ctx.cwd;
@@ -93,7 +93,7 @@ export default function (pi: ExtensionAPI) {
             content: [
               {
                 type: "text",
-                text: "PASS: nothing to verify - this game type declares no Steam Workshop (mod-repo.json: workshop.supported = false), so workshopDir was ignored.\nNEXT: pass gameDir/modInstallDir to verify them.",
+                text: "PASS: nothing to check - this game type declares no Steam Workshop (mod-repo.json: workshop.supported = false), so workshopDir was ignored.\nNEXT: pass gameDir/modInstallDir to check them.",
               },
             ],
             details: { ok: true, checked: {}, failed: [], warnings: [], ignored: ["workshopDir"], wroteState: false },
