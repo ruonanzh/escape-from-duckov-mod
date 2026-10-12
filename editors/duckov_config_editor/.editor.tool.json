@@ -1,0 +1,9 @@
+{
+  "apiVersion": 1,
+  "id": "duckov_config_editor",
+  "name": "Duckov 配置编辑器",
+  "match": ["config.json"],
+  "entry": "index.html",
+  "mode": "edit",
+  "description": "表单编辑 mod 的 config.json（换哪件物品、哪个模型、朝向、尺寸、挂点）。Ctrl+S 保存"
+}
