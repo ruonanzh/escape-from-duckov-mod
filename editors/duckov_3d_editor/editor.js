@@ -246,11 +246,8 @@
   function setView(dir) {
     var d = new THREE.Vector3(dir[0], dir[1], dir[2]).normalize();
     // ⭐ 对准**包围盒中心** ✗ 不是原点 —— 握把归零后模型主要伸向 +Z，对原点看会把它裁掉 ✗
-    // ⚠️ 用的是 `viewBox`（打开的文件 **∪ 参照鸭子**）✗ 不是 `state.box` ——
-    //    否则镜头只框打开的模型，参照鸭子永远在框外 ✗（曾经就是）
-    var vb = state.viewBox || state.box;
-    var center = vb ? vb.getCenter(new THREE.Vector3()) : new THREE.Vector3();
-    var dist = (state.viewRadius || state.radius || 1) * 3.0;
+    var center = state.box ? state.box.getCenter(new THREE.Vector3()) : new THREE.Vector3();
+    var dist = (state.radius || 1) * 3.0;
     camera.position.copy(center).add(d.multiplyScalar(dist));
     controls.target.copy(center);
     controls.update();
@@ -267,67 +264,8 @@
     if (v.length === 2) { MAT.metal = parseFloat(v[0]); MAT.rough = parseFloat(v[1]); }
   })();
 
-  // ── 参照物：玩家鸭 ─────────────────────────────────────────────────────────
-  // ⭐ 它**不参与**「游戏朝向」的任何启发式 ✗（长轴→+Z/+Y、枪口方向、握把归零都是**枪**的规则）。
-  //    也**不做** X 镜像 ✗ —— 这条踩过坑，记下实测：
-  //      鸭子 glb 是标准右手 glTF（前伸的右臂在 −X）⇒ 直接渲染时，正对鸭子右臂在**画面左侧** ✓。
-  //      再叠一次 X 镜像 ⇒ 右臂跑到 +X ⇒ 正对时跑到**画面右侧** ✗（用户一眼看出「左右反了」）。
-  //    模型自己的坐标系里上方就是 +Y、前方就是 +Z ⇒ 直接进来就是站立的 ✓ 不需要任何旋转 ✓
-  //    资源是内嵌的（`assets/duck_player.js`）：CSP 是 `connect-src 'none'` ⇒ 运行时不能 fetch ✗
-  var REF_MAT = { metal: 0.0, rough: 0.7 };   // ⭐ 鸭子不是金属 ✗（用 MAT 的 0.3 会让白毛变灰 ✗）
-  var REF_SOCKET = [-0.254, 0.309, 0.270];    // `Hand.R/MeleeWeaponSocket` 在 glb 坐标下的位置（离线量得）
-  var refDuck = null;
-
-  function loadRefDuck() {
-    if (!window.DUCK_REF_B64) return;
-    var bin = base64ToBytes(window.DUCK_REF_B64);
-    var buf = bin.buffer.slice(bin.byteOffset, bin.byteOffset + bin.byteLength);
-    new GLTFLoader().parse(buf, "", function (gltf) {
-      var g = new THREE.Group();
-      g.name = "refDuck";
-      // ⚠️ 这里**不加** X 镜像 ✗，理由见上面 `REF_SOCKET` 那段实测
-      var mir = new THREE.Group();
-      mir.add(gltf.scene);
-      g.add(mir);
-      gltf.scene.traverse(function (o) {
-        if (!o.isMesh) return;
-        (Array.isArray(o.material) ? o.material : [o.material]).forEach(function (m) {
-          if (!m) return;
-          m.metalnessMap = null;
-          m.roughnessMap = null;
-          m.aoMap = null;
-          m.metalness = REF_MAT.metal;
-          m.roughness = REF_MAT.rough;
-          m.side = THREE.DoubleSide;
-          m.needsUpdate = true;
-        });
-      });
-      refDuck = g;
-      scene.add(g);
-      placeRefDuck();
-    }, function (e) { console.warn("参照鸭子加载失败", e); });
-  }
-
-  function placeRefDuck() {
-    if (!refDuck) return;
-    refDuck.visible = opts.refDuck;
-    refDuck.position.set(0, 0, 0);
-    // ⭐ 默认：脚底贴网格（看得见站姿）；勾「手部挂点归零」：把手部挂点移到原点
-    //    —— 后者才是「校准武器位置」用的：武器会被握把归零到原点 ⇒ 正好落在手里 ✓
-    if (opts.refGrip) {
-      refDuck.position.set(-REF_SOCKET[0], -REF_SOCKET[1], -REF_SOCKET[2]);
-    } else {
-      refDuck.updateMatrixWorld(true);
-      var b = new THREE.Box3().setFromObject(refDuck);
-      refDuck.position.set(0, -b.min.y, 0);
-    }
-    refDuck.updateMatrixWorld(true);
-  }
-
   var opts = {
     kind: "gun",        // gun（长轴→+Z） | up（长轴→+Y） | raw
-    refDuck: true,      // ⭐ 参照物：玩家鸭（常显 ✓ 站姿 ✓ 不按长轴转 ✓）
-    refGrip: false,     //    false = 脚底贴网格 · true = 手部挂点归零
     muzzle: "auto",     // ⭐ 固定"自动"（`MuzzleAtPositiveZ`：两端各看 6%/15%，细的那端是枪管）—— 不给选择
     grip: true,         // ⭐ 只有「枪」用得上（`GuessGrip` 的假设是枪）—— UI 里也只在选枪时露出这一行 ✗
     mirror: true,       // ⭐ 固定开：Unity 镜像（X 取反）= 游戏里看到的样子 —— 不做 ⇒ 预览与游戏左右相反 ✗
@@ -396,11 +334,7 @@
     state.box = box;
     state.radius = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 0.05);
 
-    // ⭐ 取景范围 = 打开的模型 **∪ 参照鸭子**（参照物默认在原点站 1.12m ⇒ 不算进去就被裁掉 ✗）
-    var viewBox = box.clone();
-    if (refDuck && refDuck.visible) viewBox.expandByObject(refDuck);
-    state.viewBox = viewBox;
-    state.viewRadius = Math.max(viewBox.getSize(new THREE.Vector3()).length() / 2, 0.05);
+
 
     // 包围盒线框
     if (hull) { scene.remove(hull); hull.geometry.dispose(); }
@@ -480,9 +414,6 @@
     });
     document.getElementById("kind").addEventListener("change", function (e) { opts.kind = e.target.value; build(); });
     document.getElementById("grip").addEventListener("change", function (e) { opts.grip = e.target.checked; build(); });
-    document.getElementById("refduck").addEventListener("change", function (e) { opts.refDuck = e.target.checked; placeRefDuck(); });
-    document.getElementById("refgrip").addEventListener("change", function (e) { opts.refGrip = e.target.checked; placeRefDuck(); });
-    loadRefDuck();
     document.getElementById("size").addEventListener("change", function (e) {
       opts.size = parseFloat(e.target.value) || 0; build();
     });
