@@ -362,7 +362,10 @@
   // ⇒ 不拖把手 ✗ —— 按公式**直接算**出模型位置；改 pivot 就是模型动 ✓
 
   var opts = {
-    kind: "weapon",     // weapon（枪：握把归零） | melee（近战：长轴→+Y） | item（物品：不摆正）
+    kind: "weapon",     // weapon（枪）| melee（近战）| item（物品）| equip（装备）
+                        // 游戏侧只有两条路：WeaponModel（枪 / 近战，有 slots.pivot）
+                        //                     ItemModel （物品 / 装备，没有 pivot）
+                        // ⇒ 只有 枪 / 近战 显示 pivot；物品 / 装备 按包围盒中心对齐
     pivot: [0, 0, 0],   // 模型上「要落到鸭子手上」的点，相对模型原点（米）
     autoGrip: true,     // 武器：是否自动猜握把（游戏 `GuessGrip`，物品固定不做）
     muzzle: "auto",     // ⭐ 固定"自动"（`MuzzleAtPositiveZ`：两端各看 6%/15%，细的那端是枪管）—— 不给选择
@@ -408,10 +411,9 @@
     // ⑤ 落到手部 socket，再减掉 pivot（**模型动** ✗ 不是拖把手）
     //    公式 = 游戏 config 的实现：socket + (枪 ? auto guess grip : 0) + pivot
     //    （auto guess 已经在第 ④ 步做掉了 —— 它把顶点整体移到握把）
-    state.root.position.set(
-      REF_SOCKET[0] - opts.pivot[0],
-      REF_SOCKET[1] - opts.pivot[1],
-      REF_SOCKET[2] - opts.pivot[2]);
+    var hasPivot = opts.kind === "weapon" || opts.kind === "melee";   // 只有这条路由游戏读 slots.pivot
+    var pv = hasPivot ? opts.pivot : [0, 0, 0];
+    state.root.position.set(REF_SOCKET[0] - pv[0], REF_SOCKET[1] - pv[1], REF_SOCKET[2] - pv[2]);
 
     // ⑥ 尺寸：最长边 → opts.size（米）
     state.root.updateMatrixWorld(true);
@@ -462,6 +464,8 @@
     // ⭐ 「握把归零」只在选「枪」时露出（物品/近战/装备不适用 —— 那是枪的猜测规则）
     var gripRow = document.getElementById("gripRow");
     if (gripRow) gripRow.hidden = opts.kind !== "weapon";
+    var pivotRow = document.getElementById("pivotRow");
+    if (pivotRow) pivotRow.hidden = !(opts.kind === "weapon" || opts.kind === "melee");
 
 
     // 面板读数

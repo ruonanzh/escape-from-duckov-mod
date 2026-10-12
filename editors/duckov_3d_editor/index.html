@@ -62,12 +62,13 @@
         <option value="weapon">枪</option>
         <option value="melee">近战</option>
         <option value="item">物品</option>
+        <option value="equip">装备</option>
       </select>
     </label>
     <!-- ⭐ 只有「枪」才显示这一行：握把归零是枪的规则（`GuessGrip`），物品/近战都不适用 -->
     <div class="hr"></div>
     <h2>挂点</h2>
-    <div class="row" style="gap:6px; align-items:center">
+    <div class="row" id="pivotRow" style="gap:6px; align-items:center">
       <span style="flex:0 0 auto">pivot m</span>
       <input type="number" id="pivot-x" step="0.5" placeholder="X" title="X" style="width:76px">
       <input type="number" id="pivot-y" step="0.5" placeholder="Y" title="Y" style="width:76px">
