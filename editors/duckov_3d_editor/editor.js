@@ -288,10 +288,12 @@
 
   function placeRefDuck() {
     if (!refDuck) return;
-    // ⭐ 只有一种摆法：**拿枪的 socket 落在原点**
-    //    游戏里武器就挂在角色的 `MeleeWeaponSocket` 上 ⇒ 武器按「原点对原点」放上去，
-    //    正好落在手里 ✓（鸭子会低于网格，因为原点在它手部高度，那正是要对齐的点）
-    refDuck.position.set(-REF_SOCKET[0], -REF_SOCKET[1], -REF_SOCKET[2]);
+    // ⭐ 鸭子**站在地面**（脚底贴网格、站在原点）—— 它是参照物，不是被调的东西
+    //    要去对齐的是**武器**：模型会被移到 `REF_SOCKET`（见 build 里第 ⑤ 步）
+    refDuck.position.set(0, 0, 0);
+    refDuck.updateMatrixWorld(true);
+    var b = new THREE.Box3().setFromObject(refDuck);
+    refDuck.position.set(0, -b.min.y, 0);
     refDuck.updateMatrixWorld(true);
   }
 
@@ -333,7 +335,14 @@
       state.grip.position.set(-g[0], -g[1], -g[2]);
     }
 
-    // ⑤ 尺寸：最长边 → opts.size（米）
+    // ⑤ 移到拿枪的 socket（**枪去找手** ✗ 不是把手拉下来）—— 只有「枪」要这一步
+    //    游戏里武器就挂在角色的 `MeleeWeaponSocket` 上 ⇒ 预览也放到那里，看到的才对得上
+    state.root.position.set(0, 0, 0);
+    if (opts.kind === "weapon") {
+      state.root.position.set(REF_SOCKET[0], REF_SOCKET[1], REF_SOCKET[2]);
+    }
+
+    // ⑥ 尺寸：最长边 → opts.size（米）
     state.root.updateMatrixWorld(true);
     var box = new THREE.Box3().setFromObject(state.root);
     var size = box.getSize(new THREE.Vector3());
