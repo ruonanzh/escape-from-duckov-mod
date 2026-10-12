@@ -265,15 +265,18 @@
   //    ⚠️ 偏移要**三个鸭子模型对比**（Coach / Boss_1 / Jeff）：四个挂点三者全一致 ✓
   //       只有**背包**：Coach 是特例（+0.140,-0.126,-0.093，偏且偏低）✗；
   //       Boss_1 与 Jeff 一致（0,-0.021,-0.115）⇒ 用多数派 ⇒ 抬高 10.7cm、居中 ✓
+  // ⭐「枪 / 近战 / 物品 用哪个 socket」—— **扫了全部代理，有定论**：
+  //    `ItemAgent_Gun` 19 个 · `ItemAgent_MeleeWeapon` 38 个 ⇒ `handheldSocket` **全部是 1**
+  //    枚举 `HandheldSocketTypes`：normalHandheld = 1 · meleeWeapon = 2 · leftHandSocket = 3
+  //    ⇒ 三类**都走 normalHandheld** ⇒ 对应 `rightHandSocket` ✓
+  //    ⇒ `meleeWeaponSocket`（值 2）**游戏从来不用** ✗ ⇒ 不画它，手部只留一个点 ✓
   var CHAR_SOCKETS = [
-    // 标签按游戏 `HandheldSocketTypes` 枚举定：normalHandheld / meleeWeapon / leftHandSocket
-    { key: "gun",       label: "枪/近战武器", p: [-0.3523, 0.5814, 0.3999], color: 0xff8a00 },
-    { key: "righthand", label: "手持物",      p: [-0.3342, 0.6179, 0.2811], color: 0x9aa3ab },
-    { key: "helmat",    label: "头盔", p: [ 0.0000, 0.9307, 0.0000], color: 0x8a5cff },
-    { key: "armor",     label: "护甲", p: [ 0.0000, 0.4890, -0.0322], color: 0x2fae5a },
-    { key: "backpack",  label: "背包", p: [ 0.0000, 0.4909, -0.1495], color: 0x2f7ad2 },
+    { key: "hand",     label: "枪/近战/手持物", p: [-0.3342, 0.6179,  0.2811], color: 0xff8a00 },
+    { key: "helmat",   label: "头盔",  p: [ 0.0000, 0.9307,  0.0000], color: 0x8a5cff },
+    { key: "armor",    label: "护甲",  p: [ 0.0000, 0.4890, -0.0322], color: 0x2fae5a },
+    { key: "backpack", label: "背包",  p: [ 0.0000, 0.4909, -0.1495], color: 0x2f7ad2 },
   ];
-  // 「枪/近战武器」那个就是模型要对齐的地方（`MeleeWeaponSocket`）
+  // 手部那个就是模型要对齐的地方（`rightHandSocket` = normalHandheld）
   var REF_SOCKET = CHAR_SOCKETS[0].p;
   var refDuck = null;
   var refSocketMarks = [];
