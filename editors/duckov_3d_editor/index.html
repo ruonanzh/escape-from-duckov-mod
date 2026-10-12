@@ -19,13 +19,21 @@
     #hud a.on { font-weight:700; text-decoration:underline; }
     #hud .dim { color:var(--dim); }
     /* 「物品」+ 尺寸：整块放**右下角**（左上留给标题/视角/提示） */
-    #panel { position:fixed; right:10px; bottom:10px; width:250px; background:var(--panel);
-      padding:10px 12px; border-radius:8px; box-shadow:0 1px 6px #0002; }
+    #panel { position:fixed; right:10px; bottom:10px; width:330px; background:var(--panel);
+      padding:10px 12px; border-radius:8px; box-shadow:0 1px 6px #0002;
+      max-height:calc(100vh - 20px); overflow:auto; }
     #panel h2 { margin:0 0 8px; font-size:13px; }
     #panel label { display:flex; justify-content:space-between; align-items:center; gap:8px; margin:5px 0; }
     #panel select, #panel input[type=number] { font:inherit; padding:2px 4px; border:1px solid var(--line);
       border-radius:4px; background:#fff; width:110px; }
     #panel input[type=range] { width:100%; }
+    #panel table.slots { width:100%; border-collapse:collapse; }
+    #panel table.slots th { text-align:left; font-weight:400; color:var(--dim); font-size:11px; padding:1px 2px; }
+    #panel table.slots td { padding:1px 2px; }
+    #panel table.slots input { width:100%; font:inherit; padding:1px 3px; border:1px solid var(--line);
+      border-radius:3px; background:#fff; }
+    #panel table.slots td.btn { width:22px; text-align:center; }
+    #panel table.slots a { cursor:pointer; color:#900; text-decoration:none; }
     #panel .hr { height:1px; background:var(--line); margin:8px 0; }
     #panel .kv { color:var(--dim); }
     #err { position:fixed; left:10px; bottom:10px; max-width:640px; background:#fff0f0;
@@ -57,6 +65,22 @@
     <h2>尺寸</h2>
     <label>最长边（米）<input type="number" id="size" step="0.01" min="0.01"></label>
     <label class="kv">当前<b id="curSize">–</b></label>
+    <div class="hr"></div>
+    <h2>挂点 <span class="kv" style="font-weight:400">（比例 0~1，拖球或改数字）</span></h2>
+    <table class="slots">
+      <thead><tr><th>键</th><th>L</th><th>H</th><th>D</th><th></th></tr></thead>
+      <tbody id="slots"></tbody>
+    </table>
+    <datalist id="slotkeys">
+      <option value="Muzzle"></option><option value="Stock"></option><option value="Grip"></option>
+      <option value="Scope"></option><option value="Tec"></option><option value="pivot"></option>
+    </datalist>
+    <div class="row" style="margin-top:6px">
+      <a id="addslot">＋加挂点</a>
+      <a id="copyslots">复制 JSON</a>
+      <span class="dim" id="copyHint"></span>
+    </div>
+    <div class="kv" style="margin-top:4px">有 <b>pivot</b> 就用它当对齐基准；否则 Muzzle+Stock 中点</div>
     <div class="hr"></div>
     <div class="kv" id="diag">–</div>
   </div>

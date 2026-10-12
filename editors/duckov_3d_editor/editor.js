@@ -297,8 +297,22 @@
     refDuck.updateMatrixWorld(true);
   }
 
+  // ── 挂点（比例 0~1）─────────────────────────────────────────────────────
+  // 和游戏同一套坐标：`slots` 的值是 [L,H,D] 比例 ⇒ 在**模型自身包围盒**里取点
+  //    L 沿 Z（长轴 / 枪口 +Z）· H 沿 Y · D 沿 X        （同 `WeaponModel.cs` 的换算）
+  // 面板里改数字、或在场景里**拖球**，两边同步。调好后把 JSON 抄进 `config.json`（另一个编辑器）
+  var SLOT_PRESET = ["Muzzle", "Stock", "Grip", "Scope", "Tec", "pivot"];
+  var HANDLE_MAT = { pivot: 0xff8a00, other: 0x00a6c8 };
+  var HANDLE_R = 0.012;
+  var slotHandles = [];
+  var drag = null;
+  var raycaster = new THREE.Raycaster();
+  var pointer = new THREE.Vector2();
+  var dragPlane = new THREE.Plane();
+
   var opts = {
     kind: "weapon",     // weapon（枪：握把归零） | melee（近战：长轴→+Y） | item（物品：不摆正）
+    slots: {},          // { "Muzzle": [L,H,D], ..., "pivot": [L,H,D] }（比例 0~1）
     muzzle: "auto",     // ⭐ 固定"自动"（`MuzzleAtPositiveZ`：两端各看 6%/15%，细的那端是枪管）—— 不给选择
     grip: true,         // ⭐ 只有「枪」用得上（`GuessGrip` 的假设是枪）—— UI 里也只在选枪时露出这一行 ✗
     mirror: false,      // ⭐ 固定**关**：实测加镜像后预览与游戏左右相反 ✗（见 build 第 ③ 步）
@@ -396,6 +410,8 @@
     var gripRow = document.getElementById("gripRow");
     if (gripRow) gripRow.hidden = opts.kind !== "weapon";
 
+    rebuildSlots();
+
     // 面板读数
     var cur = box.getSize(new THREE.Vector3());
     document.getElementById("curSize").textContent =
@@ -428,6 +444,138 @@
     return out;
   }
 
+  // ── 挂点：模型自身坐标 → 世界 ───────────────────────────────────────────────
+  // “模型自身包围盒” = 游戏那边的 `mesh.bounds` ⇒ glb 里各几何体的包围盒并集（不带节点变换）
+  function firstMesh() {
+    var found = null;
+    state.model.traverse(function (o) { if (!found && o.isMesh && o.geometry) found = o; });
+    return found;
+  }
+
+  function assetBox(mesh) {
+    var b = new THREE.Box3();
+    var any = false;
+    state.model.traverse(function (o) {
+      if (!o.isMesh || !o.geometry) return;
+      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+      var gb = o.geometry.boundingBox.clone();
+      gb.applyMatrix4(o.matrix);          // 到 `state.model` 的局部空间
+      b.union(gb);
+      any = true;
+    });
+    return any ? b : new THREE.Box3(new THREE.Vector3(-0.5, -0.5, -0.5), new THREE.Vector3(0.5, 0.5, 0.5));
+  }
+
+  /** 比例 [L,H,D] → `state.model` 局部坐标 */
+  function ratioToLocal(box, lhd) {
+    return new THREE.Vector3(
+      box.min.x + Math.max(0, Math.min(1, lhd[2])) * (box.max.x - box.min.x),
+      box.min.y + Math.max(0, Math.min(1, lhd[1])) * (box.max.y - box.min.y),
+      box.min.z + Math.max(0, Math.min(1, lhd[0])) * (box.max.z - box.min.z));
+  }
+
+  /** `state.model` 局部坐标 → 比例 [L,H,D] */
+  function localToRatio(box, v) {
+    var sx = box.max.x - box.min.x, sy = box.max.y - box.min.y, sz = box.max.z - box.min.z;
+    var c = function (a, lo, s) { return s < 1e-6 ? 0.5 : Math.max(0, Math.min(1, (a - lo) / s)); };
+    return [c(v.z, box.min.z, sz), c(v.y, box.min.y, sy), c(v.x, box.min.x, sx)];
+  }
+
+  function rebuildSlots() {
+    for (var i = 0; i < slotHandles.length; i++) {
+      if (slotHandles[i].parent) slotHandles[i].parent.remove(slotHandles[i]);
+      slotHandles[i].geometry.dispose();
+      slotHandles[i].material.dispose();
+    }
+    slotHandles = [];
+    if (!state.model) return;
+    var box = assetBox();
+    Object.keys(opts.slots).forEach(function (key) {
+      var mat = new THREE.MeshBasicMaterial({
+        color: key === "pivot" ? HANDLE_MAT.pivot : HANDLE_MAT.other,
+        depthTest: false, transparent: true, opacity: 0.95,
+      });
+      var h = new THREE.Mesh(new THREE.SphereGeometry(HANDLE_R, 16, 12), mat);
+      h.name = "slot:" + key;
+      h.renderOrder = 999;
+      h.userData.key = key;
+      h.position.copy(ratioToLocal(box, opts.slots[key]));
+      state.model.add(h);            // 挂在模型下 ⇒ 跟着镜像/缩放一起走
+      slotHandles.push(h);
+    });
+  }
+
+  function renderSlotRows() {
+    var tb = document.getElementById("slots");
+    if (!tb) return;
+    tb.textContent = "";
+    var fmt = function (v) { return (Math.round(v * 1000) / 1000).toString(); };
+    Object.keys(opts.slots).forEach(function (key) {
+      var lhd = opts.slots[key];
+      var tr = document.createElement("tr");
+      tr.innerHTML = '<td><input class="k" type="text" list="slotkeys"></td>' +
+        '<td><input class="l" type="number" step="0.01" min="0" max="1"></td>' +
+        '<td><input class="h" type="number" step="0.01" min="0" max="1"></td>' +
+        '<td><input class="d" type="number" step="0.01" min="0" max="1"></td>' +
+        '<td class="btn"><a title="删除">×</a></td>';
+      var ins = tr.querySelectorAll("input");
+      ins[0].value = key;
+      ins[1].value = fmt(lhd[0]); ins[2].value = fmt(lhd[1]); ins[3].value = fmt(lhd[2]);
+      ins[0].addEventListener("change", function () {
+        var want = ins[0].value.trim();
+        if (!want || want === key) { ins[0].value = key; return; }
+        opts.slots[want] = opts.slots[key]; delete opts.slots[key];
+        renderSlotRows(); rebuildSlots();
+      });
+      [1, 2, 3].forEach(function (idx) {
+        ins[idx].addEventListener("input", function () {
+          opts.slots[key][idx - 1] = Math.max(0, Math.min(1, Number(ins[idx].value) || 0));
+          rebuildSlots();
+        });
+      });
+      tr.querySelector("td.btn a").addEventListener("click", function () {
+        delete opts.slots[key]; renderSlotRows(); rebuildSlots();
+      });
+      tb.appendChild(tr);
+    });
+  }
+
+  function pointerNdc(ev) {
+    var r = renderer.domElement.getBoundingClientRect();
+    pointer.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+  }
+
+  function attachSlotDrag() {
+    var el = renderer.domElement;
+    el.addEventListener("pointerdown", function (ev) {
+      if (!slotHandles.length) return;
+      pointerNdc(ev);
+      raycaster.setFromCamera(pointer, camera);
+      var hits = raycaster.intersectObjects(slotHandles, false);
+      if (!hits.length) return;
+      drag = hits[0].object;
+      controls.enabled = false;                       // 抓球时别转镜头
+      var nrm = camera.getWorldDirection(new THREE.Vector3());
+      dragPlane.setFromNormalAndCoplanarPoint(nrm, drag.getWorldPosition(new THREE.Vector3()));
+      if (el.setPointerCapture) { try { el.setPointerCapture(ev.pointerId); } catch (e) {} }
+    });
+    el.addEventListener("pointermove", function (ev) {
+      if (!drag) return;
+      pointerNdc(ev);
+      raycaster.setFromCamera(pointer, camera);
+      var hit = new THREE.Vector3();
+      if (!raycaster.ray.intersectPlane(dragPlane, hit)) return;
+      var local = drag.parent.worldToLocal(hit);      // → `state.model` 局部
+      var box = assetBox();
+      opts.slots[drag.userData.key] = localToRatio(box, local);
+      drag.position.copy(ratioToLocal(box, opts.slots[drag.userData.key]));
+      renderSlotRows();
+    });
+    var end = function () { if (drag) { drag = null; controls.enabled = true; } };
+    el.addEventListener("pointerup", end);
+    el.addEventListener("pointercancel", end);
+  }
+
   // ── 启动 ────────────────────────────────────────────────────────────────────
   function start() {
     initScene();
@@ -441,6 +589,37 @@
       if (!a) return;
       setView(a.dataset.dir.split(",").map(Number));
     });
+    // 挂点：加/复制 + 拖球
+    renderSlotRows();
+    attachSlotDrag();
+    document.getElementById("addslot").addEventListener("click", function () {
+      var k = "slot";
+      for (var i = 1; opts.slots[k] !== undefined; i++) k = "slot" + i;
+      opts.slots[k] = [0.5, 0.5, 0.5];
+      renderSlotRows(); rebuildSlots();
+    });
+    document.getElementById("copyslots").addEventListener("click", function () {
+      var out = {};
+      Object.keys(opts.slots).forEach(function (k) {
+        out[k] = opts.slots[k].map(function (v) { return Math.round(v * 1000) / 1000; });
+      });
+      var text = JSON.stringify(out);
+      var hint = document.getElementById("copyHint");
+      var done = function (ok) { hint.textContent = ok ? "已复制 ✓ 贴进 config.json" : "复制失败，请手动选"; setTimeout(function () { hint.textContent = ""; }, 2500); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+      } else {
+        try {
+          var ta = document.createElement("textarea");
+          ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+          document.body.appendChild(ta); ta.select();
+          var ok = document.execCommand("copy");
+          document.body.removeChild(ta);
+          done(ok);
+        } catch (e) { done(false); }
+      }
+    });
+
     document.getElementById("kind").addEventListener("change", function (e) { opts.kind = e.target.value; build(); });
     document.getElementById("grip").addEventListener("change", function (e) { opts.grip = e.target.checked; build(); });
     loadRefDuck();
