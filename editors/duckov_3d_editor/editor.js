@@ -246,8 +246,11 @@
   function setView(dir) {
     var d = new THREE.Vector3(dir[0], dir[1], dir[2]).normalize();
     // ⭐ 对准**包围盒中心** ✗ 不是原点 —— 握把归零后模型主要伸向 +Z，对原点看会把它裁掉 ✗
-    var center = state.box ? state.box.getCenter(new THREE.Vector3()) : new THREE.Vector3();
-    var dist = (state.radius || 1) * 3.0;
+    // ⚠️ 用的是 `viewBox`（打开的文件 **∪ 参照鸭子**）✗ 不是 `state.box` ——
+    //    否则镜头只框打开的模型，参照鸭子永远在框外 ✗（曾经就是）
+    var vb = state.viewBox || state.box;
+    var center = vb ? vb.getCenter(new THREE.Vector3()) : new THREE.Vector3();
+    var dist = (state.viewRadius || state.radius || 1) * 3.0;
     camera.position.copy(center).add(d.multiplyScalar(dist));
     controls.target.copy(center);
     controls.update();
@@ -266,11 +269,13 @@
 
   // ── 参照物：玩家鸭 ─────────────────────────────────────────────────────────
   // ⭐ 它**不参与**「游戏朝向」的任何启发式 ✗（长轴→+Z/+Y、枪口方向、握把归零都是**枪**的规则）。
-  //    只做一件事：glTF 右手 → Unity 左手的那次 X 镜像（与游戏 `GltfLoader` 同源 ✓）。
+  //    也**不做** X 镜像 ✗ —— 这条踩过坑，记下实测：
+  //      鸭子 glb 是标准右手 glTF（前伸的右臂在 −X）⇒ 直接渲染时，正对鸭子右臂在**画面左侧** ✓。
+  //      再叠一次 X 镜像 ⇒ 右臂跑到 +X ⇒ 正对时跑到**画面右侧** ✗（用户一眼看出「左右反了」）。
   //    模型自己的坐标系里上方就是 +Y、前方就是 +Z ⇒ 直接进来就是站立的 ✓ 不需要任何旋转 ✓
   //    资源是内嵌的（`assets/duck_player.js`）：CSP 是 `connect-src 'none'` ⇒ 运行时不能 fetch ✗
   var REF_MAT = { metal: 0.0, rough: 0.7 };   // ⭐ 鸭子不是金属 ✗（用 MAT 的 0.3 会让白毛变灰 ✗）
-  var REF_SOCKET = [0.254, 0.309, 0.270];     // `Hand.R/MeleeWeaponSocket` 在 Unity 坐标下的位置（离线量得）
+  var REF_SOCKET = [-0.254, 0.309, 0.270];    // `Hand.R/MeleeWeaponSocket` 在 glb 坐标下的位置（离线量得）
   var refDuck = null;
 
   function loadRefDuck() {
@@ -280,8 +285,8 @@
     new GLTFLoader().parse(buf, "", function (gltf) {
       var g = new THREE.Group();
       g.name = "refDuck";
+      // ⚠️ 这里**不加** X 镜像 ✗，理由见上面 `REF_SOCKET` 那段实测
       var mir = new THREE.Group();
-      mir.scale.x = -1;                       // ⭐ Unity 镜像（与游戏 GltfLoader 同源）
       mir.add(gltf.scene);
       g.add(mir);
       gltf.scene.traverse(function (o) {
@@ -391,6 +396,12 @@
     state.box = box;
     state.radius = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 0.05);
 
+    // ⭐ 取景范围 = 打开的模型 **∪ 参照鸭子**（参照物默认在原点站 1.12m ⇒ 不算进去就被裁掉 ✗）
+    var viewBox = box.clone();
+    if (refDuck && refDuck.visible) viewBox.expandByObject(refDuck);
+    state.viewBox = viewBox;
+    state.viewRadius = Math.max(viewBox.getSize(new THREE.Vector3()).length() / 2, 0.05);
+
     // 包围盒线框
     if (hull) { scene.remove(hull); hull.geometry.dispose(); }
     hull = new THREE.Box3Helper(box, 0x2b6cb0);
@@ -457,6 +468,11 @@
   // ── 启动 ────────────────────────────────────────────────────────────────────
   function start() {
     initScene();
+    // ⚠️ **必须在任何 glTF 解析之前**删掉 `createImageBitmap` ✗
+    //    它走 fetch(blob:) ⇒ 被 CSP `connect-src 'none'` 挡掉 ⇒ **贴图全丢** ⇒ 看着像「模型没皮」✗
+    //    删掉 ⇒ three 退回 `TextureLoader`（`<img src=blob:>` ✓ 走 `img-src` ✓ 允许 ✓）
+    //    参照鸭子是**先加载**的 ⇒ 晚删就轮到它中招（曾经就是：鸭子白身橙嘴全丢）
+    try { delete window.createImageBitmap; } catch (e) {}
     document.getElementById("views").addEventListener("click", function (ev) {
       var a = ev.target.closest("a[data-dir]");
       if (!a) return;
@@ -483,10 +499,7 @@
       }
       var bin = base64ToBytes(res.data);
       var buf = bin.buffer.slice(bin.byteOffset, bin.byteOffset + bin.byteLength);
-      // ⚠️ CSP 是 `connect-src 'none'`（编辑器不给外传通道）⇒ 内嵌纹理**不能**走
-      //    `ImageBitmapLoader`（它用 fetch 读 blob: ✗ 会被挡 ⇒ 贴图全丢 ⇒ 看着像"模型没材质"）。
-      //    删掉 createImageBitmap ⇒ three 退回 `TextureLoader`（`<img src=blob:>` ✓ 走 `img-src` ✓ 允许）。
-      try { delete window.createImageBitmap; } catch (e) {}
+      // ⚠️ `createImageBitmap` 已在 `start()` 开头删掉（那时才轮到参照鸭子之后的所有解析 ✓）
       return new Promise(function (resolve, reject) {
         new GLTFLoader().parse(buf, "", resolve, reject);
       });
