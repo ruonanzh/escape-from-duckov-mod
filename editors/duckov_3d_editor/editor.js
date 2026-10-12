@@ -85,31 +85,6 @@
     return span[0] > span[1] ? (span[0] > span[2] ? 0 : 2) : (span[1] > span[2] ? 1 : 2);
   }
 
-  /** `GltfLoader.Thickness`：某一段（沿 z）里的最大横向厚度 */
-  function thickness(points, lo, hi) {
-    var x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, any = false;
-    for (var i = 0; i < points.length; i++) {
-      var p = points[i];
-      if (p[2] < lo || p[2] > hi) continue;
-      any = true;
-      if (p[0] < x0) x0 = p[0];
-      if (p[0] > x1) x1 = p[0];
-      if (p[1] < y0) y0 = p[1];
-      if (p[1] > y1) y1 = p[1];
-    }
-    return any ? Math.max(x1 - x0, y1 - y0) : Infinity;
-  }
-
-  /** `GltfLoader.MuzzleAtPositiveZ`：两端各看 6% / 15% 两片，**细**的那端是枪管 */
-  function muzzleAtPositiveZ(points) {
-    var b = bounds(points);
-    var sp = b.span[2];
-    if (sp <= 1e-6) return true;
-    var tMin = Math.max(thickness(points, b.mn[2], b.mn[2] + sp * 0.06), thickness(points, b.mn[2], b.mn[2] + sp * 0.15));
-    var tMax = Math.max(thickness(points, b.mx[2] - sp * 0.06, b.mx[2]), thickness(points, b.mx[2] - sp * 0.15, b.mx[2]));
-    return tMax < tMin;
-  }
-
   /** `GltfLoader.GuessGrip`：枪托端（−Z 侧）起 8%~35% 区间里的**最低点**（返回要减掉的位移） */
   function guessGrip(points) {
     if (!points.length) return [0, 0, 0];
@@ -335,47 +310,28 @@
     // ① 原始模型（three 与 glTF 同规 ⇒ 原样加进来）
     state.stage.add(state.model);
 
-    // ② 长轴 → 目标轴（枪：+Z · 立起来：+Y）—— 与游戏 `OrientToUnity` / `ApplyFrontDeclaration` 等价：
-    //    `OrientToUnity` ax==0 顶点映射 (z,y,−x) ⇒ 这里 = 绕 Y **+90°**；ax==1 映射 (x,z,−y) ⇒ 绕 X **−90°**
-    //    ⚠️ 量长轴**必须先清零**所有变换 ✗ —— 否则读到的是"上一次摆好之后"的包围盒，
-    //       长轴就会在每次重算时来回翻（实测：头盔 0.713×0.998×0.861 → 0.713×0.861×0.998 ✗）
+    // ② 摆正：**不做** ✗ —— 三类都不摆正，一律**原点对原点**放（用户 2026-10-12 定调）
+    //    曾经的「长轴 → +Z/+Y」与「枪口朝 +Z」已删（判据函数 longAxis / muzzleAtPositiveZ
+    //    也从本文件移除；要恢复看 git 历史）。
     state.orient.rotation.set(0, 0, 0);
     state.flip.rotation.set(0, 0, 0);
     state.grip.position.set(0, 0, 0);
     state.mirror.scale.set(1, 1, 1);
     state.root.scale.setScalar(1);
     state.root.updateMatrixWorld(true);
-    var b = bounds(samplePoints(state.model));
-    var ax = longAxis(b.span);
-    if (opts.kind === "weapon") {
-      if (ax === 0) state.orient.rotation.y = Math.PI / 2;
-      else if (ax === 1) state.orient.rotation.x = -Math.PI / 2;
-    } else if (opts.kind === "melee") {
-      if (ax === 0) state.orient.rotation.z = Math.PI / 2;
-      else if (ax === 2) state.orient.rotation.x = -Math.PI / 2;
-    }
 
-    // ③ 枪口方向：判据（`MuzzleAtPositiveZ`：两端各看 6%/15%，**细**的那端是枪管）
-    //    ⚠️ 必须对 **orient 之后**的坐标采样 ✗（模型自带的 matrixWorld 里没有这一步 ✗）
-    state.flip.rotation.set(0, 0, 0);
-    if (opts.kind === "weapon") {
-      state.orient.updateMatrixWorld(true);
-      // 规定就是"枪口朝 +Z"：判据同游戏（`MuzzleAtPositiveZ`）⇒ 在 −Z 就绕 Y 转 180°
-      if (!muzzleAtPositiveZ(samplePoints(state.orient))) state.flip.rotation.y = Math.PI;
-    }
+    // ③ Unity 镜像（= 游戏里 GltfLoader 的 X 取反）
+    //    ⚠️ 必须在握把归零**之前** ✗ —— 游戏里就是先镜像、再 `GuessGrip`
+    state.mirror.scale.set(opts.mirror ? -1 : 1, 1, 1);
 
-    // ④ 握把归零（顶点级：把握把点移到原点）
-    state.grip.position.set(0, 0, 0);
+    // ④ 握把归零（顶点级：把握把点移到原点）—— 只有「武器」用得上（`GuessGrip` 的假设是枪）
     if (opts.grip && opts.kind === "weapon") {
-      state.flip.updateMatrixWorld(true);   // 枪托在 −Z ⇒ 必须在**朝向定好之后**采样 ✗
-      var g = guessGrip(samplePoints(state.flip));
+      state.mirror.updateMatrixWorld(true);
+      var g = guessGrip(samplePoints(state.mirror));
       state.grip.position.set(-g[0], -g[1], -g[2]);
     }
 
-    // ⑤ Unity 镜像（= 游戏里 GltfLoader 的 X 取反）
-    state.mirror.scale.set(opts.mirror ? -1 : 1, 1, 1);
-
-    // ⑥ 尺寸：最长边 → opts.size（米）
+    // ⑤ 尺寸：最长边 → opts.size（米）
     state.root.updateMatrixWorld(true);
     var box = new THREE.Box3().setFromObject(state.root);
     var size = box.getSize(new THREE.Vector3());
