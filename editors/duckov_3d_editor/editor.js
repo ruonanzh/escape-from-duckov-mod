@@ -333,7 +333,6 @@
       refDuck = g;
       scene.add(g);
       placeRefDuck();
-      updateDistance();
     }, function (e) { console.warn("参照鸭子加载失败", e); });
   }
 
@@ -355,20 +354,16 @@
     refDuck.updateMatrixWorld(true);
   }
 
-  // ── 挂点：只有一个 pivot（cm）──────────────────────────────────────────────
-  // 它就是「模型上哪个点要落到鸭子手上」—— 相对**模型自身原点**的偏移（cm）。
-  // 0 0 0 = 模型原点就到手上（默认）。拖橙球或改数字都行 ✓
-  // ⚠️ 只有**手部**挂点参与对齐；头盔/护甲/背包那些只是参照标记（见 CHAR_SOCKETS）
-  var HANDLE_R = 0.012;
-  var pivotHandle = null;
-  var drag = null;
-  var raycaster = new THREE.Raycaster();
-  var pointer = new THREE.Vector2();
-  var dragPlane = new THREE.Plane();
+  // ── 挂点：只有一个 pivot（**米**）───────────────────────────────────────────
+  // 它就是游戏 config 里的 `slots.pivot`（现在那边是比例，待改成米 —— 见设计仓）。
+  // 含义 = 「模型上哪个点要落到鸭子手上」，相对**模型自身原点**的偏移（米）。
+  //   · 枪：手部 socket + auto guess grip（`GuessGrip`）+ pivot
+  //   · 近战 / 物品：手部 socket + pivot（游戏那边 `zeroGrip: false`，不做 guess）
+  // ⇒ 不拖把手 ✗ —— 按公式**直接算**出模型位置；改 pivot 就是模型动 ✓
 
   var opts = {
     kind: "weapon",     // weapon（枪：握把归零） | melee（近战：长轴→+Y） | item（物品：不摆正）
-    pivot: [0, 0, 0],   // 模型上「要落到鸭子手上」的点，相对模型原点（cm）
+    pivot: [0, 0, 0],   // 模型上「要落到鸭子手上」的点，相对模型原点（米）
     autoGrip: true,     // 武器：是否自动猜握把（游戏 `GuessGrip`，物品固定不做）
     muzzle: "auto",     // ⭐ 固定"自动"（`MuzzleAtPositiveZ`：两端各看 6%/15%，细的那端是枪管）—— 不给选择
     grip: true,         // ⭐ 只有「枪」用得上（`GuessGrip` 的假设是枪）—— UI 里也只在选枪时露出这一行 ✗
@@ -410,12 +405,13 @@
       state.grip.position.set(-g[0], -g[1], -g[2]);
     }
 
-    // ⑤ 移到「枪/近战武器」的 socket（**枪去找手** ✗ 不是把手拉下来）—— 只有「枪」要这一步
-    //    游戏里武器就挂在角色的 `MeleeWeaponSocket` 上 ⇒ 预览也放到那里，看到的才对得上
-    state.root.position.set(0, 0, 0);
-    if (opts.kind === "weapon") {
-      state.root.position.set(REF_SOCKET[0], REF_SOCKET[1], REF_SOCKET[2]);
-    }
+    // ⑤ 落到手部 socket，再减掉 pivot（**模型动** ✗ 不是拖把手）
+    //    公式 = 游戏 config 的实现：socket + (枪 ? auto guess grip : 0) + pivot
+    //    （auto guess 已经在第 ④ 步做掉了 —— 它把顶点整体移到握把）
+    state.root.position.set(
+      REF_SOCKET[0] - opts.pivot[0],
+      REF_SOCKET[1] - opts.pivot[1],
+      REF_SOCKET[2] - opts.pivot[2]);
 
     // ⑥ 尺寸：最长边 → opts.size（米）
     state.root.updateMatrixWorld(true);
@@ -467,7 +463,6 @@
     var gripRow = document.getElementById("gripRow");
     if (gripRow) gripRow.hidden = opts.kind !== "weapon";
 
-    rebuildPivot();
 
     // 面板读数
     var cur = box.getSize(new THREE.Vector3());
@@ -476,7 +471,6 @@
     var verts = 0, tris = 0;
     state.model.traverse(function (o) {
       if (!o.isMesh) return;
-      if (o === pivotHandle) return;                  // 挂点标记不算进顶点/三角面
       var g = o.geometry;
       verts += g.attributes.position ? g.attributes.position.count : 0;
       tris += g.index ? g.index.count / 3 : (g.attributes.position ? g.attributes.position.count / 3 : 0);
@@ -494,7 +488,7 @@
       if (!o.isMesh || !o.geometry || !o.geometry.attributes.position) return;
       // ⚠️ 我们加的标记球不得参与取样 ✗ —— 否则 GuessGrip 会把球当成模型的一部分
       //    （实测：229 个采样点里大多数是 pivot 球 ⇒ 第二次点开关时猜测值变了 ⇒ 模型跳走）
-      if (o === pivotHandle || o.userData.isMarker || o.userData.isDuckBody) return;
+      if (o.userData.isMarker || o.userData.isDuckBody) return;
       var pos = o.geometry.attributes.position;
       var step = Math.max(1, Math.floor(pos.count / 4000));   // 上限 4000 个采样点
       for (var i = 0; i < pos.count; i += step) {
@@ -517,87 +511,9 @@
 
   /** `state.model` 局部坐标 → 比例 [L,H,D] */
 
-  /** 「到挂点距离」（cm）：pivot 那个点离鸭子手上的挂点有多远 —— 拖到 ≈ 0 就对齐了 ✓ */
-  function updateDistance() {
-    var el = document.getElementById("dist");
-    if (!el) return;
-    var socketMark = refSocketMarks.length ? refSocketMarks[0] : null;
-    if (!pivotHandle) { el.textContent = "–"; return; }
-    if (!socketMark) { el.textContent = "–"; return; }
-    var a = new THREE.Vector3(), b = new THREE.Vector3();
-    pivotHandle.getWorldPosition(a);
-    socketMark.getWorldPosition(b);
-    var d = a.distanceTo(b);
-    el.textContent = (d * 100).toFixed(1) + " cm";
-    el.style.color = d < 0.005 ? "#1a7f3c" : d < 0.02 ? "#a60" : "";
-  }
-
-  /** pivot 的局部点（cm -> 米，相对模型自身原点） */
-  function pivotLocal() {
-    return new THREE.Vector3(opts.pivot[0] / 100, opts.pivot[1] / 100, opts.pivot[2] / 100);
-  }
-
-  function rebuildPivot() {
-    if (pivotHandle) {
-      if (pivotHandle.parent) pivotHandle.parent.remove(pivotHandle);
-      pivotHandle.geometry.dispose();
-      pivotHandle.material.dispose();
-      pivotHandle = null;
-    }
-    if (!state.model) return;
-    var mat = new THREE.MeshBasicMaterial({ color: 0xff8a00, depthTest: false, transparent: true, opacity: 0.95 });
-    var h = new THREE.Mesh(new THREE.SphereGeometry(HANDLE_R, 16, 12), mat);
-    h.name = "pivot";
-    h.renderOrder = 999;
-    h.position.copy(pivotLocal());
-    state.model.add(h);
-    pivotHandle = h;
-    syncPivotInputs();
-    updateDistance();
-  }
-
-  function syncPivotInputs() {
-    var f = function (v) { return (Math.round(v * 100) / 100).toString(); };
-    ["x", "y", "z"].forEach(function (ax, i) {
-      var el = document.getElementById("pivot-" + ax);
-      if (el) el.value = f(opts.pivot[i]);
-    });
-  }
-
   function pointerNdc(ev) {
     var r = renderer.domElement.getBoundingClientRect();
     pointer.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
-  }
-
-  function attachSlotDrag() {
-    var el = renderer.domElement;
-    el.addEventListener("pointerdown", function (ev) {
-      if (!pivotHandle) return;
-      pointerNdc(ev);
-      raycaster.setFromCamera(pointer, camera);
-      var hits = raycaster.intersectObject(pivotHandle, false);
-      if (!hits.length) return;
-      drag = pivotHandle;
-      controls.enabled = false;                       // 抓球时别转镜头
-      var nrm = camera.getWorldDirection(new THREE.Vector3());
-      dragPlane.setFromNormalAndCoplanarPoint(nrm, drag.getWorldPosition(new THREE.Vector3()));
-      if (el.setPointerCapture) { try { el.setPointerCapture(ev.pointerId); } catch (e) {} }
-    });
-    el.addEventListener("pointermove", function (ev) {
-      if (!drag) return;
-      pointerNdc(ev);
-      raycaster.setFromCamera(pointer, camera);
-      var hit = new THREE.Vector3();
-      if (!raycaster.ray.intersectPlane(dragPlane, hit)) return;
-      var local = drag.parent.worldToLocal(hit);      // -> `state.model` 局部
-      opts.pivot = [local.x * 100, local.y * 100, local.z * 100];   // 存 cm
-      drag.position.copy(local);
-      syncPivotInputs();
-      updateDistance();
-    });
-    var end = function () { if (drag) { drag = null; controls.enabled = true; } };
-    el.addEventListener("pointerup", end);
-    el.addEventListener("pointercancel", end);
   }
 
   // ── 启动 ────────────────────────────────────────────────────────────────────
@@ -614,15 +530,13 @@
       setView(a.dataset.dir.split(",").map(Number));
     });
     // 挂点：加/复制 + 拖球
-    rebuildPivot();
-    attachSlotDrag();
     ["x", "y", "z"].forEach(function (ax, i) {
       var el = document.getElementById("pivot-" + ax);
       if (!el) return;
+      el.value = "0";
       el.addEventListener("input", function () {
-        opts.pivot[i] = Number(el.value) || 0;
-        if (pivotHandle) pivotHandle.position.copy(pivotLocal());
-        updateDistance();
+        opts.pivot[i] = Number(el.value) || 0;   // 米
+        build();                                  // 模型按公式重新落到 socket
       });
     });
     document.getElementById("kind").addEventListener("change", function (e) { opts.kind = e.target.value; build(); });
