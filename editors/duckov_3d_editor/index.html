@@ -68,11 +68,13 @@
     <!-- ⭐ 只有「枪」才显示这一行：握把归零是枪的规则（`GuessGrip`），物品/近战都不适用 -->
     <div class="hr"></div>
     <h2>挂点</h2>
-    <div class="row" id="pivotRow" style="gap:6px; align-items:center">
-      <span style="flex:0 0 auto">pivot m</span>
-      <input type="number" id="pivot-x" step="0.5" placeholder="X" title="X" style="width:76px">
-      <input type="number" id="pivot-y" step="0.5" placeholder="Y" title="Y" style="width:76px">
-      <input type="number" id="pivot-z" step="0.5" placeholder="Z" title="Z" style="width:76px">
+    <div class="row" id="pivotRow" style="gap:5px; align-items:center; flex-wrap:nowrap">
+      <span style="flex:0 0 auto">pivot</span>
+      <span style="flex:1 1 auto"></span>
+      <input type="number" id="pivot-x" step="0.01" placeholder="X" title="X" style="width:72px; flex:0 0 auto">
+      <input type="number" id="pivot-y" step="0.01" placeholder="Y" title="Y" style="width:72px; flex:0 0 auto">
+      <input type="number" id="pivot-z" step="0.01" placeholder="Z" title="Z" style="width:72px; flex:0 0 auto">
+      <span style="flex:0 0 auto">m</span>
     </div>
     <label class="row" id="gripRow" hidden>自动猜握把<input type="checkbox" id="autogrip" checked></label>
     <div class="hr"></div>
