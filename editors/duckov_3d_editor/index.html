@@ -58,12 +58,17 @@
     <label>最长边（米）<input type="number" id="size" step="0.01" min="0.01"></label>
     <label class="kv">当前<b id="curSize">–</b></label>
     <div class="hr"></div>
+    <h2>参照物</h2>
+    <label>玩家鸭<input type="checkbox" id="refduck" checked></label>
+    <label>手部挂点归零<input type="checkbox" id="refgrip"></label>
+    <div class="hr"></div>
     <div class="kv" id="diag">–</div>
   </div>
 
   <div id="err"></div>
 
   <script src="three.bundle.js"></script>
+  <script src="assets/duck_player.js"></script>
   <script src="editor.js"></script>
 </body>
 </html>
