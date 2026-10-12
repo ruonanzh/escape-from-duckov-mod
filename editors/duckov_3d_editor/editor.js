@@ -301,7 +301,7 @@
     kind: "weapon",     // weapon（枪：握把归零） | melee（近战：长轴→+Y） | item（物品：不摆正）
     muzzle: "auto",     // ⭐ 固定"自动"（`MuzzleAtPositiveZ`：两端各看 6%/15%，细的那端是枪管）—— 不给选择
     grip: true,         // ⭐ 只有「枪」用得上（`GuessGrip` 的假设是枪）—— UI 里也只在选枪时露出这一行 ✗
-    mirror: true,       // ⭐ 固定开：Unity 镜像（X 取反）= 游戏里看到的样子 —— 不做 ⇒ 预览与游戏左右相反 ✗
+    mirror: false,      // ⭐ 固定**关**：实测加镜像后预览与游戏左右相反 ✗（见 build 第 ③ 步）
     grid: true,         // ⭐ 固定开：网格（每格 10cm）
     size: 0            // 0 = 不改（用模型自己的尺寸）
   };
@@ -324,9 +324,13 @@
     state.root.scale.setScalar(1);
     state.root.updateMatrixWorld(true);
 
-    // ③ Unity 镜像（= 游戏里 GltfLoader 的 X 取反）
-    //    ⚠️ 必须在握把归零**之前** ✗ —— 游戏里就是先镜像、再 `GuessGrip`
-    state.mirror.scale.set(opts.mirror ? -1 : 1, 1, 1);
+    // ③ 镜像：**不做** ✗（用户 2026-10-12 定调，实测为准）
+    //    之前这里按「游戏 GltfLoader 会 X 取反」也取反了一次 ✗ —— 那是把
+    //    **坐标系转换**当成了**显示效果**。实测反了：
+    //      · 加镜像：正对鸭子时右臂在**画面右侧** ✗
+    //      · 不加：右臂在**画面左侧** ✓（= 游戏里的样子）
+    //    ⚠️ 这个坑只在**不对称模型**上看得出来 —— 枪大多左右对称，所以一直没暴露 ✗
+    state.mirror.scale.set(1, 1, 1);
 
     // ④ 握把归零（顶点级：把握把点移到原点）—— 只有「枪」用得上（`GuessGrip` 的假设是枪）
     if (opts.grip && opts.kind === "weapon") {
