@@ -270,11 +270,10 @@
   //    枚举 `HandheldSocketTypes`：normalHandheld = 1 · meleeWeapon = 2 · leftHandSocket = 3
   //    ⇒ 三类**都走 normalHandheld** ⇒ 对应 `rightHandSocket` ✓
   //    ⇒ `meleeWeaponSocket`（值 2）**游戏从来不用** ✗ ⇒ 不画它，手部只留一个点 ✓
+  //    ⭐ 配件挂点（头盔 / 护甲 / 背包）**暂时不画** ✗ —— 用户定调「先不处理」。
+  //       位置已量好，要用时再加回来（见设计仓 §8.2）。
   var CHAR_SOCKETS = [
-    { key: "hand",     label: "枪/近战/手持物", p: [-0.3342, 0.6179,  0.2811], color: 0xff8a00 },
-    { key: "helmat",   label: "头盔",  p: [ 0.0000, 0.9307,  0.0000], color: 0x8a5cff },
-    { key: "armor",    label: "护甲",  p: [ 0.0000, 0.4890, -0.0322], color: 0x2fae5a },
-    { key: "backpack", label: "背包",  p: [ 0.0000, 0.4909, -0.1495], color: 0x2f7ad2 },
+    { key: "hand", label: "枪/近战/手持物", p: [-0.3342, 0.6179, 0.2811], color: 0xff8a00 },
   ];
   // 手部那个就是模型要对齐的地方（`rightHandSocket` = normalHandheld）
   var REF_SOCKET = CHAR_SOCKETS[0].p;
@@ -307,6 +306,7 @@
       });
       // 挂点标记：画在鸭子内部（跟鸭子一起动），不需要跟着镜像
       // 小球 + 一个细十字，深度测试关掉 ⇒ 不被身体挡住 ✓
+      // ⚠️ 标记不得算进鸭子的包围盒 ✗ —— 否则脚底贴地面会按标记算，鸭子会浮起来
       g.traverse(function (o) { if (o.isMesh) o.userData.isDuckBody = true; });
       CHAR_SOCKETS.forEach(function (s) {
         var m = new THREE.Group();
@@ -324,12 +324,14 @@
         m.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts),
           new THREE.LineBasicMaterial({ color: s.color, depthTest: false })));
         m.position.set(s.p[0], s.p[1], s.p[2]);
+        m.userData.isMarker = true;
         g.add(m);
         refSocketMarks.push(m);
       });
       refDuck = g;
       scene.add(g);
       placeRefDuck();
+      updateDistance();
     }, function (e) { console.warn("参照鸭子加载失败", e); });
   }
 
@@ -339,8 +341,15 @@
     //    要去对齐的是**武器**：模型会被移到 `REF_SOCKET`（见 build 里第 ⑤ 步）
     refDuck.position.set(0, 0, 0);
     refDuck.updateMatrixWorld(true);
-    var b = new THREE.Box3().setFromObject(refDuck);
-    refDuck.position.set(0, -b.min.y, 0);
+    // 只按鸭身算包围盒（标记不算进去）
+    var b = new THREE.Box3();
+    var any = false;
+    refDuck.traverse(function (o) {
+      if (!o.isMesh || !o.userData.isDuckBody) return;
+      b.expandByObject(o);
+      any = true;
+    });
+    refDuck.position.set(0, any ? -b.min.y : 0, 0);
     refDuck.updateMatrixWorld(true);
   }
 
@@ -528,6 +537,25 @@
     return [c(v.z, box.min.z, sz), c(v.y, box.min.y, sy), c(v.x, box.min.x, sx)];
   }
 
+  /** 「到挂点距离」（cm）：pivot 那个点离鸭子手上的挂点有多远 —— 拖到 ≈ 0 就对齐了 ✓ */
+  function updateDistance() {
+    var el = document.getElementById("dist");
+    if (!el) return;
+    var socketMark = refSocketMarks.length ? refSocketMarks[0] : null;
+    var handle = null;
+    for (var i = 0; i < slotHandles.length; i++) {
+      if (slotHandles[i].userData.key === "pivot") { handle = slotHandles[i]; break; }
+    }
+    if (!socketMark) { el.textContent = "–"; return; }
+    if (!handle) { el.textContent = "先加一个 pivot 行"; el.style.color = ""; return; }
+    var a = new THREE.Vector3(), b = new THREE.Vector3();
+    handle.getWorldPosition(a);
+    socketMark.getWorldPosition(b);
+    var d = a.distanceTo(b);
+    el.textContent = (d * 100).toFixed(1) + " cm";
+    el.style.color = d < 0.005 ? "#1a7f3c" : d < 0.02 ? "#a60" : "";
+  }
+
   function rebuildSlots() {
     for (var i = 0; i < slotHandles.length; i++) {
       if (slotHandles[i].parent) slotHandles[i].parent.remove(slotHandles[i]);
@@ -550,6 +578,7 @@
       state.model.add(h);            // 挂在模型下 ⇒ 跟着镜像/缩放一起走
       slotHandles.push(h);
     });
+    updateDistance();
   }
 
   function renderSlotRows() {
@@ -572,12 +601,13 @@
         var want = ins[0].value.trim();
         if (!want || want === key) { ins[0].value = key; return; }
         opts.slots[want] = opts.slots[key]; delete opts.slots[key];
-        renderSlotRows(); rebuildSlots();
+        renderSlotRows(); rebuildSlots(); updateDistance();
       });
       [1, 2, 3].forEach(function (idx) {
         ins[idx].addEventListener("input", function () {
           opts.slots[key][idx - 1] = Math.max(0, Math.min(1, Number(ins[idx].value) || 0));
           rebuildSlots();
+          updateDistance();
         });
       });
       tr.querySelector("td.btn a").addEventListener("click", function () {
@@ -617,6 +647,7 @@
       opts.slots[drag.userData.key] = localToRatio(box, local);
       drag.position.copy(ratioToLocal(box, opts.slots[drag.userData.key]));
       renderSlotRows();
+      updateDistance();
     });
     var end = function () { if (drag) { drag = null; controls.enabled = true; } };
     el.addEventListener("pointerup", end);
@@ -643,7 +674,7 @@
       var k = "slot";
       for (var i = 1; opts.slots[k] !== undefined; i++) k = "slot" + i;
       opts.slots[k] = [0.5, 0.5, 0.5];
-      renderSlotRows(); rebuildSlots();
+      renderSlotRows(); rebuildSlots(); updateDistance();
     });
     document.getElementById("copyslots").addEventListener("click", function () {
       var out = {};

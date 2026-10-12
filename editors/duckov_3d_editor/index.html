@@ -48,11 +48,7 @@
     <div class="row" id="views"></div>
     <div class="row" id="meta"></div>
     <div class="row dim" id="hint">拖拽=转 · 滚轮=缩放 · 右键=平移</div>
-    <div class="row dim" style="font-size:11px">鸭子上的挂点（颜色）：
-      <b style="color:#ff8a00">枪/近战/手持物</b> ·
-      <b style="color:#8a5cff">头盔</b> ·
-      <b style="color:#2fae5a">护甲</b> ·
-      <b style="color:#2f7ad2">背包</b></div>
+    <div class="row dim" style="font-size:11px">鸭子身上橙点 = <b>手部挂点</b>（枪/近战/手持物都落这里）</div>
   </div>
 
   <div id="panel">
@@ -67,11 +63,8 @@
     <!-- ⭐ 只有「枪」才显示这一行：握把归零是枪的规则（`GuessGrip`），物品/近战都不适用 -->
     <label id="gripRow" hidden>握把归零<input type="checkbox" id="grip" checked></label>
     <div class="hr"></div>
-    <h2>尺寸</h2>
-    <label>最长边（米）<input type="number" id="size" step="0.01" min="0.01"></label>
-    <label class="kv">当前<b id="curSize">–</b></label>
-    <div class="hr"></div>
-    <h2>挂点 <span class="kv" style="font-weight:400">（比例 0~1，拖球或改数字）</span></h2>
+    <h2>挂点 <span class="kv" style="font-weight:400">（拖橙球到鸭子的手上）</span></h2>
+    <div class="kv" id="distLine" style="font-size:12px">到挂点距离 <b id="dist">–</b></div>
     <table class="slots">
       <thead><tr><th>键</th><th>L</th><th>H</th><th>D</th><th></th></tr></thead>
       <tbody id="slots"></tbody>
@@ -85,7 +78,12 @@
       <a id="copyslots">复制 JSON</a>
       <span class="dim" id="copyHint"></span>
     </div>
-    <div class="kv" style="margin-top:4px">有 <b>pivot</b> 就用它当对齐基准；否则 Muzzle+Stock 中点</div>
+    <div class="kv" style="margin-top:4px; font-size:11px">比例基准 = 模型自身包围盒（0~1）·
+      <b>pivot</b> 就是「哪个点要落到鸭子手上」· 距离≈0 就对了</div>
+    <div class="hr"></div>
+    <h2>尺寸</h2>
+    <label>最长边（米）<input type="number" id="size" step="0.01" min="0.01"></label>
+    <label class="kv">当前<b id="curSize">–</b></label>
     <div class="hr"></div>
     <div class="kv" id="diag">–</div>
   </div>
