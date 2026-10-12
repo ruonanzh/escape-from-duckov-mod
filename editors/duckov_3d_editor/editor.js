@@ -483,21 +483,22 @@
     document.getElementById("diag").textContent = "顶点 " + verts + " · 三角面 " + Math.round(tris);
   }
 
-  /** 取模型世界坐标下的顶点样本（用于朝向/握把判定） */
+  /** 取模型**自身坐标**下的顶点样本（给 GuessGrip 用）
+   *  ⚠️ 不得用世界坐标 ✗ —— 游戏那边 `GuessGrip` 读的是顶点原始值（POSITION accessor），
+   *     不带任何节点变换，也不带我们后来加的位置偏移。
+   *     已踩：早先用 `o.matrixWorld` ⇒ 第一次 build 后 `root.position` 已经等于 socket，
+   *     第二次取样就带上那个偏移 ⇒ 每点一次开关再叠一次
+   *     （实测：grip 变成 0.672,-0.578,-0.281 ✗，正确值应是 0.338,0.04,0）。
+   *     我们加的标记（挂点球、鸭子挂点）也不得参与取样 ✗。*/
   function samplePoints(obj) {
     var out = [];
-    obj.updateMatrixWorld(true);
-    var v = new THREE.Vector3();
     obj.traverse(function (o) {
       if (!o.isMesh || !o.geometry || !o.geometry.attributes.position) return;
-      // ⚠️ 我们加的标记球不得参与取样 ✗ —— 否则 GuessGrip 会把球当成模型的一部分
-      //    （实测：229 个采样点里大多数是 pivot 球 ⇒ 第二次点开关时猜测值变了 ⇒ 模型跳走）
       if (o.userData.isMarker || o.userData.isDuckBody) return;
       var pos = o.geometry.attributes.position;
       var step = Math.max(1, Math.floor(pos.count / 4000));   // 上限 4000 个采样点
       for (var i = 0; i < pos.count; i += step) {
-        v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
-        out.push([v.x, v.y, v.z]);
+        out.push([pos.getX(i), pos.getY(i), pos.getZ(i)]);   // 原始顶点，无变换
       }
     });
     return out;
