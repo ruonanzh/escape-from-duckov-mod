@@ -268,7 +268,7 @@
   })();
 
   // ── 参照物：玩家鸭 ─────────────────────────────────────────────────────────
-  // ⭐ 它**不参与**「游戏朝向」的任何启发式 ✗（长轴→+Z/+Y、枪口方向、握把归零都是**枪**的规则）。
+  // ⭐ 它**不参与**「物品」栏的任何启发式 ✗（长轴→+Z/+Y、枪口方向、握把归零都是**武器**的规则）。
   //    也**不做** X 镜像 ✗ —— 这条踩过坑，记下实测：
   //      鸭子 glb 是标准右手 glTF（前伸的右臂在 −X）⇒ 直接渲染时，正对鸭子右臂在**画面左侧** ✓。
   //      再叠一次 X 镜像 ⇒ 右臂跑到 +X ⇒ 正对时跑到**画面右侧** ✗（用户一眼看出「左右反了」）。
@@ -319,7 +319,7 @@
   }
 
   var opts = {
-    kind: "gun",        // gun（长轴→+Z） | up（长轴→+Y） | raw
+    kind: "weapon",     // weapon（武器：长轴→+Z + 枪口朝 +Z + 握把归零） | melee（近战：长轴→+Y） | item（物品：不摆正）
     muzzle: "auto",     // ⭐ 固定"自动"（`MuzzleAtPositiveZ`：两端各看 6%/15%，细的那端是枪管）—— 不给选择
     grip: true,         // ⭐ 只有「枪」用得上（`GuessGrip` 的假设是枪）—— UI 里也只在选枪时露出这一行 ✗
     mirror: true,       // ⭐ 固定开：Unity 镜像（X 取反）= 游戏里看到的样子 —— 不做 ⇒ 预览与游戏左右相反 ✗
@@ -347,10 +347,10 @@
     state.root.updateMatrixWorld(true);
     var b = bounds(samplePoints(state.model));
     var ax = longAxis(b.span);
-    if (opts.kind === "gun") {
+    if (opts.kind === "weapon") {
       if (ax === 0) state.orient.rotation.y = Math.PI / 2;
       else if (ax === 1) state.orient.rotation.x = -Math.PI / 2;
-    } else if (opts.kind === "up") {
+    } else if (opts.kind === "melee") {
       if (ax === 0) state.orient.rotation.z = Math.PI / 2;
       else if (ax === 2) state.orient.rotation.x = -Math.PI / 2;
     }
@@ -358,7 +358,7 @@
     // ③ 枪口方向：判据（`MuzzleAtPositiveZ`：两端各看 6%/15%，**细**的那端是枪管）
     //    ⚠️ 必须对 **orient 之后**的坐标采样 ✗（模型自带的 matrixWorld 里没有这一步 ✗）
     state.flip.rotation.set(0, 0, 0);
-    if (opts.kind === "gun") {
+    if (opts.kind === "weapon") {
       state.orient.updateMatrixWorld(true);
       // 规定就是"枪口朝 +Z"：判据同游戏（`MuzzleAtPositiveZ`）⇒ 在 −Z 就绕 Y 转 180°
       if (!muzzleAtPositiveZ(samplePoints(state.orient))) state.flip.rotation.y = Math.PI;
@@ -366,7 +366,7 @@
 
     // ④ 握把归零（顶点级：把握把点移到原点）
     state.grip.position.set(0, 0, 0);
-    if (opts.grip && opts.kind === "gun") {
+    if (opts.grip && opts.kind === "weapon") {
       state.flip.updateMatrixWorld(true);   // 枪托在 −Z ⇒ 必须在**朝向定好之后**采样 ✗
       var g = guessGrip(samplePoints(state.flip));
       state.grip.position.set(-g[0], -g[1], -g[2]);
@@ -423,7 +423,7 @@
 
     // ⭐ 「握把归零」只在选「枪」时露出（物品/近战/装备不适用 —— 那是枪的猜测规则）
     var gripRow = document.getElementById("gripRow");
-    if (gripRow) gripRow.hidden = opts.kind !== "gun";
+    if (gripRow) gripRow.hidden = opts.kind !== "weapon";
 
     // 面板读数
     var cur = box.getSize(new THREE.Vector3());

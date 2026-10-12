@@ -18,7 +18,7 @@
     #hud a { color:var(--accent); text-decoration:none; white-space:nowrap; cursor:pointer; }
     #hud a.on { font-weight:700; text-decoration:underline; }
     #hud .dim { color:var(--dim); }
-    /* 「游戏朝向」+ 尺寸：整块放**右下角**（左上留给标题/视角/提示） */
+    /* 「物品」+ 尺寸：整块放**右下角**（左上留给标题/视角/提示） */
     #panel { position:fixed; right:10px; bottom:10px; width:250px; background:var(--panel);
       padding:10px 12px; border-radius:8px; box-shadow:0 1px 6px #0002; }
     #panel h2 { margin:0 0 8px; font-size:13px; }
@@ -43,15 +43,15 @@
   </div>
 
   <div id="panel">
-    <h2>游戏朝向</h2>
+    <h2>物品</h2>
     <label>类型
       <select id="kind">
-        <option value="gun">枪（长轴 → +Z）</option>
-        <option value="up">立起来（长轴 → +Y）</option>
-        <option value="raw">原始（不摆正）</option>
+        <option value="weapon">武器</option>
+        <option value="melee">近战</option>
+        <option value="item">物品</option>
       </select>
     </label>
-    <!-- ⭐ 只有「枪」才显示这一行：握把归零是枪的规则（`GuessGrip`），物品/近战/装备都不适用 -->
+    <!-- ⭐ 只有「武器」才显示这一行：握把归零是枪的规则（`GuessGrip`），物品/近战都不适用 -->
     <label id="gripRow" hidden>握把归零<input type="checkbox" id="grip" checked></label>
     <div class="hr"></div>
     <h2>尺寸</h2>
