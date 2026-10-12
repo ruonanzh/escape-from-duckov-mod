@@ -19,7 +19,7 @@
     #hud a.on { font-weight:700; text-decoration:underline; }
     #hud .dim { color:var(--dim); }
     /* 「物品」+ 尺寸：整块放**右下角**（左上留给标题/视角/提示） */
-    #panel { position:fixed; right:10px; bottom:10px; width:330px; background:var(--panel);
+    #panel { position:fixed; right:10px; bottom:10px; width:370px; background:var(--panel);
       padding:10px 12px; border-radius:8px; box-shadow:0 1px 6px #0002;
       max-height:calc(100vh - 20px); overflow:auto; }
     #panel h2 { margin:0 0 8px; font-size:13px; }
@@ -65,25 +65,16 @@
       </select>
     </label>
     <!-- ⭐ 只有「枪」才显示这一行：握把归零是枪的规则（`GuessGrip`），物品/近战都不适用 -->
-    <label id="gripRow" hidden>握把归零<input type="checkbox" id="grip" checked></label>
     <div class="hr"></div>
-    <h2>挂点 <span class="kv" style="font-weight:400">（拖橙球到鸭子的手上）</span></h2>
-    <div class="kv" id="distLine" style="font-size:12px">到挂点距离 <b id="dist">–</b></div>
-    <table class="slots">
-      <thead><tr><th>键</th><th>L</th><th>H</th><th>D</th><th></th></tr></thead>
-      <tbody id="slots"></tbody>
-    </table>
-    <datalist id="slotkeys">
-      <option value="Muzzle"></option><option value="Stock"></option><option value="Grip"></option>
-      <option value="Scope"></option><option value="Tec"></option><option value="pivot"></option>
-    </datalist>
-    <div class="row" style="margin-top:6px">
-      <a id="addslot">＋加挂点</a>
-      <a id="copyslots">复制 JSON</a>
-      <span class="dim" id="copyHint"></span>
+    <h2>挂点</h2>
+    <div class="row" style="gap:6px; align-items:center">
+      <span style="flex:0 0 auto">pivot cm</span>
+      <input type="number" id="pivot-x" step="0.5" placeholder="X" title="X" style="width:76px">
+      <input type="number" id="pivot-y" step="0.5" placeholder="Y" title="Y" style="width:76px">
+      <input type="number" id="pivot-z" step="0.5" placeholder="Z" title="Z" style="width:76px">
     </div>
-    <div class="kv" style="margin-top:4px; font-size:11px">比例基准 = 模型自身包围盒（0~1）·
-      <b>pivot</b> 就是「哪个点要落到鸭子手上」· 距离≈0 就对了</div>
+    <label class="row" id="gripRow" hidden>自动猜握把<input type="checkbox" id="autogrip" checked></label>
+    <div class="kv" id="distLine" style="font-size:12px; margin-top:4px">到挂点距离 <b id="dist">–</b></div>
     <div class="hr"></div>
     <h2>尺寸</h2>
     <label>最长边（米）<input type="number" id="size" step="0.01" min="0.01"></label>

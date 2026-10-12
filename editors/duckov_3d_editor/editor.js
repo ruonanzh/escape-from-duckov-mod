@@ -179,7 +179,6 @@
     grid.position.y = 0;
     scene.add(grid);
 
-
     // 游戏坐标系标识：+X 红 · +Y 绿 · +Z 蓝（Unity：+Y 上 · +Z 前）
     axes = new THREE.AxesHelper(0.5);
     scene.add(axes);
@@ -356,14 +355,12 @@
     refDuck.updateMatrixWorld(true);
   }
 
-  // ── 挂点（比例 0~1）─────────────────────────────────────────────────────
-  // 和游戏同一套坐标：`slots` 的值是 [L,H,D] 比例 ⇒ 在**模型自身包围盒**里取点
-  //    L 沿 Z（长轴 / 枪口 +Z）· H 沿 Y · D 沿 X        （同 `WeaponModel.cs` 的换算）
-  // 面板里改数字、或在场景里**拖球**，两边同步。调好后把 JSON 抄进 `config.json`（另一个编辑器）
-  var SLOT_PRESET = ["Muzzle", "Stock", "Grip", "Scope", "Tec", "pivot"];
-  var HANDLE_MAT = { pivot: 0xff8a00, other: 0x00a6c8 };
+  // ── 挂点：只有一个 pivot（cm）──────────────────────────────────────────────
+  // 它就是「模型上哪个点要落到鸭子手上」—— 相对**模型自身原点**的偏移（cm）。
+  // 0 0 0 = 模型原点就到手上（默认）。拖橙球或改数字都行 ✓
+  // ⚠️ 只有**手部**挂点参与对齐；头盔/护甲/背包那些只是参照标记（见 CHAR_SOCKETS）
   var HANDLE_R = 0.012;
-  var slotHandles = [];
+  var pivotHandle = null;
   var drag = null;
   var raycaster = new THREE.Raycaster();
   var pointer = new THREE.Vector2();
@@ -371,7 +368,8 @@
 
   var opts = {
     kind: "weapon",     // weapon（枪：握把归零） | melee（近战：长轴→+Y） | item（物品：不摆正）
-    slots: {},          // { "Muzzle": [L,H,D], ..., "pivot": [L,H,D] }（比例 0~1）
+    pivot: [0, 0, 0],   // 模型上「要落到鸭子手上」的点，相对模型原点（cm）
+    autoGrip: true,     // 武器：是否自动猜握把（游戏 `GuessGrip`，物品固定不做）
     muzzle: "auto",     // ⭐ 固定"自动"（`MuzzleAtPositiveZ`：两端各看 6%/15%，细的那端是枪管）—— 不给选择
     grip: true,         // ⭐ 只有「枪」用得上（`GuessGrip` 的假设是枪）—— UI 里也只在选枪时露出这一行 ✗
     mirror: false,      // ⭐ 固定**关**：实测加镜像后预览与游戏左右相反 ✗（见 build 第 ③ 步）
@@ -406,7 +404,7 @@
     state.mirror.scale.set(1, 1, 1);
 
     // ④ 握把归零（顶点级：把握把点移到原点）—— 只有「枪」用得上（`GuessGrip` 的假设是枪）
-    if (opts.grip && opts.kind === "weapon") {
+    if (opts.autoGrip && opts.kind === "weapon") {
       state.mirror.updateMatrixWorld(true);
       var g = guessGrip(samplePoints(state.mirror));
       state.grip.position.set(-g[0], -g[1], -g[2]);
@@ -469,7 +467,7 @@
     var gripRow = document.getElementById("gripRow");
     if (gripRow) gripRow.hidden = opts.kind !== "weapon";
 
-    rebuildSlots();
+    rebuildPivot();
 
     // 面板读数
     var cur = box.getSize(new THREE.Vector3());
@@ -478,6 +476,7 @@
     var verts = 0, tris = 0;
     state.model.traverse(function (o) {
       if (!o.isMesh) return;
+      if (o === pivotHandle) return;                  // 挂点标记不算进顶点/三角面
       var g = o.geometry;
       verts += g.attributes.position ? g.attributes.position.count : 0;
       tris += g.index ? g.index.count / 3 : (g.attributes.position ? g.attributes.position.count / 3 : 0);
@@ -511,112 +510,54 @@
     return found;
   }
 
-  function assetBox(mesh) {
-    var b = new THREE.Box3();
-    var any = false;
-    state.model.traverse(function (o) {
-      if (!o.isMesh || !o.geometry) return;
-      if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
-      var gb = o.geometry.boundingBox.clone();
-      gb.applyMatrix4(o.matrix);          // 到 `state.model` 的局部空间
-      b.union(gb);
-      any = true;
-    });
-    return any ? b : new THREE.Box3(new THREE.Vector3(-0.5, -0.5, -0.5), new THREE.Vector3(0.5, 0.5, 0.5));
-  }
-
   /** 比例 [L,H,D] → `state.model` 局部坐标 */
-  function ratioToLocal(box, lhd) {
-    return new THREE.Vector3(
-      box.min.x + Math.max(0, Math.min(1, lhd[2])) * (box.max.x - box.min.x),
-      box.min.y + Math.max(0, Math.min(1, lhd[1])) * (box.max.y - box.min.y),
-      box.min.z + Math.max(0, Math.min(1, lhd[0])) * (box.max.z - box.min.z));
-  }
 
   /** `state.model` 局部坐标 → 比例 [L,H,D] */
-  function localToRatio(box, v) {
-    var sx = box.max.x - box.min.x, sy = box.max.y - box.min.y, sz = box.max.z - box.min.z;
-    var c = function (a, lo, s) { return s < 1e-6 ? 0.5 : Math.max(0, Math.min(1, (a - lo) / s)); };
-    return [c(v.z, box.min.z, sz), c(v.y, box.min.y, sy), c(v.x, box.min.x, sx)];
-  }
 
   /** 「到挂点距离」（cm）：pivot 那个点离鸭子手上的挂点有多远 —— 拖到 ≈ 0 就对齐了 ✓ */
   function updateDistance() {
     var el = document.getElementById("dist");
     if (!el) return;
     var socketMark = refSocketMarks.length ? refSocketMarks[0] : null;
-    var handle = null;
-    for (var i = 0; i < slotHandles.length; i++) {
-      if (slotHandles[i].userData.key === "pivot") { handle = slotHandles[i]; break; }
-    }
+    if (!pivotHandle) { el.textContent = "–"; return; }
     if (!socketMark) { el.textContent = "–"; return; }
-    if (!handle) { el.textContent = "先加一个 pivot 行"; el.style.color = ""; return; }
     var a = new THREE.Vector3(), b = new THREE.Vector3();
-    handle.getWorldPosition(a);
+    pivotHandle.getWorldPosition(a);
     socketMark.getWorldPosition(b);
     var d = a.distanceTo(b);
     el.textContent = (d * 100).toFixed(1) + " cm";
     el.style.color = d < 0.005 ? "#1a7f3c" : d < 0.02 ? "#a60" : "";
   }
 
-  function rebuildSlots() {
-    for (var i = 0; i < slotHandles.length; i++) {
-      if (slotHandles[i].parent) slotHandles[i].parent.remove(slotHandles[i]);
-      slotHandles[i].geometry.dispose();
-      slotHandles[i].material.dispose();
+  /** pivot 的局部点（cm -> 米，相对模型自身原点） */
+  function pivotLocal() {
+    return new THREE.Vector3(opts.pivot[0] / 100, opts.pivot[1] / 100, opts.pivot[2] / 100);
+  }
+
+  function rebuildPivot() {
+    if (pivotHandle) {
+      if (pivotHandle.parent) pivotHandle.parent.remove(pivotHandle);
+      pivotHandle.geometry.dispose();
+      pivotHandle.material.dispose();
+      pivotHandle = null;
     }
-    slotHandles = [];
     if (!state.model) return;
-    var box = assetBox();
-    Object.keys(opts.slots).forEach(function (key) {
-      var mat = new THREE.MeshBasicMaterial({
-        color: key === "pivot" ? HANDLE_MAT.pivot : HANDLE_MAT.other,
-        depthTest: false, transparent: true, opacity: 0.95,
-      });
-      var h = new THREE.Mesh(new THREE.SphereGeometry(HANDLE_R, 16, 12), mat);
-      h.name = "slot:" + key;
-      h.renderOrder = 999;
-      h.userData.key = key;
-      h.position.copy(ratioToLocal(box, opts.slots[key]));
-      state.model.add(h);            // 挂在模型下 ⇒ 跟着镜像/缩放一起走
-      slotHandles.push(h);
-    });
+    var mat = new THREE.MeshBasicMaterial({ color: 0xff8a00, depthTest: false, transparent: true, opacity: 0.95 });
+    var h = new THREE.Mesh(new THREE.SphereGeometry(HANDLE_R, 16, 12), mat);
+    h.name = "pivot";
+    h.renderOrder = 999;
+    h.position.copy(pivotLocal());
+    state.model.add(h);
+    pivotHandle = h;
+    syncPivotInputs();
     updateDistance();
   }
 
-  function renderSlotRows() {
-    var tb = document.getElementById("slots");
-    if (!tb) return;
-    tb.textContent = "";
-    var fmt = function (v) { return (Math.round(v * 1000) / 1000).toString(); };
-    Object.keys(opts.slots).forEach(function (key) {
-      var lhd = opts.slots[key];
-      var tr = document.createElement("tr");
-      tr.innerHTML = '<td><input class="k" type="text" list="slotkeys"></td>' +
-        '<td><input class="l" type="number" step="0.01" min="0" max="1"></td>' +
-        '<td><input class="h" type="number" step="0.01" min="0" max="1"></td>' +
-        '<td><input class="d" type="number" step="0.01" min="0" max="1"></td>' +
-        '<td class="btn"><a title="删除">×</a></td>';
-      var ins = tr.querySelectorAll("input");
-      ins[0].value = key;
-      ins[1].value = fmt(lhd[0]); ins[2].value = fmt(lhd[1]); ins[3].value = fmt(lhd[2]);
-      ins[0].addEventListener("change", function () {
-        var want = ins[0].value.trim();
-        if (!want || want === key) { ins[0].value = key; return; }
-        opts.slots[want] = opts.slots[key]; delete opts.slots[key];
-        renderSlotRows(); rebuildSlots(); updateDistance();
-      });
-      [1, 2, 3].forEach(function (idx) {
-        ins[idx].addEventListener("input", function () {
-          opts.slots[key][idx - 1] = Math.max(0, Math.min(1, Number(ins[idx].value) || 0));
-          rebuildSlots();
-          updateDistance();
-        });
-      });
-      tr.querySelector("td.btn a").addEventListener("click", function () {
-        delete opts.slots[key]; renderSlotRows(); rebuildSlots();
-      });
-      tb.appendChild(tr);
+  function syncPivotInputs() {
+    var f = function (v) { return (Math.round(v * 100) / 100).toString(); };
+    ["x", "y", "z"].forEach(function (ax, i) {
+      var el = document.getElementById("pivot-" + ax);
+      if (el) el.value = f(opts.pivot[i]);
     });
   }
 
@@ -628,12 +569,12 @@
   function attachSlotDrag() {
     var el = renderer.domElement;
     el.addEventListener("pointerdown", function (ev) {
-      if (!slotHandles.length) return;
+      if (!pivotHandle) return;
       pointerNdc(ev);
       raycaster.setFromCamera(pointer, camera);
-      var hits = raycaster.intersectObjects(slotHandles, false);
+      var hits = raycaster.intersectObject(pivotHandle, false);
       if (!hits.length) return;
-      drag = hits[0].object;
+      drag = pivotHandle;
       controls.enabled = false;                       // 抓球时别转镜头
       var nrm = camera.getWorldDirection(new THREE.Vector3());
       dragPlane.setFromNormalAndCoplanarPoint(nrm, drag.getWorldPosition(new THREE.Vector3()));
@@ -645,11 +586,10 @@
       raycaster.setFromCamera(pointer, camera);
       var hit = new THREE.Vector3();
       if (!raycaster.ray.intersectPlane(dragPlane, hit)) return;
-      var local = drag.parent.worldToLocal(hit);      // → `state.model` 局部
-      var box = assetBox();
-      opts.slots[drag.userData.key] = localToRatio(box, local);
-      drag.position.copy(ratioToLocal(box, opts.slots[drag.userData.key]));
-      renderSlotRows();
+      var local = drag.parent.worldToLocal(hit);      // -> `state.model` 局部
+      opts.pivot = [local.x * 100, local.y * 100, local.z * 100];   // 存 cm
+      drag.position.copy(local);
+      syncPivotInputs();
       updateDistance();
     });
     var end = function () { if (drag) { drag = null; controls.enabled = true; } };
@@ -671,38 +611,19 @@
       setView(a.dataset.dir.split(",").map(Number));
     });
     // 挂点：加/复制 + 拖球
-    renderSlotRows();
+    rebuildPivot();
     attachSlotDrag();
-    document.getElementById("addslot").addEventListener("click", function () {
-      var k = "slot";
-      for (var i = 1; opts.slots[k] !== undefined; i++) k = "slot" + i;
-      opts.slots[k] = [0.5, 0.5, 0.5];
-      renderSlotRows(); rebuildSlots(); updateDistance();
-    });
-    document.getElementById("copyslots").addEventListener("click", function () {
-      var out = {};
-      Object.keys(opts.slots).forEach(function (k) {
-        out[k] = opts.slots[k].map(function (v) { return Math.round(v * 1000) / 1000; });
+    ["x", "y", "z"].forEach(function (ax, i) {
+      var el = document.getElementById("pivot-" + ax);
+      if (!el) return;
+      el.addEventListener("input", function () {
+        opts.pivot[i] = Number(el.value) || 0;
+        if (pivotHandle) pivotHandle.position.copy(pivotLocal());
+        updateDistance();
       });
-      var text = JSON.stringify(out);
-      var hint = document.getElementById("copyHint");
-      var done = function (ok) { hint.textContent = ok ? "已复制 ✓ 贴进 config.json" : "复制失败，请手动选"; setTimeout(function () { hint.textContent = ""; }, 2500); };
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
-      } else {
-        try {
-          var ta = document.createElement("textarea");
-          ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
-          document.body.appendChild(ta); ta.select();
-          var ok = document.execCommand("copy");
-          document.body.removeChild(ta);
-          done(ok);
-        } catch (e) { done(false); }
-      }
     });
-
     document.getElementById("kind").addEventListener("change", function (e) { opts.kind = e.target.value; build(); });
-    document.getElementById("grip").addEventListener("change", function (e) { opts.grip = e.target.checked; build(); });
+    document.getElementById("autogrip").addEventListener("change", function (e) { opts.autoGrip = e.target.checked; build(); });
     loadRefDuck();
     document.getElementById("size").addEventListener("change", function (e) {
       opts.size = parseFloat(e.target.value) || 0; build();
