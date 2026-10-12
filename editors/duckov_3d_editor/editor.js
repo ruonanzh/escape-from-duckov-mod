@@ -270,10 +270,13 @@
   //    枚举 `HandheldSocketTypes`：normalHandheld = 1 · meleeWeapon = 2 · leftHandSocket = 3
   //    ⇒ 三类**都走 normalHandheld** ⇒ 对应 `rightHandSocket` ✓
   //    ⇒ `meleeWeaponSocket`（值 2）**游戏从来不用** ✗ ⇒ 不画它，手部只留一个点 ✓
-  //    ⭐ 配件挂点（头盔 / 护甲 / 背包）**暂时不画** ✗ —— 用户定调「先不处理」。
-  //       位置已量好，要用时再加回来（见设计仓 §8.2）。
+  //    ⚠️ 「配件挂点先不处理」指的是**那套对齐逻辑** ✗ —— 标记本身要画 ✓（曾误解成不画，删了一次）
+  //       各挂点的用途：手部 = 模型对齐目标；“头盔/护甲/背包” = 参照物，看装备落哪儿 ✓
   var CHAR_SOCKETS = [
-    { key: "hand", label: "枪/近战/手持物", p: [-0.3342, 0.6179, 0.2811], color: 0xff8a00 },
+    { key: "hand",     label: "枪/近战/手持物", p: [-0.3342, 0.6179,  0.2811], color: 0xff8a00 },
+    { key: "helmat",   label: "头盔",  p: [ 0.0000, 0.9307,  0.0000], color: 0x8a5cff },
+    { key: "armor",    label: "护甲",  p: [ 0.0000, 0.4890, -0.0322], color: 0x2fae5a },
+    { key: "backpack", label: "背包",  p: [ 0.0000, 0.4909, -0.1495], color: 0x2f7ad2 },
   ];
   // 手部那个就是模型要对齐的地方（`rightHandSocket` = normalHandheld）
   var REF_SOCKET = CHAR_SOCKETS[0].p;
