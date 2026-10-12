@@ -253,14 +253,21 @@
   var REF_MAT = { metal: 0.0, rough: 0.7 };   // ⭐ 鸭子不是金属 ✗（用 MAT 的 0.3 会让白毛变灰 ✗）
   // ⭐ 游戏角色身上的挂点（离线从游戏数据量得，**鸭子 glb 的坐标**）
   //    来源：prefab 上 `CharacterModel` 组件的字段（玩家鸭 = pathID 106660）；
-  //    那些 Transform 在 `Chick_LOD1/Rig/root/body/` 下 —— **不在 `Duck_Armature` 上** ✗
-  //    ⚠️ 鸭子姿势变、或者换了角色模型，这些值都要重量 ✗
+  //    ⚠️ 鸭子姿势变，这些值要重量 ✗
+  //    ⚠️ 别拿 `0_CharacterModel_Pet_Jinitaimei` 的 CharacterModel ✗ —— 它是宠物，
+  //       挂点指向另一套（小鸡）骨骰，与鸭子网格对不上。用**鸭子模型**（Coach / Jeff / Boss）的。
+  //    算法：挂点相对**父骨**的局部偏移（从 Coach 鸭量得）+ 鸭子当前姿势的骨头世界矩阵
+  //      gun       <- MeleeWeaponSocket <- Hand.R     （-0.0032, 0.1588, -0.0169）
+  //      righthand <- RightHandSocket   <- Hand.R     （ 0.0180, 0.0420, -0.0580）
+  //      helmat    <- HelmatSocket      <- Head       （ 0.0000, 0.2160,  0.0000）
+  //      armor     <- ArmorSocket       <- Spine.003  （ 0.0000, 0.0031, -0.0002）
+  //      backpack  <- BackpackSocket    <- Spine.003  （ 0.1400,-0.1260, -0.0930）
   var CHAR_SOCKETS = [
-    { key: "gun",       label: "拿枪",   p: [0.029, 0.491, 0.317],  color: 0xff8a00 },
-    { key: "righthand", label: "右手",   p: [0.000, 0.246, -0.011], color: 0x9aa3ab },
-    { key: "helmat",    label: "头盔",   p: [0.000, 0.619, 0.136],  color: 0x8a5cff },
-    { key: "armor",     label: "护甲",   p: [0.000, 0.299, 0.028],  color: 0x2fae5a },
-    { key: "backpack",  label: "背包",   p: [0.000, 0.340, -0.102], color: 0x2f7ad2 },
+    { key: "gun",       label: "拿枪", p: [-0.3523, 0.5814, 0.3999], color: 0xff8a00 },
+    { key: "righthand", label: "右手", p: [-0.3342, 0.6179, 0.2811], color: 0x9aa3ab },
+    { key: "helmat",    label: "头盔", p: [ 0.0000, 0.9307, 0.0000], color: 0x8a5cff },
+    { key: "armor",     label: "护甲", p: [ 0.0000, 0.4890, -0.0322], color: 0x2fae5a },
+    { key: "backpack",  label: "背包", p: [-0.1400, 0.3837, -0.1513], color: 0x2f7ad2 },
   ];
   // 拿枪那个就是模型要对齐的地方（`MeleeWeaponSocket`）
   var REF_SOCKET = CHAR_SOCKETS[0].p;
