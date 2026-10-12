@@ -246,8 +246,11 @@
   function setView(dir) {
     var d = new THREE.Vector3(dir[0], dir[1], dir[2]).normalize();
     // ⭐ 对准**包围盒中心** ✗ 不是原点 —— 握把归零后模型主要伸向 +Z，对原点看会把它裁掉 ✗
-    var center = state.box ? state.box.getCenter(new THREE.Vector3()) : new THREE.Vector3();
-    var dist = (state.radius || 1) * 3.0;
+    // ⚠️ 用的是 `viewBox`（打开的文件 **∪ 参照鸭子**）✗ 不是 `state.box` ——
+    //    否则镜头只框打开的模型，参照鸭子永远在框外 ✗（曾经就是）
+    var vb = state.viewBox || state.box;
+    var center = vb ? vb.getCenter(new THREE.Vector3()) : new THREE.Vector3();
+    var dist = (state.viewRadius || state.radius || 1) * 3.0;
     camera.position.copy(center).add(d.multiplyScalar(dist));
     controls.target.copy(center);
     controls.update();
@@ -263,6 +266,57 @@
     var v = q.split(",");
     if (v.length === 2) { MAT.metal = parseFloat(v[0]); MAT.rough = parseFloat(v[1]); }
   })();
+
+  // ── 参照物：玩家鸭 ─────────────────────────────────────────────────────────
+  // ⭐ 它**不参与**「游戏朝向」的任何启发式 ✗（长轴→+Z/+Y、枪口方向、握把归零都是**枪**的规则）。
+  //    也**不做** X 镜像 ✗ —— 这条踩过坑，记下实测：
+  //      鸭子 glb 是标准右手 glTF（前伸的右臂在 −X）⇒ 直接渲染时，正对鸭子右臂在**画面左侧** ✓。
+  //      再叠一次 X 镜像 ⇒ 右臂跑到 +X ⇒ 正对时跑到**画面右侧** ✗（用户一眼看出「左右反了」）。
+  //    模型自己的坐标系里上方就是 +Y、前方就是 +Z ⇒ 直接进来就是站立的 ✓ 不需要任何旋转 ✓
+  //    资源是内嵌的（`assets/duck_player.js`）：CSP 是 `connect-src 'none'` ⇒ 运行时不能 fetch ✗
+  //    ⭐ **常驻、不给开关** —— 它是背景参照物，不是要调的参数（面板里没有它）
+  var REF_MAT = { metal: 0.0, rough: 0.7 };   // ⭐ 鸭子不是金属 ✗（用 MAT 的 0.3 会让白毛变灰 ✗）
+  var refDuck = null;
+
+  function loadRefDuck() {
+    if (!window.DUCK_REF_B64) return;
+    var bin = base64ToBytes(window.DUCK_REF_B64);
+    var buf = bin.buffer.slice(bin.byteOffset, bin.byteOffset + bin.byteLength);
+    new GLTFLoader().parse(buf, "", function (gltf) {
+      var g = new THREE.Group();
+      g.name = "refDuck";
+      // ⚠️ 这里**不加** X 镜像 ✗，理由见上面那段实测（前视图：右臂在画面左侧 = 对）
+      var mir = new THREE.Group();
+      mir.add(gltf.scene);
+      g.add(mir);
+      gltf.scene.traverse(function (o) {
+        if (!o.isMesh) return;
+        (Array.isArray(o.material) ? o.material : [o.material]).forEach(function (m) {
+          if (!m) return;
+          m.metalnessMap = null;
+          m.roughnessMap = null;
+          m.aoMap = null;
+          m.metalness = REF_MAT.metal;
+          m.roughness = REF_MAT.rough;
+          m.side = THREE.DoubleSide;
+          m.needsUpdate = true;
+        });
+      });
+      refDuck = g;
+      scene.add(g);
+      placeRefDuck();
+    }, function (e) { console.warn("参照鸭子加载失败", e); });
+  }
+
+  function placeRefDuck() {
+    if (!refDuck) return;
+    // ⭐ 只有一种摆法：脚底贴网格、站在原点（武器会被握把归零到原点 ⇒ 两者共用同一个原点）
+    refDuck.position.set(0, 0, 0);
+    refDuck.updateMatrixWorld(true);
+    var b = new THREE.Box3().setFromObject(refDuck);
+    refDuck.position.set(0, -b.min.y, 0);
+    refDuck.updateMatrixWorld(true);
+  }
 
   var opts = {
     kind: "gun",        // gun（长轴→+Z） | up（长轴→+Y） | raw
@@ -334,7 +388,11 @@
     state.box = box;
     state.radius = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 0.05);
 
-
+    // ⭐ 取景范围 = 打开的模型 **∪ 参照鸭子**（参照物默认在原点站 1.12m ⇒ 不算进去就被裁掉 ✗）
+    var viewBox = box.clone();
+    if (refDuck && refDuck.visible) viewBox.expandByObject(refDuck);
+    state.viewBox = viewBox;
+    state.viewRadius = Math.max(viewBox.getSize(new THREE.Vector3()).length() / 2, 0.05);
 
     // 包围盒线框
     if (hull) { scene.remove(hull); hull.geometry.dispose(); }
@@ -414,6 +472,7 @@
     });
     document.getElementById("kind").addEventListener("change", function (e) { opts.kind = e.target.value; build(); });
     document.getElementById("grip").addEventListener("change", function (e) { opts.grip = e.target.checked; build(); });
+    loadRefDuck();
     document.getElementById("size").addEventListener("change", function (e) {
       opts.size = parseFloat(e.target.value) || 0; build();
     });
