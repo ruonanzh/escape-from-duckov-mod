@@ -24,6 +24,8 @@
       max-height:calc(100vh - 20px); overflow:auto; }
     #panel h2 { margin:0 0 8px; font-size:13px; }
     #panel label { display:flex; justify-content:space-between; align-items:center; gap:8px; margin:5px 0; }
+    /* ⚠️ `div.row` 也要 flex ✗ —— 原来只定义了 `label.row`，于是自定义的 div 行根本没生效 */
+    #panel .row { display:flex; flex-wrap:nowrap; align-items:center; gap:5px; margin:5px 0; }
     #panel select, #panel input[type=number] { font:inherit; padding:2px 4px; border:1px solid var(--line);
       border-radius:4px; background:#fff; width:110px; }
     #panel input[type=range] { width:100%; }
@@ -70,8 +72,7 @@
     <h2>挂点</h2>
     <div class="row" id="pivotRow" style="gap:5px; align-items:center; flex-wrap:nowrap">
       <span style="flex:0 0 auto">pivot</span>
-      <span style="flex:1 1 auto"></span>
-      <input type="number" id="pivot-x" step="0.01" placeholder="X" title="X" style="width:72px; flex:0 0 auto">
+      <input type="number" id="pivot-x" step="0.01" placeholder="X" title="X" style="width:72px; flex:0 0 auto; margin-left:auto">
       <input type="number" id="pivot-y" step="0.01" placeholder="Y" title="Y" style="width:72px; flex:0 0 auto">
       <input type="number" id="pivot-z" step="0.01" placeholder="Z" title="Z" style="width:72px; flex:0 0 auto">
       <span style="flex:0 0 auto">m</span>
