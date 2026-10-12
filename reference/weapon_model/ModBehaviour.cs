@@ -51,7 +51,7 @@ namespace WeaponModelSwap
             /// <summary> 最终乘在 `localScale` 上的适配系数 （抵消挂点缩放那部分另算）</summary>
             public float Scale = 1f;
             public string IconPath;          // 解析成绝对路径（相对 mod 目录）
-            /// <summary>config 里的 `slots`（**比例** [L,H,D]，L 沿 Z、H 沿 Y、D 沿 X）——
+            /// <summary>config 里的 `slots`（**米** [L,H,D]，相对模型自身原点；L 沿 Z、H 沿 Y、D 沿 X）——
             /// 目前用来：① 换算成我们模型的局部坐标并打日志 ② 有 pivot 时用它当对齐基准
             /// （step 2 会把保留的配件按这些点重新挂上）</summary>
             public readonly Dictionary<string, Vector3> Slots = new Dictionary<string, Vector3>();
@@ -373,7 +373,7 @@ namespace WeaponModelSwap
             return e;
         }
 
-        /// <summary>读 config 的 `slots`：{ "Muzzle": [L,H,D], … } —— 每个值必须是≥3 个数的数组 （0~1 比例）</summary>
+        /// <summary>读 config 的 `slots`：{ "Muzzle": [L,H,D], … } —— 每个值必须是≥3 个数的数组（**米**，可负）</summary>
         static Dictionary<string, Vector3> ParseSlots(JsonValue j)
         {
             var dict = new Dictionary<string, Vector3>(StringComparer.OrdinalIgnoreCase);
@@ -383,7 +383,7 @@ namespace WeaponModelSwap
             {
                 var a = kv.Value;
                 if (a == null || !a.IsArray || a.Count < 3)
-                { Debug.LogWarning($"[WeaponModel] slots.{kv.Key} must be three 0~1 numbers [L,H,D]; skipped"); continue; }
+                { Debug.LogWarning($"[WeaponModel] slots.{kv.Key} must be three numbers [L,H,D] in metres; skipped"); continue; }
                 dict[kv.Key] = new Vector3(a[0].AsFloat(0f), a[1].AsFloat(0f), a[2].AsFloat(0f));
             }
             return dict;

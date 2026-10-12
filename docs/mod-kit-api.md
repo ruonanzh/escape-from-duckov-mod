@@ -22,7 +22,7 @@
 
 | API | 什么时候用 |
 |---|---|
-| `WeaponModel.Apply(anchorRoot, mesh, tex, offset, slots, scale)` | **主入口**：把模型换到手持武器上（选锚点、藏旧零件、对齐、搬挂点、换贴图）|
+| `WeaponModel.Apply(anchorRoot, mesh, tex, offset, slots, scale)` | **主入口**：把模型换到手持武器上（选锚点、藏旧零件、对齐、搬挂点、换贴图）。`slots` 的值 `[L,H,D]` 单位是**米**（相对**模型自身原点**，0~1 比例已废 ✗）|
 | `WeaponIcon.Apply(item, "icon.png")` | 换卡片图标（有图标才调。幂等，内部自己归一化尺寸）|
 | `WeaponIcon.ApplyToAllMatching(names, pngPath)` | 一次给一批武器换同一个图标 |
 

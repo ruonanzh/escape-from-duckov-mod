@@ -82,9 +82,10 @@ namespace ModelKit
         }
 
         /// <summary>把手持武器的模型换成给进来的 Mesh+贴图。root 一般是 `itemGraphic.gameObject` 或手持实体的 GameObject。</summary>
-        /// <param name="slots">可选：config.json 的槽位（**比例** 键如 Muzzle/Stock/Scope/Tec/Grip，以及可选的 pivot）；
-        /// 每个值 [L,H,D] 均为 0~1：**L 沿 Z（枪口 +Z）· H 沿 Y · D 沿 X**（= 模型自身包围盒的比例）。
-        /// 作用：① 换算成我们模型局部坐标（记入 Result.SlotPoints）② 有 `pivot` 就用它当对齐基准（比包围盒映射准）。</param>
+        /// <param name="slots">可选：config.json 的槽位（键如 Muzzle/Stock/Scope/Tec/Grip，以及可选的 pivot）；
+        /// 每个值 [L,H,D] 单位是**米**，相对**模型自身原点**（不是包围盒里的比例 ✗）：
+        /// **L 沿 Z（枪口 +Z）· H 沿 Y · D 沿 X**。
+        /// 作用：① 直接就是模型局部坐标里的点（记入 Result.SlotPoints）② 有 `pivot` 就用它当对齐基准（比包围盒映射准）。</param>
         public static Result Apply(Transform root, Mesh mesh, Texture2D texture, Vector3 extraOffset = default, Dictionary<string, Vector3> slots = null, float scale = 1f)
         {
             var res = new Result();
@@ -173,18 +174,14 @@ namespace ModelKit
                                      myB.min.z + frac.z * myB.size.z);
             }
 
-            // slots：先把每个 [L,H,D] 比例换算成“我们模型局部坐标里的点”；
+            // slots：值**直接就是米**（相对**模型自身原点**的偏移，不是包围盒里的比例）
             // 然后有 pivot，于是 用它当对齐基准（比包围盒映射准）；否则 Muzzle+Stock 都给，于是 用它们的中点
             if (slots != null && slots.Count > 0)
             {
-                var b = mr.localBounds;
                 foreach (var kv in slots)
                 {
                     var k = kv.Value;
-                    res.SlotPoints[kv.Key] = new Vector3(
-                        b.min.x + Mathf.Clamp01(k.z) * b.size.x,   // D，于是 X
-                        b.min.y + Mathf.Clamp01(k.y) * b.size.y,   // H，于是 Y
-                        b.min.z + Mathf.Clamp01(k.x) * b.size.z);  // L，于是 Z （枪口 +Z）
+                    res.SlotPoints[kv.Key] = new Vector3(k.z, k.y, k.x);   // D→X · H→Y · L→Z，单位：米
                 }
                 if (res.SlotPoints.TryGetValue("pivot", out var pv))
                 { target = pv; res.AlignSource = "slots.pivot"; }
