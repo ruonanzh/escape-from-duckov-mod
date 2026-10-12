@@ -145,7 +145,7 @@ function validate(value) {
   if (value.size != null && !(Number(value.size) > 0)) errors.push("size 要么留空，要么大于 0");
   for (const [k, v] of Object.entries(value.slots || {})) {
     if (!Array.isArray(v) || v.length < 3) errors.push(`slots.${k} 必须是三个数`);
-    else if (v.some((n) => n < 0 || n > 1)) errors.push(`slots.${k} 的三个数都必须在 0~1（比例，不是米）`);
+    else if (v.some((n) => !Number.isFinite(n))) errors.push(`slots.${k} 的三个数必须是数字（单位：米，可负）`);
   }
   return errors;
 }

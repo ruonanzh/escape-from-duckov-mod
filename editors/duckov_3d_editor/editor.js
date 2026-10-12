@@ -355,7 +355,7 @@
   }
 
   // ── 挂点：只有一个 pivot（**米**）───────────────────────────────────────────
-  // 它就是游戏 config 里的 `slots.pivot`（现在那边是比例，待改成米 —— 见设计仓）。
+  // 它就是游戏 config 里的 `slots.pivot`（**米**，2026-10-12 起两边统一）。
   // 含义 = 「模型上哪个点要落到鸭子手上」，相对**模型自身原点**的偏移（米）。
   //   · 枪：手部 socket + auto guess grip（`GuessGrip`）+ pivot
   //   · 近战 / 物品：手部 socket + pivot（游戏那边 `zeroGrip: false`，不做 guess）
@@ -510,10 +510,6 @@
     state.model.traverse(function (o) { if (!found && o.isMesh && o.geometry) found = o; });
     return found;
   }
-
-  /** 比例 [L,H,D] → `state.model` 局部坐标 */
-
-  /** `state.model` 局部坐标 → 比例 [L,H,D] */
 
   function pointerNdc(ev) {
     var r = renderer.domElement.getBoundingClientRect();
