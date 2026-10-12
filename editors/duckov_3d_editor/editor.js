@@ -492,6 +492,9 @@
     var v = new THREE.Vector3();
     obj.traverse(function (o) {
       if (!o.isMesh || !o.geometry || !o.geometry.attributes.position) return;
+      // ⚠️ 我们加的标记球不得参与取样 ✗ —— 否则 GuessGrip 会把球当成模型的一部分
+      //    （实测：229 个采样点里大多数是 pivot 球 ⇒ 第二次点开关时猜测值变了 ⇒ 模型跳走）
+      if (o === pivotHandle || o.userData.isMarker || o.userData.isDuckBody) return;
       var pos = o.geometry.attributes.position;
       var step = Math.max(1, Math.floor(pos.count / 4000));   // 上限 4000 个采样点
       for (var i = 0; i < pos.count; i += step) {
