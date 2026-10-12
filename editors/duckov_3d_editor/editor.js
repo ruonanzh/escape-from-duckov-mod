@@ -251,10 +251,21 @@
   //    资源是内嵌的（`assets/duck_player.js`）：CSP 是 `connect-src 'none'` ⇒ 运行时不能 fetch ✗
   //    ⭐ **常驻、不给开关** —— 它是背景参照物，不是要调的参数（面板里没有它）
   var REF_MAT = { metal: 0.0, rough: 0.7 };   // ⭐ 鸭子不是金属 ✗（用 MAT 的 0.3 会让白毛变灰 ✗）
-  // ⭐ 游戏角色拿枪的 socket（`Hand.R/MeleeWeaponSocket`）在导出坐标下的位置 ——
-  //    离线从游戏数据量得（玩家鸭的姿势变了就要重量 ✗）
-  var REF_SOCKET = [-0.3972, 0.6139, 0.3622];
+  // ⭐ 游戏角色身上的挂点（离线从游戏数据量得，**鸭子 glb 的坐标**）
+  //    来源：prefab 上 `CharacterModel` 组件的字段（玩家鸭 = pathID 106660）；
+  //    那些 Transform 在 `Chick_LOD1/Rig/root/body/` 下 —— **不在 `Duck_Armature` 上** ✗
+  //    ⚠️ 鸭子姿势变、或者换了角色模型，这些值都要重量 ✗
+  var CHAR_SOCKETS = [
+    { key: "gun",       label: "拿枪",   p: [0.029, 0.491, 0.317],  color: 0xff8a00 },
+    { key: "righthand", label: "右手",   p: [0.000, 0.246, -0.011], color: 0x9aa3ab },
+    { key: "helmat",    label: "头盔",   p: [0.000, 0.619, 0.136],  color: 0x8a5cff },
+    { key: "armor",     label: "护甲",   p: [0.000, 0.299, 0.028],  color: 0x2fae5a },
+    { key: "backpack",  label: "背包",   p: [0.000, 0.340, -0.102], color: 0x2f7ad2 },
+  ];
+  // 拿枪那个就是模型要对齐的地方（`MeleeWeaponSocket`）
+  var REF_SOCKET = CHAR_SOCKETS[0].p;
   var refDuck = null;
+  var refSocketMarks = [];
 
   function loadRefDuck() {
     if (!window.DUCK_REF_B64) return;
@@ -279,6 +290,28 @@
           m.side = THREE.DoubleSide;
           m.needsUpdate = true;
         });
+      });
+      // 挂点标记：画在鸭子内部（跟鸭子一起动），不需要跟着镜像
+      // 小球 + 一个细十字，深度测试关掉 ⇒ 不被身体挡住 ✓
+      g.traverse(function (o) { if (o.isMesh) o.userData.isDuckBody = true; });
+      CHAR_SOCKETS.forEach(function (s) {
+        var m = new THREE.Group();
+        m.name = "charSocket:" + s.key;
+        var ball = new THREE.Mesh(
+          new THREE.SphereGeometry(0.011, 14, 10),
+          new THREE.MeshBasicMaterial({ color: s.color, depthTest: false, transparent: true, opacity: 0.9 }));
+        ball.renderOrder = 1000;
+        m.add(ball);
+        var pts = [];
+        var cs = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)];
+        cs.forEach(function (c) {
+          pts.push(c.clone().multiplyScalar(-0.02), c.clone().multiplyScalar(0.02));
+        });
+        m.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts),
+          new THREE.LineBasicMaterial({ color: s.color, depthTest: false })));
+        m.position.set(s.p[0], s.p[1], s.p[2]);
+        g.add(m);
+        refSocketMarks.push(m);
       });
       refDuck = g;
       scene.add(g);
