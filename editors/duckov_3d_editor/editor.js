@@ -266,13 +266,14 @@
   //       只有**背包**：Coach 是特例（+0.140,-0.126,-0.093，偏且偏低）✗；
   //       Boss_1 与 Jeff 一致（0,-0.021,-0.115）⇒ 用多数派 ⇒ 抬高 10.7cm、居中 ✓
   var CHAR_SOCKETS = [
-    { key: "gun",       label: "拿枪", p: [-0.3523, 0.5814, 0.3999], color: 0xff8a00 },
-    { key: "righthand", label: "右手", p: [-0.3342, 0.6179, 0.2811], color: 0x9aa3ab },
+    // 标签按游戏 `HandheldSocketTypes` 枚举定：normalHandheld / meleeWeapon / leftHandSocket
+    { key: "gun",       label: "枪/近战武器", p: [-0.3523, 0.5814, 0.3999], color: 0xff8a00 },
+    { key: "righthand", label: "手持物",      p: [-0.3342, 0.6179, 0.2811], color: 0x9aa3ab },
     { key: "helmat",    label: "头盔", p: [ 0.0000, 0.9307, 0.0000], color: 0x8a5cff },
     { key: "armor",     label: "护甲", p: [ 0.0000, 0.4890, -0.0322], color: 0x2fae5a },
     { key: "backpack",  label: "背包", p: [ 0.0000, 0.4909, -0.1495], color: 0x2f7ad2 },
   ];
-  // 拿枪那个就是模型要对齐的地方（`MeleeWeaponSocket`）
+  // 「枪/近战武器」那个就是模型要对齐的地方（`MeleeWeaponSocket`）
   var REF_SOCKET = CHAR_SOCKETS[0].p;
   var refDuck = null;
   var refSocketMarks = [];
@@ -396,7 +397,7 @@
       state.grip.position.set(-g[0], -g[1], -g[2]);
     }
 
-    // ⑤ 移到拿枪的 socket（**枪去找手** ✗ 不是把手拉下来）—— 只有「枪」要这一步
+    // ⑤ 移到「枪/近战武器」的 socket（**枪去找手** ✗ 不是把手拉下来）—— 只有「枪」要这一步
     //    游戏里武器就挂在角色的 `MeleeWeaponSocket` 上 ⇒ 预览也放到那里，看到的才对得上
     state.root.position.set(0, 0, 0);
     if (opts.kind === "weapon") {
