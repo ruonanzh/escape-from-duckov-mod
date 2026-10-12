@@ -261,13 +261,16 @@
   //      righthand <- RightHandSocket   <- Hand.R     （ 0.0180, 0.0420, -0.0580）
   //      helmat    <- HelmatSocket      <- Head       （ 0.0000, 0.2160,  0.0000）
   //      armor     <- ArmorSocket       <- Spine.003  （ 0.0000, 0.0031, -0.0002）
-  //      backpack  <- BackpackSocket    <- Spine.003  （ 0.1400,-0.1260, -0.0930）
+  //      backpack  <- BackpackSocket    <- Spine.003  （ 0.0000,-0.0210, -0.1150）
+  //    ⚠️ 偏移要**三个鸭子模型对比**（Coach / Boss_1 / Jeff）：四个挂点三者全一致 ✓
+  //       只有**背包**：Coach 是特例（+0.140,-0.126,-0.093，偏且偏低）✗；
+  //       Boss_1 与 Jeff 一致（0,-0.021,-0.115）⇒ 用多数派 ⇒ 抬高 10.7cm、居中 ✓
   var CHAR_SOCKETS = [
     { key: "gun",       label: "拿枪", p: [-0.3523, 0.5814, 0.3999], color: 0xff8a00 },
     { key: "righthand", label: "右手", p: [-0.3342, 0.6179, 0.2811], color: 0x9aa3ab },
     { key: "helmat",    label: "头盔", p: [ 0.0000, 0.9307, 0.0000], color: 0x8a5cff },
     { key: "armor",     label: "护甲", p: [ 0.0000, 0.4890, -0.0322], color: 0x2fae5a },
-    { key: "backpack",  label: "背包", p: [-0.1400, 0.3837, -0.1513], color: 0x2f7ad2 },
+    { key: "backpack",  label: "背包", p: [ 0.0000, 0.4909, -0.1495], color: 0x2f7ad2 },
   ];
   // 拿枪那个就是模型要对齐的地方（`MeleeWeaponSocket`）
   var REF_SOCKET = CHAR_SOCKETS[0].p;
