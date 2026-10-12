@@ -184,11 +184,11 @@
     axes = new THREE.AxesHelper(0.5);
     scene.add(axes);
 
-    // ⭐ 原点标记 = **游戏里模型原点的位置**（握把 / 手抓点 / 挂点基准）—— 白十字
+    // ⭐ 原点标记 = **武器 0 点要对齐的那个点**（游戏角色拿枪的 socket）—— 白十字
     var o = new THREE.Vector3();
     var cs = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)];
     var pts = [];
-    cs.forEach(function (c) { pts.push(o.clone().addScaledVector(c, -0.02), o.clone().addScaledVector(c, 0.02)); });
+    cs.forEach(function (c) { pts.push(o.clone().addScaledVector(c, -0.035), o.clone().addScaledVector(c, 0.035)); });
     scene.add(new THREE.LineSegments(
       new THREE.BufferGeometry().setFromPoints(pts),
       new THREE.LineBasicMaterial({ color: 0xffffff, depthTest: false })
@@ -251,6 +251,9 @@
   //    资源是内嵌的（`assets/duck_player.js`）：CSP 是 `connect-src 'none'` ⇒ 运行时不能 fetch ✗
   //    ⭐ **常驻、不给开关** —— 它是背景参照物，不是要调的参数（面板里没有它）
   var REF_MAT = { metal: 0.0, rough: 0.7 };   // ⭐ 鸭子不是金属 ✗（用 MAT 的 0.3 会让白毛变灰 ✗）
+  // ⭐ 游戏角色拿枪的 socket（`Hand.R/MeleeWeaponSocket`）在导出坐标下的位置 ——
+  //    离线从游戏数据量得（玩家鸭的姿势变了就要重量 ✗）
+  var REF_SOCKET = [-0.3972, 0.6139, 0.3622];
   var refDuck = null;
 
   function loadRefDuck() {
@@ -285,16 +288,15 @@
 
   function placeRefDuck() {
     if (!refDuck) return;
-    // ⭐ 只有一种摆法：脚底贴网格、站在原点（武器会被握把归零到原点 ⇒ 两者共用同一个原点）
-    refDuck.position.set(0, 0, 0);
-    refDuck.updateMatrixWorld(true);
-    var b = new THREE.Box3().setFromObject(refDuck);
-    refDuck.position.set(0, -b.min.y, 0);
+    // ⭐ 只有一种摆法：**拿枪的 socket 落在原点**
+    //    游戏里武器就挂在角色的 `MeleeWeaponSocket` 上 ⇒ 武器按「原点对原点」放上去，
+    //    正好落在手里 ✓（鸭子会低于网格，因为原点在它手部高度，那正是要对齐的点）
+    refDuck.position.set(-REF_SOCKET[0], -REF_SOCKET[1], -REF_SOCKET[2]);
     refDuck.updateMatrixWorld(true);
   }
 
   var opts = {
-    kind: "weapon",     // weapon（武器：长轴→+Z + 枪口朝 +Z + 握把归零） | melee（近战：长轴→+Y） | item（物品：不摆正）
+    kind: "weapon",     // weapon（枪：握把归零） | melee（近战：长轴→+Y） | item（物品：不摆正）
     muzzle: "auto",     // ⭐ 固定"自动"（`MuzzleAtPositiveZ`：两端各看 6%/15%，细的那端是枪管）—— 不给选择
     grip: true,         // ⭐ 只有「枪」用得上（`GuessGrip` 的假设是枪）—— UI 里也只在选枪时露出这一行 ✗
     mirror: true,       // ⭐ 固定开：Unity 镜像（X 取反）= 游戏里看到的样子 —— 不做 ⇒ 预览与游戏左右相反 ✗
@@ -324,7 +326,7 @@
     //    ⚠️ 必须在握把归零**之前** ✗ —— 游戏里就是先镜像、再 `GuessGrip`
     state.mirror.scale.set(opts.mirror ? -1 : 1, 1, 1);
 
-    // ④ 握把归零（顶点级：把握把点移到原点）—— 只有「武器」用得上（`GuessGrip` 的假设是枪）
+    // ④ 握把归零（顶点级：把握把点移到原点）—— 只有「枪」用得上（`GuessGrip` 的假设是枪）
     if (opts.grip && opts.kind === "weapon") {
       state.mirror.updateMatrixWorld(true);
       var g = guessGrip(samplePoints(state.mirror));
