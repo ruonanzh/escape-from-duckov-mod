@@ -515,9 +515,11 @@ namespace ModelKit
 
             InitGraphicFields(g);                               // 先把它缺的字段补齐 （否则游戏一用就空引用）
 
-            var fallback = BorrowMaterial();                    // 借一份游戏材质 （免得上默认材质变粉色）
-            res.Instance = Attach(g.transform, null, mesh, texture, item.name, g.transform.position, fallback);
-            // **层要跟着物品走** —— `Attach` 在 mount==null 时用的是 root 的层
+            // **这里不挂 mesh**：挂由调用方统一做（`RegisterDynamicOverride` 的 ③ 之后那段，
+            // 那里才知道用哪个 `mount`、用哪份材质）。
+            // 曾经这里也挂一次：同一个 g 下于是出现**两个** `ModelKit_*` 子物体，
+            // 第二个覆盖 `res.Instance`，第一个成孤儿，`Restore()` 不销毁它（重合的两份几何）。
+            // 层（沿用下面的结论）：`Attach` 在 `mount==null` 时用 `root` 的层，
             // 而 root 是我们 `new GameObject()` 出来的，于是 **layer = 0（Default）**
             // 游戏显示这个世界模型时按层过滤，于是 Default 层的 mesh **看不见** （实测：糖果消失）
             // **层：一律不设** （实测证据）：游戏**掉落物**的图形 prefab 层就是 **0（Default）**
@@ -690,8 +692,11 @@ namespace ModelKit
                                                   alsoHandheld: handheld);
                 res.Report = dyn.Report;
                 res.Applied = dyn.Applied;
+                res.NoOp = dyn.NoOp;
                 res.Instance = dyn.Instance;
+                res.MarkedOn = dyn.MarkedOn;              // 登记对象也要接过来（否则 Restore() 摘不掉标记，只能热更一次）
                 res.Hidden.AddRange(dyn.Hidden);
+                res.Nested.AddRange(dyn.Nested);          // 手持那条也要入册（否则 Restore() 不还原它，热重载后旧的 mesh 还在）
                 res.CacheCleared = dyn.CacheCleared;
                 res.AnchorName = dyn.AnchorName;
                 return res;

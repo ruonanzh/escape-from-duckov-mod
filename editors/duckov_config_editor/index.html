@@ -84,10 +84,10 @@
 
     <section>
       <h2>挂点 <span style="color:var(--dim);font-weight:400">（只有枪用）</span></h2>
-      <div class="hint" style="margin-left:0">单位 <b>米</b>，相对 <b>模型自身原点</b>：L 沿 Z（枪口 +Z）· H 沿 Y · D 沿 X。可负。
-        有 <code>pivot</code> 就用它当对齐基准；否则用 Muzzle+Stock 中点；都没有就按包围盒映射。</div>
+      <div class="hint" style="margin-left:0">单位 <b>米</b>，相对 <b>模型自身原点</b>：<b>x</b> 沿 X（左右）· <b>y</b> 沿 Y（上下）· <b>z</b> 沿 Z（枪口 +Z）。可负。
+        有 <code>pivot</code> 就用它当对齐基准；否则用 Muzzle+Stock 中点；都没有就按包围盒映射。三个框的顺序就是数组下标 0、1、2。</div>
       <table class="slots">
-        <thead><tr><th>键</th><th>L（Z）</th><th>H（Y）</th><th>D（X）</th><th></th></tr></thead>
+        <thead><tr><th>键</th><th>x</th><th>y</th><th>z</th><th></th></tr></thead>
         <tbody id="slots"></tbody>
       </table>
       <div style="margin-top:8px; display:flex; gap:8px; align-items:center">

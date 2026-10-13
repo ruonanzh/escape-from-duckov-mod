@@ -42,7 +42,9 @@ namespace ModelKit
                 foreach (var r in Hidden) if (r != null) r.enabled = true;
                 Hidden.Clear();
             }
-            /// <summary>把改过的东西**全部还原** （幂等）：旧零件显示 + 搬过的挂点位置 </summary>
+            /// <summary>把改过的东西**全部还原** （幂等）：旧零件显示 + 搬过的挂点位置 + 销毁我们挂的实例
+            /// <para>与 `ItemModel.Result.Restore()` 同一套语义：两边都**自己销毁 `Instance`**，
+            /// 调用方不必再手动 `Destroy`（曾经只有武器侧要调用方自己销毁，那一侧漏了就残留）。</para></summary>
             public void Restore()
             {
                 RestoreHidden();
@@ -50,6 +52,7 @@ namespace ModelKit
                 MovedSockets.Clear();
                 PatchRegistry.Unmark(MarkedOn);   // 注销 （有借有还）
                 MarkedOn = null;
+                if (Instance != null) { UnityEngine.Object.Destroy(Instance); Instance = null; }
             }
         }
 

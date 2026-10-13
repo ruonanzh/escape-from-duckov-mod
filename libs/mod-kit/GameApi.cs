@@ -230,9 +230,8 @@ namespace ModelKit
 
     /// <summary>目标尺寸（米）：把模型**等比**缩放到"游戏里那一档"
     /// <para>优先级：config 的 `size`（玩家显式）&gt; 游戏 tag 推断 &gt; null（**不缩放**）。</para>
-    /// <para>表里的数字全部来自**离线实测**（游戏自己那些模型的最长边）：
-    /// 枪按 `GunType_*` 分档；装备按 `Helmat`/`Backpack`/`FaceMask`/`Headset`/`Equipment`；
-    /// 普通物品（糖果/医疗）与近战/弓弩，于是 **不缩放**。</para>
+    /// <para>表里的数字全部来自**离线实测**（游戏自己那些模型的最长边）。
+    /// **只有武器**有档位（按游戏自己的 `GunType_*` tag）；装备与物品一律 `null`（不缩放）。</para>
     /// <para> 缩放是在**加载期**对 mesh 顶点做一次，于是 世界/手持/实例三条路自动一致。</para></summary>
     public static class ModelSize
     {

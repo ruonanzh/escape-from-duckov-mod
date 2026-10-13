@@ -110,7 +110,7 @@ namespace ItemModelSwap
             _cfgStamp = File.Exists(_configPath) ? File.GetLastWriteTimeUtc(_configPath) : DateTime.MinValue;
             Debug.Log($"[ItemModel] rules ({_entries.Count}): " + string.Join(" / ",
                 _entries.Select(e => $"targets=[{string.Join(",", e.Targets)}] typeIDs=[{string.Join(",", e.TypeIds)}]"
-                    + $" world={(e.World ? "开" : "关")} handheld={(e.Handheld ? "开" : "关")} model='{e.ModelFile}'")));
+                    + $" world={(e.World ? "on" : "off")} handheld={(e.Handheld ? "on" : "off")} model='{e.ModelFile}'")));
         }
 
         /// <summary>本 mod 的目录（DLL 所在处）</summary>
@@ -328,6 +328,12 @@ namespace ItemModelSwap
                     {
                         var rh = ItemModel.ApplyHandheld(item, cm.Mesh, cm.Texture,
                                                   ModelSize.FactorFor(item.TypeID, hit.Size, cm.Mesh));
+                        // **入册** —— 世界那条有自己的 `Result`，于是手持这条塞进它的 `Nested`；
+                        // 世界那条没做（`_applied[id]` 是 null）时，就直接存手持这条。
+                        // 不入册的后果（实测）：`Restore()` 不管它，热重载后旧的 mesh 还在。
+                        var world = _applied.TryGetValue(id, out var wr) ? wr : null;
+                        if (world != null) world.Nested.Add(rh);
+                        else _applied[id] = rh;
                         if (rh.Applied)
                             Debug.Log($"[ItemModel] swapped: '{item.name}' (typeID={item.TypeID}) from {Path.GetFileName(hit.ModelFile)} | {rh.Report}");
                         else if (!rh.NoOp)

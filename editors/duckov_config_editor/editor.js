@@ -77,9 +77,9 @@ function addSlotRow(key, value) {
   const inputs = tr.querySelectorAll("input");
   inputs[0].value = key || "";
   const v = Array.isArray(value) ? value : [0, 0, 0];
-  inputs[1].value = v[0] ?? 0;   // L（沿 Z）
-  inputs[2].value = v[1] ?? 0;   // H（沿 Y）
-  inputs[3].value = v[2] ?? 0;   // D（沿 X）
+  inputs[1].value = v[0] ?? 0;   // x（沿 X）
+  inputs[2].value = v[1] ?? 0;   // y（沿 Y）
+  inputs[3].value = v[2] ?? 0;   // z（沿 Z，枪口 +Z）
   tr.querySelector(".del button").addEventListener("click", () => {
     tr.remove();
     setDirty(true);

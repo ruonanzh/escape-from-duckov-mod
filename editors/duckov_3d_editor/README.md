@@ -34,8 +34,9 @@
 （`retarget.py`），它的 x 与游戏反向；玩家的武器 glb 是标准 glTF。
 因此**落位**时 x 必须单独处理（见「挂点」一节）。
 
-编辑器和游戏**只共用一条规则**（下表）。游戏还在做的两步启发式
-（`OrientToUnity` / `ApplyFrontDeclaration`、`MuzzleAtPositiveZ`）**编辑器不做**。
+编辑器和游戏**只共用一条规则**（下表）。游戏那边还在做的只剩「按 `front` 声明旋转」
+（`ApplyFrontDeclaration`）。长轴摆正与枪口判断（原 `OrientToUnity`、`MuzzleAtPositiveZ`）
+已从 kit 里删掉。**编辑器一律不做摆正**。
 按 2026-10-12 定调：三类一律不摆正，原点对原点。
 
 | 步骤 | 编辑器 | 游戏 |

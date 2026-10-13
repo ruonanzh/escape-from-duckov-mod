@@ -161,30 +161,6 @@ namespace ModelKit
             }
         }
 
-        /// <summary>统一朝向：把最长轴转到 Z，并让**枪口朝 +Z**（游戏武器坐标系期望的方向）</summary>
-        public static void OrientToUnity(List<Vector3> verts, List<Vector3> norms)
-        {
-            int ax = LongAxis(verts);
-            if (ax != 2)                                   // X 或 Y，于是 绕轴转到 Z
-            {
-                for (int i = 0; i < verts.Count; i++)
-                {
-                    var v = verts[i]; var n = norms[i];
-                    if (ax == 0) { verts[i] = new Vector3(v.z, v.y, -v.x); norms[i] = new Vector3(n.z, n.y, -n.x); }
-                    else { verts[i] = new Vector3(v.x, v.z, -v.y); norms[i] = new Vector3(n.x, n.z, -n.y); }
-                }
-            }
-            if (!MuzzleAtPositiveZ(verts))                 // 枪口在 −Z，于是 绕 Y 转 180°
-            {
-                for (int i = 0; i < verts.Count; i++)
-                {
-                    var v = verts[i]; var n = norms[i];
-                    verts[i] = new Vector3(-v.x, v.y, -v.z);
-                    norms[i] = new Vector3(-n.x, n.y, -n.z);
-                }
-            }
-        }
-
         static int LongAxis(List<Vector3> pts)
         {
             var mn = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
@@ -192,35 +168,6 @@ namespace ModelKit
             foreach (var p in pts) { mn = Vector3.Min(mn, p); mx = Vector3.Max(mx, p); }
             var s = mx - mn;
             return s.x > s.y ? (s.x > s.z ? 0 : 2) : (s.y > s.z ? 1 : 2);
-        }
-
-        /// <summary>枪口在 +Z 吗？（判据：**两个方向都细**的那端是枪管 —— 枪托只是"一个方向薄但另一个方向宽"）</summary>
-        public static bool MuzzleAtPositiveZ(List<Vector3> pts)
-        {
-            var mn = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
-            var mx = new Vector3(float.MinValue, float.MinValue, float.MinValue);
-            foreach (var p in pts) { mn = Vector3.Min(mn, p); mx = Vector3.Max(mx, p); }
-            float sp = mx.z - mn.z;
-            if (sp <= 1e-6f) return true;
-            // 两端各看 6% 与 15% 两片，取较大者（枪管"细得久"）
-            float tMin = Math.Max(Thickness(pts, mn.z, mn.z + sp * 0.06f), Math.Max(Thickness(pts, mn.z, mn.z + sp * 0.15f), 0f));
-            float tMax = Math.Max(Thickness(pts, mx.z - sp * 0.06f, mx.z), Math.Max(Thickness(pts, mx.z - sp * 0.15f, mx.z), 0f));
-            return tMax < tMin;                            // 细的那端是枪口
-        }
-
-        static float Thickness(List<Vector3> pts, float lo, float hi)
-        {
-            float x0 = float.MaxValue, x1 = float.MinValue, y0 = float.MaxValue, y1 = float.MinValue;
-            bool any = false;
-            foreach (var p in pts)
-            {
-                if (p.z < lo || p.z > hi) continue;
-                any = true;
-                if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x;
-                if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y;
-            }
-            if (!any) return float.MaxValue;
-            return Math.Max(x1 - x0, y1 - y0);
         }
 
         /// <summary>猜握把（与打包器同一套规则）：最长轴=枪管轴，两端薄片细端=枪口，枪托端起 8%~35% 的最低点</summary>

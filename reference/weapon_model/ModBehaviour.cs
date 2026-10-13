@@ -267,8 +267,7 @@ namespace WeaponModelSwap
                 foreach (var kv in _applied)
                 {
                     if (kv.Value == null) continue;
-                    kv.Value.Restore();   // 旧零件显示 + 搬过的挂点位置 全部还原
-                    if (kv.Value.Instance != null) UnityEngine.Object.Destroy(kv.Value.Instance);
+                    kv.Value.Restore();   // 旧零件显示 + 搬过的挂点位置 + 销毁我们挂的实例（全在 Restore 里）
                 }
                 _applied.Clear();
                 foreach (var kv in _appliedClone) if (kv.Value != null) kv.Value.Restore();
