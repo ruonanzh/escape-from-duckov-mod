@@ -175,13 +175,15 @@ namespace ModelKit
             }
 
             // slots：值**直接就是米**（相对**模型自身原点**的偏移，不是包围盒里的比例）
+            // 顺序 = **[x, y, z]**（与编辑器、与 glb 一致）。2026-10-13 由 [L,H,D] 改来
+            // —— 原来数组第 1 个是 L（映射到 Z），和编辑器对不上，两边都要换算，出过 bug。
             // 然后有 pivot，于是 用它当对齐基准（比包围盒映射准）；否则 Muzzle+Stock 都给，于是 用它们的中点
             if (slots != null && slots.Count > 0)
             {
                 foreach (var kv in slots)
                 {
                     var k = kv.Value;
-                    res.SlotPoints[kv.Key] = new Vector3(k.z, k.y, k.x);   // D→X · H→Y · L→Z，单位：米
+                    res.SlotPoints[kv.Key] = new Vector3(k.x, k.y, k.z);   // [x,y,z]，单位：米
                 }
                 if (res.SlotPoints.TryGetValue("pivot", out var pv))
                 { target = pv; res.AlignSource = "slots.pivot"; }

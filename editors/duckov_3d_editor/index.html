@@ -91,13 +91,13 @@
       <div class="hr"></div>
       <h2>挂点</h2>
       <div class="row" id="pivotRow" style="gap:3px; align-items:center; flex-wrap:nowrap">
-      <span style="flex:0 0 auto" title="config 的顺序 [L,H,D]。L 沿 Z（前后 / 枪口方向）· H 沿 Y（上下）· D 沿 X（左右）">pivot</span>
-      <input type="number" id="pivot-l" step="0.01" placeholder="L" title="L：沿 Z（前后）" style="width:48px; flex:0 0 auto; margin-left:auto">
-      <input type="number" id="pivot-h" step="0.01" placeholder="H" title="H：沿 Y（上下）" style="width:48px; flex:0 0 auto">
-      <input type="number" id="pivot-d" step="0.01" placeholder="D" title="D：沿 X（左右）" style="width:48px; flex:0 0 auto">
+      <span style="flex:0 0 auto" title="顺序 [x, y, z]。x 沿 X（左右）· y 沿 Y（上下）· z 沿 Z（前后 / 枪口方向）">pivot</span>
+      <input type="number" id="pivot-x" step="0.01" placeholder="x" title="x：沿 X（左右）" style="width:48px; flex:0 0 auto; margin-left:auto">
+      <input type="number" id="pivot-y" step="0.01" placeholder="y" title="y：沿 Y（上下）" style="width:48px; flex:0 0 auto">
+      <input type="number" id="pivot-z" step="0.01" placeholder="z" title="z：沿 Z（前后）" style="width:48px; flex:0 0 auto">
       <span style="flex:0 0 auto">m</span>
     </div>
-    <div class="kv dim" style="font-size:10px; margin-top:-2px">L 前后 · H 上下 · D 左右（同 config 顺序）</div>
+    <div class="kv dim" style="font-size:10px; margin-top:-2px">x 左右 · y 上下 · z 前后（米，同 config 顺序）</div>
       <label class="row" id="gripRow" hidden>自动猜握把<input type="checkbox" id="autogrip" checked></label>
     </div>
     <div class="hr"></div>

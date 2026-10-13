@@ -329,8 +329,8 @@
     out.push("- model = " + file);
     if (opts.size > 0) out.push("- size = " + (+opts.size).toFixed(3) + "（最长边，米）");
     if (hasPivot(opts.kind)) {
-      // 面板框已经是 config 的顺序 [L,H,D] ⇒ **原样发** ✓（不用换算）
-      out.push("- slots.pivot = [" + opts.pivot.join(", ") + "]（米，顺序 [L,H,D]：L 沿 Z、H 沿 Y、D 沿 X）");
+      // 面板框、config、glb 都是 [x,y,z] ✓（2026-10-13 统一）⇒ **原样发**
+      out.push("- slots.pivot = [" + opts.pivot.join(", ") + "]（米，顺序 [x, y, z]）");
       if (opts.kind === "gun") out.push("- 自动猜握把开着。这是枪的默认，物品类是关的。");
     } else {
       out.push("");
@@ -351,7 +351,7 @@
   function syncOptsFromDom() {
     var sz = document.getElementById("size");
     if (sz) opts.size = parseFloat(sz.value) || 0;
-    var ids = ["pivot-l", "pivot-h", "pivot-d"];
+    var ids = ["pivot-x", "pivot-y", "pivot-z"];
     for (var i = 0; i < 3; i++) {
       var el = document.getElementById(ids[i]);
       if (el) opts.pivot[i] = Number(el.value) || 0;
@@ -427,7 +427,7 @@
       var piv = slots.pivot;
       // 面板与 config 同顺序 ⇒ 原样显示 ✓
       if (Array.isArray(piv) && piv.length >= 3)
-        lines.push("slots.pivot = [" + piv.slice(0, 3).join(", ") + "]   （顺序 [L,H,D]，与面板一致）");
+        lines.push("slots.pivot = [" + piv.slice(0, 3).join(", ") + "]   （米，顺序 [x, y, z]）");
       // 不列 slots 的其它键 ✗（用户 2026-10-13 要求：只看 size 与 pivot）
     }
     setCfg(lines.length ? lines.join("\n") : "（没有可显示的字段）");
@@ -566,10 +566,8 @@
     //    公式 = 游戏 config 的实现：socket + (枪 ? auto guess grip : 0) + pivot
     //    （auto guess 已经在第 ④ 步做掉了 —— 它把顶点整体移到握把）
     var hasPivot = opts.kind === "gun" || opts.kind === "melee";   // 只有这条路由游戏读 slots.pivot
-    // ⚠️ opts.pivot 是 **config 的顺序 [L,H,D]** ✗（用户 2026-10-13 要求：界面顺序 = config 顺序）。
-    //    而摆放要用 glb 的 [x,y,z]，游戏里 D→X、H→Y、L→Z（WeaponModel.cs:184）⇒ 内部换一次。
-    var pvCfg = hasPivot ? opts.pivot : [0, 0, 0];
-    var pv = [pvCfg[2], pvCfg[1], pvCfg[0]];          // [L,H,D] -> [x,y,z]
+    // opts.pivot、config 的 slots、glb —— 三处都是 **[x, y, z]** ✓（2026-10-13 统一）⇒ 不用换算
+    var pv = hasPivot ? opts.pivot : [0, 0, 0];
     var ref = socketOf(opts.kind);
     state.root.position.set(ref[0] - pv[0], ref[1] - pv[1], ref[2] - pv[2]);
 
@@ -694,15 +692,15 @@
       if (!a) return;
       setView(a.dataset.dir.split(",").map(Number));
     });
-    // 挂点：三个框，顺序 = config 的 [L,H,D]（用户 2026-10-13 定：界面顺序 = config 顺序）
+    // 挂点：三个框，顺序 = [x, y, z]（与 config、与 glb 一致）
     // ⚠️ id 与顺序必须和 index.html 的 pivotRow 一致 ✗ —— 踩过：改了 id 忘了这里，
     //    于是 getElementById 返回 null、直接 return，监听器压根没绑上 ⇒ 改数值模型不动。
-    ["l", "h", "d"].forEach(function (ax, i) {
+    ["x", "y", "z"].forEach(function (ax, i) {
       var el = document.getElementById("pivot-" + ax);
       if (!el) return;
       el.value = "0";
       el.addEventListener("input", function () {
-        opts.pivot[i] = Number(el.value) || 0;   // 米，位置 i 就是 [L,H,D] 的第 i 个
+        opts.pivot[i] = Number(el.value) || 0;   // 米，位置 i 就是 [x,y,z] 的第 i 个
         build();                                  // 模型按公式重新落到 socket
       });
     });
