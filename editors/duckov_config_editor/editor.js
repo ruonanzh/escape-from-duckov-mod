@@ -12,7 +12,7 @@
 
 const SIMPLE = ["typeIDs", "targets", "model", "front", "size", "icon", "world", "handheld", "debug"];
 const BOOL = new Set(["world", "handheld", "debug"]);
-const SLOT_KEYS = ["Muzzle", "Stock", "Grip", "Scope", "Tec", "pivot"];
+const SLOT_KEYS = ["muzzle", "stock", "grip", "scope", "tec", "pivot"];
 
 let writable = false;
 let revision = null;

@@ -372,7 +372,7 @@ namespace WeaponModelSwap
             return e;
         }
 
-        /// <summary>读 config 的 `slots`：{ "Muzzle": [x,y,z], … } —— 每个值必须是≥3 个数的数组（**米**，可负）</summary>
+        /// <summary>读 config 的 `slots`：{ "muzzle": [x,y,z], … } —— 键名**大小写不敏感**，我们统一写小写；每个值必须是≥3 个数的数组（**米**，可负）</summary>
         static Dictionary<string, Vector3> ParseSlots(JsonValue j)
         {
             var dict = new Dictionary<string, Vector3>(StringComparer.OrdinalIgnoreCase);

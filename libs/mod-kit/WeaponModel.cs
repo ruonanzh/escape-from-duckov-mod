@@ -29,7 +29,7 @@ namespace ModelKit
         public GameObject MarkedOn;
             public string Report = "";
             /// <summary>config 里声明的槽位，于是 我们模型局部坐标（米）的换算结果 （供 step 2 把配件挂到我们形状上用）</summary>
-            public readonly Dictionary<string, Vector3> SlotPoints = new Dictionary<string, Vector3>();
+            public readonly Dictionary<string, Vector3> SlotPoints = new Dictionary<string, Vector3>(StringComparer.OrdinalIgnoreCase);
             /// <summary>对齐用到了什么（日志用）</summary>
             public string AlignSource = "";
             /// <summary>被我们**禁用掉的旧零件**（热重载/卸载时用来恢复 否则枪会整个不见）</summary>

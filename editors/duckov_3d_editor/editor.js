@@ -313,12 +313,17 @@
     headset: "耳机", backpack: "背包", face: "面部", item: "普通物品"
   };
 
+  /** 数值格式化：保留 3 位小数（发给 agent 的是米，3 位 = 毫米）*/
+  function fmt3(v) { return (+(+v).toFixed(3)).toString(); }
+
   /** 发给 agent 的话。要求（用户 2026-10-13 定）：
    *   ① 第一句先让 agent 检查类型选得对不对（选错很常见），并说明「先不改文件」
    *   ② 明确给出 glb 文件名（取打开的那个文件，不让玩家手填）
-   *   ③ 按类型发不同数据：只有枪和近战带 pivot；六类装备不带，也不写 slots
+   *   ③ **格式由类型决定**，不由面板模式决定：
+   *      枪 = pivot + 5 个配件挂点（全发）；近战 = 只 pivot；其余六类 = 不写 slots
    *   ④ 耳机不另提挂点 —— 类型不同就够（挂点是游戏的 Tag 决定的，不进 config）*/
   function buildAgentMessage() {
+    ensureSlots();                       // 枪：保证 5 个槽位有值（启发式或文件里的）
     var label = KIND_LABEL[opts.kind] || opts.kind;
     var file = state.fileName || "（模型文件）";
     var out = [];
@@ -328,11 +333,20 @@
     out.push("确认后，把下面这些写进同目录的 config.json：");
     out.push("- model = " + file);
     if (opts.size > 0) out.push("- size = " + (+opts.size).toFixed(3) + "（最长边，米）");
-    if (hasPivot(opts.kind)) {
-      // 面板框、config、glb 都是 [x,y,z]（2026-10-13 统一）⇒ **原样发**
-      // 所见即所得 —— 框里的值就是 config 的值（X 的符号差异在落位里处理）
+    if (opts.kind === "gun") {
+      // 键名**小写**（与其它字段一致）；值就是面板里的值，**所见即所得**
+      out.push("- slots（米，相对**我们模型自身原点**；键名小写）：");
+      out.push('    "slots": {');
+      out.push('      "pivot":  [' + fmt3(opts.pivot[0]) + ', ' + fmt3(opts.pivot[1]) + ', ' + fmt3(opts.pivot[2]) + '],');
+      for (var i = 0; i < SLOT_KEYS.length; i++) {
+        var k = SLOT_KEYS[i], v = (opts.slots && opts.slots[k]) || [0, 0, 0];
+        out.push('      "' + k + '": [' + fmt3(v[0]) + ', ' + fmt3(v[1]) + ', ' + fmt3(v[2]) + ']' +
+                 (i === SLOT_KEYS.length - 1 ? "" : ","));
+      }
+      out.push('    }');
+      out.push("- 自动猜握把开着。这是枪的默认，物品类是关的。");
+    } else if (hasPivot(opts.kind)) {
       out.push("- slots.pivot = [" + opts.pivot.join(", ") + "]（米）");
-      if (opts.kind === "gun") out.push("- 自动猜握把开着。这是枪的默认，物品类是关的。");
     } else {
       out.push("");
       out.push("类型「" + label + "」没有 pivot，不得写 slots。");
@@ -357,6 +371,7 @@
       var el = document.getElementById(ids[i]);
       if (el) opts.pivot[i] = Number(el.value) || 0;
     }
+    readSlotInputs();   // 5 行配件挂点（枪）
   }
 
   var _sendSeq = 0;
@@ -426,21 +441,36 @@
     var slots = scope.slots;
     if (slots && typeof slots === "object") {
       var piv = slots.pivot;
+      var needBuild = false;
       // 面板与 config 同顺序 ⇒ 原样显示
-      if (Array.isArray(piv) && piv.length >= 3)
-        // 直接显示、直接填框（所见即所得；X 的符号差异在落位里处理）
       if (Array.isArray(piv) && piv.length >= 3) {
         var vals = [piv[0], piv[1], piv[2]];
         lines.push("slots.pivot = [" + vals.join(", ") + "]");
         // 顺手填进三个框（用户 2026-10-13 选：打开时载入，省得手抄）
-        // 值已经换成编辑器坐标 —— 不得直接塞 config 的原始值
         ["pivot-x", "pivot-y", "pivot-z"].forEach(function (id, i) {
           var el = document.getElementById(id);
           if (el) { el.value = String(vals[i]); opts.pivot[i] = vals[i]; }
         });
-        if (state.model) build();     // 模型还没加载时跳过（加载完自己会 build）
+        needBuild = true;
       }
-      // 不列 slots 的其它键（用户 2026-10-13 要求：只看 size 与 pivot）
+      // 5 个配件挂点：文件里有就填进面板（没有就让启发式算 —— 见 `ensureSlots`）
+      // 键名**大小写不敏感**（老 config 写 "Muzzle"，新 config 写 "muzzle"）
+      var got = {};
+      var inFile = Object.keys(slots);
+      for (var si = 0; si < SLOT_KEYS.length; si++) {
+        var want = SLOT_KEYS[si];
+        for (var qi = 0; qi < inFile.length; qi++) {
+          if (inFile[qi].toLowerCase() !== want) continue;
+          var raw = slots[inFile[qi]];
+          if (!Array.isArray(raw) || raw.length < 3) break;
+          got[want] = [Number(raw[0]) || 0, Number(raw[1]) || 0, Number(raw[2]) || 0];
+          lines.push("slots." + want + " = [" + got[want].join(", ") + "]");
+          for (var ai = 0; ai < 3; ai++) setSlotInput(want, ai, got[want][ai]);
+          break;
+        }
+      }
+      if (Object.keys(got).length) { opts.slots = got; needBuild = true; }
+      if (needBuild && state.model) build();   // 模型还没加载时跳过（加载完自己会 build）
     }
     setCfg(lines.length ? lines.join("\n") : "（没有可显示的字段）");
   }
@@ -533,10 +563,198 @@
                         //                     ItemModel （其余六类，没有 pivot）
                         // ⇒ 只有 枪 / 近战 显示 pivot；其余六类只用挂点定位
     pivot: [0, 0, 0],   // 模型上「要落到鸭子手上」的点，相对模型原点（米）
+    slots: null,        // 5 个配件挂点：游戏里**我们模型局部空间**里的点（米）
+                        // null = 还没算（打开时按包围盒算启发式）；载入 config 时会被填成文件里的值
+    slotMode: "object", // "object" = 物体挂点（默认，调 pivot）|"attach" = 配件挂点（调 5 个槽位）
     autoGrip: true,     // 武器：是否自动猜握把（游戏 `GuessGrip`，物品固定不做）
     grid: true,         // 固定开：网格（每格 10cm）
     size: 0            // 0 = 不改（用模型自己的尺寸）
   };
+
+  // 配件挂点：键名**一律小写**（game 里的 GameObject 叫 Muzzle/Scope/…，
+  // 但 kit 已经做成大小写不敏感，我们的 config 统一小写，和其他字段一致）
+  var SLOT_KEYS = ["scope", "muzzle", "stock", "grip", "tec"];
+  var SLOT_LABEL = { scope: "瞄具", muzzle: "枪口", stock: "枪托", grip: "握把", tec: "科技件" };
+  var SLOT_SHAPE = { scope: "scope", muzzle: "muzzle", stock: "stock", grip: "grip", tec: "tec" };
+
+  /** 五个配件挂点的**启发式默认值**（按我们模型的包围盒）。
+   *  这些值要和 config 里的 `slots` 同空间 = **游戏里模型的局部空间**；
+   *  而游戏加载 glb 时把 X 取反（`GltfLoader.cs`）⇒ 最后一步把 x 取反。
+   *  只在**打开时 / 刚开始调**算一次；之后玩家在面板里改，不得重算覆盖。 */
+  function heuristicSlots() {
+    if (!state.model) return null;
+    state.model.updateMatrixWorld(true);
+    var b = new THREE.Box3().setFromObject(state.model);
+    // 世界 → 模型**自身**空间（变换链里只有平移/均匀缩放，所以 applyMatrix4 得到的就是局部包围盒）
+    var inv = new THREE.Matrix4().copy(state.model.matrixWorld).invert();
+    b.applyMatrix4(inv);
+    if (!isFinite(b.min.x) || !isFinite(b.max.x)) return null;
+    var lo = b.min, hi = b.max, c = b.getCenter(new THREE.Vector3());
+    var span = hi.z - lo.z;
+    var g = {                                    // 先按 glb 坐标算
+      muzzle: [c.x, c.y, hi.z],                  // +Z 端（枪口那头）
+      stock:  [c.x, c.y, lo.z],                  // −Z 端（枪托那头）
+      scope:  [c.x, hi.y, c.z],                  // 顶部
+      grip:   [c.x, lo.y, c.z + span * 0.15],    // 下方，z 略往前
+      tec:    [hi.x, c.y, c.z]                   // 侧面
+    };
+    var out = {};
+    for (var i = 0; i < SLOT_KEYS.length; i++) {
+      var k = SLOT_KEYS[i], v = g[k];
+      out[k] = [-v[0], v[1], v[2]];              // glb → 游戏局部空间（X 取反）
+    }
+    return out;
+  }
+
+  /** 建 5 行配件挂点的输入框（字段多，用 JS 生成，避免 15 个输入框手写在 HTML 里） */
+  function buildSlotRows() {
+    var host = document.getElementById("slotRows");
+    if (!host || host.childElementCount > 0) return;
+    for (var i = 0; i < SLOT_KEYS.length; i++) {
+      var k = SLOT_KEYS[i];
+      var row = document.createElement("div");
+      row.className = "row";
+      row.style.cssText = "gap:3px; align-items:center; flex-wrap:nowrap";
+      var name = document.createElement("span");
+      name.style.flex = "0 0 auto";
+      name.textContent = SLOT_LABEL[k];
+      name.title = k + "（写进 config.json 的 slots 的键）";
+      row.appendChild(name);
+      for (var a = 0; a < 3; a++) {
+        var el = document.createElement("input");
+        el.type = "number";
+        el.step = "0.01";
+        el.id = "slot-" + k + "-" + "xyz"[a];
+        el.placeholder = "xyz"[a];
+        el.title = "xyz"[a] + "：沿 " + "XYZ"[a] + "（米，相对我们模型自身原点）";
+        el.style.cssText = "width:48px; flex:0 0 auto" + (a === 0 ? "; margin-left:auto" : "");
+        // 只重算占位件（不重跑 build）—— 见「不得每帧」那段
+        el.addEventListener("input", function () { readSlotInputs(); applySlots(); });
+        row.appendChild(el);
+      }
+      var unit = document.createElement("span");
+      unit.style.flex = "0 0 auto";
+      unit.textContent = "m";
+      row.appendChild(unit);
+      host.appendChild(row);
+    }
+  }
+
+  function setSlotInput(key, i, v) {
+    var el = document.getElementById("slot-" + key + "-" + "xyz"[i]);
+    if (el) el.value = String(+(+v).toFixed(4));
+  }
+
+  /** 把 5 行的值读回 `opts.slots` */
+  function readSlotInputs() {
+    if (!opts.slots) opts.slots = {};
+    for (var i = 0; i < SLOT_KEYS.length; i++) {
+      var k = SLOT_KEYS[i], prev = opts.slots[k] || [0, 0, 0], v = [0, 0, 0];
+      for (var a = 0; a < 3; a++) {
+        var el = document.getElementById("slot-" + k + "-" + "xyz"[a]);
+        v[a] = el && el.value !== "" ? (Number(el.value) || 0) : prev[a];
+      }
+      opts.slots[k] = v;
+    }
+  }
+
+  // ── 配件占位件（5 个简易网格）───────────────────────────────────────────
+  // 只是**视觉参考**：位置 = 我们模型局部空间里的那个点（和游戏里 socket 的落点一致）。
+  // 尺寸固定、**不随模型的缩放变** —— 游戏里挂点只改世界位置，不改配件的 scale。
+  var slotGroup = null, slotMeshes = {};
+
+  /** 一种配件一个简易形状（用户 2026-10-13 定）*/
+  function makeSlotMesh(k) {
+    var geo, col;
+    if (k === "muzzle")     { geo = new THREE.CylinderGeometry(0.020, 0.020, 0.10, 12); col = 0xe0563f; }
+    else if (k === "scope") { geo = new THREE.CylinderGeometry(0.030, 0.030, 0.14, 12); col = 0x4a7fd4; }
+    else if (k === "stock") { geo = new THREE.BoxGeometry(0.040, 0.080, 0.120);         col = 0x8a6a3f; }
+    else if (k === "grip")  { geo = new THREE.CylinderGeometry(0.020, 0.020, 0.08, 10); col = 0x2f8f57; }
+    else                    { geo = new THREE.BoxGeometry(0.030, 0.030, 0.060);         col = 0x8a5cff; }
+    if (k === "muzzle" || k === "scope") geo.rotateX(Math.PI / 2);   // 圆柱默认沿 Y ⇒ 改成沿 Z
+    var m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: col, metalness: 0.0, roughness: 0.6 }));
+    m.name = "slot_" + k;
+    return m;
+  }
+
+  function ensureSlotMeshes() {
+    if (slotGroup) return;
+    slotGroup = new THREE.Group();
+    slotGroup.name = "attachmentPlaceholders";
+    for (var i = 0; i < SLOT_KEYS.length; i++) {
+      var k = SLOT_KEYS[i], m = makeSlotMesh(k);
+      slotMeshes[k] = m;
+      slotGroup.add(m);
+    }
+    scene.add(slotGroup);
+  }
+
+  /** 把 5 个占位件摆到「模型局部点」对应的世界位置。
+   *  **按需调用**（`build()` 末尾 / 改输入框时），**不得每帧**。
+   *  X 取反的理由：游戏加载 glb 时把 X 取反（`GltfLoader.cs`）⇒ 游戏里的局部点 `v`
+   *  对应我们 glb 里的 `(−v.x, v.y, v.z)`（推导见设计仓计划）。 */
+  function applySlots() {
+    ensureSlotMeshes();
+    var on = opts.kind === "gun" && opts.slotMode === "attach";
+    slotGroup.visible = on;
+    if (!on || !state.model || !opts.slots) return;
+    state.model.updateMatrixWorld(true);
+    for (var i = 0; i < SLOT_KEYS.length; i++) {
+      var k = SLOT_KEYS[i], v = opts.slots[k] || [0, 0, 0];
+      var m = slotMeshes[k];
+      m.position.copy(state.model.localToWorld(new THREE.Vector3(-v[0], v[1], v[2])));
+      m.scale.setScalar(1);            // 不继承模型的缩放
+      m.updateMatrixWorld(true);
+    }
+  }
+
+  /** 配件挂点只算一次：`opts.slots` 为空时按包围盒填上 */
+  function ensureSlots() {
+    if (opts.slots) return;
+    var h = heuristicSlots();
+    if (!h) return;
+    opts.slots = h;
+    for (var i = 0; i < SLOT_KEYS.length; i++) {
+      var k = SLOT_KEYS[i];
+      for (var a = 0; a < 3; a++) setSlotInput(k, a, h[k][a]);
+    }
+  }
+
+  /** 面板按「物体挂点 / 配件挂点」两个模式刷新。
+   *  规则（用户 2026-10-13 定）：
+   *   · 「配件挂点」按钮**只在「类型 = 枪」时出现**
+   *   · 配件模式下：pivot 行 / 自动猜握把 / **尺寸栏整栏**收起，换成 5 行配件挂点
+   *   · 配件模式下**类型下拉禁用** —— 必须先切回物体挂点才能换类型
+   *   · 切模式**只影响显示，不清值**（pivot / 尺寸 / 自动猜握把都保留）*/
+  function applySlotMode() {
+    var isGun = opts.kind === "gun";
+    if (!isGun) opts.slotMode = "object";        // 非枪一律回物体挂点（先选枪、再改类型时兜住）
+    var attach = isGun && opts.slotMode === "attach";
+
+    var modeBtn = document.getElementById("modeBtn");
+    if (modeBtn) {
+      modeBtn.hidden = !isGun;
+      modeBtn.textContent = attach ? "物体挂点" : "配件挂点";
+      modeBtn.title = attach ? "切回物体挂点（调 pivot 与尺寸）" : "调 5 个配件在我们模型上的位置";
+    }
+    var pivotRow = document.getElementById("pivotRow");
+    if (pivotRow) pivotRow.hidden = attach || !(isGun || opts.kind === "melee");
+    var gripRow = document.getElementById("gripRow");
+    if (gripRow) gripRow.hidden = attach || !isGun;
+    var slotRows = document.getElementById("slotRows");
+    if (slotRows) slotRows.hidden = !attach;
+    var sizeSection = document.getElementById("sizeSection");
+    if (sizeSection) sizeSection.hidden = attach;
+    var kindSel = document.getElementById("kind");
+    if (kindSel) kindSel.disabled = attach;
+
+    // 「挂点」这一整节：所有行都隐藏时，标题也一起隐藏（否则会留一个空标题）
+    var socketSection = document.getElementById("socketSection");
+    if (socketSection)
+      socketSection.hidden = (pivotRow ? pivotRow.hidden : true) &&
+                             (gripRow ? gripRow.hidden : true) &&
+                             (slotRows ? slotRows.hidden : true);
+  }
 
   function build() {
     if (!state.model) return;
@@ -630,18 +848,7 @@
 
     grid.visible = opts.grid;
 
-    // 「握把归零」只在选「枪」时露出（其余七类不适用 —— 那是枪的猜测规则）
-    var gripRow = document.getElementById("gripRow");
-    if (gripRow) gripRow.hidden = opts.kind !== "gun";
-    var pivotRow = document.getElementById("pivotRow");
-    if (pivotRow) pivotRow.hidden = !(opts.kind === "gun" || opts.kind === "melee");
-
-    // 「挂点」这一整节：两个行都隐藏时，标题也一起隐藏
-    // （否则会留一个空标题）
-    var socketSection = document.getElementById("socketSection");
-    if (socketSection)
-      socketSection.hidden = (pivotRow ? pivotRow.hidden : true) && (gripRow ? gripRow.hidden : true);
-
+    applySlotMode();   // 挂点区的行显隐 + 模式按钮 + 类型下拉禁用
 
     // 面板读数
     var cur = box.getSize(new THREE.Vector3());
@@ -656,6 +863,11 @@
     });
     // 右下角最下面只留顶点/三角面（其它信息在「尺寸」那一段已经有了，不再重复）
     document.getElementById("diag").textContent = "顶点 " + verts + " · 三角面 " + Math.round(tris);
+
+    // 配件挂点：上面刚改过模型的变换链（缩放 / 握把归零 / 落位 / 尺寸）
+    // ⇒ 占位件要重算一次。**按需调用，不得每帧**（改输入框时由监听器单独调 applySlots）。
+    ensureSlots();
+    applySlots();
   }
 
   /** 取模型**自身坐标**下的顶点样本（给 GuessGrip 用）
@@ -695,6 +907,7 @@
   // ── 启动 ────────────────────────────────────────────────────────────────────
   function start() {
     initScene();
+    buildSlotRows();   // 5 行配件挂点（行由 JS 生成 —— 15 个输入框手写太长）
     // **必须在任何 glTF 解析之前**删掉 `createImageBitmap`
     // 它走 fetch(blob:) ⇒ 被 CSP `connect-src 'none'` 挡掉 ⇒ **贴图全丢** ⇒ 看着像「模型没皮」
     // 删掉 ⇒ three 退回 `TextureLoader`（`<img src=blob:>` 走 `img-src` 允许）
@@ -718,6 +931,13 @@
       });
     });
     document.getElementById("kind").addEventListener("change", function (e) { opts.kind = e.target.value; build(); });
+    // 模式按钮：「配件挂点」⇄「物体挂点」（只切显示，**不重跑 build** —— 模型没变）
+    document.getElementById("modeBtn").addEventListener("click", function () {
+      opts.slotMode = opts.slotMode === "attach" ? "object" : "attach";
+      applySlotMode();
+      ensureSlots();
+      applySlots();
+    });
     document.getElementById("sendBtn").addEventListener("click", sendToAgent);
     document.getElementById("autogrip").addEventListener("change", function (e) { opts.autoGrip = e.target.checked; build(); });
     loadRefDuck();

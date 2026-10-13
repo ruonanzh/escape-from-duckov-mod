@@ -6,5 +6,5 @@
   "entry": "index.html",
   "mode": "edit",
   "readScope": "siblings",
-  "description": "Duckov 的 3D 模型编辑工具：按物品类型把 .glb 挂到对应的角色挂点上预览，调 pivot 与最长边，再把结果发给 agent 写进 config.json。用 Unity 坐标系"
+  "description": "Duckov 的 3D 模型编辑工具：按物品类型把 .glb 挂到对应的角色挂点上预览。可以调 pivot 与最长边。类型选枪时还可以调 5 个配件挂点（瞄具 / 枪口 / 枪托 / 握把 / 科技件）。再把结果发给 agent 写进 config.json。用 Unity 坐标系"
 }
