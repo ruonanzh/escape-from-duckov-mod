@@ -412,10 +412,11 @@
     // ⚠️ 不显示 typeIDs 与 model —— 用户 2026-10-13 要求去掉（它们不是调 pivot 要看的）
     // size 可能是数字，也可能是字符串（手写的 config 常见）⇒ 两者都认。
     // 条目没写 size 时**回退到顶层**（config 允许顶层 size 当默认值）。
+    // size **始终显示一行**（用户 2026-10-13 要求：没有就显示空，不能整行不见）
     var sizeRaw = scope.size;
     if (sizeRaw === undefined || sizeRaw === null || sizeRaw === "") sizeRaw = j.size;
-    if (sizeRaw !== undefined && sizeRaw !== null && sizeRaw !== "" && isFinite(Number(sizeRaw)))
-      lines.push("size = " + Number(sizeRaw));
+    var sizeOk = sizeRaw !== undefined && sizeRaw !== null && sizeRaw !== "" && isFinite(Number(sizeRaw));
+    lines.push("size = " + (sizeOk ? Number(sizeRaw) : ""));
     if (typeof scope.front === "string" && scope.front) lines.push("front = " + scope.front);
     if (entries) lines.push("entries：" + entries.length + " 条" + (one ? "（下面是第 1 条）" : "（没有可用条目）"));
     // ⚠️ 按用户要求，**typeIDs 与 model 都不显示** ✗（它们不是调 pivot 要看的）
