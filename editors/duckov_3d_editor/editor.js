@@ -329,7 +329,11 @@
     out.push("- model = " + file);
     if (opts.size > 0) out.push("- size = " + (+opts.size).toFixed(3) + "（最长边，米）");
     if (hasPivot(opts.kind)) {
-      out.push("- slots.pivot = [" + opts.pivot.join(", ") + "]（米）");
+      // ⚠️ 坐标顺序要换 ✗ —— 编辑器用的是 glb 的 [x,y,z]，
+      //    而 config 的 slots 是 [L,H,D]，游戏里 D→X、H→Y、L→Z（见 WeaponModel.cs:184）
+      //    ⇒ 写进 config 要 [z, y, x]。踩过：直接发 x,y,z，结果第一个值在游戏里管前后。
+      var pvCfg = [opts.pivot[2], opts.pivot[1], opts.pivot[0]];
+      out.push("- slots.pivot = [" + pvCfg.join(", ") + "]（米，顺序 [L,H,D]）");
       if (opts.kind === "gun") out.push("- 自动猜握把开着。这是枪的默认，物品类是关的。");
     } else {
       out.push("");
@@ -424,7 +428,9 @@
     var slots = scope.slots;
     if (slots && typeof slots === "object") {
       var piv = slots.pivot;
-      if (Array.isArray(piv) && piv.length >= 3) lines.push("slots.pivot = [" + piv.slice(0, 3).join(", ") + "]");
+      // config 里是 [L,H,D]，换算成编辑器用的 [x,y,z] 再显示（= 反过来）
+      if (Array.isArray(piv) && piv.length >= 3)
+        lines.push("slots.pivot = [" + [piv[2], piv[1], piv[0]].join(", ") + "]   （已换成编辑器坐标 x,y,z）");
       // 不列 slots 的其它键 ✗（用户 2026-10-13 要求：只看 size 与 pivot）
     }
     setCfg(lines.length ? lines.join("\n") : "（没有可显示的字段）");
