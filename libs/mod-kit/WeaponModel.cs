@@ -83,8 +83,8 @@ namespace ModelKit
 
         /// <summary>把手持武器的模型换成给进来的 Mesh+贴图。root 一般是 `itemGraphic.gameObject` 或手持实体的 GameObject。</summary>
         /// <param name="slots">可选：config.json 的槽位（键如 Muzzle/Stock/Scope/Tec/Grip，以及可选的 pivot）；
-        /// 每个值 [L,H,D] 单位是**米**，相对**模型自身原点**（不是包围盒里的比例 ✗）：
-        /// **L 沿 Z（枪口 +Z）· H 沿 Y · D 沿 X**。
+        /// 每个值 [x,y,z] 单位是**米**，相对**模型自身原点**（不是包围盒里的比例 ✗）：
+        /// **x 沿 X（左右）· y 沿 Y（上下）· z 沿 Z（枪口 +Z）**。
         /// 作用：① 直接就是模型局部坐标里的点（记入 Result.SlotPoints）② 有 `pivot` 就用它当对齐基准（比包围盒映射准）。</param>
         public static Result Apply(Transform root, Mesh mesh, Texture2D texture, Vector3 extraOffset = default, Dictionary<string, Vector3> slots = null, float scale = 1f)
         {
