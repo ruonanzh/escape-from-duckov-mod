@@ -575,11 +575,9 @@
     // opts.pivot、config 的 slots、glb —— 三处都是 **[x, y, z]**（2026-10-13 统一）⇒ 不用换算
     var pv = hasPivot ? opts.pivot : [0, 0, 0];
     var ref = socketOf(opts.kind);
-    // **X 用加号** —— 游戏加载 glb 时把 X 取反了（GltfLoader.cs:8,80 右手换成左手），
-    //    所以同一个 pivot 值，两边模型移动的 X 方向相反。
-    //    用户 2026-10-13 实测：游戏里 x+1 = 向内，编辑器 x=1 = 向外 ⇒ 以游戏为准，编辑器翻过来。
-    // y / z 两边一致，不动。
-    state.root.position.set(ref[0] + pv[0], ref[1] - pv[1], ref[2] - pv[2]);
+    // 【实验 2026-10-13】X 也用减号：和游戏那边同时去掉了 X 取反（见 GltfLoader.cs 顶部注释），
+    //    两边都不翻，看方向还是不是一致。恢复：把这里改回 ref[0] + pv[0]。
+    state.root.position.set(ref[0] - pv[0], ref[1] - pv[1], ref[2] - pv[2]);
 
     // ⑥ 尺寸：最长边写进 opts.size（米）
     state.root.updateMatrixWorld(true);
