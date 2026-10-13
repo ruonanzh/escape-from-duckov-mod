@@ -59,7 +59,8 @@ dotnet run --project tools/data-probe -- \
   确实需要更多 ⇒ 显式 `--limit <N>` ✓
 - ⚠️ 到上限时**递归也立刻停** ✗（只停"记录"没用 ✗：`--follow` 的展开本身会吃光时间和内存 ✓）
 
-> ⚠️ `--follow` **不会展开数组元素** ✗（如渲染器的 `m_Materials` ✓ 会停在不透明的 `AssetTypeArrayInfo` ✓）——
+> 数组**不展开时只印个数** ✓：`[]` = 空数组 ✓，`<3 item(s), not expanded>` = 有 3 个但没展开 ✓。
+> `--follow` 遇到这种数组就停下 ✓（如渲染器的 `m_Materials` ✓）——
 > 要拿材质就改走 ✓：`search --class Material --pattern <名字>` ✓ 再对它 `refs` ✓ 读 `m_Shader` ✓（跨文件也能读到 ✓）。
 | `transform` | `--name <n>` \| `--pathid <p>` \| ⭐ **`--mesh <mesh 名>`** `[--exact]` `[--has <组件>]` `[--depth d]` `[--file levelN]` | ⭐ **Transform 链**：目标的 local TRS ✓ + **父链**（逐级 + **累计世界缩放** ✓）+ **子节点树**（找 `Sockets/…` 挂点 ✓）。⚠️ Unity 的 Transform **每级都是 local** ✗ ⇒ 「模型在游戏里到底多大 / 挂点在哪」只能这样算 ✓。挂了 **MeshFilter** 时顺带读 `Mesh.m_LocalAABB` × 累计缩放 = ⭐ **真实尺寸（米）** ✓（例：`Rifle02` mesh 本地 1.525 m ✓ 累计缩放 0.6545 ⇒ 游戏里 **0.998 m** ✓）。⚠️ 场景/prefab 在 **`levelN`** 里 ✗ ⇒ 加 `--file levelN` ✓；mesh 挂在 **`MeshFilter`** 上 ✗（不是 `MeshRenderer` ✓）|
 | `export` | `--class <C>` `[--match <expr>]…` `[--field <path>]…` `[--rows N]` `[--out <file>]` | **批量表**：一类对象 × 过滤 × 字段路径 → 每行一个资产（TAB 分列；数组用 `;` 连）。`--out` 写文件、只回预览 |
@@ -68,15 +69,16 @@ dotnet run --project tools/data-probe -- \
 
 > `list` / `search` 每次最多 500 条；截断时会提示 `--offset <下一页>`——**优先用更窄的查询（`search --pattern` / `dump --name`），确实要枚举时才翻页**。
 
-### ⚠️ 两个"传错了也不报错"的坑 ✓
+### ⚠️ 两个易踩的坑 ✓
 
 - **`--pathid` 要的是资产 pathID，不是游戏 typeID** ✗ —— 两个都是整数，但含义不同 ✓：
   `list` / `search` 结果里那一列才是 pathID ✓；`--typeid` 是游戏数据的 typeID ✓（按数据查要配 `--class` 一起用 ✓）。
   传错**不会报错** ✗，会静默 dump 到"同编号的另一个资产"
   （实测：把 Item 的 `typeID=43` 当 `--pathid` 传 → 拿回来的是一个 `Material` ✓）。
-- **数组要 `--depth ≥ 4~5` 才展开** ✗ —— `--depth`（默认 3）不够时，数组只显示
-  `AssetsTools.NET.AssetTypeArrayInfo` ✓。要顺着 `m_Component` / `renderers` 这类数组里的 `pathID` 继续往下走 ✓，
-  就得给 `--depth 5` ✓。
+- **数组不展开时印个数** ✓ —— 类型库 `classdata.tpk` 里没有元素类型时，数组不展开 ✓，
+  只印 `[]`（空 ✓）或 `<N item(s), not expanded>` ✓。
+  这一行为和 `--depth` 无关 ✓（`--depth 20` 也一样 ✓）。
+  要取数组里的对象 ⇒ 用 `search` / `refs` ✓，或拿到 `pathID` 直接 `dump` ✓。
 
 ## `export` 的路径语法（`--field` / `--match` 共用）
 

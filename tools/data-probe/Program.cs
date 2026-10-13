@@ -140,6 +140,8 @@ static partial class DataProbe
         "          'a.b' field, 'a[]'/'a[i]' expand/index an array, '#class'/'#name' = resolved object's class/name\n" +
         "          match ops: = != ~ (substring) > >= < <=   -   columns are TAB-separated, arrays joined with ';'\n" +
         "  common: [--file <x.assets|levelN>[,<more>]] [--limit N] [--offset N] [--out <file>]\n" +
+        "  note:  an array can print \"<N item(s), not expanded>\" when the type database lacks its\n" +
+        "         element type; \"[]\" means empty. This does not depend on --depth.\n" +
         "  note:  --file levelN reads a scene (level files are serialized like .assets)");
 
     static string FindClassData()
@@ -395,7 +397,16 @@ static partial class DataProbe
             return;
         }
         string val = "";
-        try { if (f.Children.Count == 0) val = " = " + f.AsString; } catch { }
+        try
+        {
+            if (f.Children.Count == 0)
+            {
+                var leaf = f.AsString;
+                if (f.FieldName == "Array") leaf = ArrayStr(f, leaf);   // 把「空」和「不展开」说清楚 ✓
+                val = " = " + leaf;
+            }
+        }
+        catch { }
         outp.Add($"{pad}{f.FieldName}{val}");
         if (depth >= maxDepth) return;
         foreach (var c in f.Children) DumpField(am, inst, c, depth + 1, maxDepth, followLeft, outp);
@@ -537,15 +548,39 @@ static partial class DataProbe
     static bool IsPtr(AssetTypeValueField f)
         => f.Children.Count == 2 && f.Children[0].FieldName == "m_FileID" && f.Children[1].FieldName == "m_PathID";
 
+    /// <summary>数组节点要印的字面值。
+    /// 类型库没有元素类型时，数组**不展开**，库自带的 ToString 会给出
+    /// `AssetsTools.NET.AssetTypeArrayInfo` —— 这个串**分不清「空数组」和「读不出」** ✗。
+    /// 从 `AsArray.size` 能拿到真实个数 ✓（实测：空数组给 0 ✓，两项的给 2 ✓），
+    /// 于是空数组印 `[]` ✓，不展开印 `<N item(s), not expanded>` ✓。
+    /// 原生数组（如 byte[]）本身就有值 ✓ ⇒ 原样返回 ✓。</summary>
+    const string OpaqueArray = "AssetsTools.NET.AssetTypeArrayInfo";
+
+    static string ArrayStr(AssetTypeValueField arr, string fallback)
+    {
+        if (fallback != OpaqueArray) return fallback;
+        try
+        {
+            var n = arr.AsArray.size;
+            return n == 0 ? "[]" : $"<{n} item(s), not expanded>";
+        }
+        catch { return fallback; }
+    }
+
     static string LeafString(AssetTypeValueField f)
     {
         try
         {
             if (f.Children.Count == 0) return f.AsString;
             if (IsPtr(f)) { var pid = f["m_PathID"].AsLong; return pid == 0 ? "(null)" : $"pathID {pid}"; }
-            // 原生数组（byte[] / int[]）：单个 `Array` 子节点且它是叶子 → 直接给它的字节/数字串（如 "03 00 00 00"）
+            // 单个 `Array` 子节点且它是叶子：
+            //   原生数组（byte[] / int[]）→ 它自带值（如 "03 00 00 00"）✓ 原样返回 ✓
+            //   动态数组但元素类型缺失 → 库给占位串 ✗ ⇒ 换成 `[]` / `<N item(s), not expanded>` ✓
             if (f.Children.Count == 1 && f.Children[0].FieldName == "Array" && f.Children[0].Children.Count == 0)
-                return f.Children[0].AsString;
+            {
+                var arr = f.Children[0];
+                return ArrayStr(arr, arr.AsString);
+            }
         }
         catch { }
         return null;
