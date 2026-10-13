@@ -1,10 +1,10 @@
 // Duckov 3D 编辑器 —— 在右侧栏里用 **Unity 坐标系** 查看 .glb 模型。
 //
-// 为什么不能"直接 load 就完事"：
+// 为什么不照抄游戏的 glb 变换：
 //   游戏里的 `libs/mod-kit/GltfLoader.cs:80-91` 读 glb 时做了四件事 ——
 //     ① 顶点 x 取反 · ② 法线 x 取反 · ③ UV 的 v 取反 · ④ 三角面绕序反转
-//   合起来 = 一次 **X 镜像**（glTF 右手 → Unity 左手，与 Unity 官方导 glTF 同一套）。
-//   不照做 → 预览里看到的和进游戏后看到的是**左右相反**的两个模型。
+//   合起来 = 一次 **X 镜像**（把 glTF 的右手系换成 Unity 的左手系，与 Unity 官方导 glTF 同一套）。
+//   不照做的话：预览里看到的和进游戏后看到的是**左右相反**的两个模型。
 //   ④ 只需 `scale.x = -1`（three 会把法线/绕序一起处理），③ 不用管（three 与 glTF 同规，
 //   Unity 侧的 v 翻转是它自己 UV 原点在下方的补偿，两边最终一致）。
 //
@@ -12,7 +12,7 @@
 //   · 朝向：`front` 声明 —— `auto` 不转 · `up` 最长轴转 +Y（近战刀）
 //   · 握把归零：枪托端起 8%~35% 区间的最低点移到原点（`GuessGrip`，同一套规则）
 //
-// ⚠️ 本文件是**编辑器自己的实现** —— 与 C# 侧规则保持一致，改一边记得看另一边。
+// 本文件是**编辑器自己的实现** —— 与 C# 侧规则保持一致，改一边记得看另一边。
 
 (function () {
   "use strict";
@@ -110,12 +110,12 @@
   var renderer, scene, camera, controls, grid, hull, axes;
 
   /**
-   * ⭐ 自建"摄影棚"环境贴图（给 PBR 做 IBL ✓）。
+   * 自建"摄影棚"环境贴图（给 PBR 做 IBL）。
    *
-   * 为什么不用 three 自带的 `RoomEnvironment`：那是一间**全白**的屋子 ✗ ⇒
-   * 环境反射一片白 ⇒ 金属件被**洗白**、看不出材质（会被误判成"模型很糟"✗）。
-   * 这里用**深色底 + 三块面光**（顶柔光 ✓ 侧暖光 ✓ 背冷光 ✓）⇒ 金属面出现**渐变反射与高光条** ✓
-   * 立体感和"成品感"都来自这里 ✓（不接 ORM 贴图 ✓ 颜色仍然只由 baseColor 决定 ✓）。
+   * 为什么不用 three 自带的 `RoomEnvironment`：那是一间**全白**的屋子 ⇒
+   * 环境反射一片白 ⇒ 金属件被**洗白**、看不出材质（会被误判成"模型很糟"）。
+   * 这里用**深色底 + 三块面光**（顶柔光 侧暖光 背冷光）⇒ 金属面出现**渐变反射与高光条**
+   * 立体感和"成品感"都来自这里（不接 ORM 贴图，颜色仍然只由 baseColor 决定）。
    */
   function buildStudioEnv(pmrem) {
     var s = new THREE.Scene();
@@ -147,26 +147,26 @@
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.98;
-    // ⚠️ **不开阴影** ✓（用户："影子没必要"）—— 三点光只做明暗与轮廓 ✓ 不投影 ✓
+    // **不开阴影**（用户："影子没必要"）—— 三点光只做明暗与轮廓，不投影
     host.appendChild(renderer.domElement);
 
     scene = new THREE.Scene();
-    // ⭐ 环境贴图必给 ✗ —— 否则 PBR 的金属部分是**全黑**（会造成"模型很糟"的假象）
+    // 环境贴图必给 —— 否则 PBR 的金属部分是**全黑**（会造成"模型很糟"的假象）
     var pmrem = new THREE.PMREMGenerator(renderer);
-    scene.environment = buildStudioEnv(pmrem);       // ⭐ 自建摄影棚（不是全白的 RoomEnvironment ✗）
-    scene.environmentIntensity = 1.0;              // 环境反射稍强 ⇒ 曲面更有立体感 ✓
-    scene.add(new THREE.AmbientLight(0xffffff, 0.42));   // 只兜底 ✗ 主体交给方向光 ✓
+    scene.environment = buildStudioEnv(pmrem);       // 自建摄影棚（不是全白的 RoomEnvironment）
+    scene.environmentIntensity = 1.0;              // 环境反射稍强 ⇒ 曲面更有立体感
+    scene.add(new THREE.AmbientLight(0xffffff, 0.42));   // 只兜底，主体交给方向光
 
-    // ⭐ 三点光（摄影棚打法 ✓）：key 主光带阴影 ✓ · fill 补暗部 ✓ · rim 勾轮廓 ✓
-    var key = new THREE.DirectionalLight(0xfff4e6, 1.85);   // 略暖 ✓
+    // 三点光（摄影棚打法）：key 主光带阴影 · fill 补暗部 · rim 勾轮廓
+    var key = new THREE.DirectionalLight(0xfff4e6, 1.85);   // 略暖
     key.position.set(-3.2, 5.2, 4.2);
     scene.add(key);
 
-    var fill = new THREE.DirectionalLight(0xdfe8ff, 0.55);   // 略偏冷 ✓ 与暖主光形成对比 ✓
+    var fill = new THREE.DirectionalLight(0xdfe8ff, 0.55);   // 略偏冷，与暖主光形成对比
     fill.position.set(4.2, 1.6, 3.0);
     scene.add(fill);
 
-    var rim = new THREE.DirectionalLight(0xffffff, 1.05);     // ⭐ 轮廓光（从后上方 ✓）= "高级感"的主要来源 ✓
+    var rim = new THREE.DirectionalLight(0xffffff, 1.05);     // 轮廓光（从后上方）= "高级感"的主要来源
     rim.position.set(2.0, 3.0, -5.0);
     scene.add(rim);
 
@@ -183,7 +183,7 @@
     axes = new THREE.AxesHelper(0.5);
     scene.add(axes);
 
-    // ⭐ 原点标记 = **武器 0 点要对齐的那个点**（游戏角色拿枪的 socket）—— 白十字
+    // 原点标记 = **武器 0 点要对齐的那个点**（游戏角色拿枪的 socket）—— 白十字
     var o = new THREE.Vector3();
     var cs = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)];
     var pts = [];
@@ -219,9 +219,9 @@
 
   function setView(dir) {
     var d = new THREE.Vector3(dir[0], dir[1], dir[2]).normalize();
-    // ⭐ 对准**包围盒中心** ✗ 不是原点 —— 握把归零后模型主要伸向 +Z，对原点看会把它裁掉 ✗
-    // ⚠️ 用的是 `viewBox`（打开的文件 **∪ 参照鸭子**）✗ 不是 `state.box` ——
-    //    否则镜头只框打开的模型，参照鸭子永远在框外 ✗（曾经就是）
+    // 对准**包围盒中心**，不是原点 —— 握把归零后模型主要伸向 +Z，对原点看会把它裁掉
+    // 用的是 `viewBox`（打开的文件 **∪ 参照鸭子**），不是 `state.box` ——
+    // 否则镜头只框打开的模型，参照鸭子永远在框外（曾经就是）
     var vb = state.viewBox || state.box;
     var center = vb ? vb.getCenter(new THREE.Vector3()) : new THREE.Vector3();
     var dist = (state.viewRadius || state.radius || 1) * 3.0;
@@ -231,9 +231,9 @@
   }
 
   // ── 组装（顺序与游戏一致） ─────────────────────────────────────────────────
-  // ⭐ 金属/光泽的**数值**（贴图已按游戏清掉 ✓）。默认偏哑 ✓；
-  //    调试/调参可用 URL：`?mr=0.6,0.35`（metal,rough）—— 只为对齐游戏观感用 ✓
-  var MAT = { metal: 0.3, rough: 0.6 };   // ⭐ 定死 B（用户选的档 ✓）
+  // 金属/光泽的**数值**（贴图已按游戏清掉）。默认偏哑；
+  // 调试/调参可用 URL：`?mr=0.6,0.35`（metal,rough）—— 只为对齐游戏观感用
+  var MAT = { metal: 0.3, rough: 0.6 };   // 定死 B（用户选的档）
   (function () {
     var q = new URLSearchParams(location.search).get("mr");
     if (!q) return;
@@ -242,18 +242,18 @@
   })();
 
   // ── 参照物：玩家鸭 ─────────────────────────────────────────────────────────
-  // ⭐ 它**不参与**「物品」栏的任何启发式 ✗（长轴→+Z/+Y、枪口方向、握把归零都是**武器**的规则）。
-  //    也**不做** X 镜像 ✗ —— 这条踩过坑，记下实测：
-  //      鸭子 glb 是标准右手 glTF（前伸的右臂在 −X）⇒ 直接渲染时，正对鸭子右臂在**画面左侧** ✓。
-  //      再叠一次 X 镜像 ⇒ 右臂跑到 +X ⇒ 正对时跑到**画面右侧** ✗（用户一眼看出「左右反了」）。
-  //    模型自己的坐标系里上方就是 +Y、前方就是 +Z ⇒ 直接进来就是站立的 ✓ 不需要任何旋转 ✓
-  //    资源是内嵌的（`assets/duck_player.js`）：CSP 是 `connect-src 'none'` ⇒ 运行时不能 fetch ✗
-  //    ⭐ **常驻、不给开关** —— 它是背景参照物，不是要调的参数（面板里没有它）
-  var REF_MAT = { metal: 0.0, rough: 0.7 };   // ⭐ 鸭子不是金属 ✗（用 MAT 的 0.3 会让白毛变灰 ✗）
-  // ⭐ 游戏角色身上的挂点（离线从游戏数据量得，**鸭子 glb 的坐标**）
+  // 它**不参与**「物品」栏的任何启发式（长轴到 +Z/+Y、枪口方向、握把归零都是**武器**的规则）。
+  // 也**不做** X 镜像 —— 这条踩过坑，记下实测：
+  // 鸭子 glb 是标准右手 glTF（前伸的右臂在 −X）⇒ 直接渲染时，正对鸭子右臂在**画面左侧**。
+  // 再叠一次 X 镜像 ⇒ 右臂跑到 +X ⇒ 正对时跑到**画面右侧**（用户一眼看出「左右反了」）。
+  // 模型自己的坐标系里上方就是 +Y、前方就是 +Z ⇒ 直接进来就是站立的，不需要任何旋转
+  // 资源是内嵌的（`assets/duck_player.js`）：CSP 是 `connect-src 'none'` ⇒ 运行时不得 fetch
+  // **常驻、不给开关** —— 它是背景参照物，不是要调的参数（面板里没有它）
+  var REF_MAT = { metal: 0.0, rough: 0.7 };   // 鸭子不是金属（用 MAT 的 0.3 会让白毛变灰）
+  // 游戏角色身上的挂点（离线从游戏数据量得，**鸭子 glb 的坐标**）
   //    来源：prefab 上 `CharacterModel` 组件的字段（玩家鸭 = pathID 106660）；
-  //    ⚠️ 鸭子姿势变，这些值要重量 ✗
-  //    ⚠️ 别拿 `0_CharacterModel_Pet_Jinitaimei` 的 CharacterModel ✗ —— 它是宠物，
+  // 鸭子姿势变，这些值必须重新量
+  // 不得拿 `0_CharacterModel_Pet_Jinitaimei` 的 CharacterModel —— 它是宠物，
   //       挂点指向另一套（小鸡）骨骰，与鸭子网格对不上。用**鸭子模型**（Coach / Jeff / Boss）的。
   //    算法：挂点相对**父骨**的局部偏移（从 Coach 鸭量得）+ 鸭子当前姿势的骨头世界矩阵
   //      gun       <- MeleeWeaponSocket <- Hand.R     （-0.0032, 0.1588, -0.0169）
@@ -261,22 +261,22 @@
   //      helmat    <- HelmatSocket      <- Head       （ 0.0000, 0.2160,  0.0000）
   //      armor     <- ArmorSocket       <- Spine.003  （ 0.0000, 0.0031, -0.0002）
   //      backpack  <- BackpackSocket    <- Spine.003  （ 0.0000,-0.0210, -0.1150）
-  //    ⚠️ 偏移要**三个鸭子模型对比**（Coach / Boss_1 / Jeff）：四个挂点三者全一致 ✓
-  //       只有**背包**：Coach 是特例（+0.140,-0.126,-0.093，偏且偏低）✗；
-  //       Boss_1 与 Jeff 一致（0,-0.021,-0.115）⇒ 用多数派 ⇒ 抬高 10.7cm、居中 ✓
-  // ⭐「枪 / 近战 / 物品 用哪个 socket」—— **扫了全部代理，有定论**：
+  // 偏移要**三个鸭子模型对比**（Coach / Boss_1 / Jeff）：四个挂点三者全一致
+  // 只有**背包**：Coach 是特例（+0.140,-0.126,-0.093，偏且偏低）；
+  // Boss_1 与 Jeff 一致（0,-0.021,-0.115）⇒ 用多数派 ⇒ 抬高 10.7cm、居中
+  // 「枪 / 近战 / 物品 用哪个 socket」—— **扫了全部代理，有定论**：
   //    `ItemAgent_Gun` 19 个 · `ItemAgent_MeleeWeapon` 38 个 ⇒ `handheldSocket` **全部是 1**
   //    枚举 `HandheldSocketTypes`：normalHandheld = 1 · meleeWeapon = 2 · leftHandSocket = 3
-  //    ⇒ 三类**都走 normalHandheld** ⇒ 对应 `rightHandSocket` ✓
-  //    ⇒ `meleeWeaponSocket`（值 2）**游戏从来不用** ✗ ⇒ 不画它，手部只留一个点 ✓
-  //    ⚠️ 「配件挂点先不处理」指的是**那套对齐逻辑** ✗ —— 标记本身要画 ✓（曾误解成不画，删了一次）
-  //       各挂点的用途：手部 = 模型对齐目标；“头盔/护甲/背包” = 参照物，看装备落哪儿 ✓
+  // ⇒ 三类**都走 normalHandheld** ⇒ 对应 `rightHandSocket`
+  // ⇒ `meleeWeaponSocket`（值 2）**游戏从来不用** ⇒ 不画它，手部只留一个点
+  // 「配件挂点先不处理」指的是**那套对齐逻辑** —— 标记本身要画（曾误解成不画，删了一次）
+  // 各挂点的用途：手部 = 模型对齐目标；“头盔/护甲/背包” = 参照物，看装备落哪儿
   var CHAR_SOCKETS = [
     { key: "hand",     label: "枪/近战武器/普通物品", p: [-0.3342, 0.6179,  0.2811], color: 0xff8a00 },
     { key: "helmat",   label: "头盔/耳机", p: [ 0.0000, 0.9307,  0.0000], color: 0x8a5cff },
     { key: "armor",    label: "护甲",     p: [ 0.0000, 0.4890, -0.0322], color: 0x2fae5a },
     { key: "backpack", label: "背包",     p: [ 0.0000, 0.4909, -0.1495], color: 0x2f7ad2 },
-    // ⚠️ 面部是**估算值**（未确认）。理由：数据文件里 `faceSocket` 是 null，没有离线值可算。
+    // 面部是**估算值**（未确认）。理由：数据文件里 `faceSocket` 是 null，没有离线值可算。
     //    运行时实测：`FaceMaskSocket` 的父节点是 `Head`，局部偏移 (0, 0.104, 0)；
     //    头盔是同一个父节点，偏移 (0, 0.140, 0)。两者比例 0.743。
     //    编辑器头盔标记在 y=0.9307，它相对 `Head` 偏移 0.2160 ⇒ Head 在 0.7147
@@ -284,7 +284,7 @@
     { key: "face",     label: "面部",     p: [ 0.0000, 0.8752,  0.0000], color: 0xd94f8a },
   ];
 
-  // 类型 → 挂点。八类物品各挂到它的挂点。
+  // 类型到挂点。八类物品各挂到它的挂点。
   // 耳机与头盔共用 `helmatSocket`（运行时实测：牛仔帽 `IG_Helmat_Hat(Clone)` 与
   // 耳机 `IG_Headset_LV1V2(Clone)` 是 `HelmatSocket` 下的兄弟节点，世界坐标完全相同）。
   var KIND_SOCKET = {
@@ -314,7 +314,7 @@
   };
 
   /** 发给 agent 的话。要求（用户 2026-10-13 定）：
-   *   ① 第一句先让 agent 检查类型选得对不对（选错很常见），并说明“先别改文件”
+   *   ① 第一句先让 agent 检查类型选得对不对（选错很常见），并说明「先不改文件」
    *   ② 明确给出 glb 文件名（取打开的那个文件，不让玩家手填）
    *   ③ 按类型发不同数据：只有枪和近战带 pivot；六类装备不带，也不写 slots
    *   ④ 耳机不另提挂点 —— 类型不同就够（挂点是游戏的 Tag 决定的，不进 config）*/
@@ -323,19 +323,19 @@
     var file = state.fileName || "（模型文件）";
     var out = [];
     out.push("先检查我选的类型对不对：我选的是「" + label + "」，模型文件是 " + file + "。");
-    out.push("选错的话告诉我该选哪一类，先别改文件。");
+    out.push("选错的话告诉我该选哪一类，先不改文件。");
     out.push("");
     out.push("确认后，把下面这些写进同目录的 config.json：");
     out.push("- model = " + file);
     if (opts.size > 0) out.push("- size = " + (+opts.size).toFixed(3) + "（最长边，米）");
     if (hasPivot(opts.kind)) {
-      // 面板框、config、glb 都是 [x,y,z] ✓（2026-10-13 统一）⇒ **原样发**
-      // 所见即所得 ✓ —— 框里的值就是 config 的值（X 的符号差异在落位里处理）
+      // 面板框、config、glb 都是 [x,y,z]（2026-10-13 统一）⇒ **原样发**
+      // 所见即所得 —— 框里的值就是 config 的值（X 的符号差异在落位里处理）
       out.push("- slots.pivot = [" + opts.pivot.join(", ") + "]（米）");
       if (opts.kind === "gun") out.push("- 自动猜握把开着。这是枪的默认，物品类是关的。");
     } else {
       out.push("");
-      out.push("类型「" + label + "」没有 pivot，不要写 slots。");
+      out.push("类型「" + label + "」没有 pivot，不得写 slots。");
     }
     return out.join("\n");
   }
@@ -346,8 +346,8 @@
   }
 
   /** 点按钮前，把面板上的当前值读回 opts。
-   *  ⚠️ 必须这么干 ✗ —— `size` 只监听 `change`，而代码是用 `.value` **程序设**的
-   *  ⇒ 不触发 `change` ⇒ `opts.size` 还是 0 ✗（实测：发出去的话里少了 size 那一行）。
+   * 必须这么干 —— `size` 只监听 `change`，而代码是用 `.value` **程序设**的
+   * ⇒ 不触发 `change` ⇒ `opts.size` 还是 0（实测：发出去的话里少了 size 那一行）。
    *  pivot 同理（它监听 `input`）。 */
   function syncOptsFromDom() {
     var sz = document.getElementById("size");
@@ -397,7 +397,7 @@
   }
 
   /** 显示同目录 config.json 的摘要。
-   *  ⚠️ 必须防各种坏形状（实测踩过）：
+   * 必须防各种坏形状（实测踩过）：
    *    · entries 里可能混 null / 不是对象 —— 直接 .targets 会抛
    *    · slots.pivot 可能不是数组 —— 直接 .join 会抛
    *    · entries 可能是空数组 / 根本不是数组
@@ -411,36 +411,36 @@
     var entries = Array.isArray(j.entries) ? j.entries : null;
     var one = (entries && entries.length && entries[0] && typeof entries[0] === "object") ? entries[0] : null;
     var scope = one || j;                       // 有合法条目的看第一条，否则看顶层
-    // ⚠️ 不显示 typeIDs 与 model —— 用户 2026-10-13 要求去掉（它们不是调 pivot 要看的）
+    // 不显示 typeIDs 与 model —— 用户 2026-10-13 要求去掉（它们不是调 pivot 要看的）
     // size 可能是数字，也可能是字符串（手写的 config 常见）⇒ 两者都认。
     // 条目没写 size 时**回退到顶层**（config 允许顶层 size 当默认值）。
-    // size **始终显示一行**（用户 2026-10-13 要求：没有就显示空，不能整行不见）
+    // size **始终显示一行**（用户 2026-10-13 要求：没有就显示空，不得整行不见）
     var sizeRaw = scope.size;
     if (sizeRaw === undefined || sizeRaw === null || sizeRaw === "") sizeRaw = j.size;
     var sizeOk = sizeRaw !== undefined && sizeRaw !== null && sizeRaw !== "" && isFinite(Number(sizeRaw));
     lines.push("size = " + (sizeOk ? Number(sizeRaw) : ""));
     if (typeof scope.front === "string" && scope.front) lines.push("front = " + scope.front);
     if (entries) lines.push("entries：" + entries.length + " 条" + (one ? "（下面是第 1 条）" : "（没有可用条目）"));
-    // ⚠️ 按用户要求，**typeIDs 与 model 都不显示** ✗（它们不是调 pivot 要看的）
+    // 按用户要求，**typeIDs 与 model 都不显示**（它们不是调 pivot 要看的）
     if (one && Array.isArray(one.targets)) lines.push("targets = " + JSON.stringify(one.targets));
     var slots = scope.slots;
     if (slots && typeof slots === "object") {
       var piv = slots.pivot;
-      // 面板与 config 同顺序 ⇒ 原样显示 ✓
+      // 面板与 config 同顺序 ⇒ 原样显示
       if (Array.isArray(piv) && piv.length >= 3)
         // 直接显示、直接填框（所见即所得；X 的符号差异在落位里处理）
       if (Array.isArray(piv) && piv.length >= 3) {
         var vals = [piv[0], piv[1], piv[2]];
         lines.push("slots.pivot = [" + vals.join(", ") + "]");
         // 顺手填进三个框（用户 2026-10-13 选：打开时载入，省得手抄）
-        // ⚠️ 值已经换成编辑器坐标 ✗ —— 不要直接塞 config 的原始值
+        // 值已经换成编辑器坐标 —— 不得直接塞 config 的原始值
         ["pivot-x", "pivot-y", "pivot-z"].forEach(function (id, i) {
           var el = document.getElementById(id);
           if (el) { el.value = String(vals[i]); opts.pivot[i] = vals[i]; }
         });
         if (state.model) build();     // 模型还没加载时跳过（加载完自己会 build）
       }
-      // 不列 slots 的其它键 ✗（用户 2026-10-13 要求：只看 size 与 pivot）
+      // 不列 slots 的其它键（用户 2026-10-13 要求：只看 size 与 pivot）
     }
     setCfg(lines.length ? lines.join("\n") : "（没有可显示的字段）");
   }
@@ -454,7 +454,7 @@
     new GLTFLoader().parse(buf, "", function (gltf) {
       var g = new THREE.Group();
       g.name = "refDuck";
-      // ⚠️ 这里**不加** X 镜像 ✗，理由见上面那段实测（前视图：右臂在画面左侧 = 对）
+      // 这里**不加** X 镜像，理由见上面那段实测（前视图：右臂在画面左侧 = 对）
       var mir = new THREE.Group();
       mir.add(gltf.scene);
       g.add(mir);
@@ -472,8 +472,8 @@
         });
       });
       // 挂点标记：画在鸭子内部（跟鸭子一起动），不需要跟着镜像
-      // 小球 + 一个细十字，深度测试关掉 ⇒ 不被身体挡住 ✓
-      // ⚠️ 标记不得算进鸭子的包围盒 ✗ —— 否则脚底贴地面会按标记算，鸭子会浮起来
+      // 小球 + 一个细十字，深度测试关掉 ⇒ 不被身体挡住
+      // 标记不得算进鸭子的包围盒 —— 否则脚底贴地面会按标记算，鸭子会浮起来
       g.traverse(function (o) { if (o.isMesh) o.userData.isDuckBody = true; });
       CHAR_SOCKETS.forEach(function (s) {
         var m = new THREE.Group();
@@ -503,7 +503,7 @@
 
   function placeRefDuck() {
     if (!refDuck) return;
-    // ⭐ 鸭子**站在地面**（脚底贴网格、站在原点）—— 它是参照物，不是被调的东西
+    // 鸭子**站在地面**（脚底贴网格、站在原点）—— 它是参照物，不是被调的东西
     //    要去对齐的是**物品**：模型会被移到该类型的挂点（见 build 里第 ⑤ 步）
     refDuck.position.set(0, 0, 0);
     refDuck.updateMatrixWorld(true);
@@ -524,7 +524,7 @@
   // 含义 = 「模型上哪个点要落到鸭子手上」，相对**模型自身原点**的偏移（米）。
   //   · 枪：手部 socket + auto guess grip（`GuessGrip`）+ pivot
   //   · 近战 / 物品：手部 socket + pivot（游戏那边 `zeroGrip: false`，不做 guess）
-  // ⇒ 不拖把手 ✗ —— 按公式**直接算**出模型位置；改 pivot 就是模型动 ✓
+  // ⇒ 不拖把手 —— 按公式**直接算**出模型位置；改 pivot 就是模型动
 
   var opts = {
     kind: "gun",        // gun（枪）| melee（近战武器）| armor（护甲）| helmat（头盔）
@@ -534,24 +534,24 @@
                         // ⇒ 只有 枪 / 近战 显示 pivot；其余六类只用挂点定位
     pivot: [0, 0, 0],   // 模型上「要落到鸭子手上」的点，相对模型原点（米）
     autoGrip: true,     // 武器：是否自动猜握把（游戏 `GuessGrip`，物品固定不做）
-    muzzle: "auto",     // ⭐ 固定"自动"（`MuzzleAtPositiveZ`：两端各看 6%/15%，细的那端是枪管）—— 不给选择
-    grip: true,         // ⭐ 只有「枪」用得上（`GuessGrip` 的假设是枪）—— UI 里也只在选枪时露出这一行 ✗
-    mirror: false,      // ⭐ 固定**关** ✓ —— 参照鸭子那份代码里写着「不加 X 镜像」（前视图右臂在画面左侧 = 对 ✗）
-                        //    一只翻一只不翻会让两只不一致 ✗。方向的问题在**落位公式的 X 符号**上解决（见 build 第 ⑤ 步）
-    grid: true,         // ⭐ 固定开：网格（每格 10cm）
+    muzzle: "auto",     // 固定"自动"（`MuzzleAtPositiveZ`：两端各看 6%/15%，细的那端是枪管）—— 不给选择
+    grip: true,         // 只有「枪」用得上（`GuessGrip` 的假设是枪）—— UI 里也只在选枪时露出这一行
+    mirror: false,      // 固定**关** —— 参照鸭子那份代码里写着「不加 X 镜像」（前视图右臂在画面左侧 = 对）
+                        // 一只翻一只不翻会让两只不一致。方向的问题在**落位公式的 X 符号**上解决（见 build 第 ⑤ 步）
+    grid: true,         // 固定开：网格（每格 10cm）
     size: 0            // 0 = 不改（用模型自己的尺寸）
   };
 
   function build() {
     if (!state.model) return;
-    // ⚠️ 只清 stage ✗（root 里装的是**层级**：mirror/grip/flip/orient/stage —— 清它等于把树拆了 ✗）
+    // 只清 stage（root 里装的是**层级**：mirror/grip/flip/orient/stage —— 清它等于把树拆了）
     while (state.stage.children.length) state.stage.remove(state.stage.children[0]);
 
     // ① 原始模型（three 与 glTF 同规 ⇒ 原样加进来）
     state.stage.add(state.model);
 
-    // ② 摆正：**不做** ✗ —— 三类都不摆正，一律**原点对原点**放（用户 2026-10-12 定调）
-    //    曾经的「长轴 → +Z/+Y」与「枪口朝 +Z」已删（判据函数 longAxis / muzzleAtPositiveZ
+    // ② 摆正：**不做** —— 三类都不摆正，一律**原点对原点**放（用户 2026-10-12 定调）
+    //    曾经的「长轴到 +Z/+Y」与「枪口朝 +Z」已删（判据函数 longAxis / muzzleAtPositiveZ
     //    也从本文件移除；要恢复看 git 历史）。
     state.orient.rotation.set(0, 0, 0);
     state.flip.rotation.set(0, 0, 0);
@@ -560,8 +560,8 @@
     state.root.scale.setScalar(1);
     state.root.updateMatrixWorld(true);
 
-    // ③ 镜像：**关** ✓（和参照鸭子一致）
-    //    2026-10-13 曾开过一版，但鸭子那边是「不加」✗ ⇒ 一只翻一只不翻 ⇒ 场景内部不一致 ✗。
+    // ③ 镜像：**关**（和参照鸭子一致）
+    // 2026-10-13 曾开过一版，但鸭子那边是「不加」 ⇒ 一只翻一只不翻 ⇒ 场景内部不一致。
     //    方向差异改用**落位公式的 X 符号**解决（见第 ⑤ 步），不动场景。
     state.mirror.scale.set(1, 1, 1);
 
@@ -572,20 +572,20 @@
       state.grip.position.set(-g[0], -g[1], -g[2]);
     }
 
-    // ⑤ 落到该类型对应的挂点，再减掉 pivot（**模型动** ✗ 不是拖把手）
+    // ⑤ 落到该类型对应的挂点，再减掉 pivot（**模型动** 不是拖把手）
     //    公式 = 游戏 config 的实现：socket + (枪 ? auto guess grip : 0) + pivot
     //    （auto guess 已经在第 ④ 步做掉了 —— 它把顶点整体移到握把）
     var hasPivot = opts.kind === "gun" || opts.kind === "melee";   // 只有这条路由游戏读 slots.pivot
-    // opts.pivot、config 的 slots、glb —— 三处都是 **[x, y, z]** ✓（2026-10-13 统一）⇒ 不用换算
+    // opts.pivot、config 的 slots、glb —— 三处都是 **[x, y, z]**（2026-10-13 统一）⇒ 不用换算
     var pv = hasPivot ? opts.pivot : [0, 0, 0];
     var ref = socketOf(opts.kind);
-    // ⚠️ **X 用加号** ✗ —— 游戏加载 glb 时把 X 取反了（GltfLoader.cs:8,80 右手→左手），
+    // **X 用加号** —— 游戏加载 glb 时把 X 取反了（GltfLoader.cs:8,80 右手换成左手），
     //    所以同一个 pivot 值，两边模型移动的 X 方向相反。
     //    用户 2026-10-13 实测：游戏里 x+1 = 向内，编辑器 x=1 = 向外 ⇒ 以游戏为准，编辑器翻过来。
-    //    y / z 两边一致，不动 ✓。
+    // y / z 两边一致，不动。
     state.root.position.set(ref[0] + pv[0], ref[1] - pv[1], ref[2] - pv[2]);
 
-    // ⑥ 尺寸：最长边 → opts.size（米）
+    // ⑥ 尺寸：最长边写进 opts.size（米）
     state.root.updateMatrixWorld(true);
     var box = new THREE.Box3().setFromObject(state.root);
     var size = box.getSize(new THREE.Vector3());
@@ -598,7 +598,7 @@
     state.box = box;
     state.radius = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 0.05);
 
-    // ⭐ 取景范围 = 打开的模型 **∪ 参照鸭子**（参照物默认在原点站 1.12m ⇒ 不算进去就被裁掉 ✗）
+    // 取景范围 = 打开的模型 **∪ 参照鸭子**（参照物默认在原点站 1.12m ⇒ 不算进去就被裁掉）
     var viewBox = box.clone();
     if (refDuck && refDuck.visible) viewBox.expandByObject(refDuck);
     state.viewBox = viewBox;
@@ -609,11 +609,11 @@
     hull = new THREE.Box3Helper(box, 0x2b6cb0);
     scene.add(hull);
 
-    // ⭐ 材质：**只用 baseColor + 法线**，金属/光泽贴图一律丢掉 —— 与游戏一致 ✓
-    //   游戏那边只换 baseColor（`ApplyOurTexture`）+ 接法线（`ApplyNormalMap`，且只在 `SodaCraft/` shader 上 ✓），
-    //   金属/光滑**没有槽位** ✗ ⇒ glTF 自带的 `metallicRoughnessTexture`（ORM）在游戏里根本不会被用到 ✓
-    //   ⇒ 预览要是接上它 ⇒ 会比游戏**亮/金属得多** ✗（看着像"模型很糟"的假象 ✓）
-    //   顺带：镜像后绕序会反 ⇒ 双面渲染 ✓（只影响观感，不改颜色 ✓）
+    // 材质：**只用 baseColor + 法线**，金属/光泽贴图一律丢掉 —— 与游戏一致
+    // 游戏那边只换 baseColor（`ApplyOurTexture`）+ 接法线（`ApplyNormalMap`，且只在 `SodaCraft/` shader 上），
+    // 金属/光滑**没有槽位** ⇒ glTF 自带的 `metallicRoughnessTexture`（ORM）在游戏里根本不会被用到
+    // ⇒ 预览要是接上它 ⇒ 会比游戏**亮/金属得多**（看着像"模型很糟"的假象）
+    // 顺带：镜像后绕序会反 ⇒ 双面渲染（只影响观感，不改颜色）
     state.root.traverse(function (o) {
       if (!o.isMesh) return;
       var mats = Array.isArray(o.material) ? o.material : [o.material];
@@ -631,14 +631,14 @@
 
     grid.visible = opts.grid;
 
-    // ⭐ 「握把归零」只在选「枪」时露出（其余七类不适用 —— 那是枪的猜测规则）
+    // 「握把归零」只在选「枪」时露出（其余七类不适用 —— 那是枪的猜测规则）
     var gripRow = document.getElementById("gripRow");
     if (gripRow) gripRow.hidden = opts.kind !== "gun";
     var pivotRow = document.getElementById("pivotRow");
     if (pivotRow) pivotRow.hidden = !(opts.kind === "gun" || opts.kind === "melee");
 
-    // ⭐ 「挂点」这一整节：两个行都隐藏时，标题也一起隐藏
-    //    （否则会留一个空标题 ✗）
+    // 「挂点」这一整节：两个行都隐藏时，标题也一起隐藏
+    // （否则会留一个空标题）
     var socketSection = document.getElementById("socketSection");
     if (socketSection)
       socketSection.hidden = (pivotRow ? pivotRow.hidden : true) && (gripRow ? gripRow.hidden : true);
@@ -655,17 +655,17 @@
       verts += g.attributes.position ? g.attributes.position.count : 0;
       tris += g.index ? g.index.count / 3 : (g.attributes.position ? g.attributes.position.count / 3 : 0);
     });
-    // 右下角最下面只留顶点/三角面（其它信息在「尺寸」那一段已经有了 ✓ 不再重复 ✓）
+    // 右下角最下面只留顶点/三角面（其它信息在「尺寸」那一段已经有了，不再重复）
     document.getElementById("diag").textContent = "顶点 " + verts + " · 三角面 " + Math.round(tris);
   }
 
   /** 取模型**自身坐标**下的顶点样本（给 GuessGrip 用）
-   *  ⚠️ 不得用世界坐标 ✗ —— 游戏那边 `GuessGrip` 读的是顶点原始值（POSITION accessor），
+   * 不得用世界坐标 —— 游戏那边 `GuessGrip` 读的是顶点原始值（POSITION accessor），
    *     不带任何节点变换，也不带我们后来加的位置偏移。
    *     已踩：早先用 `o.matrixWorld` ⇒ 第一次 build 后 `root.position` 已经等于 socket，
    *     第二次取样就带上那个偏移 ⇒ 每点一次开关再叠一次
-   *     （实测：grip 变成 0.672,-0.578,-0.281 ✗，正确值应是 0.338,0.04,0）。
-   *     我们加的标记（挂点球、鸭子挂点）也不得参与取样 ✗。*/
+   * （实测：grip 变成 0.672,-0.578,-0.281，正确值应是 0.338,0.04,0）。
+   * 我们加的标记（挂点球、鸭子挂点）也不得参与取样。*/
   function samplePoints(obj) {
     var out = [];
     obj.traverse(function (o) {
@@ -680,7 +680,7 @@
     return out;
   }
 
-  // ── 挂点：模型自身坐标 → 世界 ───────────────────────────────────────────────
+  // ── 挂点：模型自身坐标到世界 ───────────────────────────────────────────────
   // “模型自身包围盒” = 游戏那边的 `mesh.bounds` ⇒ glb 里各几何体的包围盒并集（不带节点变换）
   function firstMesh() {
     var found = null;
@@ -696,9 +696,9 @@
   // ── 启动 ────────────────────────────────────────────────────────────────────
   function start() {
     initScene();
-    // ⚠️ **必须在任何 glTF 解析之前**删掉 `createImageBitmap` ✗
-    //    它走 fetch(blob:) ⇒ 被 CSP `connect-src 'none'` 挡掉 ⇒ **贴图全丢** ⇒ 看着像「模型没皮」✗
-    //    删掉 ⇒ three 退回 `TextureLoader`（`<img src=blob:>` ✓ 走 `img-src` ✓ 允许 ✓）
+    // **必须在任何 glTF 解析之前**删掉 `createImageBitmap`
+    // 它走 fetch(blob:) ⇒ 被 CSP `connect-src 'none'` 挡掉 ⇒ **贴图全丢** ⇒ 看着像「模型没皮」
+    // 删掉 ⇒ three 退回 `TextureLoader`（`<img src=blob:>` 走 `img-src` 允许）
     //    参照鸭子是**先加载**的 ⇒ 晚删就轮到它中招（曾经就是：鸭子白身橙嘴全丢）
     try { delete window.createImageBitmap; } catch (e) {}
     document.getElementById("views").addEventListener("click", function (ev) {
@@ -707,7 +707,7 @@
       setView(a.dataset.dir.split(",").map(Number));
     });
     // 挂点：三个框，顺序 = [x, y, z]（与 config、与 glb 一致）
-    // ⚠️ id 与顺序必须和 index.html 的 pivotRow 一致 ✗ —— 踩过：改了 id 忘了这里，
+    // id 与顺序必须和 index.html 的 pivotRow 一致 —— 踩过：改了 id 忘了这里，
     //    于是 getElementById 返回 null、直接 return，监听器压根没绑上 ⇒ 改数值模型不动。
     ["x", "y", "z"].forEach(function (ax, i) {
       var el = document.getElementById("pivot-" + ax);
@@ -729,7 +729,7 @@
     readFile().then(function (res) {
       if (!res.data) throw new Error("文件为空");
       // 宿主必须把二进制按 base64 发（`editor:fileContent` 的 `encoding: "base64"`）。
-      // 万一发的是 utf8（把 .glb 当文本读了 ⇒ 乱码 + 256KB 截断），给一句人话 ✗ 别把 atob 的异常抛给玩家。
+      // 万一发的是 utf8（把 .glb 当文本读了 ⇒ 乱码 + 256KB 截断），给一句人话，不得把 atob 的异常抛给玩家。
       if (res.encoding && res.encoding !== "base64") {
         throw new Error(
           "宿主把这个模型当文本发过来了（encoding=" + res.encoding +
@@ -738,15 +738,15 @@
       }
       var bin = base64ToBytes(res.data);
       var buf = bin.buffer.slice(bin.byteOffset, bin.byteOffset + bin.byteLength);
-      // ⚠️ `createImageBitmap` 已在 `start()` 开头删掉（那时才轮到参照鸭子之后的所有解析 ✓）
+      // `createImageBitmap` 已在 `start()` 开头删掉（那时才轮到参照鸭子之后的所有解析）
       return new Promise(function (resolve, reject) {
         new GLTFLoader().parse(buf, "", resolve, reject);
       });
     }).then(function (gltf) {
       state.model = gltf.scene;
 
-      // 层级：root(缩放) → mirror(X 取反) → grip(归零) → flip(枪口 180°) → orient(front 旋转) → stage(原模型)
-      state.root = new THREE.Group();  state.root.name = "scale";   // ← 缩放层就是它（build 里用 state.root）
+      // 层级（从外到内）：root(缩放)、mirror(X 取反)、grip(归零)、flip(枪口 180°)、orient(front 旋转)、stage(原模型)
+      state.root = new THREE.Group();  state.root.name = "scale";   // 缩放层就是这一层（build 里用 state.root）
       state.mirror = new THREE.Group(); state.mirror.name = "mirror";
       state.grip = new THREE.Group();  state.grip.name = "grip";
       state.flip = new THREE.Group();  state.flip.name = "flip";

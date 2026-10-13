@@ -24,14 +24,14 @@
       max-height:calc(100vh - 20px); overflow:auto; font-size:12px; }
     #panel h2 { margin:0 0 6px; font-size:12px; }
     #panel label { display:flex; justify-content:space-between; align-items:center; gap:6px; margin:4px 0; }
-    /* ⚠️ `div.row` 也要 flex ✗ —— 原来只定义了 `label.row`，于是自定义的 div 行根本没生效 */
+    /* `div.row` 也要 flex —— 原来只定义了 `label.row`，于是自定义的 div 行根本没生效 */
     #panel .row { display:flex; flex-wrap:nowrap; align-items:center; gap:5px; margin:5px 0; }
-    /* ⚠️ 上面那条 `display:flex` 会**压过** HTML 的 `hidden` 属性 ✗ ——
-       `[hidden]` 自带的是 `display:none`，优先级低于类选择器 ✓。
-       已踩：选「面部」时 pivot 行和握把行应该隐藏，实际还在屏幕上（探针读到的 hidden 是 true ✓，像素说还在 ✗）。
-       因此这里必须把 `[hidden]` 抬到 `!important` ✓。*/
+    /* 上面那条 `display:flex` 会**压过** HTML 的 `hidden` 属性 ——
+       `[hidden]` 自带的是 `display:none`，优先级低于类选择器。
+       已踩：选「面部」时 pivot 行和握把行必须隐藏，实际还在屏幕上（探针读到的 hidden 是 true，像素说还在）。
+       因此这里必须把 `[hidden]` 抬到 `!important`。*/
     [hidden] { display: none !important; }
-    /* 数字框的上下按钮（浏览器自带）：在 45px 的窄框里会挡住数字 ✗
+    /* 数字框的上下按钮（浏览器自带）：在 45px 的窄框里会挡住数字
        —— 缩小它、并把它往右贴，给数字让出位置。用户 2026-10-13 要求。 */
     #panel input[type=number]::-webkit-inner-spin-button {
       /* 高度保持浏览器默认，宽度减半（用户 2026-10-13）。面板宽到 230 后不用再挤占位。 */
@@ -85,7 +85,7 @@
         <option value="item">普通物品</option>
       </select>
     </label>
-    <!-- ⭐ 「挂点」这一整节只在需要时露出：pivot 行和握把行都隐藏时，标题也不显示
+    <!-- 「挂点」这一整节只在需要时露出：pivot 行和握把行都隐藏时，标题也不显示
          （否则会留一个空标题）--> 
     <div id="socketSection">
       <div class="hr"></div>

@@ -17,12 +17,13 @@
 | `GltfLoader.LoadFile(path, front)` | 读一个 `.glb`，得到 `Mesh`、主贴图与**法线**。`front` 一般用 `"auto"`。玩家自带的模型按 config 传 `"-z"`、`"+x"` 或 `"-x"` |
 | `GltfLoader.Load(byte[], front)` | 同上，但手上已有字节（很少用） |
 | `GltfLoader.GuessGrip(pts)` | 自己需要找握把时才用。这是**枪的规则**，只用于**换枪**（`WeaponModel` 内部已经做了）。**物品、装备与近战不得用**。 |
+| **限制** | `GltfLoader` **不读 glTF 的节点层级与变换**（`nodes` / `scenes` 的 TRS）。它只把每个 mesh 的图元合并。Tripo 的产物是单位矩阵节点，所以不受影响。玩家自带的 GLB 若节点带缩放、旋转或位移，几何会错位。 |
 
 ## 2. 换武器外观
 
 | API | 什么时候用 |
 |---|---|
-| `WeaponModel.Apply(anchorRoot, mesh, tex, offset, slots, scale)` | **主入口**：把模型换到手持武器上（选锚点、藏旧零件、对齐、搬挂点、换贴图）。`slots` 的值 `[x,y,z]` 单位是**米**（相对**模型自身原点**，0~1 比例已废 ✗）。`x` 沿 X（左右）· `y` 沿 Y（上下）· `z` 沿 Z（枪口方向） |
+| `WeaponModel.Apply(anchorRoot, mesh, tex, offset, slots, scale)` | **主入口**：把模型换到手持武器上（选锚点、藏旧零件、对齐、搬挂点、换贴图）。`slots` 的值 `[x,y,z]` 单位是**米**（相对**模型自身原点**；旧的 0~1 比例已废）。`x` 沿 X（左右）· `y` 沿 Y（上下）· `z` 沿 Z（枪口方向） |
 | `WeaponIcon.Apply(item, "icon.png")` | 换卡片图标（有图标才调。幂等，内部自己归一化尺寸）|
 | `WeaponIcon.ApplyToAllMatching(names, typeIds, pngPath)` | 一次给一批武器换同一个图标。`names` 与 `typeIds` 任一命中即可 |
 
@@ -42,7 +43,7 @@
 | API | 什么时候用 |
 |---|---|
 | `ItemModel.Apply(item, mesh, tex, handheld, size)` | **主入口**：换一件物品（有图形就改实例；没图形就自动克隆物品并注册动态条目）|
-| `ItemModel.ApplyHandheld(item, mesh, tex, scale)` | 只换「拿在手里」那条 |
+| `ItemModel.ApplyHandheld(item, mesh, tex, scale)` | 只换「拿在手里」那条。物品**有** `ItemGraphic` 时 `Apply` 不会调它，必须自己调，并把返回值塞进世界那条结果的 `Nested` |
 | `ItemModel.ApplyToInstance(item, mesh, tex, scale)` | 只换「场上那一个」（手里、身上），不动模板 |
 | `ItemModel.ApplyToTransform(root, …)` / `ApplyToGraphicClone(clone, …)` | 你已经拿到「要改的那一层」时直接用；后者专给**场上的图形副本**（掉落、展示） |
 | `ItemModel.ItemShaderName` | 常量，等于 `"SodaCraft/SodaLit"`。只影响本来没有 `itemGraphic` 的物品（例如糖果）。给它们借材质时**固定用这个 shader**。 |

@@ -162,7 +162,7 @@ var res = ModelKit.ItemModel.Apply(item, loaded.Mesh, loaded.MainTexture, handhe
 | 调用 | 干什么、什么时候用 |
 |---|---|
 | `ItemModel.Apply(item, mesh, tex, handheld)` | **主入口**。换一件物品：有图形就**就地改**，没图形就**自动**克隆物品并注册动态条目。需要调的就这一个 |
-| `ItemModel.ApplyHandheld(item, mesh, tex)` | 只换「**拿在手里**」那条。（`Apply(..., handheld: true)` 内部会调它。一般不用自己调。）|
+| `ItemModel.ApplyHandheld(item, mesh, tex)` | 只换「**拿在手里**」那条。只有「物品**没有** `ItemGraphic`」时，`Apply(..., handheld: true)` 内部才调它。物品**有** `ItemGraphic` 时必须自己调，并把返回值放进世界那条 `Result` 的 `Nested`（否则 `Restore()` 不还原它）|
 | `ItemModel.ClearAgentCache(item)` | 清实体缓存，游戏下次会用改过的图形重建实体。（`Apply` 内部已调。一般不用自己调。）|
 | `Result` | 返回值：`Applied` 等于真换了、`NoOp` 等于已经换过或没得换（**不得打日志**）、`Report` 等于一句话说明、`Restore()` 等于还原 |
 | `Result.Hidden` | 被我们关掉的旧外观。（热重载或卸载时 `Restore()` 会把它们开回来。）|
