@@ -330,7 +330,11 @@
     if (opts.size > 0) out.push("- size = " + (+opts.size).toFixed(3) + "（最长边，米）");
     if (hasPivot(opts.kind)) {
       // 面板框、config、glb 都是 [x,y,z] ✓（2026-10-13 统一）⇒ **原样发**
-      out.push("- slots.pivot = [" + opts.pivot.join(", ") + "]（米）");
+      // ⚠️ **x 要取反** ✗ —— 游戏的 GltfLoader 把 glb 顶点做 (-x, y, z)（右手→左手，
+      //    见 GltfLoader.cs:8,80），因此模型自身的 x 和游戏里的 x 符号相反；y/z 原样。
+      //    实测（用户 2026-10-13）：只有 x 反，y z 都对。
+      var pvCfg = [-opts.pivot[0], opts.pivot[1], opts.pivot[2]];
+      out.push("- slots.pivot = [" + pvCfg.join(", ") + "]（米）");
       if (opts.kind === "gun") out.push("- 自动猜握把开着。这是枪的默认，物品类是关的。");
     } else {
       out.push("");
@@ -427,7 +431,8 @@
       var piv = slots.pivot;
       // 面板与 config 同顺序 ⇒ 原样显示 ✓
       if (Array.isArray(piv) && piv.length >= 3)
-        lines.push("slots.pivot = [" + piv.slice(0, 3).join(", ") + "]");
+        // config 的 x 与编辑器相反 ⇒ 显示时把 x 取反回来
+        lines.push("slots.pivot = [" + [-piv[0], piv[1], piv[2]].join(", ") + "]");
       // 不列 slots 的其它键 ✗（用户 2026-10-13 要求：只看 size 与 pivot）
     }
     setCfg(lines.length ? lines.join("\n") : "（没有可显示的字段）");
