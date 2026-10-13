@@ -339,7 +339,7 @@
       out.push("- 量取时的坐标系 = **我们模型的局部空间**。" +
                "枪的零点在**握把点**（`GltfLoader.GuessGrip` 的结果），不在 glb 的原点。");
       out.push("- 枪的 `zeroGrip` 默认 `true`，参照 mod 不传它 ⇒ **游戏里枪始终做握把归零**。" +
-               "编辑器里的「自动猜握把」开关**只影响预览**，不写进 config.json。");
+               "这是 mod 代码决定的，config 改不了。");
       out.push("- slots（米；顺序 `[x, y, z]`；键名小写）：");
       out.push('    "slots": {');
       out.push('      "pivot":  [' + fmt3(opts.pivot[0]) + ', ' + fmt3(opts.pivot[1]) + ', ' + fmt3(opts.pivot[2]) + '],');
@@ -349,7 +349,6 @@
                  (i === SLOT_KEYS.length - 1 ? "" : ","));
       }
       out.push('    }');
-      out.push("- 自动猜握把开着。这是枪的默认，物品类是关的。");
     } else if (hasPivot(opts.kind)) {
       out.push("- slots.pivot = [" + opts.pivot.join(", ") + "]（米）");
     } else {
@@ -591,7 +590,9 @@
     slots: null,        // 5 个配件挂点：游戏里**我们模型局部空间**里的点（米）
                         // null = 还没算（打开时按包围盒算启发式）；载入 config 时会被填成文件里的值
     slotMode: "object", // "object" = 物体挂点（默认，调 pivot）|"attach" = 配件挂点（调 5 个槽位）
-    autoGrip: true,     // 武器：是否自动猜握把（游戏 `GuessGrip`，物品固定不做）
+    // 枪的模型局部空间：**始终**做握把归零（`GltfLoader` 的 zeroGrip 默认 true，
+    // 参照 mod 不传它，config 也改不了）⇒ 预览也要做，才能和游戏一致。
+    // 物品 / 近战不做（那些路走 `zeroGrip: false`）。
     grid: true,         // 固定开：网格（每格 10cm）
     size: 0            // 0 = 不改（用模型自己的尺寸）
   };
@@ -612,7 +613,7 @@
    *   所以把它换算成 glb 坐标时要 `+ g`（见 `applySlots`）。
    *   ak103 实测 `g = (0, −0.100, −0.202)` ⇒ **x 不差、y/z 差 10~20cm**。 */
   function gripGlb() {
-    if (opts.kind !== "gun" || !opts.autoGrip || !state.model) return [0, 0, 0];
+    if (opts.kind !== "gun" || !state.model) return [0, 0, 0];
     if (state.gripGlb) return state.gripGlb;
     return guessGrip(samplePoints(state.model));
   }
@@ -771,9 +772,9 @@
   /** 面板按「物体挂点 / 配件挂点」两个模式刷新。
    *  规则（用户 2026-10-13 定）：
    *   · 「配件挂点」按钮**只在「类型 = 枪」时出现**
-   *   · 配件模式下：pivot 行 / 自动猜握把 / **尺寸栏整栏**收起，换成 5 行配件挂点
+   *   · 配件模式下：pivot 行 / **尺寸栏整栏**收起，换成 5 行配件挂点
    *   · 配件模式下**类型下拉禁用** —— 必须先切回物体挂点才能换类型
-   *   · 切模式**只影响显示，不清值**（pivot / 尺寸 / 自动猜握把都保留）*/
+   *   · 切模式**只影响显示，不清值**（pivot / 尺寸都保留）*/
   function applySlotMode() {
     var isGun = opts.kind === "gun";
     if (!isGun) opts.slotMode = "object";        // 非枪一律回物体挂点（先选枪、再改类型时兜住）
@@ -787,8 +788,6 @@
     }
     var pivotRow = document.getElementById("pivotRow");
     if (pivotRow) pivotRow.hidden = attach || !(isGun || opts.kind === "melee");
-    var gripRow = document.getElementById("gripRow");
-    if (gripRow) gripRow.hidden = attach || !isGun;
     var slotRows = document.getElementById("slotRows");
     if (slotRows) slotRows.hidden = !attach;
     var sizeSection = document.getElementById("sizeSection");
@@ -800,7 +799,6 @@
     var socketSection = document.getElementById("socketSection");
     if (socketSection)
       socketSection.hidden = (pivotRow ? pivotRow.hidden : true) &&
-                             (gripRow ? gripRow.hidden : true) &&
                              (slotRows ? slotRows.hidden : true);
   }
 
@@ -831,7 +829,7 @@
     //    ⚠️ 游戏把 grip 减在**顶点**上，编辑器只是加了一个**变换组** ⇒ 两侧的"局部零点"差一个 grip。
     //    因此这里把算出的 grip 存下来，`applySlots` / `heuristicSlots` 要用（见 `gripGlb`）。
     state.gripGlb = null;
-    if (opts.autoGrip && opts.kind === "gun") {
+    if (opts.kind === "gun") {
       state.mirror.updateMatrixWorld(true);
       var g = guessGrip(samplePoints(state.mirror));
       state.grip.position.set(-g[0], -g[1], -g[2]);
@@ -996,7 +994,6 @@
       applySlots();
     });
     document.getElementById("sendBtn").addEventListener("click", sendToAgent);
-    document.getElementById("autogrip").addEventListener("change", function (e) { opts.autoGrip = e.target.checked; build(); });
     loadRefDuck();
     document.getElementById("size").addEventListener("change", function (e) {
       opts.size = parseFloat(e.target.value) || 0; build();
