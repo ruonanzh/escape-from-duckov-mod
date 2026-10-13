@@ -469,7 +469,18 @@
           break;
         }
       }
-      if (Object.keys(got).length) { opts.slots = got; needBuild = true; }
+      if (Object.keys(got).length) {
+        // 文件里写的用文件里的；**没写的用启发式补齐**。
+        // 两边都要刷进面板 —— 否则 `opts.slots` 与面板会不一致
+        // （踩过：面板显示启发式值、opts 里却没有 ⇒ 改一行会让 4 个占位件一起跳）
+        var base = heuristicSlots() || {};
+        opts.slots = Object.assign({}, base, got);
+        for (var ki = 0; ki < SLOT_KEYS.length; ki++) {
+          var kk = SLOT_KEYS[ki], vv = opts.slots[kk] || [0, 0, 0];
+          for (var ai2 = 0; ai2 < 3; ai2++) setSlotInput(kk, ai2, vv[ai2]);
+        }
+        needBuild = true;
+      }
       if (needBuild && state.model) build();   // 模型还没加载时跳过（加载完自己会 build）
     }
     setCfg(lines.length ? lines.join("\n") : "（没有可显示的字段）");
