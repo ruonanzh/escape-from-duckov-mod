@@ -45,6 +45,21 @@ managedDir 由 `mod-repo.json` 的 `compile.managedDir` 按平台推导（mac `D
 5. **编译/字节码产物不进 git**：`.gitignore` 已排 `**/bin/`、`**/obj/`、`__pycache__/`、`*.pyc`——`dotnet run` 和 python 脚本都会生成这些，不要提交。
 6. **Windows 终端编码**：脚本输出含中文 + emoji（✅/❌），Windows 请用 UTF-8 终端（Windows Terminal / Git Bash / VSCode 集成终端），GBK 下会乱码。
 
+## `check-mod-install-staleness.mjs` —— 产物过期判据的检查
+
+```bash
+node --experimental-strip-types scripts/check-mod-install-staleness.mjs   # 0 = 符合预期；1 = 有不符合
+```
+
+**为什么需要**：`install_mod` 会拒绝安装**比编译输入旧的**产物。
+判太松：装进游戏的是旧产物，游戏里跑旧行为。
+判太严：工作区更新一次就要求所有 mod 重编，白干活。
+两种都踩过。
+
+**它查什么**：调用 `.pi/lib/mod-products.ts` 里的 `sourcesNewerThan`。
+那是**同一个函数**，扩展也导入它。
+五个用例：产物比源码新 · 本 mod 的源码比产物新 · kit 比产物新 · **模板比产物新**（不得判成过期）· 同一时刻。
+
 ## `check-probe-tool-parity.mjs` —— 工具面一致性检查
 
 ```bash
