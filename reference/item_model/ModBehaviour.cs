@@ -331,9 +331,14 @@ namespace ItemModelSwap
                         // **入册** —— 世界那条有自己的 `Result`，于是手持这条塞进它的 `Nested`；
                         // 世界那条没做（`_applied[id]` 是 null）时，就直接存手持这条。
                         // 不入册的后果（实测）：`Restore()` 不管它，热重载后旧的 mesh 还在。
+                        // 只入册**真换过**的：物品没有 `ItemGraphic` 时，`Apply` 内部已经调过一次，
+                        // 这里再调得到的是 NoOp 结果，入册只会让 `Restore()` 多跑一次空操作。
                         var world = _applied.TryGetValue(id, out var wr) ? wr : null;
-                        if (world != null) world.Nested.Add(rh);
-                        else _applied[id] = rh;
+                        if (rh.Applied)
+                        {
+                            if (world != null) world.Nested.Add(rh);
+                            else _applied[id] = rh;
+                        }
                         if (rh.Applied)
                             Debug.Log($"[ItemModel] swapped: '{item.name}' (typeID={item.TypeID}) from {Path.GetFileName(hit.ModelFile)} | {rh.Report}");
                         else if (!rh.NoOp)
