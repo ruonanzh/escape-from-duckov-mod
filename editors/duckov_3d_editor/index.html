@@ -31,7 +31,15 @@
        已踩：选「面部」时 pivot 行和握把行应该隐藏，实际还在屏幕上（探针读到的 hidden 是 true ✓，像素说还在 ✗）。
        因此这里必须把 `[hidden]` 抬到 `!important` ✓。*/
     [hidden] { display: none !important; }
-    #panel select, #panel input[type=number] { font:inherit; padding:2px 4px; border:1px solid var(--line);
+    /* 数字框的上下按钮（浏览器自带）：在 45px 的窄框里会挡住数字 ✗
+       —— 缩小它、并把它往右贴，给数字让出位置。用户 2026-10-13 要求。 */
+    #panel input[type=number]::-webkit-inner-spin-button {
+      transform: scale(0.55);
+      transform-origin: right center;
+      margin: 0 -2px 0 -6px;
+    }
+    #panel input[type=number]::-webkit-outer-spin-button { display: none; }
+    #panel select, #panel input[type=number] { font:inherit; padding:2px 2px; border:1px solid var(--line);
       border-radius:4px; background:#fff; width:96px; }
     #panel input[type=range] { width:100%; }
     #panel table.slots { width:100%; border-collapse:collapse; }
@@ -82,11 +90,11 @@
     <div id="socketSection">
       <div class="hr"></div>
       <h2>挂点</h2>
-      <div class="row" id="pivotRow" style="gap:5px; align-items:center; flex-wrap:nowrap">
+      <div class="row" id="pivotRow" style="gap:3px; align-items:center; flex-wrap:nowrap">
         <span style="flex:0 0 auto">pivot</span>
-        <input type="number" id="pivot-x" step="0.01" placeholder="X" title="X" style="width:38px; flex:0 0 auto; margin-left:auto">
-        <input type="number" id="pivot-y" step="0.01" placeholder="Y" title="Y" style="width:38px; flex:0 0 auto">
-        <input type="number" id="pivot-z" step="0.01" placeholder="Z" title="Z" style="width:38px; flex:0 0 auto">
+        <input type="number" id="pivot-x" step="0.01" placeholder="X" title="X" style="width:42px; flex:0 0 auto; margin-left:auto">
+        <input type="number" id="pivot-y" step="0.01" placeholder="Y" title="Y" style="width:42px; flex:0 0 auto">
+        <input type="number" id="pivot-z" step="0.01" placeholder="Z" title="Z" style="width:42px; flex:0 0 auto">
         <span style="flex:0 0 auto">m</span>
       </div>
       <label class="row" id="gripRow" hidden>自动猜握把<input type="checkbox" id="autogrip" checked></label>
