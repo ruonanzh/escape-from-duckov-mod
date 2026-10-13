@@ -108,7 +108,7 @@
     <label class="kv">当前<b id="curSize">–</b></label>
     </div>
     <div class="hr"></div>
-    <h2>config.json</h2>
+    <h2>config.json<button id="reloadCfg" title="重新读同目录的 config.json。⚠️ 会把面板上的 pivot / 配件挂点 / 尺寸覆盖成文件里的值。" style="font:inherit; font-size:11px; padding:1px 6px; margin-left:6px; cursor:pointer; border:1px solid var(--line); border-radius:4px; background:var(--btn,#f3f3f3); color:inherit">重新读取</button></h2>
     <div class="kv" id="cfgView" style="font-size:11px; white-space:pre-line">读取中……</div>
     <button id="sendBtn" style="width:100%; margin-top:6px; padding:7px 10px; font:inherit; cursor:pointer; border:1px solid var(--line); border-radius:6px; background:var(--btn, #f3f3f3); color:inherit">把结果发给 agent</button>
     <div class="kv dim" id="sendStatus" style="font-size:11px"></div>

@@ -434,6 +434,15 @@
     if (sizeRaw === undefined || sizeRaw === null || sizeRaw === "") sizeRaw = j.size;
     var sizeOk = sizeRaw !== undefined && sizeRaw !== null && sizeRaw !== "" && isFinite(Number(sizeRaw));
     lines.push("size = " + (sizeOk ? Number(sizeRaw) : ""));
+    var needBuild = false;
+    // 和 pivot / 槽位一样：文件里有 size 就**填进输入框**。
+    // 不填的话框里留的是模型自己的边长（start() 里设的），跟配置里的目标尺寸对不上。
+    if (sizeOk) {
+      var szEl = document.getElementById("size");
+      if (szEl) szEl.value = String(Number(sizeRaw));
+      opts.size = Number(sizeRaw);
+      needBuild = true;
+    }
     if (typeof scope.front === "string" && scope.front) lines.push("front = " + scope.front);
     if (entries) lines.push("entries：" + entries.length + " 条" + (one ? "（下面是第 1 条）" : "（没有可用条目）"));
     // 按用户要求，**typeIDs 与 model 都不显示**（它们不是调 pivot 要看的）
@@ -441,7 +450,7 @@
     var slots = scope.slots;
     if (slots && typeof slots === "object") {
       var piv = slots.pivot;
-      var needBuild = false;
+      // needBuild 已在上面声明
       // 面板与 config 同顺序 ⇒ 原样显示
       if (Array.isArray(piv) && piv.length >= 3) {
         var vals = [piv[0], piv[1], piv[2]];
@@ -481,8 +490,8 @@
         }
         needBuild = true;
       }
-      if (needBuild && state.model) build();   // 模型还没加载时跳过（加载完自己会 build）
     }
+    if (needBuild && state.model) build();   // 模型还没加载时跳过（加载完自己会 build）
     setCfg(lines.length ? lines.join("\n") : "（没有可显示的字段）");
   }
   var refDuck = null;
@@ -1023,6 +1032,11 @@
       document.getElementById("size").value = Math.max(cur.x, Math.max(cur.y, cur.z)).toFixed(3);
       setView([-1.2, 0.6, 1.3]);
       loadConfig();                       // 同目录的 config.json，读一次显示出来（只读）
+      // 文件被外部改过（agent 写盘、config 编辑器存盘）后，面板不会自己变
+      // ⇒ 给一个手动的「重新读取」（和 config 编辑器的「重新加载」一样）。
+      // **不**自动轮询：那会把玩家正在调的值冲掉。
+      var rc = document.getElementById("reloadCfg");
+      if (rc) rc.addEventListener("click", loadConfig);
       window.__ready = true;
     }).catch(function (e) {
       showError("模型加载失败：" + (e && e.message ? e.message : e));
