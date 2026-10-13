@@ -394,24 +394,34 @@
     post({ type: "editor:readFile", requestId: CFG_REQ, path: "config.json" });
   }
 
+  /** 显示同目录 config.json 的摘要。
+   *  ⚠️ 必须防各种坏形状（实测踩过）：
+   *    · entries 里可能混 null / 不是对象 —— 直接 .targets 会抛
+   *    · slots.pivot 可能不是数组 —— 直接 .join 会抛
+   *    · entries 可能是空数组 / 根本不是数组
+   *    抛异常会让整个面板卡在“读取中” ⇒ 全部先判类型再取。 */
   function showConfig(d) {
     if (d.encoding === "base64") { setCfg("（二进制，不显示）"); return; }
     var j;
     try { j = JSON.parse(d.data || ""); } catch (err) { setCfg("解析失败：" + err.message); return; }
+    if (!j || typeof j !== "object") { setCfg("（不是对象）" ); return; }
     var lines = [];
     var entries = Array.isArray(j.entries) ? j.entries : null;
-    var one = entries && entries.length ? entries[0] : j;
-    if (j.typeIDs) lines.push("typeIDs = " + JSON.stringify(j.typeIDs));
-    if (j.model) lines.push("model = " + j.model);
-    if (j.size) lines.push("size = " + j.size);
-    if (j.front) lines.push("front = " + j.front);
-    if (entries) lines.push("entries：" + entries.length + " 条");
-    if (one && one !== j) {
-      if (one.targets) lines.push("条目 targets = " + JSON.stringify(one.targets));
-      if (one.model) lines.push("条目 model = " + one.model);
-      if (one.size) lines.push("条目 size = " + one.size);
+    var one = (entries && entries.length && entries[0] && typeof entries[0] === "object") ? entries[0] : null;
+    var scope = one || j;                       // 有合法条目的看第一条，否则看顶层
+    // ⚠️ 不显示 typeIDs 与 model —— 用户 2026-10-13 要求去掉（它们不是调 pivot 要看的）
+    if (typeof scope.size === "number") lines.push("size = " + scope.size);
+    if (typeof scope.front === "string" && scope.front) lines.push("front = " + scope.front);
+    if (entries) lines.push("entries：" + entries.length + " 条" + (one ? "（下面是第 1 条）" : "（没有可用条目）"));
+    // ⚠️ 按用户要求，**typeIDs 与 model 都不显示** ✗（它们不是调 pivot 要看的）
+    if (one && Array.isArray(one.targets)) lines.push("targets = " + JSON.stringify(one.targets));
+    var slots = scope.slots;
+    if (slots && typeof slots === "object") {
+      var piv = slots.pivot;
+      if (Array.isArray(piv) && piv.length >= 3) lines.push("slots.pivot = [" + piv.slice(0, 3).join(", ") + "]");
+      var keys = Object.keys(slots).filter(function (k) { return k !== "pivot"; });
+      if (keys.length) lines.push("slots 其它键：" + keys.join(" / "));
     }
-    if (one && one.slots && one.slots.pivot) lines.push("slots.pivot = [" + one.slots.pivot.join(", ") + "]");
     setCfg(lines.length ? lines.join("\n") : "（没有可显示的字段）");
   }
   var refDuck = null;
