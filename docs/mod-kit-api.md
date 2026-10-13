@@ -24,9 +24,20 @@
 |---|---|
 | `WeaponModel.Apply(anchorRoot, mesh, tex, offset, slots, scale)` | **主入口**：把模型换到手持武器上（选锚点、藏旧零件、对齐、搬挂点、换贴图）。`slots` 的值 `[L,H,D]` 单位是**米**（相对**模型自身原点**，0~1 比例已废 ✗）|
 | `WeaponIcon.Apply(item, "icon.png")` | 换卡片图标（有图标才调。幂等，内部自己归一化尺寸）|
-| `WeaponIcon.ApplyToAllMatching(names, pngPath)` | 一次给一批武器换同一个图标 |
+| `WeaponIcon.ApplyToAllMatching(names, typeIds, pngPath)` | 一次给一批武器换同一个图标。`names` 与 `typeIds` 任一命中即可 |
 
-## 3. 换物品外观
+## 3. 共用登记表（枪和物品两条路共用）
+
+`WeaponModel`（枪、近战）与 `ItemModel`（装备、物品）是**平级**的两条路。
+一件东西可能两边都碰，谁先挂上另一个得看得见，否则扫描会把同一个实例**再挂一次**。
+
+| API | 什么时候用 |
+|---|---|
+| `PatchRegistry.IsPatched(layer)` | 判「这一层我们挂过没有」。**唯一判据**。不得用别的（`Marked`、名字、扫子树都会判错）。 |
+| `PatchRegistry.Mark(layer)` / `Unmark(layer)` | 别的能力（例如武器侧）挂完也要登记，自己 `Restore()` 时注销 |
+| `PatchRegistry.HasOurMeshUnder(t)` | 这一层（含子树）里有没有我们的 mesh。它给「不得重复挂」用。 |
+
+## 4. 换物品外观
 
 | API | 什么时候用 |
 |---|---|
@@ -34,13 +45,10 @@
 | `ItemModel.ApplyHandheld(item, mesh, tex, scale)` | 只换「拿在手里」那条 |
 | `ItemModel.ApplyToInstance(item, mesh, tex, scale)` | 只换「场上那一个」（手里、身上），不动模板 |
 | `ItemModel.ApplyToTransform(root, …)` / `ApplyToGraphicClone(clone, …)` | 你已经拿到「要改的那一层」时直接用；后者专给**场上的图形副本**（掉落、展示） |
-| `ItemModel.IsPatched(layer)` | 判「这一层我们挂过没有」。**唯一判据**。不得用别的（`Marked`、名字、扫子树都会判错）。 |
-| `ItemModel.MarkPatched(layer)` / `UnmarkPatched(layer)` | 别的能力（例如武器侧）挂完也要登记，自己 `Restore()` 时注销 |
-| `ItemModel.HasOurMeshUnder(t)` | 这一层（含子树）里有没有我们的 mesh。它给「不得重复挂」用。 |
 | `ItemModel.ItemShaderName` | 常量，等于 `"SodaCraft/SodaLit"`。只影响本来没有 `itemGraphic` 的物品（例如糖果）。给它们借材质时**固定用这个 shader**。 |
 | `ItemModel.CurrentNormalMap` | **调 `Apply*` 之前必须设**，等于 `CachedModel.NormalTexture`。它决定附在材质上的法线图。确实没有时就显式设 `null`。**只给物品**，武器不设。 |
 
-## 4. 尺寸（config `size` 的上游）
+## 5. 尺寸（config `size` 的上游）
 
 | API | 什么时候用 |
 |---|---|
@@ -48,7 +56,7 @@
 | `ModelSize.FactorFor(typeID, size, mesh)` | 一步拿到「该乘多少 scale」（mod 侧最常用） |
 | `ModelSize.Factor(mesh, target)` / `Longest(mesh)` | 只要系数或只要最长边时用 |
 
-## 5. 缓存与路径
+## 6. 缓存与路径
 
 | API | 什么时候用 |
 |---|---|
@@ -56,28 +64,28 @@
 | `ModelCache.Get(cache, path, front, out loaded)` | 带指纹的模型缓存（`CachedModel` 带 `Mesh`、`Texture`、`NormalTexture`）。文件没变就不重读。指纹**不含 `size`**，改 `size` 不必重读。 |
 | `ModelCache.Fingerprint(path, front)` | 自己要判「该不该重读」时用 |
 
-## 6. 游戏查询 / 操作
+## 7. 游戏查询 / 操作
 
 | API | 什么时候用 |
 |---|---|
 | `GameApi.AllItems()` | 枚举场上所有物品（含模板）—— 按 `typeIDs` 找目标 |
-| `GameApi.NameMatches(item, "MP5")` | 名字匹配（**全等**，不是子串） |
+| `GameApi.NameMatches(item, "MP5")` | 名字匹配（大小写不敏感的**子串**）|
 | `GameApi.DeclaredRenderers(root)` | 游戏**自己声明**的渲染器清单（找「本体」最准，胜过「取最大」） |
 | `GameApi.ApplyOurTexture(mat, tex)` | 把我们的贴图换到一份游戏材质上（并清掉对不上的其它贴图槽） |
 | `GameApi.ApplyNormalMap(mat, normal, tag)` | 只接**法线**（`_BumpMap` 或 `_NormalMap` 加关键字）。只在 shader 名以 `SodaCraft/` 开头时才接。其余（雾效、精灵、UI）**一律跳过**。 |
 | `GameApi.EnsureHandheldAgent(item, graphicPrefab)` / `SetAgentPrefab(…, "Handheld", …)` | 让物品「拿在手里」时用我们的模型 |
 | `GameApi.FindMainCharacter()` / `AllCharacters()` / `FindCharacter(name)` | 找玩家 / 角色 |
 | `GameApi.VisibleLayer` / `HiddenLayer` | 游戏那两个层（`Character` / `SpecialCamera`） |
-| `GameApi.WriteGraphic(item, graphic)` / `ClearAgentCache(item)` | 写回 `itemGraphic` / 让游戏下次重建实体时读新 prefab |
+| `ItemModel.WriteGraphic(item, graphic)` / `ClearAgentCache(item)` | 写回 `itemGraphic` / 让游戏下次重建实体时读新 prefab |
 
-## 7. 配置读取
+## 8. 配置读取
 
 | API | 什么时候用 |
 |---|---|
 | `Json.Parse(text)` 返回 `GetStr/GetInt/GetFloat/GetBool(key, fallback)` | 读 `config.json`（不需要引第三方 JSON 库） |
 | `Json.Strings(j, "targets")` | 读字符串数组字段 |
 
-## 8. 排查用
+## 9. 排查用
 
 | API | 什么时候用 |
 |---|---|
