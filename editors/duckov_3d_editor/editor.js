@@ -335,7 +335,10 @@
     if (opts.size > 0) out.push("- size = " + (+opts.size).toFixed(3) + "（最长边，米）");
     if (opts.kind === "gun") {
       // 键名**小写**（与其它字段一致）；值就是面板里的值，**所见即所得**
-      out.push("- slots（米，相对**我们模型自身原点**；键名小写）：");
+      // 必须写明**顺序**与**零点**：agent 看不到面板，只能靠这段字去验
+      out.push("- 量取时的坐标系 = **我们模型的局部空间**。枪的这个空间经过**握把归零**，" +
+               "零点在**握把点**（`GltfLoader.GuessGrip` 的结果），不在 glb 的原点。");
+      out.push("- slots（米；顺序 `[x, y, z]`；键名小写）：");
       out.push('    "slots": {');
       out.push('      "pivot":  [' + fmt3(opts.pivot[0]) + ', ' + fmt3(opts.pivot[1]) + ', ' + fmt3(opts.pivot[2]) + '],');
       for (var i = 0; i < SLOT_KEYS.length; i++) {
@@ -571,7 +574,7 @@
 
   // ── 挂点：只有一个 pivot（**米**）───────────────────────────────────────────
   // 它就是游戏 config 里的 `slots.pivot`（**米**，2026-10-12 起两边统一）。
-  // 含义 = 「模型上哪个点要落到鸭子手上」，相对**模型自身原点**的偏移（米）。
+  // 含义 = 「模型上哪个点要落到鸭子手上」。值在**我们模型的局部空间**里（米）。
   //   · 枪：手部 socket + auto guess grip（`GuessGrip`）+ pivot
   //   · 近战 / 物品：手部 socket + pivot（游戏那边 `zeroGrip: false`，不做 guess）
   // ⇒ 不拖把手 —— 按公式**直接算**出模型位置；改 pivot 就是模型动
@@ -666,7 +669,7 @@
         el.step = "0.01";
         el.id = "slot-" + k + "-" + "xyz"[a];
         el.placeholder = "xyz"[a];
-        el.title = "xyz"[a] + "：沿 " + "XYZ"[a] + "（米，相对我们模型自身原点）";
+        el.title = "xyz"[a] + "：沿 " + "XYZ"[a] + "（米，在我们模型的局部空间里）";
         el.style.cssText = "width:48px; flex:0 0 auto" + (a === 0 ? "; margin-left:auto" : "");
         // 只重算占位件（不重跑 build）—— 见「不得每帧」那段
         el.addEventListener("input", function () { readSlotInputs(); applySlots(); });

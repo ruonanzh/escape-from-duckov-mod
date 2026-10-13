@@ -88,6 +88,9 @@ generate_model(action="generate",
 **骨架照 `reference/item_model/`**（它就是「正确答案」的样例）。工具只负责**校验**（`validate_mod`）与**安装**（`install_mod`）。
 **名字与类名那几条不一致会静默不加载**。明细见 §5。
 
+**工作区更新后，`reference/` 的模板可能变了。** 用模板覆盖自己的 `ModBehaviour.cs` 之前，
+先把原文件备份。覆盖会丢掉你写过的改动。
+
 **`config.json`**（两种写法）：
 
 ```json

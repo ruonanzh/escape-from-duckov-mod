@@ -51,7 +51,7 @@ namespace WeaponModelSwap
             /// <summary> 最终乘在 `localScale` 上的适配系数 （抵消挂点缩放那部分另算）</summary>
             public float Scale = 1f;
             public string IconPath;          // 解析成绝对路径（相对 mod 目录）
-            /// <summary>config 里的 `slots`（**米** [x,y,z]，相对模型自身原点；x 沿 X、y 沿 Y、z 沿 Z）——
+            /// <summary>config 里的 `slots`（**米** [x,y,z]，在**我们模型的局部空间**里；x 沿 X、y 沿 Y、z 沿 Z）——
             /// 目前用来：① 换算成我们模型的局部坐标并打日志 ② 有 pivot 时用它当对齐基准
             /// （step 2 会把保留的配件按这些点重新挂上）</summary>
             public readonly Dictionary<string, Vector3> Slots = new Dictionary<string, Vector3>();

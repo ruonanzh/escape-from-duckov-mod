@@ -170,6 +170,50 @@ export function pickInstallDir(
 }
 
 /** 复制 mod 产物，跳过源码/编译中间物 */
+/** 产物是否比它依赖的源码旧。
+ *
+ * 为什么要查：`install_mod` **只复制已有的产物、不编译**。
+ * 改过 kit（`libs/mod-kit/`）或模板（`reference/`）之后旧产物仍能通过校验，
+ * 于是游戏里跑的是**旧行为**（实测踩过：旧 DLL 按旧顺序读 `slots`，玩家怎么调都不对）。
+ *
+ * 判据：DLL 的 mtime 是否早于「本 mod 的 .cs/.csproj + libs/mod-kit/** + reference/**」。
+ * 只比 mtime：同一秒内不算，所以留 1 秒的余量。 */
+function sourcesNewerThan(dllPath: string, modDir: string): boolean {
+  let newest = 0;
+  const walk = (dir: string): void => {
+    let entries;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.name === "bin" || entry.name === "obj" || entry.name === ".git") continue;
+      const p = join(dir, entry.name);
+      if (entry.isDirectory()) walk(p);
+      else if (entry.name.endsWith(".cs") || entry.name.endsWith(".csproj")) {
+        try {
+          const mtime = statSync(p).mtimeMs;
+          if (mtime > newest) newest = mtime;
+        } catch {
+          /* 读不到就不算 */
+        }
+      }
+    }
+  };
+  walk(modDir);
+  const workRoot = resolve(modDir, "..", ".."); // your_mods/<name> -> 工作区根
+  walk(join(workRoot, "libs", "mod-kit"));
+  walk(join(workRoot, "reference"));
+  let dllMtime = 0;
+  try {
+    dllMtime = statSync(dllPath).mtimeMs;
+  } catch {
+    return false;
+  }
+  return newest > dllMtime + 1000;
+}
+
 export function copyModProducts(from: string, to: string): number {
   let count = 0;
   const walk = (srcDir: string, destDir: string) => {
@@ -339,6 +383,19 @@ export default function (pi: ExtensionAPI) {
             },
           ],
           details: { ok: false, reason: "MISSING_DLL", modName: identity.name },
+        };
+      }
+
+      // 产物必须比它的源码新。否则装进去的是**旧行为**。
+      if (sourcesNewerThan(dllPath, modDir)) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `FAIL: the built product is older than its sources, so it may hold old behavior.\nNEXT: run validate_mod to rebuild ${identity.name}, then run install_mod again.`,
+            },
+          ],
+          details: { ok: false, reason: "STALE_PRODUCT", modName: identity.name },
         };
       }
 
