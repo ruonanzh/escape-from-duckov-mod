@@ -213,8 +213,8 @@ namespace ItemModelSwap
                         if (m2 != null && (_ourCloneNames.Contains(gi.name))) { hit = e2; break; }
                     }
                 if (hit == null) continue;
-                if (ItemModel.IsPatched(gi.gameObject)) continue;
-                if (ItemModel.HasOurMeshUnder(gi.transform)) continue;   // 已经带我们 mesh 的（我们自己造的图形），于是 不得再补 // 唯一判据（登记表）
+                if (PatchRegistry.IsPatched(gi.gameObject)) continue;
+                if (PatchRegistry.HasOurMeshUnder(gi.transform)) continue;   // 已经带我们 mesh 的（我们自己造的图形），于是 不得再补 // 唯一判据（登记表）
                 var cm = GetModel(hit);
                 if (cm == null || cm.Mesh == null) continue;
                 ItemModel.CurrentNormalMap = cm.NormalTexture;        // 只给物品设 （武器不设）

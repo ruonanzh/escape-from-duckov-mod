@@ -48,7 +48,7 @@ namespace ModelKit
                 RestoreHidden();
                 foreach (var kv in MovedSockets) if (kv.Key != null) kv.Key.localPosition = kv.Value;
                 MovedSockets.Clear();
-                ItemModel.UnmarkPatched(MarkedOn);   // 注销 （有借有还）
+                PatchRegistry.Unmark(MarkedOn);   // 注销 （有借有还）
                 MarkedOn = null;
             }
         }
@@ -134,7 +134,7 @@ namespace ModelKit
                 Mathf.Abs(lossy.y) > 1e-6f ? 1f / lossy.y : 1f,
                 Mathf.Abs(lossy.z) > 1e-6f ? 1f / lossy.z : 1f);
             go.transform.localScale = inv * scale;
-            ItemModel.MarkPatched(root.gameObject);   // 登记 （与物品侧共用同一张表） // 抵消挂点缩放 × 适配系数（由 localScale 承担 不改 mesh 顶点）
+            PatchRegistry.Mark(root.gameObject);   // 登记 （与物品侧共用同一张表） // 抵消挂点缩放 × 适配系数（由 localScale 承担 不改 mesh 顶点）
             go.transform.localRotation = Quaternion.identity;
 
             var mf = go.AddComponent<MeshFilter>();
