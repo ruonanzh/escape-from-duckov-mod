@@ -588,6 +588,21 @@
   var SLOT_LABEL = { scope: "瞄具", muzzle: "枪口", stock: "枪托", grip: "握把", tec: "科技件" };
   var SLOT_SHAPE = { scope: "scope", muzzle: "muzzle", stock: "stock", grip: "grip", tec: "tec" };
 
+  /** glb 空间里的**握把点** —— 就是 `GltfLoader` 在**顶点上**减掉的那个量。
+   *
+   * 两边做的是同一件事，但**作用对象不同**：
+   *   游戏 `GltfLoader.Load`：`verts[i] -= grip` ⇒ 游戏里**模型局部空间的零点 = 握把点**
+   *   编辑器 `build()`：`state.grip.position = -g`（一个**变换组**）⇒ 局部零点还是 **glb 原点**
+   *
+   * ⇒ 两边差**一个 grip 向量**。槽位值 / pivot 都是「模型局部空间里的点」，
+   *   所以把它换算成 glb 坐标时要 `+ g`（见 `applySlots`）。
+   *   ak103 实测 `g = (0, −0.100, −0.202)` ⇒ **x 不差、y/z 差 10~20cm**。 */
+  function gripGlb() {
+    if (opts.kind !== "gun" || !opts.autoGrip || !state.model) return [0, 0, 0];
+    if (state.gripGlb) return state.gripGlb;
+    return guessGrip(samplePoints(state.model));
+  }
+
   /** 五个配件挂点的**启发式默认值**（按我们模型的包围盒）。
    *  这些值要和 config 里的 `slots` 同空间 = **游戏里模型的局部空间**；
    *  而游戏加载 glb 时把 X 取反（`GltfLoader.cs`）⇒ 最后一步把 x 取反。
@@ -600,6 +615,11 @@
     var inv = new THREE.Matrix4().copy(state.model.matrixWorld).invert();
     b.applyMatrix4(inv);
     if (!isFinite(b.min.x) || !isFinite(b.max.x)) return null;
+    // glb 包围盒 → **游戏里模型局部空间**的包围盒：减去握把
+    // （游戏把 grip 减在顶点上；编辑器没减 ⇒ 这里补回来，否则默认值会偏）
+    var gp = gripGlb();
+    var gv = new THREE.Vector3(gp[0], gp[1], gp[2]);
+    b.min.sub(gv); b.max.sub(gv);
     var lo = b.min, hi = b.max, c = b.getCenter(new THREE.Vector3());
     var span = hi.z - lo.z;
     var g = {                                    // 先按 glb 坐标算
@@ -710,10 +730,13 @@
     slotGroup.visible = on;
     if (!on || !state.model || !opts.slots) return;
     state.model.updateMatrixWorld(true);
+    var gp = gripGlb();          // 游戏把 grip 减在顶点上 ⇒ 局部零点差这一个向量
     for (var i = 0; i < SLOT_KEYS.length; i++) {
       var k = SLOT_KEYS[i], v = opts.slots[k] || [0, 0, 0];
       var m = slotMeshes[k];
-      m.position.copy(state.model.localToWorld(new THREE.Vector3(-v[0], v[1], v[2])));
+      // 游戏局部点 v → glb 点：先 X 取反（GltfLoader 的手性转换），再加握把
+      m.position.copy(state.model.localToWorld(
+        new THREE.Vector3(-v[0] + gp[0], v[1] + gp[1], v[2] + gp[2])));
       m.scale.setScalar(1);            // 不继承模型的缩放
       m.updateMatrixWorld(true);
     }
@@ -791,10 +814,14 @@
     state.mirror.scale.set(1, 1, 1);
 
     // ④ 握把归零（顶点级：把握把点移到原点）—— 只有「枪」用得上（`GuessGrip` 的假设是枪）
+    //    ⚠️ 游戏把 grip 减在**顶点**上，编辑器只是加了一个**变换组** ⇒ 两侧的"局部零点"差一个 grip。
+    //    因此这里把算出的 grip 存下来，`applySlots` / `heuristicSlots` 要用（见 `gripGlb`）。
+    state.gripGlb = null;
     if (opts.autoGrip && opts.kind === "gun") {
       state.mirror.updateMatrixWorld(true);
       var g = guessGrip(samplePoints(state.mirror));
       state.grip.position.set(-g[0], -g[1], -g[2]);
+      state.gripGlb = [g[0], g[1], g[2]];
     }
 
     // ⑤ 落到该类型对应的挂点，再减掉 pivot（**模型动** 不是拖把手）
@@ -811,6 +838,11 @@
     //      ① 两边都去掉 X 翻转（游戏的 mesh 与这里）⇒ 方向一致了，但游戏里的模型会**左右镜像**。
     //      ② 只恢复游戏的 mesh 转换、这里不做补偿 ⇒ 方向**不一致**（编辑器 +1 往外、游戏往内）。
     // y / z 两边一致，不动。
+    //
+    // ⚠️ pivot **不需要** grip 修正（和槽位不同）：
+    //   局部点 p 对应的 glb 点是 `glb(p) + grip`，而它经过后续的 grip 变换组后
+    //   世界坐标 = `R + glb(p)`（grip 抵消了）。要让它落在挂点上就是 `R = ref − glb(p)` ✓
+    //   槽位不一样：占位件是直接调 `state.model.localToWorld` ⇒ 必须自己把 grip 加回去。
     state.root.position.set(ref[0] + pv[0], ref[1] - pv[1], ref[2] - pv[2]);
 
     // ⑥ 尺寸：最长边写进 opts.size（米）
