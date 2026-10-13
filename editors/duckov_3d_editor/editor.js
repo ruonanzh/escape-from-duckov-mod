@@ -336,8 +336,10 @@
     if (opts.kind === "gun") {
       // 键名**小写**（与其它字段一致）；值就是面板里的值，**所见即所得**
       // 必须写明**顺序**与**零点**：agent 看不到面板，只能靠这段字去验
-      out.push("- 量取时的坐标系 = **我们模型的局部空间**。枪的这个空间经过**握把归零**，" +
-               "零点在**握把点**（`GltfLoader.GuessGrip` 的结果），不在 glb 的原点。");
+      out.push("- 量取时的坐标系 = **我们模型的局部空间**。" +
+               "枪的零点在**握把点**（`GltfLoader.GuessGrip` 的结果），不在 glb 的原点。");
+      out.push("- 枪的 `zeroGrip` 默认 `true`，参照 mod 不传它 ⇒ **游戏里枪始终做握把归零**。" +
+               "编辑器里的「自动猜握把」开关**只影响预览**，不写进 config.json。");
       out.push("- slots（米；顺序 `[x, y, z]`；键名小写）：");
       out.push('    "slots": {');
       out.push('      "pivot":  [' + fmt3(opts.pivot[0]) + ', ' + fmt3(opts.pivot[1]) + ', ' + fmt3(opts.pivot[2]) + '],');

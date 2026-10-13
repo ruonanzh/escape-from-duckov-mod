@@ -23,7 +23,7 @@
 
 | API | 什么时候用 |
 |---|---|
-| `WeaponModel.Apply(anchorRoot, mesh, tex, offset, slots, scale)` | **主入口**：把模型换到手持武器上（选锚点、藏旧零件、对齐、搬挂点、换贴图）。`slots` 的值 `[x,y,z]` 单位是**米**，在**我们模型的局部空间**里。枪的这个空间经过**握把归零**，零点在**握把点**。`x` 沿 X（左右）· `y` 沿 Y（上下）· `z` 沿 Z（枪口方向） |
+| `WeaponModel.Apply(anchorRoot, mesh, tex, offset, slots, scale)` | **主入口**：把模型换到手持武器上（选锚点、藏旧零件、对齐、搬挂点、换贴图）。`slots` 的值 `[x,y,z]` 单位是**米**，在**我们模型的局部空间**里。枪的这个空间经过**握把归零**（`zeroGrip` 默认 `true`，参照 mod 不传它），零点在**握把点**。`x` 沿 X（左右）· `y` 沿 Y（上下）· `z` 沿 Z（枪口方向） |
 | `WeaponIcon.Apply(item, "icon.png")` | 换卡片图标（有图标才调。幂等，内部自己归一化尺寸）|
 | `WeaponIcon.ApplyToAllMatching(names, typeIds, pngPath)` | 一次给一批武器换同一个图标。`names` 与 `typeIds` 任一命中即可 |
 

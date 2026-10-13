@@ -40,7 +40,8 @@ WeaponModelSwap/                 这是 mod 目录（装进游戏时的目录名
 `[x, y, z]` 各表示：x 沿 X（左右）、y 沿 Y（上下）、z 沿 Z（枪口 +Z）。
 
 **枪的这个空间经过握把归零**。零点在**握把点**，不在 glb 的原点。
-量值时用 `GltfLoader.GuessGrip` 的结果当零点。近战与物品不做归零。
+游戏侧由 `GltfLoader` 的 `zeroGrip` 决定。枪默认 `true`，参照 mod 不传它。
+只有 mod 自己传 `zeroGrip: false` 时，零点才是 glb 的原点。近战与物品固定不做归零。
 
 ```jsonc
 // 单位米，在我们模型的局部空间里。下面是**形状示例**，数值不通用 —— 用编辑器调。
