@@ -54,3 +54,21 @@
 - 游戏用**层**来开关视觉（不是 `SetActive`）：显示用 `Character`，隐藏用 `SpecialCamera`。
 - **两条路不一样**：**掉落与展示 = `0` 层**，**穿在身上与拿在手里 = `Character`**。
 - 所以我们**自己不挑层**：就保持 **`0`**。走「就地改」时，我们的 mesh 会**继承锚点的层**（游戏已经设好的）。
+
+## 5. 运行时挂点表
+
+下表是运行时实测的玩家挂点。游戏数据不是权威来源。
+
+| 挂点字段 | 运行时的路径 | 实测时已装备 |
+|---|---|---|
+| `rightHandSocket` | `.../Hand.R/Hand.Soket.R/RightHandSocket` | 手里的枪 |
+| `helmatSocket` | `.../Spine.004/Head/HelmatSocket` | 帽子、耳机 |
+| `faceSocket` | `.../Spine.004/Head/FaceMaskSocket` | 无 |
+| `armorSocket` | `.../Spine.004/ArmorSocket` | 无 |
+| `backpackSocket` | `.../Spine.004/BackpackSocket` | 背包 |
+| `meleeWeaponSocket` | `.../Hand.R/.../MeleeWeaponSocketFixed` | 无 |
+| `lefthandSocket` | `.../Hand.L/Hand.Soket.L/LeftHandSocket` | 无 |
+
+耳机使用 `helmatSocket`。实测中，帽子 `IG_Helmat_Hat(Clone)` 和耳机 `IG_Headset_LV1V2(Clone)` 是 `HelmatSocket` 下的兄弟节点，世界坐标相同。
+
+运行时的玩家模型是 `0_CharacterModel_Custom_Template(Clone)`。它的挂点偏移与鸭子 prefab 不同，因此 3D editor 的挂点标记必须按运行时数值校准。
