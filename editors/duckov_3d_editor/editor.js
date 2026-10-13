@@ -432,7 +432,17 @@
       // 面板与 config 同顺序 ⇒ 原样显示 ✓
       if (Array.isArray(piv) && piv.length >= 3)
         // config 的 x 与编辑器相反 ⇒ 显示时把 x 取反回来
-        lines.push("slots.pivot = [" + [-piv[0], piv[1], piv[2]].join(", ") + "]");
+      if (Array.isArray(piv) && piv.length >= 3) {
+        var vals = [-piv[0], piv[1], piv[2]];
+        lines.push("slots.pivot = [" + vals.join(", ") + "]");
+        // 顺手填进三个框（用户 2026-10-13 选：打开时载入，省得手抄）
+        // ⚠️ 值已经换成编辑器坐标 ✗ —— 不要直接塞 config 的原始值
+        ["pivot-x", "pivot-y", "pivot-z"].forEach(function (id, i) {
+          var el = document.getElementById(id);
+          if (el) { el.value = String(vals[i]); opts.pivot[i] = vals[i]; }
+        });
+        if (state.model) build();     // 模型还没加载时跳过（加载完自己会 build）
+      }
       // 不列 slots 的其它键 ✗（用户 2026-10-13 要求：只看 size 与 pivot）
     }
     setCfg(lines.length ? lines.join("\n") : "（没有可显示的字段）");
