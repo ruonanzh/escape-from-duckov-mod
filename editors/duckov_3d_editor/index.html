@@ -19,7 +19,7 @@
     #hud a.on { font-weight:700; text-decoration:underline; }
     #hud .dim { color:var(--dim); }
     /* 「物品」+ 尺寸：整块放**右下角**（左上留给标题/视角/提示） */
-    #panel { position:fixed; right:10px; bottom:10px; width:200px; background:var(--panel);
+    #panel { position:fixed; right:10px; bottom:10px; width:230px; background:var(--panel);
       padding:8px; border-radius:8px; box-shadow:0 1px 6px #0002;
       max-height:calc(100vh - 20px); overflow:auto; font-size:12px; }
     #panel h2 { margin:0 0 6px; font-size:12px; }
@@ -34,9 +34,9 @@
     /* 数字框的上下按钮（浏览器自带）：在 45px 的窄框里会挡住数字 ✗
        —— 缩小它、并把它往右贴，给数字让出位置。用户 2026-10-13 要求。 */
     #panel input[type=number]::-webkit-inner-spin-button {
-      transform: scale(0.55);
+      /* 高度保持浏览器默认，宽度减半（用户 2026-10-13）。面板宽到 230 后不用再挤占位。 */
+      transform: scaleX(0.5);
       transform-origin: right center;
-      margin: 0 -2px 0 -6px;
     }
     #panel input[type=number]::-webkit-outer-spin-button { display: none; }
     #panel select, #panel input[type=number] { font:inherit; padding:2px 2px; border:1px solid var(--line);
@@ -92,9 +92,9 @@
       <h2>挂点</h2>
       <div class="row" id="pivotRow" style="gap:3px; align-items:center; flex-wrap:nowrap">
         <span style="flex:0 0 auto">pivot</span>
-        <input type="number" id="pivot-x" step="0.01" placeholder="X" title="X" style="width:42px; flex:0 0 auto; margin-left:auto">
-        <input type="number" id="pivot-y" step="0.01" placeholder="Y" title="Y" style="width:42px; flex:0 0 auto">
-        <input type="number" id="pivot-z" step="0.01" placeholder="Z" title="Z" style="width:42px; flex:0 0 auto">
+        <input type="number" id="pivot-x" step="0.01" placeholder="X" title="X" style="width:48px; flex:0 0 auto; margin-left:auto">
+        <input type="number" id="pivot-y" step="0.01" placeholder="Y" title="Y" style="width:48px; flex:0 0 auto">
+        <input type="number" id="pivot-z" step="0.01" placeholder="Z" title="Z" style="width:48px; flex:0 0 auto">
         <span style="flex:0 0 auto">m</span>
       </div>
       <label class="row" id="gripRow" hidden>自动猜握把<input type="checkbox" id="autogrip" checked></label>
