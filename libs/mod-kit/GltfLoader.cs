@@ -5,10 +5,7 @@
 //
 // 坐标系（实测过的规则，不得改错）：
 // glTF 右手系（+Y 上、-Z 前），于是 Unity 左手系（+Y 上、+Z 前）
-// 【实验 2026-10-13】原本是：位置/法线 **取反 X** + 三角面 **绕序反转**。
-//   本文件里那一对转换**已临时去掉**（见下方 pos 那一段），用来验证
-//   「编辑器与游戏两边都不翻 X 时还是不是一致」。试验完必须恢复这一对。
-// UV 仍是 **v = 1 - v**（与本次试验无关）。
+// 于是 位置/法线 **取反 X** 三角面 **绕序反转** UV **v = 1 - v**
 // 于是 朝向还有 180° 的差别（glTF 物件的"前"是 -Z），于是 由模型规格/对齐处理，不在这里转
 
 using System;
@@ -80,20 +77,16 @@ namespace ModelKit
                     var uv = attrs.Has("TEXCOORD_0") ? ReadAccessor(accessors, views, bin, attrs["TEXCOORD_0"].AsInt(-1), 2) : null;
                     for (int i = 0; i < pos.Count; i++)
                     {
-                        // 【实验 2026-10-13】X **不取反**，下面的绕序也**不反转**。
-                        //   原来是「右手系 → 左手系」的一对转换（取反 X + 绕序反转）。
-                        //   这次两边一起去掉，看编辑器与游戏还是不是一致。
-                        //   恢复：负号加回来，绕序改回 t, t+2, t+1。
-                        verts.Add(new Vector3(pos[i][0], pos[i][1], pos[i][2]));
-                        norms.Add(nrm != null ? new Vector3(nrm[i][0], nrm[i][1], nrm[i][2]) : Vector3.up);
+                        verts.Add(new Vector3(-pos[i][0], pos[i][1], pos[i][2]));           // X 取反（右手，于是 左手）
+                        norms.Add(nrm != null ? new Vector3(-nrm[i][0], nrm[i][1], nrm[i][2]) : Vector3.up);
                         uvs.Add(uv != null ? new Vector2(uv[i][0], 1f - uv[i][1]) : Vector2.zero);   // V 翻转
                     }
                     var idx = ReadIndices(accessors, views, bin, prim.Has("indices") ? prim["indices"].AsInt(-1) : -1);
-                    for (int t = 0; t + 2 < idx.Count; t += 3)
+                    for (int t = 0; t + 2 < idx.Count; t += 3)                                    // 绕序反转（左手系）
                     {
                         tris.Add(idx[t] + baseV);
-                        tris.Add(idx[t + 1] + baseV);
                         tris.Add(idx[t + 2] + baseV);
+                        tris.Add(idx[t + 1] + baseV);
                     }
                 }
             }
