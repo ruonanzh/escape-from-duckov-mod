@@ -26,6 +26,11 @@
     #panel label { display:flex; justify-content:space-between; align-items:center; gap:8px; margin:5px 0; }
     /* ⚠️ `div.row` 也要 flex ✗ —— 原来只定义了 `label.row`，于是自定义的 div 行根本没生效 */
     #panel .row { display:flex; flex-wrap:nowrap; align-items:center; gap:5px; margin:5px 0; }
+    /* ⚠️ 上面那条 `display:flex` 会**压过** HTML 的 `hidden` 属性 ✗ ——
+       `[hidden]` 自带的是 `display:none`，优先级低于类选择器 ✓。
+       已踩：选「面部」时 pivot 行和握把行应该隐藏，实际还在屏幕上（探针读到的 hidden 是 true ✓，像素说还在 ✗）。
+       因此这里必须把 `[hidden]` 抬到 `!important` ✓。*/
+    [hidden] { display: none !important; }
     #panel select, #panel input[type=number] { font:inherit; padding:2px 4px; border:1px solid var(--line);
       border-radius:4px; background:#fff; width:110px; }
     #panel input[type=range] { width:100%; }
@@ -51,20 +56,25 @@
     <div class="row" id="meta"></div>
     <div class="row dim" id="hint">拖拽=转 · 滚轮=缩放 · 右键=平移</div>
     <div class="row dim" style="font-size:11px">鸭子身上的挂点（颜色）：
-      <b style="color:#ff8a00">枪/近战/手持物</b> ·
-      <b style="color:#8a5cff">头盔</b> ·
+      <b style="color:#ff8a00">枪/近战武器/普通物品</b> ·
+      <b style="color:#8a5cff">头盔/耳机</b> ·
       <b style="color:#2fae5a">护甲</b> ·
-      <b style="color:#2f7ad2">背包</b></div>
+      <b style="color:#2f7ad2">背包</b> ·
+      <b style="color:#d94f8a">面部</b></div>
   </div>
 
   <div id="panel">
     <h2>物品</h2>
     <label>类型
       <select id="kind">
-        <option value="weapon">枪</option>
-        <option value="melee">近战</option>
-        <option value="item">物品</option>
-        <option value="equip">装备</option>
+        <option value="gun">枪</option>
+        <option value="melee">近战武器</option>
+        <option value="armor">护甲</option>
+        <option value="helmat">头盔</option>
+        <option value="headset">耳机</option>
+        <option value="backpack">背包</option>
+        <option value="face">面部</option>
+        <option value="item">普通物品</option>
       </select>
     </label>
     <!-- ⭐ 只有「枪」才显示这一行：握把归零是枪的规则（`GuessGrip`），物品/近战都不适用 -->
