@@ -330,7 +330,7 @@
     if (opts.size > 0) out.push("- size = " + (+opts.size).toFixed(3) + "（最长边，米）");
     if (hasPivot(opts.kind)) {
       // 面板框、config、glb 都是 [x,y,z] ✓（2026-10-13 统一）⇒ **原样发**
-      // 所见即所得 ✓ —— 场景已经翻过 X，框里的值就是 config 的值，不用换算
+      // 所见即所得 ✓ —— 框里的值就是 config 的值（X 的符号差异在落位里处理）
       out.push("- slots.pivot = [" + opts.pivot.join(", ") + "]（米）");
       if (opts.kind === "gun") out.push("- 自动猜握把开着。这是枪的默认，物品类是关的。");
     } else {
@@ -428,7 +428,7 @@
       var piv = slots.pivot;
       // 面板与 config 同顺序 ⇒ 原样显示 ✓
       if (Array.isArray(piv) && piv.length >= 3)
-        // 场景已翻 X ⇒ 直接显示、直接填框（所见即所得）
+        // 直接显示、直接填框（所见即所得；X 的符号差异在落位里处理）
       if (Array.isArray(piv) && piv.length >= 3) {
         var vals = [piv[0], piv[1], piv[2]];
         lines.push("slots.pivot = [" + vals.join(", ") + "]");
@@ -536,8 +536,8 @@
     autoGrip: true,     // 武器：是否自动猜握把（游戏 `GuessGrip`，物品固定不做）
     muzzle: "auto",     // ⭐ 固定"自动"（`MuzzleAtPositiveZ`：两端各看 6%/15%，细的那端是枪管）—— 不给选择
     grip: true,         // ⭐ 只有「枪」用得上（`GuessGrip` 的假设是枪）—— UI 里也只在选枪时露出这一行 ✗
-    mirror: true,       // ⭐ 固定**开**：游戏加载 glb 时会 X 取反（GltfLoader.cs:8,80）
-                        //    ⇒ 编辑器也翻，场景里看到的才是**游戏里的方向**（所见即所得）
+    mirror: false,      // ⭐ 固定**关** ✓ —— 参照鸭子那份代码里写着「不加 X 镜像」（前视图右臂在画面左侧 = 对 ✗）
+                        //    一只翻一只不翻会让两只不一致 ✗。方向的问题在**落位公式的 X 符号**上解决（见 build 第 ⑤ 步）
     grid: true,         // ⭐ 固定开：网格（每格 10cm）
     size: 0            // 0 = 不改（用模型自己的尺寸）
   };
@@ -556,17 +556,14 @@
     state.orient.rotation.set(0, 0, 0);
     state.flip.rotation.set(0, 0, 0);
     state.grip.position.set(0, 0, 0);
-    state.mirror.scale.set(-1, 1, 1);
+    state.mirror.scale.set(1, 1, 1);
     state.root.scale.setScalar(1);
     state.root.updateMatrixWorld(true);
 
-    // ③ 镜像：**开** ✓（用户 2026-10-13 定：要所见即所得）
-    //    游戏加载任何 glb 都会 X 取反（GltfLoader.cs:8,80 —— 右手→左手）。
-    //    ⇒ 编辑器也翻，于是：场景方向 = 游戏方向；三个框的值 = config 的值，
-    //      显示 0.06 就发 0.06，中间不需要任何换算。
-    //    ⚠️ 2026-10-12 曾经删掉它，理由是「加了之后右臂在画面右侧」✗ ——
-    //      那是拿**当时正在瞎调的手臂姿势**当判据 ✗。判据应该是「和游戏的 x 一致」。
-    state.mirror.scale.set(-1, 1, 1);
+    // ③ 镜像：**关** ✓（和参照鸭子一致）
+    //    2026-10-13 曾开过一版，但鸭子那边是「不加」✗ ⇒ 一只翻一只不翻 ⇒ 场景内部不一致 ✗。
+    //    方向差异改用**落位公式的 X 符号**解决（见第 ⑤ 步），不动场景。
+    state.mirror.scale.set(1, 1, 1);
 
     // ④ 握把归零（顶点级：把握把点移到原点）—— 只有「枪」用得上（`GuessGrip` 的假设是枪）
     if (opts.autoGrip && opts.kind === "gun") {
@@ -582,7 +579,11 @@
     // opts.pivot、config 的 slots、glb —— 三处都是 **[x, y, z]** ✓（2026-10-13 统一）⇒ 不用换算
     var pv = hasPivot ? opts.pivot : [0, 0, 0];
     var ref = socketOf(opts.kind);
-    state.root.position.set(ref[0] - pv[0], ref[1] - pv[1], ref[2] - pv[2]);
+    // ⚠️ **X 用加号** ✗ —— 游戏加载 glb 时把 X 取反了（GltfLoader.cs:8,80 右手→左手），
+    //    所以同一个 pivot 值，两边模型移动的 X 方向相反。
+    //    用户 2026-10-13 实测：游戏里 x+1 = 向内，编辑器 x=1 = 向外 ⇒ 以游戏为准，编辑器翻过来。
+    //    y / z 两边一致，不动 ✓。
+    state.root.position.set(ref[0] + pv[0], ref[1] - pv[1], ref[2] - pv[2]);
 
     // ⑥ 尺寸：最长边 → opts.size（米）
     state.root.updateMatrixWorld(true);
