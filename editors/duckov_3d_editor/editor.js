@@ -330,7 +330,7 @@
     if (opts.size > 0) out.push("- size = " + (+opts.size).toFixed(3) + "（最长边，米）");
     if (hasPivot(opts.kind)) {
       // 面板框、config、glb 都是 [x,y,z] ✓（2026-10-13 统一）⇒ **原样发**
-      out.push("- slots.pivot = [" + opts.pivot.join(", ") + "]（米，顺序 [x, y, z]）");
+      out.push("- slots.pivot = [" + opts.pivot.join(", ") + "]（米）");
       if (opts.kind === "gun") out.push("- 自动猜握把开着。这是枪的默认，物品类是关的。");
     } else {
       out.push("");
@@ -427,7 +427,7 @@
       var piv = slots.pivot;
       // 面板与 config 同顺序 ⇒ 原样显示 ✓
       if (Array.isArray(piv) && piv.length >= 3)
-        lines.push("slots.pivot = [" + piv.slice(0, 3).join(", ") + "]   （米，顺序 [x, y, z]）");
+        lines.push("slots.pivot = [" + piv.slice(0, 3).join(", ") + "]");
       // 不列 slots 的其它键 ✗（用户 2026-10-13 要求：只看 size 与 pivot）
     }
     setCfg(lines.length ? lines.join("\n") : "（没有可显示的字段）");
