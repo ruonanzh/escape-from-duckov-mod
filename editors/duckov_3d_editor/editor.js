@@ -304,6 +304,74 @@
       if (CHAR_SOCKETS[i].key === key) return CHAR_SOCKETS[i].p;
     return CHAR_SOCKETS[0].p;
   }
+
+  // 只有枪和近战有 pivot（游戏侧只有 `WeaponModel` 那条路读 `slots.pivot`）
+  function hasPivot(kind) { return kind === "gun" || kind === "melee"; }
+
+  var KIND_LABEL = {
+    gun: "枪", melee: "近战武器", armor: "护甲", helmat: "头盔",
+    headset: "耳机", backpack: "背包", face: "面部", item: "普通物品"
+  };
+
+  /** 发给 agent 的话。要求（用户 2026-10-13 定）：
+   *   ① 第一句先让 agent 检查类型选得对不对（选错很常见），并说明“先别改文件”
+   *   ② 明确给出 glb 文件名（取打开的那个文件，不让玩家手填）
+   *   ③ 按类型发不同数据：只有枪和近战带 pivot；六类装备不带，也不写 slots
+   *   ④ 耳机不另提挂点 —— 类型不同就够（挂点是游戏的 Tag 决定的，不进 config）*/
+  function buildAgentMessage() {
+    var label = KIND_LABEL[opts.kind] || opts.kind;
+    var file = state.fileName || "（模型文件）";
+    var out = [];
+    out.push("先检查我选的类型对不对：我选的是「" + label + "」，模型文件是 " + file + "。");
+    out.push("选错的话告诉我该选哪一类，先别改文件。");
+    out.push("");
+    out.push("确认后，把下面这些写进同目录的 config.json：");
+    out.push("- model = " + file);
+    if (opts.size > 0) out.push("- size = " + (+opts.size).toFixed(3) + "（最长边，米）");
+    if (hasPivot(opts.kind)) {
+      out.push("- slots.pivot = [" + opts.pivot.join(", ") + "]（米）");
+      if (opts.kind === "gun") out.push("- 自动猜握把开着。这是枪的默认，物品类是关的。");
+    } else {
+      out.push("");
+      out.push("类型「" + label + "」没有 pivot，不要写 slots。");
+    }
+    return out.join("\n");
+  }
+
+  function setSendStatus(s) {
+    var el = document.getElementById("sendStatus");
+    if (el) el.textContent = s;
+  }
+
+  /** 点按钮前，把面板上的当前值读回 opts。
+   *  ⚠️ 必须这么干 ✗ —— `size` 只监听 `change`，而代码是用 `.value` **程序设**的
+   *  ⇒ 不触发 `change` ⇒ `opts.size` 还是 0 ✗（实测：发出去的话里少了 size 那一行）。
+   *  pivot 同理（它监听 `input`）。 */
+  function syncOptsFromDom() {
+    var sz = document.getElementById("size");
+    if (sz) opts.size = parseFloat(sz.value) || 0;
+    var ids = ["pivot-x", "pivot-y", "pivot-z"];
+    for (var i = 0; i < 3; i++) {
+      var el = document.getElementById(ids[i]);
+      if (el) opts.pivot[i] = Number(el.value) || 0;
+    }
+  }
+
+  var _sendSeq = 0;
+
+  function sendToAgent() {
+    syncOptsFromDom();
+    _sendSeq++;
+    setSendStatus("正在发送……");
+    post({ type: "editor:sendPrompt", requestId: "send-" + _sendSeq, text: buildAgentMessage() });
+  }
+
+  window.addEventListener("message", function (e) {
+    var d = e.data;
+    if (!d || typeof d !== "object") return;
+    if (d.type === "editor:sent") setSendStatus("已发给 agent。等它回话。");
+    else if (d.type === "editor:error") setSendStatus("发送失败：" + (d.code || "?") + " " + (d.message || ""));
+  });
   var refDuck = null;
   var refSocketMarks = [];
 
@@ -574,6 +642,7 @@
       });
     });
     document.getElementById("kind").addEventListener("change", function (e) { opts.kind = e.target.value; build(); });
+    document.getElementById("sendBtn").addEventListener("click", sendToAgent);
     document.getElementById("autogrip").addEventListener("change", function (e) { opts.autoGrip = e.target.checked; build(); });
     loadRefDuck();
     document.getElementById("size").addEventListener("change", function (e) {
