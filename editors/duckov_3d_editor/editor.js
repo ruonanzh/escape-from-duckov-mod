@@ -330,11 +330,8 @@
     if (opts.size > 0) out.push("- size = " + (+opts.size).toFixed(3) + "（最长边，米）");
     if (hasPivot(opts.kind)) {
       // 面板框、config、glb 都是 [x,y,z] ✓（2026-10-13 统一）⇒ **原样发**
-      // ⚠️ **x 要取反** ✗ —— 游戏的 GltfLoader 把 glb 顶点做 (-x, y, z)（右手→左手，
-      //    见 GltfLoader.cs:8,80），因此模型自身的 x 和游戏里的 x 符号相反；y/z 原样。
-      //    实测（用户 2026-10-13）：只有 x 反，y z 都对。
-      var pvCfg = [-opts.pivot[0], opts.pivot[1], opts.pivot[2]];
-      out.push("- slots.pivot = [" + pvCfg.join(", ") + "]（米）");
+      // 所见即所得 ✓ —— 场景已经翻过 X，框里的值就是 config 的值，不用换算
+      out.push("- slots.pivot = [" + opts.pivot.join(", ") + "]（米）");
       if (opts.kind === "gun") out.push("- 自动猜握把开着。这是枪的默认，物品类是关的。");
     } else {
       out.push("");
@@ -431,9 +428,9 @@
       var piv = slots.pivot;
       // 面板与 config 同顺序 ⇒ 原样显示 ✓
       if (Array.isArray(piv) && piv.length >= 3)
-        // config 的 x 与编辑器相反 ⇒ 显示时把 x 取反回来
+        // 场景已翻 X ⇒ 直接显示、直接填框（所见即所得）
       if (Array.isArray(piv) && piv.length >= 3) {
-        var vals = [-piv[0], piv[1], piv[2]];
+        var vals = [piv[0], piv[1], piv[2]];
         lines.push("slots.pivot = [" + vals.join(", ") + "]");
         // 顺手填进三个框（用户 2026-10-13 选：打开时载入，省得手抄）
         // ⚠️ 值已经换成编辑器坐标 ✗ —— 不要直接塞 config 的原始值
@@ -539,7 +536,8 @@
     autoGrip: true,     // 武器：是否自动猜握把（游戏 `GuessGrip`，物品固定不做）
     muzzle: "auto",     // ⭐ 固定"自动"（`MuzzleAtPositiveZ`：两端各看 6%/15%，细的那端是枪管）—— 不给选择
     grip: true,         // ⭐ 只有「枪」用得上（`GuessGrip` 的假设是枪）—— UI 里也只在选枪时露出这一行 ✗
-    mirror: false,      // ⭐ 固定**关**：实测加镜像后预览与游戏左右相反 ✗（见 build 第 ③ 步）
+    mirror: true,       // ⭐ 固定**开**：游戏加载 glb 时会 X 取反（GltfLoader.cs:8,80）
+                        //    ⇒ 编辑器也翻，场景里看到的才是**游戏里的方向**（所见即所得）
     grid: true,         // ⭐ 固定开：网格（每格 10cm）
     size: 0            // 0 = 不改（用模型自己的尺寸）
   };
@@ -558,17 +556,17 @@
     state.orient.rotation.set(0, 0, 0);
     state.flip.rotation.set(0, 0, 0);
     state.grip.position.set(0, 0, 0);
-    state.mirror.scale.set(1, 1, 1);
+    state.mirror.scale.set(-1, 1, 1);
     state.root.scale.setScalar(1);
     state.root.updateMatrixWorld(true);
 
-    // ③ 镜像：**不做** ✗（用户 2026-10-12 定调，实测为准）
-    //    之前这里按「游戏 GltfLoader 会 X 取反」也取反了一次 ✗ —— 那是把
-    //    **坐标系转换**当成了**显示效果**。实测反了：
-    //      · 加镜像：正对鸭子时右臂在**画面右侧** ✗
-    //      · 不加：右臂在**画面左侧** ✓（= 游戏里的样子）
-    //    ⚠️ 这个坑只在**不对称模型**上看得出来 —— 枪大多左右对称，所以一直没暴露 ✗
-    state.mirror.scale.set(1, 1, 1);
+    // ③ 镜像：**开** ✓（用户 2026-10-13 定：要所见即所得）
+    //    游戏加载任何 glb 都会 X 取反（GltfLoader.cs:8,80 —— 右手→左手）。
+    //    ⇒ 编辑器也翻，于是：场景方向 = 游戏方向；三个框的值 = config 的值，
+    //      显示 0.06 就发 0.06，中间不需要任何换算。
+    //    ⚠️ 2026-10-12 曾经删掉它，理由是「加了之后右臂在画面右侧」✗ ——
+    //      那是拿**当时正在瞎调的手臂姿势**当判据 ✗。判据应该是「和游戏的 x 一致」。
+    state.mirror.scale.set(-1, 1, 1);
 
     // ④ 握把归零（顶点级：把握把点移到原点）—— 只有「枪」用得上（`GuessGrip` 的假设是枪）
     if (opts.autoGrip && opts.kind === "gun") {
