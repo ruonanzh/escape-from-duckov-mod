@@ -77,17 +77,20 @@
         <option value="item">普通物品</option>
       </select>
     </label>
-    <!-- ⭐ 只有「枪」才显示这一行：握把归零是枪的规则（`GuessGrip`），物品/近战都不适用 -->
-    <div class="hr"></div>
-    <h2>挂点</h2>
-    <div class="row" id="pivotRow" style="gap:5px; align-items:center; flex-wrap:nowrap">
-      <span style="flex:0 0 auto">pivot</span>
-      <input type="number" id="pivot-x" step="0.01" placeholder="X" title="X" style="width:72px; flex:0 0 auto; margin-left:auto">
-      <input type="number" id="pivot-y" step="0.01" placeholder="Y" title="Y" style="width:72px; flex:0 0 auto">
-      <input type="number" id="pivot-z" step="0.01" placeholder="Z" title="Z" style="width:72px; flex:0 0 auto">
-      <span style="flex:0 0 auto">m</span>
+    <!-- ⭐ 「挂点」这一整节只在需要时露出：pivot 行和握把行都隐藏时，标题也不显示
+         （否则会留一个空标题）--> 
+    <div id="socketSection">
+      <div class="hr"></div>
+      <h2>挂点</h2>
+      <div class="row" id="pivotRow" style="gap:5px; align-items:center; flex-wrap:nowrap">
+        <span style="flex:0 0 auto">pivot</span>
+        <input type="number" id="pivot-x" step="0.01" placeholder="X" title="X" style="width:72px; flex:0 0 auto; margin-left:auto">
+        <input type="number" id="pivot-y" step="0.01" placeholder="Y" title="Y" style="width:72px; flex:0 0 auto">
+        <input type="number" id="pivot-z" step="0.01" placeholder="Z" title="Z" style="width:72px; flex:0 0 auto">
+        <span style="flex:0 0 auto">m</span>
+      </div>
+      <label class="row" id="gripRow" hidden>自动猜握把<input type="checkbox" id="autogrip" checked></label>
     </div>
-    <label class="row" id="gripRow" hidden>自动猜握把<input type="checkbox" id="autogrip" checked></label>
     <div class="hr"></div>
     <h2>尺寸</h2>
     <label>最长边（米）<input type="number" id="size" step="0.01" min="0.01"></label>

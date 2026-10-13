@@ -494,6 +494,12 @@
     var pivotRow = document.getElementById("pivotRow");
     if (pivotRow) pivotRow.hidden = !(opts.kind === "gun" || opts.kind === "melee");
 
+    // ⭐ 「挂点」这一整节：两个行都隐藏时，标题也一起隐藏
+    //    （否则会留一个空标题 ✗）
+    var socketSection = document.getElementById("socketSection");
+    if (socketSection)
+      socketSection.hidden = (pivotRow ? pivotRow.hidden : true) && (gripRow ? gripRow.hidden : true);
+
 
     // 面板读数
     var cur = box.getSize(new THREE.Vector3());
