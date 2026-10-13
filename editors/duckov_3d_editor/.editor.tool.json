@@ -4,6 +4,7 @@
   "name": "Duckov 3D 编辑器",
   "match": ["*.glb"],
   "entry": "index.html",
-  "mode": "view",
-  "description": "用 Unity 坐标系（+Y 上 / +Z 前）查看 .glb 模型：游戏朝向、尺寸（米）、网格与标尺"
+  "mode": "edit",
+  "readScope": "siblings",
+  "description": "Duckov 的 3D 模型编辑工具：按物品类型把 .glb 挂到对应的角色挂点上预览，调 pivot 与最长边，再把结果发给 agent 写进 config.json。用 Unity 坐标系"
 }

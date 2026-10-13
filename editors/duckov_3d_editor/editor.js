@@ -369,9 +369,51 @@
   window.addEventListener("message", function (e) {
     var d = e.data;
     if (!d || typeof d !== "object") return;
+    if (d.type === "editor:fileContent" && d.requestId === CFG_REQ) { showConfig(d); return; }
+    if (d.type === "editor:error" && d.requestId === CFG_REQ) {
+      setCfg("读取失败：" + (d.code || "?") + " " + (d.message || ""));
+      return;
+    }
     if (d.type === "editor:sent") setSendStatus("已发给 agent。等它回话。");
     else if (d.type === "editor:error") setSendStatus("发送失败：" + (d.code || "?") + " " + (d.message || ""));
   });
+
+  // ── config.json（只读）──────────────────────────────────────────────────
+  // 打开模型时读一次同目录的 config.json，把内容显示在面板上。
+  // 读它靠 manifest 里的 `readScope: "siblings"` —— 没声明时宿主回 SCOPE_DENIED。
+  // 只读不写：写都走「发给 agent」那条路。
+  var CFG_REQ = "cfg-read";
+
+  function setCfg(s) {
+    var el = document.getElementById("cfgView");
+    if (el) el.textContent = s;
+  }
+
+  function loadConfig() {
+    setCfg("读取中……");
+    post({ type: "editor:readFile", requestId: CFG_REQ, path: "config.json" });
+  }
+
+  function showConfig(d) {
+    if (d.encoding === "base64") { setCfg("（二进制，不显示）"); return; }
+    var j;
+    try { j = JSON.parse(d.data || ""); } catch (err) { setCfg("解析失败：" + err.message); return; }
+    var lines = [];
+    var entries = Array.isArray(j.entries) ? j.entries : null;
+    var one = entries && entries.length ? entries[0] : j;
+    if (j.typeIDs) lines.push("typeIDs = " + JSON.stringify(j.typeIDs));
+    if (j.model) lines.push("model = " + j.model);
+    if (j.size) lines.push("size = " + j.size);
+    if (j.front) lines.push("front = " + j.front);
+    if (entries) lines.push("entries：" + entries.length + " 条");
+    if (one && one !== j) {
+      if (one.targets) lines.push("条目 targets = " + JSON.stringify(one.targets));
+      if (one.model) lines.push("条目 model = " + one.model);
+      if (one.size) lines.push("条目 size = " + one.size);
+    }
+    if (one && one.slots && one.slots.pivot) lines.push("slots.pivot = [" + one.slots.pivot.join(", ") + "]");
+    setCfg(lines.length ? lines.join("\n") : "（没有可显示的字段）");
+  }
   var refDuck = null;
   var refSocketMarks = [];
 
@@ -683,6 +725,7 @@
       var cur = state.box.getSize(new THREE.Vector3());
       document.getElementById("size").value = Math.max(cur.x, Math.max(cur.y, cur.z)).toFixed(3);
       setView([-1.2, 0.6, 1.3]);
+      loadConfig();                       // 同目录的 config.json，读一次显示出来（只读）
       window.__ready = true;
     }).catch(function (e) {
       showError("模型加载失败：" + (e && e.message ? e.message : e));
