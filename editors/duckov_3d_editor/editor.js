@@ -419,8 +419,7 @@
     if (slots && typeof slots === "object") {
       var piv = slots.pivot;
       if (Array.isArray(piv) && piv.length >= 3) lines.push("slots.pivot = [" + piv.slice(0, 3).join(", ") + "]");
-      var keys = Object.keys(slots).filter(function (k) { return k !== "pivot"; });
-      if (keys.length) lines.push("slots 其它键：" + keys.join(" / "));
+      // 不列 slots 的其它键 ✗（用户 2026-10-13 要求：只看 size 与 pivot）
     }
     setCfg(lines.length ? lines.join("\n") : "（没有可显示的字段）");
   }
