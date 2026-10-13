@@ -19,8 +19,8 @@
     #hud a.on { font-weight:700; text-decoration:underline; }
     #hud .dim { color:var(--dim); }
     /* 「物品」+ 尺寸：整块放**右下角**（左上留给标题/视角/提示） */
-    #panel { position:fixed; right:10px; bottom:10px; width:300px; background:var(--panel);
-      padding:8px 10px; border-radius:8px; box-shadow:0 1px 6px #0002;
+    #panel { position:fixed; right:10px; bottom:10px; width:200px; background:var(--panel);
+      padding:8px; border-radius:8px; box-shadow:0 1px 6px #0002;
       max-height:calc(100vh - 20px); overflow:auto; font-size:12px; }
     #panel h2 { margin:0 0 6px; font-size:12px; }
     #panel label { display:flex; justify-content:space-between; align-items:center; gap:6px; margin:4px 0; }
@@ -32,7 +32,7 @@
        因此这里必须把 `[hidden]` 抬到 `!important` ✓。*/
     [hidden] { display: none !important; }
     #panel select, #panel input[type=number] { font:inherit; padding:2px 4px; border:1px solid var(--line);
-      border-radius:4px; background:#fff; width:110px; }
+      border-radius:4px; background:#fff; width:96px; }
     #panel input[type=range] { width:100%; }
     #panel table.slots { width:100%; border-collapse:collapse; }
     #panel table.slots th { text-align:left; font-weight:400; color:var(--dim); font-size:11px; padding:1px 2px; }
@@ -84,9 +84,9 @@
       <h2>挂点</h2>
       <div class="row" id="pivotRow" style="gap:5px; align-items:center; flex-wrap:nowrap">
         <span style="flex:0 0 auto">pivot</span>
-        <input type="number" id="pivot-x" step="0.01" placeholder="X" title="X" style="width:56px; flex:0 0 auto; margin-left:auto">
-        <input type="number" id="pivot-y" step="0.01" placeholder="Y" title="Y" style="width:56px; flex:0 0 auto">
-        <input type="number" id="pivot-z" step="0.01" placeholder="Z" title="Z" style="width:56px; flex:0 0 auto">
+        <input type="number" id="pivot-x" step="0.01" placeholder="X" title="X" style="width:38px; flex:0 0 auto; margin-left:auto">
+        <input type="number" id="pivot-y" step="0.01" placeholder="Y" title="Y" style="width:38px; flex:0 0 auto">
+        <input type="number" id="pivot-z" step="0.01" placeholder="Z" title="Z" style="width:38px; flex:0 0 auto">
         <span style="flex:0 0 auto">m</span>
       </div>
       <label class="row" id="gripRow" hidden>自动猜握把<input type="checkbox" id="autogrip" checked></label>
