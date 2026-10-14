@@ -61,16 +61,28 @@ namespace ModelKit
         /// 于是同一个会话里它会**一直返回同一个号**。
         /// 后果：一个 config 里两条 `new_weapon` 都不写 `newTypeId` 时，
         /// 第二条会拿到与第一条相同的号，于是被当成已创建而**静默跳过**。
-        /// 所以这里自己往后挪，直到既不撞游戏、也不撞我们分过的。
+        /// 所以这里从 `NextTypeID` 起往下找，跳过游戏占的、也跳过我们分过的。
         ///
+        /// **为什么是循环**：上面的“恒定”就是它的理由。不跳就只能拿到重复的号，
+        /// 而重复的号会被当成“已创建”，于是第二条规则没任何提示地消失。
+        ///
+        /// **为什么先占号再返回**：两个条目在同一次注册里依次拿号，
+        /// 必须在**分出去的时候**就登记，否则第二个会拿到同一个。
+        /// 于是若随后克隆失败，那个号在本会话内不再分给别人（只浪费，无害）。
+        ///
+        /// 上界 1000：号段耗尽或数据异常时宁可报错，也不在这个循环里卡住游戏主线程。
         /// 返回 0 = 分不到（调用方必须报错停下）。</summary>
         public static int AllocateTypeID()
         {
             int id = NextFreeTypeID();
             if (id <= 0) return 0;
-            while (IsTypeIDTaken(id) || _assigned.Contains(id)) id++;
-            _assigned.Add(id);
-            return id;
+            for (int tries = 0; tries < 1000; tries++, id++)
+            {
+                if (IsTypeIDTaken(id) || _assigned.Contains(id)) continue;
+                _assigned.Add(id);
+                return id;
+            }
+            return 0;
         }
 
         /// <summary>显式指定的号也要登记，否则后面自动分配时可能又挑到它。</summary>

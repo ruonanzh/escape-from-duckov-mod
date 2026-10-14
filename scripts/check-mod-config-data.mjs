@@ -88,6 +88,45 @@ check("拿不到游戏数据时仍然报结构错", 1, errs(withEntry({ displayN
 console.log("别的写法：");
 check("扁平旧写法不查（由别的检查管）", [], errs({ typeIDs: [655], model: "mp5.glb" }));
 check("没有 entries 也不查", [], errs({}));
+
+// ↓ 这几条是回归守卫：把 NEW_ACTIONS 收窄成只含 new_weapon 时，
+//   replace_* 的 entries 曾经被误报成「未实现」。所以每条 replace 写法都得有断言。
+check(
+  "entries 里的 replace_weapon 不得报错",
+  [],
+  errs({ entries: [{ action: "replace_weapon", typeIDs: [655], model: "a.glb" }] }, GAME),
+);
+check(
+  "entries 里的 replace_item 不得报错",
+  [],
+  errs({ entries: [{ action: "replace_item", typeIDs: [36], model: "b.glb" }] }, GAME),
+);
+check(
+  "entries 里不写 action（默认 replace_weapon）不得报错",
+  [],
+  errs({ entries: [{ typeIDs: [655], model: "a.glb" }] }, GAME),
+);
+check(
+  "混装 replace_weapon 与 new_weapon 不得报错",
+  [],
+  errs(
+    {
+      entries: [
+        { action: "replace_weapon", typeIDs: [655], model: "a.glb" },
+        { action: "new_weapon", newTypeId: 900001, cloneFromItemId: 1629, displayName: "新枪" },
+      ],
+    },
+    GAME,
+  ),
+);
+check(
+  "换外观的 entries 不得因为尺寸/插槽被误报",
+  [],
+  errs(
+    { entries: [{ action: "replace_weapon", typeIDs: [655], model: "a.glb", size: 1.0, slots: { muzzle: [0, 0, 0.5] } }] },
+    GAME,
+  ),
+);
 check("new_item 还没实现，必须报错拦下（不得静默无效果）", 1, errs({ entries: [{ action: "new_item", cloneFromItemId: 36, displayName: "x" }] }).length);
 check(
   "new_item 的报错要说清是没实现",

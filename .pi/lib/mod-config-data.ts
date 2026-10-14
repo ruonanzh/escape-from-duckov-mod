@@ -14,8 +14,13 @@
 // 离线能做的在这里做；「typeID 是否被占号」要读游戏数据（data-probe），拿不到就只给 WARN。
 
 export const KNOWN_ACTIONS = new Set(["replace_weapon", "replace_item", "new_weapon", "new_item"]);
-/** 已经实现的 action。`new_item` **不在**这里 —— 它是下一步。 */
+/** **要做新增类字段校验**的 action。
+ * 只有这两个用途：① 后面那些 cloneFromItemId / displayName / stats 的检查；
+ * ② `mod-lint.ts` 据此决定要不要读游戏 typeID 清单。
+ * **不得**拿它当「未实现的 action」判据 —— `replace_*` 不在里面，但它好好的。 */
 export const NEW_ACTIONS = new Set(["new_weapon"]);
+/** 还没实现的 action。目前只有 `new_item`（物品模板不认 `action`）。 */
+export const NOT_IMPLEMENTED_ACTIONS = new Set(["new_item"]);
 export const DISPLAY_QUALITIES = new Set(["None", "White", "Green", "Blue", "Purple", "Orange", "Red", "Q7", "Q8"]);
 export const KNOWN_MERCHANTS = new Set(["Merchant_Normal", "Merchant_Ming", "Merchant_Weapon"]);
 
@@ -71,7 +76,7 @@ export function validateDataLayer(cfg: unknown, gameIds: Set<number> | null): { 
       errors.push(`${at}: unknown action "${action}" (use one of ${[...KNOWN_ACTIONS].join(", ")})`);
       return;
     }
-    if (!NEW_ACTIONS.has(action)) {
+    if (NOT_IMPLEMENTED_ACTIONS.has(action)) {
       // `new_item`（新增物品）是**下一步**。数据层（`ItemFactory`）对物品也适用，
       // 但物品模板 `reference/item_model/ModBehaviour.cs` 还没接 `action`。
       // 写进 config 后，模板把它当成「没有 targets 的替换规则」，匹配永远为假，
@@ -82,6 +87,8 @@ export function validateDataLayer(cfg: unknown, gameIds: Set<number> | null): { 
       );
       return;
     }
+    // 剩下的 `replace_*` 不做新增类校验，直接过。
+    if (!NEW_ACTIONS.has(action)) return;
 
     const zh = `${at} (${action})`;
     if (!isPosInt(e.cloneFromItemId)) errors.push(`${zh}: cloneFromItemId is required and must be a positive typeID`);

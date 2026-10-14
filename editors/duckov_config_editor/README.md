@@ -35,17 +35,17 @@
 
 ## 条目模式（config 里有 `entries` 时）
 
-一个 mod **可以混装多种能力**（换外观 + 新增武器各一条），所以 `entries[]` 里每条自带一个 `action`。
+一个 mod **可以混装多条**（换武器外观一条、换物品外观一条、新增武器一条），所以 `entries[]` 里每条自带一个 `action`。
 编辑器看到 `entries` 就自动换成条目模式：一行一个动作，下面按动作换字段表。
 
-| `action` | 干什么 | 字段 |
+| `action` | 编辑器支持吗 | 字段 |
 | --- | --- | --- |
-| `replace_weapon` | 换已有武器外观 | 上表那套（缺省值，等于老写法）|
-| `replace_item` | 换已有物品外观 | 同上 |
-| `new_weapon` | **新增一把枪** | `newTypeId` / `cloneFromItemId` / `displayName` / `description` / `model` / `icon` / `size` / `merchantID` / `maxStock` / `priceFactor` / `onSale` / `quality` / `displayQuality` / `stats` / `crafting` |
-| `new_item` | 新增一件物品（**下一步**）| `newTypeId` / `cloneFromItemId` / `displayName` / `description` / `model` / `size` / `quality` / `displayQuality` / `stats` |
+| `replace_weapon` | 支持 | 上表那套（缺省值，等于老写法）|
+| `replace_item` | 支持 | 同上 |
+| `new_weapon` | 支持 | `newTypeId` / `cloneFromItemId` / `displayName` / `description` / `model` / `icon` / `size` / `merchantID` / `maxStock` / `priceFactor` / `onSale` / `quality` / `displayQuality` / `stats` / `crafting` |
+| `new_item` | **不支持**（还没实现）| 写进 config 会被 `validate_mod` 直接报错。编辑器把它当未知 action，原样保留不改动 |
 
-四条都能用 `slots`（写法与上面一样）。
+**三条都能用 `slots`**（写法与上面一样）。
 
 **两个写法的关系**：
 
