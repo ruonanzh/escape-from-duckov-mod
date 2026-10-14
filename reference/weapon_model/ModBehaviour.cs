@@ -146,8 +146,6 @@ namespace WeaponModelSwap
         /// <summary> 场上克隆（掉落/展示）的补挂结果 —— 热重载一起恢复 （有借有还）</summary>
         readonly Dictionary<int, ModelKit.ItemModel.Result> _appliedClone = new Dictionary<int, ModelKit.ItemModel.Result>();
         float _nextCloneSweep;
-        /// <summary>钩子说「刚有新图形」时为真。下一次扫描就用短间隔。</summary>
-        bool _sweepDue;
         string _lastHeld;
 
         // 新增武器（action = "new_weapon"）造出来的东西：typeID → 结果
@@ -169,7 +167,7 @@ namespace WeaponModelSwap
             // 挂钩点的反编译依据见 libs/mod-kit/ItemHooks.cs。
             try
             {
-                ItemHooks.OnGraphicReady = (item, _graphic) => { if (FirstMatch(item) >= 0) _sweepDue = true; };
+                ItemHooks.OnGraphicReady = (item, _graphic) => { if (FirstMatch(item) >= 0) { _nextCloneSweep = 0f; } };
                 var ok = ItemHooks.Install();
                 Debug.Log($"[WeaponModel] hooks: {(ok ? "on (event-driven; periodic sweep 5s)" : "off (periodic sweep only)")} | {ItemHooks.Report}");
             }
@@ -259,9 +257,8 @@ namespace WeaponModelSwap
         void SweepGraphicClones()
         {
             if (_entries.Count == 0) return;
-            if (Time.unscaledTime < _nextCloneSweep) return;      // 有事件时 0.5 秒一次；否则 5 秒
-            _nextCloneSweep = Time.unscaledTime + (_sweepDue ? 0.5f : 5f);
-            _sweepDue = false;
+            if (Time.unscaledTime < _nextCloneSweep) return;      // 钩子来时会在下一帧扫一次（回调把 _next* 归零）；没钩子时每 5 秒兜底一次
+            _nextCloneSweep = Time.unscaledTime + 5f;
 
             List<ItemGraphicInfo> all;
             try { all = UnityEngine.Resources.FindObjectsOfTypeAll<ItemGraphicInfo>().ToList(); }

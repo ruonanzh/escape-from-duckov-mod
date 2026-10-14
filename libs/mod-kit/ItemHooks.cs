@@ -61,9 +61,17 @@ namespace ModelKit
                     h.Patch(init, postfix: new HarmonyMethod(AccessTools.Method(typeof(ItemHooks), nameof(PostInitialize))));
                 }
 
-                _installed = setup != null && init != null;
-                _report = $"setup patched={setup != null}, initialize patched={init != null}";
-                if (!_installed) Debug.LogWarning("[ModelKit] hooks: " + _report + " (falling back to the low-frequency sweep)");
+                // 至少一个挂上就算装上。**不得**要求两个都成功才报「on」：
+                // 只挂上 Setup 时，世界图形那条已经在跑了，报「off」会让人以为什么都没装。
+                bool setupOk = setup != null;
+                bool initOk = init != null;
+                _installed = setupOk || initOk;
+                _report = $"setup patched={setupOk}, initialize patched={initOk}";
+                if (!_installed)
+                    Debug.LogWarning("[ModelKit] hooks: none installed - " + _report + " (falling back to the periodic sweep)");
+                else if (!(setupOk && initOk))
+                    Debug.LogWarning("[ModelKit] hooks: partial - " + _report
+                        + " (world graphics need Setup; the held item path needs Initialize)");
                 return _installed;
             }
             catch (Exception e)

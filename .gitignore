@@ -22,5 +22,8 @@ __pycache__/
 # 本仓不装 npm 依赖；node_modules 只可能是临时产物（别提交 ✗）
 node_modules/
 
-# 构建时从 libs/ 复制到 mod 根（install_mod 只拷 mod 根）
-**/0Harmony.dll
+# 构建时从 libs/ 复制到 mod 根（install_mod 只拷 mod 根）。
+# 收窄到这两个位置：写成 **/0Harmony.dll 会连已跟踪的 libs/0Harmony.dll 一起匹配，
+# 那会让「删掉再 git add」被挡住。
+reference/**/0Harmony.dll
+your_mods/**/0Harmony.dll

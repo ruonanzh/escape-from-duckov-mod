@@ -88,6 +88,14 @@ check("拿不到游戏数据时仍然报结构错", 1, errs(withEntry({ displayN
 console.log("别的写法：");
 check("扁平旧写法不查（由别的检查管）", [], errs({ typeIDs: [655], model: "mp5.glb" }));
 check("没有 entries 也不查", [], errs({}));
+// H6：扁平写法也要拦「没有目标」的死规则
+check("扁平写法有 model 但没有 typeIDs 与 targets 必须报错", 1, errs({ model: "mp5.glb" }).length);
+check("扁平写法有 targets 就有效", [], errs({ targets: ["Item_SMG_MP5_Normal"], model: "mp5.glb" }));
+check(
+  "扁平写法的报错要说清永远不会命中",
+  true,
+  errs({ model: "mp5.glb" }).some((e) => e.includes("can never match")),
+);
 
 // ↓ 这几条是回归守卫：把 NEW_ACTIONS 收窄成只含 new_weapon 时，
 //   replace_* 的 entries 曾经被误报成「未实现」。所以每条 replace 写法都得有断言。

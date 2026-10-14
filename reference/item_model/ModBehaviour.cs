@@ -101,8 +101,6 @@ namespace ItemModelSwap
         /// <summary> 场上克隆的补挂结果 （热重载一起恢复 有借有还）</summary>
         readonly Dictionary<int, ItemModel.Result> _appliedClone = new Dictionary<int, ItemModel.Result>();
         float _nextCloneSweep;
-        /// <summary>钩子说「刚有新图形或新手持实体」时为真。下一次扫描就用短间隔。</summary>
-        bool _sweepDue;
 
         void Start()
         {
@@ -118,8 +116,8 @@ namespace ItemModelSwap
             // 过滤一下：只有命中规则的物品才触发扫描，无关的图形不动。
             try
             {
-                ItemHooks.OnGraphicReady = (item, _graphic) => { if (MatchesAny(item)) _sweepDue = true; };
-                ItemHooks.OnAgentReady = (item, _agent) => { if (MatchesAny(item)) _sweepDue = true; };
+                ItemHooks.OnGraphicReady = (item, _graphic) => { if (MatchesAny(item)) { _nextApply = 0f; _nextCloneSweep = 0f; } };
+                ItemHooks.OnAgentReady = (item, _agent) => { if (MatchesAny(item)) { _nextApply = 0f; _nextCloneSweep = 0f; } };
                 var ok = ItemHooks.Install();
                 Debug.Log($"[ItemModel] hooks: {(ok ? "on (event-driven; periodic sweep 5s)" : "off (periodic sweep only)")} | {ItemHooks.Report}");
             }
@@ -209,8 +207,8 @@ namespace ItemModelSwap
         void SweepGraphicClones()
         {
             if (_entries.Count == 0) return;
-            if (Time.unscaledTime < _nextCloneSweep) return;      // 有事件时 0.5 秒一次；否则 5 秒
-            _nextCloneSweep = Time.unscaledTime + (_sweepDue ? 0.5f : 5f);
+            if (Time.unscaledTime < _nextCloneSweep) return;      // 钩子来时会在下一帧扫一次（回调把 _next* 归零）；没钩子时每 5 秒兜底一次
+            _nextCloneSweep = Time.unscaledTime + 5f;
 
             List<ItemGraphicInfo> all;
             try { all = UnityEngine.Resources.FindObjectsOfTypeAll<ItemGraphicInfo>().ToList(); }
@@ -260,12 +258,11 @@ namespace ItemModelSwap
         void ApplyAll()
         {
             if (_entries.Count == 0) return;
-            // 有事件时 0.5 秒内扫一次；没事件时 5 秒兜底一次。
+            // 钩子来时下一帧就扫（回调把 _nextApply 归零）；没钩子时每 5 秒兜底一次。
             // 5 秒这条必要：`useSpriteForPickup` 为真的路径、以及已经造好的图形，都不会触发钩子。
             // （旧写法：固定 0.5 秒。`AllItems()` 内部是整场景对象扫描，于是 3 个这类 mod 就是每秒 6 次。）
             if (Time.unscaledTime < _nextApply) return;
-            _nextApply = Time.unscaledTime + (_sweepDue ? 0.5f : 5f);
-            _sweepDue = false;
+            _nextApply = Time.unscaledTime + 5f;
 
             List<ItemStatsSystem.Item> all;
             try { all = GameApi.AllItems().ToList(); }

@@ -57,7 +57,21 @@ export function validateDataLayer(cfg: unknown, gameIds: Set<number> | null): { 
   const warnings: string[] = [];
   const root = (cfg ?? {}) as Record<string, unknown>;
   const entries = root.entries;
-  if (!Array.isArray(entries) || entries.length === 0) return { errors, warnings };
+  if (!Array.isArray(entries) || entries.length === 0) {
+    // 扁平写法：模板只在 targets / typeIDs / model 三者之一存在时才用它。
+    // 既没有 targets 也没有 typeIDs 的扁平规则永远匹配不到，于是静默无效果。
+    const flatUsed = "targets" in root || "typeIDs" in root || "model" in root;
+    const hasTargets =
+      (Array.isArray(root.targets) && root.targets.length > 0) ||
+      (Array.isArray(root.typeIDs) && root.typeIDs.length > 0);
+    if (flatUsed && !hasTargets) {
+      errors.push(
+        "config.json: the flat rule has neither targets nor typeIDs, so it can never match and nothing would happen." +
+          " Add typeIDs (or targets), or write the entries form.",
+      );
+    }
+    return { errors, warnings };
+  }
 
   const flat = ["typeIDs", "targets", "model"].filter((k) => k in root);
   if (flat.length) {
