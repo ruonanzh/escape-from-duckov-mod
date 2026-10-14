@@ -1,5 +1,11 @@
 # Cookbook（做法速查）
 
+> 每条都注明依据：**反编译**（`tools/api-probe`）、**数据 dump**（`tools/data-probe`）
+> 或**运行时实测**。改结论前先复看依据。依据没了（代码改了、也测不了），就把那条删掉，
+> 不要留没人验过的说法。
+>
+> 写到游戏行为时，先问一句「这条有依据吗」。没有就先查，再写。
+
 ## 1. 克隆游戏里的 prefab，当「新物体自己的 prefab」
 
 （出处：物品没有 `itemGraphic` 时，我们克隆它自己的物品 prefab 来当新的 prefab。）
@@ -25,6 +31,14 @@
 - 第 ③ 层那张图是游戏自带的（`Duckov.UI.UsageUtilitiesDisplay`）。我们**不删**。
 - 物品**自己没有 3D 图形**时（糖果那类），我们**给它造一份图形**，也就是换掉第 ③ 层显示的东西。
 
+**上表的 `world` 与 `handheld` 只有物品那条路读**（`reference/item_model/ModBehaviour.cs`，
+源码里就是 `GetBool("world", true)` 与 `GetBool("handheld", false)`）。
+**武器那条路不读它们**：武器替换走 `WeaponModel`，它只改手里那把活枪与场上的实例。
+枪的**掉落与展示**图形保持游戏原样，这是**已知限制**（实测两次都会弄坏配件，
+记录在 `reference/weapon_model/ModBehaviour.cs` 里）。
+
+新建一把枪的手持实体另有一条规矩，见第 10 节。
+
 ## 3. 怎么找到「该换的那个 mesh」
 
 1. **游戏自己声明的集合**：图形根上的 `CharacterSubVisuals.renderers`，也就是「这套外观用哪些渲染器」。
@@ -48,7 +62,7 @@
 | **Default** | 0 | 游戏**世界里**的掉落与展示物品（实测：掉落物 prefab 就是 0 层，而且看得见）。**我们也保持 0** |
 | **Character** | 9 | 游戏给「**穿在身上或拿在手里**」的视觉（`CharacterSubVisuals.showLayer`）|
 | **SpecialCamera** | 31 | 游戏用来「**隐藏**」的层（`hiddenLayer`。只有特写相机看得见，常规视角下等于隐身）|
-| **SodaLight** | — | 游戏自定义：**灯效** |
+| **SodaLight** | 15 | 游戏自定义：**灯效** |
 | **UI** | 5（Unity 内置）| 界面用（背包格子、弹窗）。它**不是**给世界模型用的（物品的 GameObject 实测就在 `0` 层）|
 
 - 游戏用**层**来开关视觉（不是 `SetActive`）：显示用 `Character`，隐藏用 `SpecialCamera`。
@@ -74,6 +88,8 @@
 运行时的玩家模型是 `0_CharacterModel_Custom_Template(Clone)`。它的挂点偏移与鸭子 prefab 不同，因此 3D editor 的挂点标记必须按运行时数值校准。
 
 ## 6. 上架到商人（往货架加一件东西）
+
+> 本章与第 7、9、10 节都属于「新增一件东西」。只换外观的活看第 1 到第 5 节。
 
 **商品清单在 `StockShopDatabase` 里**，一个商人档案对应一个条目列表。
 商人的 `Awake` 跑到 `InitializeEntries()` 时会把条目**抄**进商店自己的列表。于是：
