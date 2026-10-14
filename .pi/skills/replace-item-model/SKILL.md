@@ -157,7 +157,7 @@ var res = ModelKit.ItemModel.Apply(item, loaded.Mesh, loaded.MainTexture, handhe
 | 症状 | 原因 | 修 |
 |---|---|---|
 | **什么都没变化** | 三个名字**不一致**（`info.ini` 的 name、csproj 的 `AssemblyName`、`ModBehaviour.cs` 的 namespace），或类名不是 `ModBehaviour` | 改成同一个名字。`validate_mod` 会拦。namespace 是合法 C# 标识符，通常 PascalCase。照 `reference/item_model/` 抄最省事 |
-| 物品**原样没变** | 匹配条件写错，或规则里 `world=关` | 确认 `typeIDs` 抄对了（抄错一位就「什么都没命中」），并确认 `world` 没关 |
+| 物品**原样没变** | 命中条件写错，或规则里 `world=关` | 确认 `typeIDs` 抄对了（抄错一位就「什么都没命中」），并确认 `world` 没关 |
 | **地上变了、手里没变** | 这条物品的 `handheld` 没开（默认关）| 加上 `"handheld": true`。会改行为，先问玩家。|
 | **手里还是那张 2D 图** | 这件物品本来没有「拿着」的模型，而 `handheld` **默认是关的** | 加 `"handheld": true`。会改行为，先问玩家。|
 | 模型**巨大或极小** | Tripo 会把**最长边归一到 ≈1 m**，不等于游戏内尺寸 | 先用 config 的 **`size`**（米。武器不写就自动按游戏内尺寸，物品不写则不缩放）；不够再重生成 |

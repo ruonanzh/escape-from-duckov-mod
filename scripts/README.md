@@ -4,12 +4,13 @@
 
 ## 自检脚本（判据的机器检查）
 
-这三个跑起来不花积分，也不装任何东西。改判据前后各跑一次。
+这四个跑起来不花积分，也不装任何东西。改判据前后各跑一次。
 
 ```bash
 node --experimental-strip-types scripts/check-mod-install-staleness.mjs   # 产物过期判据
 node --experimental-strip-types scripts/check-mod-config-data.mjs         # config 数据层判据
 node scripts/check-probe-tool-parity.mjs                                  # 工具面一致性
+node scripts/check-prompt-standard-zh.mjs                                 # 中文提示词规范（情态词、箭头、术语）
 ```
 
 它们都导入 `.pi/lib/` 里的**同一份**函数，扩展也导入那份。于是判据只有一份，不会漂。
@@ -56,6 +57,25 @@ managedDir 由 `mod-repo.json` 的 `compile.managedDir` 按平台推导（mac `D
 4. **跨平台路径**：managedDir/dataDir 按 `mod-repo.json` + 平台推导，不得在脚本里写死路径。
 5. **编译/字节码产物不进 git**：`.gitignore` 已排 `**/bin/`、`**/obj/`、`__pycache__/`、`*.pyc`——`dotnet run` 和 python 脚本都会生成这些，不得提交。
 6. **Windows 终端编码**：脚本输出含中文 + emoji（✅/❌），Windows 必须用 UTF-8 终端（Windows Terminal / Git Bash / VSCode 集成终端），GBK 下会乱码。
+
+## `check-prompt-standard-zh.mjs` —— 中文提示词规范的检查
+
+写文档的规则在**设计仓**的 `docs/duckov-harness/prompt-standard.md`。这份脚本把其中**能机器判**的三条查一遍：
+
+1. **情态词**：全文只用 必须 / 不得 / 可以（「需要」表示缺少某物时可以用）。`不要`、`别X`、`请X` 都拦下。
+2. **箭头与符号**：正文里不得用 `→` `←` `⇒` `⇐` `⇔`，也不得用 `✓` `✗` `⚠️` `⭐`。命令输出可以留。
+3. **一词一义**：术语表里能机械判的那些（`用户`、`游戏安装目录`、`本仓(库)`、`卡片图`、`原图`、`素材`、
+   `游戏档位`、`内容数据`、`脚手架`、`名称/身份`、`选中`、`匹配`）。
+
+```bash
+node scripts/check-prompt-standard-zh.mjs     # 0 = 干净；1 = 有违规（逐条打印 文件:行）
+```
+
+范围按标准的 §1：`AGENTS.md`、根 `README.md`、`.pi/skills/*/SKILL.md`、`docs/**/*.md`（`docs/api/` 除外）、
+`reference/*/README.md`。**代码块与行内代码先被剥掉**，于是命令输出里的箭头与符号不会误报。
+
+**故意不查的**（术语表按**概念**禁，grep 分不出来，留给人工 review）：`贴图`、`模板`、`数据`、
+`API`、`实现`，以及 `gameDir`、`repo`（它们在本仓是真实标识符）。
 
 ## `check-mod-install-staleness.mjs` —— 产物过期判据的检查
 

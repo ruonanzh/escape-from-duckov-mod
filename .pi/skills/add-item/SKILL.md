@@ -78,7 +78,7 @@ description: 玩家想**加一件新物品**时用（例如「给我加一件新
    `Item.Repairable` 判 `Tags.Contains("Repairable")`，`Item.Sticky` 判 `Sticky`，
    `Item.CanBeSold` 判 `NotSellable`；插槽准入是 `Slot.CheckAbleToPlug` 里的
    `item.Tags.Check(requireTags, excludeTags)`。
-   ⇒ **品类 tag 选错不是分类难看，而是功能会错**（修不了、卖不了、插不进槽、上不了展示台）。
+   所以**品类 tag 选错不是分类难看，而是功能会错**（修不了、卖不了、插不进槽、上不了展示台）。
 2. **Tag 决定掉落**。掉落不是固定物品单，而是**按 tag 池加权随机**：
    掉落箱上的 `LootBoxLoader.tags.entries[]` 就是 tag 池，抽哪件物品看**物品自己的 tag**。
 
@@ -113,7 +113,7 @@ field=["tags.entries[].value.#name","tags.entries[].weight","activeChance"]
 
 截至编写时，实到的**非空** tag 池只有两种：`Medic;Drink;Injector`（权重 `10;1;2`）与 `Computer`（权重 3）。
 
-⇒ 报三件事：**会不会掉 / 从哪种箱子掉 / 不会掉就明说「只能靠商人或制作台」**。
+报告三件事：**会不会掉、从哪种箱子掉、不会掉就明说「只能靠商人或制作台」**。
 **第②到第⑤组现在没有任何掉落池覆盖**，不得让玩家以为一定会掉。
 
 **查某个 tag 挂在多少件物品上**：

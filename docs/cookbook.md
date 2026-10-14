@@ -265,7 +265,7 @@ public static ItemGraphicInfo CreateAGraphic(Item item, Transform parent, bool s
 - **品类 tag 从原型继承**（克隆是完整拷贝）。config 里的 `tags` 是**额外标记，追加不是替换**。
 - **功能随 tag 走**：`Item.Repairable` / `Sticky` / `CanBeSold` 都是 `Tags.Contains("…")`；
   插槽准入是 `Slot.CheckAbleToPlug` 判 `item.Tags.Check(requireTags, excludeTags)`。
-  ⇒ 品类 tag 选错不是分类难看，而是**功能会错**。
+  所以品类 tag 选错不是分类难看，而是**功能会错**。
 - **掉落也随 tag 走**：掉落箱的 `LootBoxLoader.tags.entries[]` 是 tag 池，按物品自己的 tag 抽。
   想上展示台就要 `ShowCase`（展示台的 12 个槽全都要求它）。
 - `Collection` / `Luxury` / `Daily` 截至编写时**没查到任何读取点**，写它们不会改变行为。
@@ -324,7 +324,7 @@ Character_Ming,小明,#20250807035821,Characters
 
 **两条不得：**
 
-1. **不得说「某个表里没有 = 游戏里没有」。** 本仓库**不再保存**本地化快照
+1. **不得说「某个表里没有 = 游戏里没有」。** 这个仓库**不再保存**本地化快照
    （以前那份 `docs/data/*.csv` 条目少得多：Items 只有 892 条，而游戏自带的有 2944 条，
    已经害过几次「以为没有，其实有」）。要文案就读游戏自带那份，或先 `inspect_game_data` 现查。
 2. **不得把文案抄进代码**（会随版本变）。

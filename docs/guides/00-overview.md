@@ -115,7 +115,7 @@ PY
 
 - 优先：`<Data>/StreamingAssets/Localization/` 下的 CSV（**实时、多语言、是超集**。含 10 个语言：`ChineseSimplified`、`ChineseTraditional`、`English`、`French`、`German`、`Japanese`、`Korean`、`Portuguese`、`Russian`、`Spanish`。表头 `key,value,version,sheet`，sheet 就是 `Items`、`Quests`、`Buffs`）。
   - **同一个 key 可能在多个 sheet 里，且中文常常不在 `Items` 而在 `Default`**（实测：`Item_ButcherKnife` 在 `English.csv` 属 sheet=`Default`，在 `ChineseSimplified.csv` 属 sheet=`Items`）。所以**按 `key` 建索引就行**（上面的片段就是），不得「先去哪个 sheet 找」。
-  - **本仓库不再保存快照。** 以前那份 `docs/data/*.csv` **条目少得多**（Items 只有 892 条，
+  - **这个仓库不再保存快照。** 以前那份 `docs/data/*.csv` **条目少得多**（Items 只有 892 条，
     而游戏自带的有 2944 条），已经害过几次「以为没有，其实有」。要文案就读游戏自带那份。
   - 资产清单也一样：用 `classes` / `search` / `export --class X` **现查**（速查见 `cookbook.md` 第 13 节）。
 

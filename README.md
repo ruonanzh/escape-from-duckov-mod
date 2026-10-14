@@ -5,4 +5,4 @@ Escape From Duckov 的 modding 环境。玩家（和 AI agent）在这个环境�
 结构说明见 `AGENTS.md`；做 mod 的详细操作手册见 `.pi/skills/`（六份：`setup-workspace` / `mod-creator` / `mod-installer` / `replace-gun-model` / `replace-item-model` / `add-weapon` / `add-item`）。
 
 **维护者**：游戏 patch 后，`python3 scripts/refresh.py` 刷新 `docs/api`，见 `scripts/README.md`。
-游戏数据与文案**一律现查**（`inspect_game_data`），本仓库不保存快照。
+游戏数据与文案**一律现查**（`inspect_game_data`），这个仓库不保存快照。
