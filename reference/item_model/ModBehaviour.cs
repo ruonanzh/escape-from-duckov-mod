@@ -61,6 +61,12 @@ namespace ItemModelSwap
         /// <summary>模型缓存：路径，于是 （指纹, Mesh, 贴图）。指纹 = 路径 + 朝向 + 文件 mtime+size </summary>
         readonly Dictionary<string, CachedModel> _modelCache = new Dictionary<string, CachedModel>();
 
+        /// <summary>action = "new_item" 造出来的东西：typeID → 结果。
+        /// 记住它的用处：热重载时不要重复造同一个号（`IsTypeIDTaken` 会命中我们自己的注册）。</summary>
+        readonly Dictionary<int, ItemFactory.Result> _created = new Dictionary<int, ItemFactory.Result>();
+        /// <summary>给新物品挂上的模型结果 —— 热重载一起还原（有借有还）。</summary>
+        readonly List<ItemModel.Result> _newAttached = new List<ItemModel.Result>();
+
         /// <summary>已经处理过的物品（实例 ID，于是 我们的结果） 用来避免每帧重复挂 + 还原 </summary>
         readonly Dictionary<int, ItemModel.Result> _applied = new Dictionary<int, ItemModel.Result>();
         /// <summary> 场上克隆的补挂结果 （热重载一起恢复 有借有还）</summary>
@@ -76,6 +82,9 @@ namespace ItemModelSwap
             Debug.Log($"[ItemModel] rules ({_entries.Count}): " + string.Join(" / ",
                 _entries.Select(e => $"targets=[{string.Join(",", e.Targets)}] typeIDs=[{string.Join(",", e.TypeIds)}]"
                     + $" world={(e.World ? "on" : "off")} handheld={(e.Handheld ? "on" : "off")} model='{e.ModelFile}'")));
+
+            // 新增物品那条（必须在进关卡之前，见方法注释）
+            ApplyNewEntries();
 
             // 事件驱动。两个挂钩点的反编译依据见 libs/mod-kit/ItemHooks.cs。
             // 过滤一下：只有命中规则的物品才触发扫描，无关的图形不动。
@@ -122,6 +131,113 @@ namespace ItemModelSwap
         }
 
         /// <summary>config.json 存盘即生效（热重载 不用重启）</summary>
+        // ───────────────── 新增物品（action = "new_item"）─────────────────
+
+        /// <summary>`action = "new_item"` 的规则：造一件游戏里本来没有的物品。
+        ///
+        /// **数据层不分武器与物品**（`ItemFactory` 的文件头就这么写）。所以顺序与武器模板的
+        /// `ApplyNewEntries` 一样，只是最后多了物品专有的三样：Tag、物品数字、图标。
+        ///
+        /// 顺序：分配 typeID → 克隆 → 挂模型 → 数值 → 品质 → **Tag** → **堆叠/价值/重量** →
+        /// **图标** → 上架 → 配方。
+        ///
+        /// **时机在 `Start()`**，也就是进关卡之前。两个原因（都是反编译实证）：
+        ///   · 商人的 `Awake` → `InitializeEntries()` 会把商品条目抄进商店自己的列表；要抢在它前面。
+        ///   · 掉落池在箱子 `Setup()`（进关卡之后）才现算候选，插槽在插入时才判 `requireTags`
+        ///     —— 两处都晚于这里，所以在这里写下的 tag 会生效。
+        ///
+        /// 已造过的 typeID 不重复造（热重载会再跑一遍这个方法）：只把上架与配方重提一次。
+        /// 上架与配方自己也是幂等的（同一条目/同一个 id 不重复加）。</summary>
+        void ApplyNewEntries()
+        {
+            foreach (var e in _entries)
+            {
+                if (!e.IsNew) continue;
+                if (e.CloneFromItemId <= 0)
+                { Debug.LogError($"[NewItem] '{e.DisplayName}' has no cloneFromItemId; skipped"); continue; }
+
+                int typeId = e.NewTypeId;
+                if (typeId > 0)
+                {
+                    // 显式写的号：撞号就报错停下，不静默换号（玩家写的就是他要的）
+                    if (ItemFactory.IsTypeIDTaken(typeId) && !_created.ContainsKey(typeId))
+                    { Debug.LogError($"[NewItem] typeID={typeId} is already taken by the game or another mod; nothing was created"); continue; }
+                }
+                else
+                {
+                    // 不写号：自己分一个。
+                    // **不得直接用 `NextTypeID`** —— 它在一个会话里会一直返回同一个号
+                    // （反编译实证：它是 `entries.Max(...)` 起的缓存值，而 `AddDynamicEntry`
+                    // 只写 `dynamicDic`，不碰 `entries`）。同一个 config 里两条不写号的规则
+                    // 就会拿到同一个号，第二条被当成已创建而静默跳过。
+                    int free = ItemFactory.AllocateTypeID();
+                    if (free <= 0) { Debug.LogError("[NewItem] cannot get a free typeID; skipped"); continue; }
+                    if (free != ItemFactory.NextFreeTypeID())
+                        Debug.LogWarning($"[NewItem] the game's NextTypeID ({ItemFactory.NextFreeTypeID()}) was already used by us or by the game, so this entry took {free}");
+                    typeId = free;
+                    e.NewTypeId = typeId;      // 记回条目，于是 上架与配方的 id 跟着一致
+                }
+
+                if (!_created.ContainsKey(typeId))
+                {
+                    var r = ItemFactory.CloneAsNewItem(e.CloneFromItemId, typeId, e.DisplayName, e.Description);
+                    if (!r.Created) { Debug.LogError("[NewItem] " + r.Report); continue; }
+                    _created[typeId] = r;
+
+                    // 模型（不写 model 就沿用原型外形）
+                    var cm = GetModel(e);
+                    if (cm != null && cm.Mesh != null)
+                    {
+                        if (!e.World)
+                            Debug.LogWarning("[NewItem] 'world': false has no effect on a new item"
+                                           + " (the model defines its look); attaching it anyway");
+                        // handheld 按 config（默认关）；本来没有图形的物品才需要它去预造手持实体
+                        var ra = ItemFactory.AttachModel(r.Item, cm.Mesh, cm.Texture, e.Size,
+                                                         e.Handheld, sizeTypeID: e.CloneFromItemId);
+                        if (ra != null) { _newAttached.Add(ra); Debug.Log("[NewItem] " + ra.Report); }
+                    }
+
+                    // 数值、品质、Tag、物品数字（只改 config 里写了的）
+                    var missing = new List<string>();
+                    int nStats = ItemFactory.ApplyStats(r.Item, e.Stats, missing);
+                    ItemFactory.ApplyQuality(r.Item, e.Quality, e.DisplayQuality);
+                    // Tag 是**追加**：品类从原型继承，这里加的是额外标记（ShowCase 之类）
+                    int nTags = ItemFactory.ApplyTags(r.Item, e.Tags, null, missing);
+                    int nNums = ItemFactory.ApplyItemNumbers(r.Item, e.MaxStackCount, e.Value, e.Weight);
+                    if (missing.Count > 0)
+                        Debug.LogError("[NewItem] these names do not exist in the game, so they were NOT applied: "
+                                       + string.Join(", ", missing) + " (copy the names from inspect_game_data)");
+
+                    Debug.Log($"[NewItem] created typeID={typeId} (name key '{r.NameKey}') from prototype {e.CloneFromItemId}"
+                              + $" | name='{e.DisplayName}'"
+                              + $" | model={(cm != null && cm.Mesh != null ? "ours" : "none, keeps the prototype's look")}"
+                              + $" | stats={nStats} tags={nTags} numbers={nNums}"
+                              + $" | quality={(e.Quality >= 0 || !string.IsNullOrEmpty(e.DisplayQuality) ? "overridden" : "inherited")}");
+
+                    // 图标（可选；与 useSpriteForPickup 是两件事：那是世界里的，这是背包卡片上的）
+                    if (e.IconPath != null) Debug.Log("[NewItem] " + ItemFactory.AttachIcon(r.Item, e.IconPath));
+                }
+
+                // 上架到商人（幂等：同一个 typeID 不加第二次）
+                if (e.OnSale)
+                {
+                    // requireExplicitMerchant = true：**物品这条路不得默认商店**。
+                    // 游戏里有 12 个商店档位（售货机 / 老吴 / 橘子 / 小明 / 泥巴 / 佛哥 / 神秘商人 ×3 / 岛 ×2）
+                    // 加一套独立黑市，默认上到某一个店是猜的。缺 merchantID 时这里会报错停下。
+                    var rs = ItemFactory.PutOnSale(e.MerchantID, typeId, e.MaxStock, e.PriceFactor,
+                                                   requireExplicitMerchant: true);
+                    Debug.Log((rs.Ok ? "[NewItem] " : "[NewItem] FAILED ") + rs.Report);
+                }
+
+                // 制作台配方（幂等：同一个 id 不加第二次）
+                if (e.CraftRecipe)
+                {
+                    var rr = ItemFactory.AddRecipe(e.RecipeId(), typeId, 1, e.CraftMoney, e.CraftMaterials, e.CraftTags.ToArray());
+                    Debug.Log((rr.Ok ? "[NewItem] " : "[NewItem] FAILED ") + rr.Report);
+                }
+            }
+        }
+
         void ReloadIfChanged()
         {
             if (Time.unscaledTime < _nextCfgCheck) return;
@@ -148,6 +264,14 @@ namespace ItemModelSwap
                 // 否则要等下一个 0.5 秒才挂回来，于是 视觉上会"先退回原样、等一会儿才变" （实测报过）
                 // 清零后同一帧就 `ApplyAll` + `SweepGraphicClones`，于是 空档从 ≤0.5 秒降到 ~1 帧
                 _nextApply = 0f; _nextCloneSweep = 0f; _nextHeldSweep = 0f;
+
+                // 新增物品：挂上的模型要还（有借有还），商品条目/配方/动态条目要撤
+                // （不撤的话每改一次配置，货架上就多一条、配方也多一条）
+                foreach (var r in _newAttached) if (r != null) r.Restore();
+                _newAttached.Clear();
+                ItemFactory.RemoveAdded();
+                _created.Clear();
+                ApplyNewEntries();     // 新配置里的新增物品重新造一遍（已撤掉了旧的）
 
                 Debug.Log("[ItemModel] config reloaded; re-applying " + _entries.Count + " rules");
             }

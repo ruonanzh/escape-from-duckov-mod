@@ -202,7 +202,7 @@ namespace ModelKit
             }
 
             JsonValue cfg;
-            try { cfg = Json.Parse(File.ReadAllText(configPath)); }
+            try { cfg = Json.Parse(StripJsonComments(File.ReadAllText(configPath))); }
             catch (Exception ex)
             {
                 Debug.LogError($"{o.LogTag} config.json parse failed: {ex.Message}");
@@ -255,6 +255,42 @@ namespace ModelKit
         static bool LooksLikeRule(JsonValue cfg) =>
             cfg.Has("targets") || cfg.Has("typeIDs") || cfg.Has("model")
             || cfg.Has("action") || cfg.Has("newTypeId") || cfg.Has("cloneFromItemId");
+
+        /// <summary>去掉 `//` 行注释（字符串里的不碰）—— **必须在 `Json.Parse` 之前**。
+        ///
+        /// 为什么需要：`Json.Parse` 不认注释，而
+        ///   · 两个模板的 README 示例 config 里**就带 `//` 注释**（玩家会照抄），
+        ///   · 离线校验器 `.pi/lib/mod-config-data.ts` 的 `stripJsonComments` **刻意容忍注释**。
+        /// 两者不一致的后果很重：校验报 PASS，游戏里 `Json.Parse` 抛错、**整份 config 被丢掉**、
+        /// 什么也不发生（静默无效果）。这里把两边统一。
+        /// 规则与 TS 那份一致：只处理 `//`（不处理 `/* */`），字符串内部不动。</summary>
+        public static string StripJsonComments(string text)
+        {
+            if (string.IsNullOrEmpty(text) || text.IndexOf("//", StringComparison.Ordinal) < 0) return text;
+            var sb = new System.Text.StringBuilder(text.Length);
+            bool inStr = false, esc = false;
+            for (int i = 0; i < text.Length; i++)
+            {
+                char c = text[i];
+                if (inStr)
+                {
+                    sb.Append(c);
+                    if (esc) esc = false;
+                    else if (c == '\\') esc = true;
+                    else if (c == '"') inStr = false;
+                    continue;
+                }
+                if (c == '"') { inStr = true; sb.Append(c); continue; }
+                if (c == '/' && i + 1 < text.Length && text[i + 1] == '/')
+                {
+                    while (i < text.Length && text[i] != '\n') i++;
+                    sb.Append('\n');
+                    continue;
+                }
+                sb.Append(c);
+            }
+            return sb.ToString();
+        }
 
         /// <summary>把一条 JSON 规则读成 Entry。返回 null = 这条该丢掉。</summary>
         public static Entry EntryFrom(JsonValue j, Options o)
