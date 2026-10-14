@@ -59,8 +59,8 @@
 
 **查物品名与 typeID**：
 
-- `docs/data/Items.csv`（`对象名, 英文名, 中文名`，例如 `Item_BackpackLV1`）
-- 或 `inspect_game_data`（`class=Item` 与 `name=…`）。拿 typeID 用这个。
+- `inspect_game_data`（`class=Item`，拿 typeID 与名字键；例 `Item_BackpackLV1`）。
+- 中文名读**游戏自带**的本地化（见 `docs/cookbook.md` 第 14 节）。
 
 ## 4. 运行时会做什么（按物品「有没有 3D 图形」分两条路）
 

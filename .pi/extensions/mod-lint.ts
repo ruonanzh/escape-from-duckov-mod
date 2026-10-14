@@ -116,8 +116,12 @@ async function gameNames(repoRoot: string, gameDir: string, dotnet: string): Pro
     const merchants = new Set<string>();
     for (const m of rm.stdout.matchAll(/Merchant_[A-Za-z0-9_]+/g)) merchants.add(m[0]);
 
-    if (!tags.size && !merchants.size) return { names: null, reason: "data-probe returned no tag names or merchant ids" };
-    return { names: { tags, merchants }, reason: "" };
+    // **两个集合各自可空**：只拿到一半时，只跳过那一半的检查。
+    // 不得把「空集合」当成「游戏里没有」——那是误报（与回归 R1 同一类失败）。
+    const names: GameNames = { tags: tags.size ? tags : null, merchants: merchants.size ? merchants : null };
+    if (!names.tags && !names.merchants) return { names: null, reason: "data-probe returned no tag names or merchant ids" };
+    const missing = !names.tags ? "no tag names" : !names.merchants ? "no merchant ids" : "";
+    return { names, reason: missing };
   } catch (e) {
     return { names: null, reason: `data-probe failed: ${(e as Error).message.split("\n")[0]}` };
   }
@@ -235,6 +239,7 @@ export default function (pi: ExtensionAPI) {
               const r1 = await gameNames(repoRoot, gameDir, dotnetPath);
               names = r1.names;
               if (!names) warnings.push(`${r1.reason} - the tag-name and merchantID checks were skipped`);
+              else if (r1.reason) warnings.push(`${r1.reason} - that check was skipped`);
             }
           }
           const r = validateDataLayer(cfg, ids, names);

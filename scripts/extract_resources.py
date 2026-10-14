@@ -6,10 +6,10 @@ Usage:
     python3 scripts/extract_resources.py <dataDir> <outDir>
 
     dataDir: Duckov Data dir (Duckov.app/Contents/Resources/Data)
-    outDir:  docs/data
+    outDir:  （已废弃：本脚本现在直接退出，不写任何目录）
 
 Requires: UnityPy. Maintainer-only tool — players/agents only grep the generated
-docs/data/resources.csv, never run this.
+inspect_game_data output instead, never run this.
 
 The game uses Unity's Resources system (no Addressables/AssetBundles), so assets
 are referenced by m_Name. We list type + m_Name for asset kinds a mod might
@@ -35,6 +35,16 @@ ASSET_TYPES = {
 
 
 def main():
+    # 2026-10-14：**直接退出**。这个脚本会写出 docs/data 快照，而快照已废弃、不再入库。
+    # 留着它只为考古（`git show <旧提交>:scripts/extract_resources.py`）。要数据请现查：
+    #   inspect_game_data（速查见 docs/cookbook.md 第 13 节）；文案读游戏自带的本地化（第 14 节）。
+    print(
+        "This script is retired: it used to write the docs/data snapshot, which is no longer kept.\n"
+        "Query the game live instead (inspect_game_data; see docs/cookbook.md sections 13 and 14).",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
     if len(sys.argv) != 3:
         print("Usage: python3 scripts/extract_resources.py <dataDir> <outDir>")
         sys.exit(2)

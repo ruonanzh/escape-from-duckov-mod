@@ -249,6 +249,6 @@ action=refs, class=Tag, name=<Tag 名>, by=Item
 | `ItemFactory.ApplyItemNumbers(item, maxStackCount, value, weight)` | 堆叠上限、价值、重量 |
 | `ItemFactory.AttachIcon(item, pngPath)` | 把 png 设成卡片图标 |
 | `ItemFactory.PutOnSale(merchantID, typeId, maxStock, priceFactor)` | 上架到商店（物品这条路必须给 `merchantID`）|
-| `ItemFactory.AddRecipe(id, typeId, count, money, materials, tags)` | 加一条制作台配方 |
+| `ItemFactory.AddRecipe(id, typeId, amount, money, materials, tags)` | 加一条制作台配方 |
 | `ItemFactory.RemoveAdded()` | 撤销上面加过的东西（热重载与卸载用）|
 | `GameApi.GiveItemToPlayer(item)` | 直接发给玩家（自测用，必须在进关卡之后） |

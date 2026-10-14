@@ -34,8 +34,10 @@ namespace ModelKit
         public sealed class Entry
         {
             // ── 动作 ──
-            /// <summary>缺省值由 `Options.DefaultAction` 决定（武器模板 = replace_weapon；物品模板 = replace_item）。</summary>
-            public string Action = ReplaceWeapon;
+            /// <summary>由 `EntryFrom` 填，取值 `Options.DefaultAction` 或 JSON 里的 `action`
+            /// （武器模板缺省 `replace_weapon`；物品模板缺省 `replace_item`）。
+            /// 这里的初始值只是个占位：**每次解析都会被覆盖**，不要读它当默认值。</summary>
+            public string Action = ReplaceItem;
 
             public bool IsNew => Is(NewWeapon) || Is(NewItem);
             public bool IsNewWeapon => Is(NewWeapon);

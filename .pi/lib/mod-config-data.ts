@@ -29,7 +29,12 @@ export const DISPLAY_QUALITIES = new Set(["None", "White", "Green", "Blue", "Pur
  *
  * **不得写死在代码里**（旧的 `KNOWN_MERCHANTS` 只有 3 个，而实际有 12 个商店档位加一套黑市，
  * 而且改一次版本就可能多一个）。与 `gameIds` 一样从游戏数据传入；为 null 时跳过那两项。 */
-export type GameNames = { tags: Set<string>; merchants: Set<string> };
+export type GameNames = {
+  /** 游戏里现有的 tag 名。**null = 没拿到**，那几项检查就跳过（不要拿空集合当「游戏里没有」）。 */
+  tags: Set<string> | null;
+  /** 游戏里现有的商店档位。**null = 没拿到**，同理。 */
+  merchants: Set<string> | null;
+};
 
 /** 去掉 `//` 行注释（字符串内的不碰）—— config 允许写注释，校验不得因此报错 */
 export function stripJsonComments(text: string): string {
@@ -155,7 +160,7 @@ export function validateDataLayer(
         `${zh}: merchantID is required when the item is on sale - there are 12 shop profiles plus a black market,` +
           ` so do not default to one; ask the player which shop (or write "onSale": false)`,
       );
-    if (merchant && gameNames && !gameNames.merchants.has(merchant))
+    if (merchant && gameNames && gameNames.merchants && !gameNames.merchants.has(merchant))
       errors.push(
         `${zh}: merchantID "${merchant}" is not a shop profile in the game - list them with` +
           ` inspect_game_data (class=StockShop, field=merchantID)`,
@@ -171,7 +176,7 @@ export function validateDataLayer(
       else
         for (const t of e.tags as unknown[]) {
           if (typeof t !== "string" || !t.trim()) errors.push(`${zh}: every tags entry must be a non-empty tag name`);
-          else if (gameNames && !gameNames.tags.has(t.trim()))
+          else if (gameNames && gameNames.tags && !gameNames.tags.has(t.trim()))
             errors.push(
               `${zh}: tag "${t}" does not exist in the game - list them with inspect_game_data (class=Tag, field=m_Name).` +
                 ` Note that tags are ADDED on top of the prototype's own tags`,

@@ -127,8 +127,11 @@ namespace ModelKit
                 if (item == null) { res.Report = "Instantiate returned null"; return res; }
                 // 官方做法是 `Item.CreateInstance()`，它就是 `Instantiate` + `Initialize()`。
                 // Unity 的 Instantiate 会让 Awake 跑，而 `Item.Awake` 里就会调 Initialize（反编译实证），
-                // 所以本来也已经初始化。这里显式再调一次是**不依赖 Awake 的时机**（Initialize 幂等），
-                // 保护「使用组件 / Effects / UsageUtilities 已就绪」这条。
+                // 所以本来也已经初始化。这里显式再调一次是**不依赖 Awake 的时机**。
+                //
+                // **幂等有代码级证据**（反编译 `Item.Initialize`）：整段都在一个守卫里 ——
+                //     if (!initialized) { initialized = true; … }
+                // 第二次调用直接返回，不会重复注册。
                 item.Initialize();
                 item.gameObject.name = "ModelKit_new_" + src.name;
                 // 运行时造出来的东西必须活过换场景（图形、物品模板、手持实体都是）

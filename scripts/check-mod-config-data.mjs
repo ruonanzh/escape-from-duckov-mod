@@ -224,6 +224,23 @@ check("maxStackCount 是 0", 1, errs(item({ maxStackCount: 0 })).length);
 check("value 是负数", 1, errs(item({ value: -1 })).length);
 check("weight 是负数", 1, errs(item({ weight: -0.5 })).length);
 check("不带模型、不带 tags 也能过（全部沿用原型）", [], errs(item({})));
+// C1 回归守卫：只拿到一半的游戏名字时，**只跳过那一半**，不得把空集合当成「游戏里没有」。
+// （把 GameNames 的字段收回成 Set<string>（非空）时，这两条会红。）
+check(
+  "只拿到 tags 时，不判 merchantID（不得误报）",
+  [],
+  errs(item({ merchantID: "Merchant_Nope" }), null, { tags: new Set(["ShowCase"]), merchants: null }),
+);
+check(
+  "只拿到 merchants 时，不判 tag 名（不得误报）",
+  [],
+  errs(item({ tags: ["NotATag"] }), null, { tags: null, merchants: NAMES.merchants }),
+);
+check(
+  "两样都拿到时照常判（对照）",
+  2,
+  errs(item({ merchantID: "Merchant_Nope", tags: ["NotATag"] }), null, NAMES).length,
+);
 // 武器那条「不写 merchantID 也不报错」是**老约定**，不得被物品这条带偏
 check(
   "回归守卫：new_weapon 不写 merchantID 仍不得报错（老约定）",
