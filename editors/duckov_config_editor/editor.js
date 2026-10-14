@@ -21,9 +21,7 @@ const ACTION_LABEL = {
   replace_weapon: "换武器外观（replace_weapon）",
   replace_item: "换物品外观（replace_item）",
   new_weapon: "新增武器（new_weapon）",
-  // new_item（新增物品）是**下一步**：物品模板还没接 action，
-  // 写进 config 会被当成「没有 targets 的替换规则」，静默无效果。
-  // validate_mod 会直接报错拦下。于是编辑器也不列它。
+  new_item: "新增物品（new_item）",
 };
 const ACTION_FIELDS = {
   replace_weapon: ["typeIDs", "targets", "model", "front", "size", "icon", "world", "handheld", "debug"],
@@ -32,11 +30,19 @@ const ACTION_FIELDS = {
     "newTypeId", "cloneFromItemId", "displayName", "description", "model", "icon", "size",
     "merchantID", "maxStock", "priceFactor", "onSale", "quality", "displayQuality", "stats", "crafting",
   ],
+  // 物品比武器多四样：tags（额外标记）、maxStackCount、value、weight。
+  // 不列 slots：`slots` 是**武器模型挂点**用的，物品那条路不读它（列出来会让人以为有效）。
+  new_item: [
+    "newTypeId", "cloneFromItemId", "displayName", "description", "model", "icon", "size",
+    "merchantID", "maxStock", "priceFactor", "onSale",
+    "tags", "maxStackCount", "value", "weight",
+    "quality", "displayQuality", "stats", "crafting",
+  ],
 };
 const FIELD = {
   typeIDs: { kind: "nums", hint: "按 typeID（推荐）。逗号分隔。用 inspect_game_data 查。" },
   targets: { kind: "list", hint: "或按对象名**全等**（不区分大小写）。逗号分隔。" },
-  model: { kind: "text", hint: "本 mod 目录下的 glb（相对名或绝对路径）。新增武器可以留空：沿用原型外形。" },
+  model: { kind: "text", hint: "本 mod 目录下的 glb（相对名或绝对路径）。新增那条可以留空：沿用原型外形。" },
   front: { kind: "select", options: ["auto", "+z", "-z", "+x", "-x", "up"], def: "auto" },
   size: { kind: "number", hint: "目标**最长边**（米）。不填 = 不缩放 / 按枪种档位。" },
   icon: { kind: "text", def: "icon.png" },
@@ -44,10 +50,22 @@ const FIELD = {
   handheld: { kind: "bool", def: false },
   debug: { kind: "bool", def: false },
   newTypeId: { kind: "number", hint: "不填 = 游戏自己的下一个空闲号（ItemAssetsCollection.NextTypeID）。" },
-  cloneFromItemId: { kind: "number", hint: "拿哪把现有枪当**原型**（数值、插槽、品质全继承它）。" },
+  cloneFromItemId: { kind: "number", hint: "拿哪件现有物品/枪当**原型**（数值、插槽、品质、分类 Tag 全继承它）。" },
   displayName: { kind: "text" },
   description: { kind: "text" },
-  merchantID: { kind: "text", def: "Merchant_Weapon", hint: "上架到哪个商人。默认 Merchant_Weapon（卖枪那个）。" },
+  merchantID: {
+    kind: "text", def: "Merchant_Weapon",
+    hint: "上架到哪个商店。**武器**不写 = Merchant_Weapon（老约定）；**物品必填**（游戏有 12 个商店档位："
+      + "售货机 Merchant_Normal / 老吴 Merchant_Weapon / 橘子 Merchant_Equipment / 小明 Merchant_Ming …）。",
+  },
+  tags: {
+    kind: "strings",
+    hint: "**额外标记**，逗号分隔。追在原型分类之上，不是替换。"
+      + "ShowCase = 可摆上展示台（展示台的 12 个槽都要它）；Collection / Luxury / Daily 只是归类标记。",
+  },
+  maxStackCount: { kind: "number", hint: "堆叠上限。不填 = 沿用原型。" },
+  value: { kind: "number", hint: "价值（商人的价格基础）。不填 = 沿用原型。" },
+  weight: { kind: "number", hint: "重量（千克）。不填 = 沿用原型；背包上限看它。" },
   maxStock: { kind: "number", def: "1" },
   priceFactor: { kind: "number", def: "1" },
   onSale: { kind: "bool", def: true },
@@ -371,11 +389,11 @@ function fieldRow(key, spec, value) {
     el.rows = 4;
     el.dataset.role = "materials";
     el.value = linesToText((value && value.materials) || {});
-  } else if (spec.kind === "nums" || spec.kind === "number") {
+  } else if (spec.kind === "nums" || spec.kind === "strings" || spec.kind === "number") {
     el = document.createElement("input");
-    el.type = spec.kind === "nums" ? "text" : "number";
+    el.type = spec.kind === "number" ? "number" : "text";
     el.step = "any";
-    el.value = spec.kind === "nums" ? listToText(value) : numOrText(value);
+    el.value = spec.kind === "number" ? numOrText(value) : listToText(value);
   } else {
     el = document.createElement("input");
     el.type = "text";
@@ -574,8 +592,8 @@ function readEntryCard(card) {
       }
     } else if (spec.kind === "select") {
       if (el.value !== "" && el.value !== (spec.def ?? "")) out[key] = el.value;
-    } else if (spec.kind === "nums") {
-      const list = textToList(el.value, true);
+    } else if (spec.kind === "nums" || spec.kind === "strings") {
+      const list = textToList(el.value, spec.kind === "nums");
       if (list && list.length) out[key] = list;
     } else if (spec.kind === "number") {
       const raw = el.value.trim();
