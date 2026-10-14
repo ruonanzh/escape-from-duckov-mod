@@ -12,6 +12,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
+import { MANIFEST_FILE } from "../lib/asset-manifest";
 import { checkModInstallDir, platformKey, readModRepoConfig } from "../lib/game-paths";
 import { isCodeIdentifier, readModIdentity } from "../lib/mod-identity";
 import { sourcesNewerThan } from "../lib/mod-products";
@@ -184,7 +185,10 @@ export function copyModProducts(from: string, to: string): number {
       if (
         entry.name === ".gitignore" ||
         entry.name === ".DS_Store" ||
-        entry.name === ".pi-mod.json"
+        entry.name === ".pi-mod.json" ||
+        // 素材清单只是生成记录，不进游戏（设计 §3.6）。
+        // 按**精确文件名**排除 ✓ 不按 .jsonl 扩展名 ✗（将来可能有 mod 把 .jsonl 当数据装载）
+        entry.name === MANIFEST_FILE
       )
         continue;
       const dot = entry.name.lastIndexOf(".");

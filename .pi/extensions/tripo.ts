@@ -3,6 +3,8 @@ import { Type } from "typebox";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path";
+import type { ManifestRec } from "../lib/asset-manifest";
+import { appendManifest, manifestRec, modRootOf, pickSeed, relToModRoot } from "../lib/asset-manifest";
 
 /**
  * generate_model —— 用 Tripo 从「一句话」或「一张图」生成 3D 模型（GLB），存到你正在做的 mod 目录里。
@@ -178,6 +180,49 @@ async function tripoInputRef(key: string, value: string): Promise<string> {
   return String(ref.file_token ?? ref.url);
 }
 
+/**
+ * 一个「待写清单的步骤」。
+ *
+ * 任务的 id 要等接口返回才知道，落盘要等下载完 —— 所以先攒起来，落盘之后统一写。
+ * （设计 §5.1 时机：文件落盘之后）
+ */
+type PendingStep = {
+  endpoint: string;
+  requestId: string | null;
+  parent: string | null;
+  seed: number | null;
+  /** 绝对路径 ✓ 写清单时再换成相对 mod 根的写法 */
+  filesAbs: string[];
+  /** `input` 里可能含本地路径 —— 所以延迟到写清单时再拼 */
+  buildInput: (rel: (p: string) => string) => Record<string, unknown>;
+};
+
+/** 把一个待写步骤落成清单行。`error` 有值时 `files` 是空数组（设计 §5.2）。返回 null = 成功。 */
+function flushStep(modRoot: string, name: string, step: PendingStep, error?: string): string | null {
+  const rel = (p: string) => relToModRoot(modRoot, p);
+  const rec: Omit<ManifestRec, "t" | "provider"> = {
+    endpoint: step.endpoint,
+    name,
+    request_id: step.requestId,
+    parent_request_id: step.parent,
+    seed: step.seed,
+    files: error ? [] : step.filesAbs.map(rel),
+    input: step.buildInput(rel),
+  };
+  if (error) rec.error = error;
+  return appendManifest(modRoot, manifestRec(rec));
+}
+
+/** 产物名 = 输出文件名去扩展名（设计 §5.2）*/
+function outName(outPath: string): string {
+  return basename(outPath).replace(/\.[^.]+$/, "");
+}
+
+/** 写清单失败只在返回文本里加一句 WARN，不影响主流程（设计 §3.4 规则 6）*/
+function warnLine(warns: string[]): string {
+  return warns.length ? `\nWARN: ${warns.join("; ")}` : "";
+}
+
 export default function (pi: ExtensionAPI) {
   // ── generate_image：把「模型 / 任务 / 参考图」变成一张方形 PNG ────────────────────────
   //    一个通用动作 ✓（对应"少暴露"）。**icon 还是 preview 由 SKILL 决定** ✓：
@@ -197,6 +242,7 @@ export default function (pi: ExtensionAPI) {
       "Use generate_image when a capability needs a 2D image file. It saves a square PNG to out= and returns PASS with the path.",
       "Use generate_image with prompt= to get a new image drawn from the description, a reference picture, or a model. This spends a few credits. Omit prompt= and pass model= or taskId= to get the model's own render for free. That render is the model's raw view, not a composed icon.",
       "Use generate_image with styleRef= only when a picture of the game's own assets is already at hand. The player gave a screenshot, or a file already lives in the workspace. Do not spend turns searching for one. The capability skill describes what to write in prompt= and where the file must go.",
+      "Before generating an asset again, read asset_manifest.jsonl in the mod directory (last lines only). Reuse an earlier task_id with taskId= to avoid paying twice.",
     ],
     parameters: Type.Object({
       model: Type.Optional(Type.String({ description: "A .glb to work from (its own render, or the base for a styled image)." })),
@@ -238,21 +284,36 @@ export default function (pi: ExtensionAPI) {
 
       // ① 参考：模型的渲染图（免费 ✓ 从 task 或现算）
       let renderUrl: string | null = null;
+      /** 清单：这一步（写入点 2 / 3 —— 设计 §5.2）。落盘之后再写 ✓ */
+      let renderStep: PendingStep | null = null;
       if (params.taskId) {
         const t = await api(`/tasks/${params.taskId}`); // ⭐ v3
         renderUrl = t.output?.rendered_image_url ?? t.output?.rendered_image ?? tripoPickUrl(t.output);
+        renderStep = { endpoint: `/v3/tasks/${params.taskId}`, requestId: params.taskId, parent: null, seed: null, filesAbs: [], buildInput: () => ({ taskId: params.taskId }) };
       } else if (modelPath) {
         const sidecar = join(dirname(modelPath), ".preview", `${basename(modelPath).replace(/\.glb$/i, "")}.task`);
-        if (existsSync(sidecar)) {
+        const sidecarId = existsSync(sidecar) ? readFileSync(sidecar, "utf8").trim() : null;
+        if (sidecarId) {
           // ⭐ 每次都重新取一次 task → 拿到的是**新鲜的**签名 URL（老的会过期 ✗ 这正是之前 1004 的坑 ✓）
-          const t = await api(`/tasks/${readFileSync(sidecar, "utf8").trim()}`);
+          const t = await api(`/tasks/${sidecarId}`);
           renderUrl = t.output?.rendered_image_url ?? t.output?.rendered_image ?? null;
+          renderStep = { endpoint: `/v3/tasks/${sidecarId}`, requestId: sidecarId, parent: null, seed: null, filesAbs: [], buildInput: () => ({ taskId: sidecarId }) };
         } else {
           // 玩家自带的 .glb（没有 task）：v3 没有 import 端点 ✗ → 兜底仍走 v2 的 import_model ✓
           const b64 = `data:model/gltf-binary;base64,${readFileSync(modelPath).toString("base64")}`;
           const imp = await tripoApi(TRIPO_V2, key, "/task", { type: "import_model", file: b64 });
           const done = await tripoWait((pp, bb) => tripoApi(TRIPO_V2, key, pp, bb), String(imp.task_id), "import");
           renderUrl = done.output?.rendered_image ?? tripoPickUrl(done.output);
+          renderStep = {
+            // v2 的 base 已含 /v2/openapi ✓ → 写出来要补全（设计 §5.2 endpoint 的写法）
+            endpoint: "/v2/openapi/task",
+            requestId: String(imp.task_id),
+            parent: null,
+            seed: null,
+            filesAbs: [],
+            // **不得写 base64** ✗（设计 §5.1）：只写本地路径，写清单时换成相对 mod 根
+            buildInput: (rel) => ({ type: "import_model", file: rel(modelPath) }),
+          };
         }
       }
 
@@ -275,6 +336,7 @@ export default function (pi: ExtensionAPI) {
 
       let url: string | null = renderUrl;
       let genTaskId: string | null = null; // 记下来给模型那步复用 ✓（省一次上传+一次渲染 ✓）
+      let genStep: PendingStep | null = null;
       const wantsNew = Boolean(params.prompt || imagePath || styleRefPath);
       if (wantsNew) {
         // ⭐ v3：没有参考 → /generation/text-to-image（纯提示词 ✓ 已实测）；
@@ -312,12 +374,43 @@ export default function (pi: ExtensionAPI) {
         body.output_format = "png";
         const gen = await api(path, body);
         genTaskId = String(gen.task_id);
-        url = tripoPickUrl((await waitTask(genTaskId)).output);
+        const genDone = await waitTask(genTaskId);
+        url = tripoPickUrl(genDone.output);
+        // 清单：生成那一步（写入点 1 ✓ 设计 §5.2）
+        genStep = {
+          endpoint: `/v3${path}`,
+          requestId: genTaskId,
+          parent: null,
+          seed: pickSeed(gen) ?? pickSeed(genDone),
+          filesAbs: [],
+          buildInput: (rel) => {
+            const i: Record<string, unknown> = {
+              prompt: body.prompt,
+              model: body.model,
+              background: body.background,
+              output_format: body.output_format,
+            };
+            // 有参考图时加参考图的本地路径（设计 §5.2 写入点 1）
+            const refPath = imagePath ?? styleRefPath;
+            if (refPath) i.image = rel(refPath);
+            return i;
+          },
+        };
       }
       if (!url) throw new Error("nothing to save (no render for this model, and no prompt/styleRef given)");
 
       // ③ 落盘：默认放 .preview/（中间图 ✓ 永远不会被装进游戏）；要当图标就让 SKILL 传 out=icon.png ✓
       const size = await tripoSave(url, outPath);
+      // 清单：落盘之后再写 ✓（设计 §5.1 时机）；写失败只出 WARN ✗ 不影响主流程 ✓
+      const modRoot = modRootOf(cwd, outPath);
+      const manifestName = outName(outPath);
+      const warns: string[] = [];
+      for (const step of [renderStep, genStep]) {
+        if (!step) continue;
+        step.filesAbs = [outPath];
+        const w = flushStep(modRoot, manifestName, step);
+        if (w) warns.push(w);
+      }
       // 把图直接发到聊天里，让玩家看得见（app 会渲染 type:"image" 的块；当前模型看不了图时
       // app 会把它标成 deferred -> 不塞给模型，所以这不会让不支持视觉的模型报错）
       const ext = extname(outPath).toLowerCase();
@@ -347,6 +440,7 @@ export default function (pi: ExtensionAPI) {
               `PASS: image saved to ${outPath} (${size}, square PNG). ` +
               (wantsNew ? "New image generated (a few credits spent)." : "The model's own render - no credits spent.") +
               (genTaskId ? `\nImage task id: ${genTaskId} (pass it to generate_model as taskId= to skip re-uploading).` : "") +
+              warnLine(warns) +
               (shown
                   ? "\nShown in the chat so the player can see it without opening the file."
                   : "\n(The image is too large to show inline - give the player the path above.)"),
@@ -366,6 +460,7 @@ export default function (pi: ExtensionAPI) {
       "Use generate_model only when no model file exists yet. If the player already has a .glb, use that file.",
       "Use generate_model with image= when a picture is available to build from. An image is far more accurate than text alone. Use prompt= when there is only a description. faceLimit= caps the triangles (default 3000).",
       "Do not call generate_model again for a better result. Each call costs credits, and the API rate-limits short bursts.",
+      "Before generating an asset again, read asset_manifest.jsonl in the mod directory (last lines only). If the model already exists, reuse its task_id with action=convert instead of generating.",
     ],
     parameters: Type.Object({
       action: Type.Union(
@@ -402,6 +497,11 @@ export default function (pi: ExtensionAPI) {
       guardOutNotExists(firstOut);
 
       if (params.action === "generate") {
+        // 清单：写清单要的两样东西（设计 §5.1）—— 本次调用的主产物是 firstOut
+        const modRoot = modRootOf(cwd, firstOut);
+        const name = outName(firstOut);
+        const warns: string[] = [];
+        let genStep: PendingStep | null = null;
         // ⭐ v3：文本 → /generation/text-to-model；图片 → /generation/image-to-model
         //    （v2 的 image_to_model + image/data URL 一律 1004 ✗ —— 实测 11 种形状都不行 ✓）
         const modelParams: Record<string, unknown> = {
@@ -428,9 +528,38 @@ export default function (pi: ExtensionAPI) {
         }
         const created = await api(genPath, modelParams);
         taskId = String(created.task_id);
-        const done = await waitTask(taskId, "model");
-        const url = done.output?.model_url ?? done.output?.pbr_model ?? done.output?.model ?? pickUrl(done.output);
-        if (!url) throw new Error(`task succeeded but no model URL: ${JSON.stringify(done.output).slice(0, 200)}`);
+        // 清单：生成段（写入点 4 ✓）。parent = 这次用的图像来源任务（本地图与纯文字是 null ✓）
+        genStep = {
+          endpoint: `/v3${genPath}`,
+          requestId: taskId,
+          parent: params.image ? null : (params.taskId ?? null),
+          seed: pickSeed(created),
+          filesAbs: [],
+          buildInput: (rel) => {
+            const i: Record<string, unknown> = {
+              model: modelParams.model,
+              face_limit: modelParams.face_limit,
+              texture: modelParams.texture,
+              pbr: modelParams.pbr,
+            };
+            if (params.prompt) i.prompt = params.prompt;
+            if (params.image) i.image = rel(isAbsolute(params.image) ? params.image : resolve(cwd, params.image));
+            else if (params.taskId) i.input = params.taskId;
+            return i;
+          },
+        };
+        let done: any;
+        let url: string | null;
+        try {
+          done = await waitTask(taskId, "model");
+          url = done.output?.model_url ?? done.output?.pbr_model ?? done.output?.model ?? pickUrl(done.output);
+          if (!url) throw new Error(`task succeeded but no model URL: ${JSON.stringify(done.output).slice(0, 200)}`);
+        } catch (e) {
+          // 失败也要留一行 ✗ 否则失败只剩聊天记录（设计 §3.4 规则 4）
+          const w = flushStep(modRoot, name, genStep, String((e as Error).message));
+          if (w) warns.push(w);
+          throw e;
+        }
         const rawPath = firstOut.replace(/\.glb$/i, "") + ".raw.glb";
         const size = await download(url, rawPath);                      // ⚠️ 5 分钟过期 → 立刻下
         // 预览图（Tripo 免费附带）→ 放在模型同目录的 .preview/ 下 ✓
@@ -454,17 +583,40 @@ export default function (pi: ExtensionAPI) {
           try { await download(conceptKey, `${shotBase}.concept.jpg`); shots.push(`${shotBase}.concept.jpg`); } catch { /* 同上 */ }
         }
 
-        const converted = await convert(api, waitTask, taskId, params.animated === true);
+        // 清单：生成段的文件已落盘 → 先写它（写入点 4 ✓）
+        genStep.filesAbs = [rawPath, ...shots];
+        { const w = flushStep(modRoot, name, genStep); if (w) warns.push(w); }
+        // 清单：转换段（写入点 5 ✓）。先建好，失败时才能把那一行写出来 ✓
+        const cvStep: PendingStep = {
+          endpoint: "/v3/models/convert",
+          requestId: null,
+          parent: taskId,
+          seed: null,
+          filesAbs: [firstOut],
+          buildInput: () => ({ input: taskId, format: "GLTF", with_animation: params.animated === true, texture_size: 1024, texture_format: "PNG" }),
+        };
+        let converted: any;
+        try {
+          const cv = await convert(api, waitTask, taskId, params.animated === true);
+          cvStep.requestId = cv.id;
+          converted = cv.out;
+        } catch (e) {
+          const w = flushStep(modRoot, name, cvStep, String((e as Error).message));
+          if (w) warns.push(w);
+          throw e;
+        }
         const url2 = pickUrl(converted.output);
         if (!url2) throw new Error("convert succeeded but no URL");
         const size2 = await download(url2, firstOut);                   // Unity 就绪朝向 ✓
+        { const w = flushStep(modRoot, name, cvStep); if (w) warns.push(w); }
         return {
           content: [
             {
               type: "text",
               text:
                 `PASS: model saved to ${firstOut} (${size2}, raw also at ${rawPath} ${size}). task_id=${taskId}\n` +
-                (shots.length ? `Preview: ${shots.join(", ")} - read the image and show it to the player before installing. The shape is up to the prompt. The orientation is already right.\n` : ""),
+                (shots.length ? `Preview: ${shots.join(", ")} - read the image and show it to the player before installing. The shape is up to the prompt. The orientation is already right.\n` : "") +
+                warnLine(warns),
             },
           ],
         };
@@ -472,15 +624,37 @@ export default function (pi: ExtensionAPI) {
 
       // action=convert
       if (!taskId) throw new Error("convert needs taskId= (from an earlier generate)");
-      const converted = await convert(api, waitTask, taskId, params.animated === true);
-      const url = pickUrl(converted.output);
+      // 清单：写清单要的两样东西（设计 §5.1）—— 独立 convert 没有上一步 → parent 是 null ✓
+      const modRoot = modRootOf(cwd, firstOut);
+      const name = outName(firstOut);
+      const warns: string[] = [];
+      const cvStep: PendingStep = {
+        endpoint: "/v3/models/convert",
+        requestId: null,
+        parent: null,
+        seed: null,
+        filesAbs: [firstOut],
+        buildInput: () => ({ input: taskId, format: "GLTF", with_animation: params.animated === true, texture_size: 1024, texture_format: "PNG" }),
+      };
+      let cvOut: any;
+      try {
+        const cv = await convert(api, waitTask, taskId, params.animated === true);
+        cvStep.requestId = cv.id;
+        cvOut = cv.out;
+      } catch (e) {
+        const w = flushStep(modRoot, name, cvStep, String((e as Error).message));
+        if (w) warns.push(w);
+        throw e;
+      }
+      const url = pickUrl(cvOut.output);
       if (!url) throw new Error("convert succeeded but no URL");
       const size = await download(url, firstOut);
+      { const w = flushStep(modRoot, name, cvStep); if (w) warns.push(w); }
       return {
         content: [
           {
             type: "text",
-            text: `PASS: converted and saved ${firstOut} (${size}) task_id=${taskId}`,
+            text: `PASS: converted and saved ${firstOut} (${size}) task_id=${taskId}` + warnLine(warns),
           },
         ],
       };
@@ -489,7 +663,7 @@ export default function (pi: ExtensionAPI) {
 }
 
 /** 转静态 + 1024 PNG。**不传 export_orientation** ✗（那个参数不可靠；朝向已由提示词定好 ✓） */
-async function convert(api: (p: string, b?: unknown) => Promise<any>, waitTask: (id: string, l: string) => Promise<any>, taskId: string, animated: boolean) {
+async function convert(api: (p: string, b?: unknown) => Promise<any>, waitTask: (id: string, l: string) => Promise<any>, taskId: string, animated: boolean): Promise<{ id: string; out: any }> {
   const created = await api("/models/convert", {
     // ⭐ v3：字段是 input（v2 叫 original_model_task_id ✗）
     input: taskId,
@@ -498,5 +672,7 @@ async function convert(api: (p: string, b?: unknown) => Promise<any>, waitTask: 
     texture_size: 1024,
     texture_format: "PNG",
   });
-  return waitTask(String(created.task_id), "convert");
+  const id = String(created.task_id);
+  // 返回值带上转换任务的 id —— 清单要它当 request_id（设计 §5.2 写入点 5）
+  return { id, out: await waitTask(id, "convert") };
 }
