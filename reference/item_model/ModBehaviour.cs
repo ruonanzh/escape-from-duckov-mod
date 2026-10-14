@@ -197,6 +197,22 @@ namespace ItemModelSwap
                         if (ra != null) { _newAttached.Add(ra); Debug.Log("[NewItem] " + ra.Report); }
                     }
 
+                    // 原型没有 3D 图形，而 config 也没给 model ⇒ 这件物品只有游戏画的 2D 图片兜底。
+                    // 后果要说清（实测：1581 件物品里 1173 件没有图形，摆上展示台什么都看不见）。
+                    if (r.Item.ItemGraphic == null)
+                    {
+                        bool wantsShowCase = false;
+                        for (int t = 0; t < e.Tags.Count; t++)
+                            if (string.Equals(e.Tags[t], "ShowCase", StringComparison.OrdinalIgnoreCase)) wantsShowCase = true;
+                        Debug.LogWarning($"[NewItem] typeID={typeId}: the prototype {e.CloneFromItemId} has no 3D graphic,"
+                            + " and no model was given, so this item has a 2D sprite only."
+                            + (wantsShowCase
+                                ? " It carries ShowCase, but a display stand will show NOTHING: the stand builds a"
+                                  + " graphic from the item, and there is none. Give it a model, or pick a prototype"
+                                  + " that has a 3D graphic (for example 1259)."
+                                : " It still shows in the world as the 2D sprite."));
+                    }
+
                     // 数值、品质、Tag、物品数字（只改 config 里写了的）
                     var missing = new List<string>();
                     int nStats = ItemFactory.ApplyStats(r.Item, e.Stats, missing);

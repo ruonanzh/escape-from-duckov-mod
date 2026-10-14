@@ -246,7 +246,25 @@ namespace ModelKit
 
             var ghost = item.ItemGraphic;
             if (ghost == null)
-                return new ItemModel.Result { Report = "the prototype has no ItemGraphic; nothing to clone (use the replace path for this item)" };
+            {
+                // 这件物品**本来没有世界图形**（游戏会给它画一张 2D 图片兜底）。实测 1581 件物品里
+                // **1173 件**是这样（消耗品、材料大多如此），所以这条不是边角情况。
+                //
+                // 不能克隆一份不存在的图形，但**可以给它造一份**：`ItemModel.Apply` 在
+                // `ItemGraphic == null` 时走的就是那条路（`RegisterDynamicOverride`）。
+                // 于是「原型没有图形 + 我们带模型」照样成立。
+                //
+                // 缩放：这里要**按原型的档位**算，不能按新 typeID —— `ItemModel.Apply` 内部用的是
+                // `ModelSize.For(item.TypeID, size)`，而新号在档位表里没有记录。所以我们先把原型
+                // 的目标尺寸（米）算出来传进去。config 写了 `size` 就以它为准。
+                float meters = size > 0f ? size
+                    : (sizeTypeID > 0 ? (ModelSize.For(sizeTypeID, null) ?? 0f) : 0f);
+                var built = ItemModel.Apply(item, mesh, texture, handheld, meters);
+                item.useSpriteForPickup = false;        // 有模型了，世界里不必再用 2D 图片兜底
+                built.Report = "the prototype had no world graphic, so one was built"
+                             + " (ModelKit_new_" + item.name + "): " + built.Report;
+                return built;
+            }
 
             ItemGraphicInfo clone;
             try { clone = UnityEngine.Object.Instantiate(ghost); }
