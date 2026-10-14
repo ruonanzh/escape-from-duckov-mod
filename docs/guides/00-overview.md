@@ -111,12 +111,13 @@ PY
 - **嵌套数组会拍平**：`a[].b[].c` 输出的是**一条**平行数组，**不保留 `a` 的分组边界**（例如 `StockShopDatabase` 的 merchant 与 entries）。要保留嵌套就用 `dump`（带 `depth`）。
 - **不得把查到的数值抄进代码**（会随版本变）。用这里的命令现查。
 
-## 文本从哪来：本地化用**游戏自带**的，`docs/data/` 是旧快照
+## 文本从哪来：只认游戏自带的那份
 
 - 优先：`<Data>/StreamingAssets/Localization/` 下的 CSV（**实时、多语言、是超集**。含 10 个语言：`ChineseSimplified`、`ChineseTraditional`、`English`、`French`、`German`、`Japanese`、`Korean`、`Portuguese`、`Russian`、`Spanish`。表头 `key,value,version,sheet`，sheet 就是 `Items`、`Quests`、`Buffs`）。
   - **同一个 key 可能在多个 sheet 里，且中文常常不在 `Items` 而在 `Default`**（实测：`Item_ButcherKnife` 在 `English.csv` 属 sheet=`Default`，在 `ChineseSimplified.csv` 属 sheet=`Items`）。所以**按 `key` 建索引就行**（上面的片段就是），不得「先去哪个 sheet 找」。
-- `docs/data/*.csv`（工作区里那份）是**维护者导出的快照**：同名 sheet 但**条目少得多**（例如 Items 892，本地化 2944），且可能落后于玩家版本。**能用游戏本体就用本体**。仅当不想开游戏时才当参考。
-- `docs/data/resources.csv`（`type,name` 资产清单）：用 `classes` 或 `export --class X` **现查**更准。
+  - **本仓库不再保存快照。** 以前那份 `docs/data/*.csv` **条目少得多**（Items 只有 892 条，
+    而游戏自带的有 2944 条），已经害过几次「以为没有，其实有」。要文案就读游戏自带那份。
+  - 资产清单也一样：用 `classes` / `search` / `export --class X` **现查**（速查见 `cookbook.md` 第 13 节）。
 
 ## 这份指南没写到怎么办（**不得停在这里**）
 
@@ -125,7 +126,7 @@ PY
 1. **不知道类名**时，用 `action=classes`（960 个类）grep 关键词，或用 `action=search, pattern=关键词`（名、类或 typeID 子串）。
 2. **知道类名、不知道字段**时，先拿一个对象 `action=export, class=<C>, rows=1`（看首行的 `pathID`），再 `action=dump, class=<C>, pathid=<pid>, depth=1` 看它的字段名。然后用 `export` 按路径取。
 3. **要看实现、字段含义或怎么改**时，用 `inspect_game_api`（`search`，再 `members`，再 `decompile`）。公开签名快照在 `docs/api/`。
-4. **要文案**时，用本地化 CSV（上节）或 `docs/data/*.csv`（快照）。
+4. **要文案**时，读游戏自带的本地化 CSV（上节）。
 5. **场景里的对象与坐标**时，用 `file=levelN` 与 `class=GameObject`（见 `world.md` 的 Maps 段）。
 
 > 找到了新的固定套路（某类对象的判别方式与可复制命令）时，**补进本目录对应的 `.md`**。下一个 agent 就不用再探索了。

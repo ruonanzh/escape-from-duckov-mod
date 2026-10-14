@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """Duckov 维护工具一键刷新（maintainer-only）。
 
-重跑三个数据提取工具，刷新 docs/api + docs/data：
+重跑 API 签名提取（dotnet），刷新 docs/api：
   1. inspect_game（dotnet）：反射 dump 游戏自有 DLL 的 API 签名 → docs/api/*.md
-  2. extract_data.py（python + UnityPy）：解包数据表 + 本地化 → docs/data/*.csv
-  3. extract_resources.py（python + UnityPy）：列资源清单 → docs/data/resources.csv
 
 用法：
   python3 scripts/refresh.py [游戏目录]
@@ -12,7 +10,6 @@
 游戏目录解析顺序：命令行参数 → .gamer-agent.local.json 的 gameDir（check_runtime 缓存）
 → 环境变量 DUCKOV_DIR。
 
-依赖（维护者自装，见 scripts/README.md）：dotnet SDK >= 8.0、python3 + UnityPy。
 """
 import json
 import os
@@ -154,7 +151,6 @@ def main():
     managed_dir = resolve_managed_dir(game_dir)
     data_dir = os.path.dirname(managed_dir)  # managedDir 的父目录 = Data 目录
     api_dir = os.path.join(REPO_ROOT, "docs", "api")
-    data_out_dir = os.path.join(REPO_ROOT, "docs", "data")
 
     if not os.path.isdir(managed_dir):
         fail(f"managedDir 不存在：{managed_dir}（请确认游戏已安装、路径正确）")
@@ -162,26 +158,17 @@ def main():
     info(f"gameDir    = {game_dir}")
     info(f"managedDir = {managed_dir}")
     info(f"dataDir    = {data_dir}")
-    info(f"outDir     = docs/api + docs/data")
+    info(f"outDir     = docs/api")
 
     # 依赖检查
     dotnet = resolve_dotnet()
     if subprocess.run([dotnet, "--version"], capture_output=True).returncode != 0:
         fail("未找到 dotnet SDK（需 >= 8.0）。请先装 dotnet 或跑 install_runtime。")
-    try:
-        import UnityPy  # noqa: F401
-    except ImportError:
-        fail("未找到 UnityPy。请 `pip install UnityPy`。")
 
     os.makedirs(api_dir, exist_ok=True)
-    os.makedirs(data_out_dir, exist_ok=True)
 
     # 1. API 签名（dotnet）
     run([dotnet, "run", "--project", "scripts/inspect_game", "--", managed_dir, api_dir])
-    # 2. 数据表 + 本地化（python）
-    run([sys.executable, "scripts/extract_data.py", data_dir, data_out_dir])
-    # 3. 资源清单（python）
-    run([sys.executable, "scripts/extract_resources.py", data_dir, data_out_dir])
 
     # 记录数据层对应的游戏版本（R2：游戏 patch 后 refresh 会更新 game.version）
     info("\n" + "=" * 60)
@@ -197,8 +184,8 @@ def main():
     info("\n" + "=" * 60)
     info("✅ 三个工具全部跑完。下一步（review 后手动提交，refresh 不自动 commit）：")
     info("  git status")
-    info("  git diff docs/api docs/data mod-repo.json")
-    info('  确认无误后：git add docs/api docs/data mod-repo.json && git commit -m "data: refresh game data layer"')
+    info("  git diff docs/api mod-repo.json")
+    info('  确认无误后：git add docs/api mod-repo.json && git commit -m "data: refresh game data layer"')
     info("=" * 60)
 
 

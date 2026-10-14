@@ -198,6 +198,12 @@ for k, v in zip(keys, vals):
 `Computer`(13) · `Information`(7) · `ColorCard`(6) · `Base_WallPaper`(6) · `NotNested`(5) ·
 `AdvancedDebuffMode`(4) · `JLab`(4) · `Shit`(4) · `ComputerParts_GPU`(3) · `Base_Deco`(3) ·
 `SnowBall`(2) · `Monitor`(2) · `Sticky`(1) · `NotForSell`(1) · `Character`(1) · `FcController`(1) · `GamingConsole`(1) ·
+
+> **两个「不可出售」标记不一样**（实测 2026-10-14）：代码读的是 **`NotSellable`**
+> （`Item.CanBeSold` 判 `Tags.Contains("NotSellable")`，它也有本地化名「不可出售」），
+> 而 `NotForSell` 挂在一件物品上但**没有任何代码读**。想表达「不可出售」要挂 `NotSellable`。
+> 它也解释了 D 类里为什么 `NotSellable` 标着「没用到」：那个表统计的是「挂在物品上」的数量（0 件），
+> 而行为来自代码，跟挂了几件无关。
 `SoulCube`(1) · `WaterBall`(1) · `Earthworm`(1)
 
 ### D. 物品上**没用到**的 13 个

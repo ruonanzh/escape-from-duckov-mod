@@ -1,6 +1,6 @@
 # 资源替换与增加（Asset Mods）
 
-本指南说明如何做「替换/增加音乐、音效、贴图、模型」类 mod。资源 API 签名见 `docs/api/unity-resources.md`；游戏现有资源清单见 `docs/data/resources.csv`。
+本指南说明如何做「替换/增加音乐、音效、贴图、模型」类 mod。资源 API 签名见 `docs/api/unity-resources.md`；游戏现有资源用 `inspect_game_data` **现查**（速查见 `cookbook.md` 第 13 节）。
 
 ## 资源系统概览
 
@@ -31,7 +31,7 @@ AudioClip clip = bundle.LoadAsset<AudioClip>("MySound");
 ### 替换物品图标
 
 ```csharp
-var item = ItemAssetsCollection.InstantiateSync(254); // typeID 见 docs/data/Items.csv
+var item = ItemAssetsCollection.InstantiateSync(254); // typeID 用 inspect_game_data 现查
 item.Icon = mySprite;  // Item.Icon 是 Sprite（见 docs/api/ItemStatsSystem.md）
 ```
 
@@ -81,8 +81,8 @@ ev.start();
 
 ## 5. 查找要替换的资源
 
-- **美术**：`grep` 关键词在 `docs/data/resources.csv`（11561 个 Texture2D/Sprite/Mesh/Material/Shader，按 m_Name）
-- **物品**：`grep` 物品名在 `docs/data/Items.csv`（typeID key）
+- **美术**：用 `inspect_game_data` 的 `search`（按名字）或 `export, class=Texture2D, field=["m_Name"]`（按类）
+- **物品**：`export, class=Item, field=["typeID","displayName"]`；中文名去游戏自带的本地化里按 key 查
 - **音效**：游戏用 FMOD（`StreamingAssets/Master.bank`），事件名需 FMOD 工具解析；mod 做音效主要用方式 A（AudioSource）加载自己的音频
 
 ## 6. 资源 API 签名

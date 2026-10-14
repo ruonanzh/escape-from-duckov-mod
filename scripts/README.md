@@ -1,6 +1,6 @@
 # 维护工具（maintainer-only）
 
-本目录的工具是 **repo 作者（维护者）** 用的，**玩家/agent 从不运行**——它们只 `grep` 生成的 `docs/api` 和 `docs/data`，从不跑这些脚本。
+它们只读 `docs/api`（API 签名快照）与现查的 `inspect_game_data` 结果，从不跑这些脚本。
 
 ## 自检脚本（判据的机器检查）
 
@@ -19,8 +19,8 @@ node scripts/check-probe-tool-parity.mjs                                  # 工�
 | 工具 | 运行时 | 产出 | 用途 |
 |---|---|---|---|
 | `inspect_game/` | dotnet SDK | `docs/api/*.md` | 反射 dump 游戏自有 DLL 的 API 签名（过滤第三方库） |
-| `extract_data.py` | python3 + UnityPy | `docs/data/*.csv` | 解包游戏数据表 + 本地化（每表一个 CSV，取最丰富语言变体） |
-| `extract_resources.py` | python3 + UnityPy | `docs/data/resources.csv` | 列资源清单（纹理/精灵/网格/音频/材质等，供做资源替换 mod） |
+| `extract_data.py` | python3 + UnityPy | （不再生成）| **已废弃**：数据表与本地化快照。条目少得多（Items 892 ↔ 游戏自带 2944），已被「现查」取代（`docs/cookbook.md` 第 13、14 节）|
+| `extract_resources.py` | python3 + UnityPy | （不再生成）| **已废弃**：资源清单快照。改用 `inspect_game_data` 的 `classes` / `search` / `export --class X` 现查 |
 
 ## 一键刷新（游戏 patch 后）
 
@@ -28,7 +28,7 @@ node scripts/check-probe-tool-parity.mjs                                  # 工�
 python3 scripts/refresh.py [游戏目录]
 ```
 
-刷新 `docs/api` + `docs/data`。游戏目录缺省按此顺序解析：
+刷新 `docs/api`（API 签名快照）。游戏目录缺省按此顺序解析：
 
 1. 命令行参数；
 2. `.gamer-agent.local.json` 的 `gameDir`（check_runtime 缓存）；
@@ -51,8 +51,8 @@ managedDir 由 `mod-repo.json` 的 `compile.managedDir` 按平台推导（mac `D
 ## 注意事项
 
 1. **maintainer-only**：脚本读的是维护者本机的游戏安装目录；玩家/agent 不要跑，产品不负责这里的运行时。
-2. **游戏 patch 后重跑**：`docs/api` + `docs/data` 是「某游戏版本的快照」，游戏更新后要重跑 refresh 刷新。refresh 会**自动探测游戏版本并写回 `mod-repo.json` 的 `game.version`**（mac 读 `Info.plist` 的 `CFBundleShortVersionString`；win/linux 读 `globalgamemanagers`、排除 Unity 引擎的 `20xx.x.x` 版本号）；探测失败则打印警告，手动更新该字段即可。
-3. **review 后提交**：`refresh.py` 只生成、**不自动 commit**；确认 `git diff docs/api docs/data mod-repo.json` 无误后手动提交（`mod-repo.json` 的 `game.version` 会随数据层一起更新）。
+2. **游戏 patch 后重跑**：`docs/api` 是「某游戏版本的快照」
+确认 `git diff docs/api mod-repo.json` 无误后手动提交
 4. **跨平台路径**：managedDir/dataDir 按 `mod-repo.json` + 平台推导，不要在脚本里写死路径。
 5. **编译/字节码产物不进 git**：`.gitignore` 已排 `**/bin/`、`**/obj/`、`__pycache__/`、`*.pyc`——`dotnet run` 和 python 脚本都会生成这些，不要提交。
 6. **Windows 终端编码**：脚本输出含中文 + emoji（✅/❌），Windows 请用 UTF-8 终端（Windows Terminal / Git Bash / VSCode 集成终端），GBK 下会乱码。

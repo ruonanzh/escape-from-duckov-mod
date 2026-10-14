@@ -116,7 +116,9 @@ generate_model(action="generate",
 > **三层模型**：① 世界（`world`）② 拿在手里（`handheld`）③ **2D 图标**（游戏自带。我们从不删，但可以替换）。
 > 第 ③ 层那张图（背包格子与「使用时」出现的图）是游戏自带的。**我们不删**。
 
-**查物品名与 typeID**：`docs/data/Items.csv`（`对象名, 英文名, 中文名`，例 `Item_BackpackLV1`）。
+**查物品名与 typeID**：用 `inspect_game_data` 现查（`export, class=Item, file=resources.assets,
+field=["typeID","displayName"]`，例 `Item_BackpackLV1`）。**中文名**去游戏自带的本地化里按 key 查
+（见 `docs/cookbook.md` 第 14 节）。
 要拿 typeID 就用 `inspect_game_data`（`class=Item` 与 `name=…`）。
 
 **这个能力要引的 mod-kit 文件（4 个都要）**：

@@ -270,3 +270,61 @@ public static ItemGraphicInfo CreateAGraphic(Item item, Transform parent, bool s
   想上展示台就要 `ShowCase`（展示台的 12 个槽全都要求它）。
 - `Collection` / `Luxury` / `Daily` 截至编写时**没查到任何读取点**，写它们不会改变行为。
 - 反例提醒：代码读的是 `NotSellable`（`Item.CanBeSold`），而 `NotForSell` **没有代码读**。
+
+## 13. `inspect_game_data` 速查（「我要查 X」→ 用哪条）
+
+**这里只放任务与命令。** 路径语法、`match` 运算符、`--file`、`--limit`、`--offset` 那些机制
+见 `docs/guides/00-overview.md`（那是数据查询指南，概念与语法都在那里）。
+
+下表每一行都**实跑过**（2026-10-14）。
+
+| 我要查 | 命令 |
+|---|---|
+| 游戏里有哪些类（含资产类）| `action=classes`（实测：`Material` 2870 · `Mesh` 3162 · `Texture2D` 4366 · `Sprite` 1371 · `Shader` 320）|
+| 按名字找一个资产（美术、脚本、预制体都行）| `action=search, pattern=T_Showcase` → 回类名与 `pathID` |
+| 某一类资产的名字清单 | `action=export, class=Texture2D, field=["m_Name"]` |
+| 物品的 typeID 与名字键 | `action=export, class=Item, file=resources.assets, field=["typeID","displayName"]` |
+| 按 tag 筛物品 | 上面那条加 `match=["tags.list[].#name=Food"]` |
+| 某个 tag 挂在多少件物品上 | `action=refs, class=Tag, name=ShowCase, by=Item` |
+| 谁引用了它（反向查）| `action=refs, class=Tag, pathid=76674, by=Item` |
+| 一件物品的全部字段 | `action=dump, class=Item, pathid=108943, depth=7` |
+| 某对象的父链与坐标 | `action=transform, pathid=<Transform 的 pathID>` |
+| 商店档位（`merchantID`）| `action=export, class=StockShop, field=["merchantID","DisplayNameKey","sellFactor"]` |
+| 商店档案（保留嵌套，看每个店有哪些货）| `action=dump, class=StockShopDatabase, pathid=76730, depth=6` |
+| 掉落池（哪些 tag 会掉）| `action=export, class=LootBoxLoader, file=resources.assets, field=["tags.entries[].value.#name","tags.entries[].weight","activeChance"]` |
+| 插槽要求哪些 tag | `action=export, class=SlotCollection, field=["list[].key","list[].requireTags"]` |
+| 全部 tag 资产 | `action=export, class=Tag, file=resources.assets, field=["m_Name"]` |
+| **中文名 / 文案** | **不在这里**：读游戏自带的 `StreamingAssets/Localization/ChineseSimplified.csv`（见第 14 节）|
+
+> **不得把查到的数值抄进代码**（会随版本变）。用的时候现查。
+
+## 14. 本地化：只认游戏自带的那份
+
+**唯一权威**是游戏自己的本地化文件：
+
+```
+macOS   <游戏>/Duckov.app/Contents/Resources/Data/StreamingAssets/Localization/<语言>.csv
+Windows <游戏>/Duckov_Data/StreamingAssets/Localization/<语言>.csv
+```
+
+10 个语言：`ChineseSimplified`（简体中文）`ChineseTraditional` `English` `French` `German`
+`Japanese` `Korean` `Portuguese` `Russian` `Spanish`。
+
+表头是 `key,value,version,sheet`。例：
+
+```
+Item_Candy,棒棒糖,#20250911092425,Items
+Character_Ming,小明,#20250807035821,Characters
+```
+
+- **按 `key` 建索引就行**：同一个 key 可能出现在多个 sheet 里，中文也不一定在 `Items`
+  （实测：`Item_ButcherKnife` 在英文包里属 `Default`，在中文包里属 `Items`）。
+- 固定命令：`grep -F "Character_Ming," "<那个目录>/ChineseSimplified.csv"`。
+- key 从哪来：数据里的 `displayName` / `nameKey` / `displayNameKey` / `xxxKey` 字段就是它。
+
+**两条不得：**
+
+1. **不得说「某个表里没有 = 游戏里没有」。** 本仓库**不再保存**本地化快照
+   （以前那份 `docs/data/*.csv` 条目少得多：Items 只有 892 条，而游戏自带的有 2944 条，
+   已经害过几次「以为没有，其实有」）。要文案就读游戏自带那份，或先 `inspect_game_data` 现查。
+2. **不得把文案抄进代码**（会随版本变）。
