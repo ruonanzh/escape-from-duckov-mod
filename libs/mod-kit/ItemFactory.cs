@@ -211,10 +211,16 @@ namespace ModelKit
         /// **必须克隆图形**，不得改原型的图形：`Instantiate` 出来的物品，它的 `ItemGraphic`
         /// 与原型**指向同一个对象**。就地改它 = 把原型的枪也改了（验收里「原枪没变」那一条）。
         ///
-        /// 复用 `ItemModel.ApplyToGraphicClone`（挂网格）与 `ItemModel.ApplyHandheld`（拿在手里那条），
-        /// 所以新物品与替换物品走的是同一套挂载逻辑。</summary>
+        /// `handheld`：**枪不要传 true**（默认不预造）。理由（反编译实证）：
+        /// 游戏自己会建手持实体 —— `ItemExtensions.CreateHandheldAgent` 在物品第一次被拿时跑，
+        /// 而枪那分支是 `ItemAgent_Gun.BuildAgent(item.ItemGraphic.gameObject)`：
+        /// 它**实例化我们的图形**，于是**带着图形里的 `Sockets`**，并补 `Muzzle`/`Tec`，
+        /// 还设 `handheldSocket = normalHandheld` 与 `handAnimationType = gun`。
+        /// 而 `ItemModel.ApplyHandheld` 是克隆**通用模板**再清空它的子物体，
+        /// 于是会**丢掉挂点结构**（配件没地方挂）。所以枪这条交给游戏就好。
+        /// 物品（本来没有图形的那类）才需要 true。</summary>
         public static ItemModel.Result AttachModel(ItemStatsSystem.Item item, Mesh mesh, Texture2D texture,
-                                                   float size, bool handheld = true, int sizeTypeID = 0)
+                                                   float size, bool handheld = false, int sizeTypeID = 0)
         {
             if (item == null || mesh == null) return new ItemModel.Result { Report = "the item is null or the mesh is null" };
 
@@ -245,6 +251,8 @@ namespace ModelKit
 
             if (handheld)
             {
+                // 只给「本来没有图形」的物品用。枪不要走这条：会丢掉图形里的 Sockets
+                // （见方法注释）。
                 var rh = ItemModel.ApplyHandheld(item, mesh, texture, scale);
                 if (rh != null) res.Nested.Add(rh);             // 有借有还：还原时要一起撤
             }

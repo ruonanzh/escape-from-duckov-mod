@@ -339,8 +339,10 @@ namespace WeaponModelSwap
                     // 模型（不写 model 就沿用原型外形）
                     if (e.Mesh != null)
                     {
+                        // handheld 不传：枪的手持实体交给游戏建（它从我们的图形造，
+                        // 于是带着图形里的 Sockets；参见 ItemFactory.AttachModel 的注释）
                         var ra = ItemFactory.AttachModel(r.Item, e.Mesh, e.Texture, e.Size,
-                                                         handheld: true, sizeTypeID: e.CloneFromItemId);
+                                                         sizeTypeID: e.CloneFromItemId);
                         if (ra != null) { _newAttached.Add(ra); Debug.Log("[NewWeapon] " + ra.Report); }
                     }
 
