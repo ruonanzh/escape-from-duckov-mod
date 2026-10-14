@@ -234,3 +234,39 @@ public static ItemGraphicInfo CreateAGraphic(Item item, Transform parent, bool s
 仓库的两个模板（`reference/weapon_model`、`reference/item_model`）都没有引。`reference/example_mod` 引了。
 玩家自己的 mod 可能已经引了（例如 `weapon_editor` 的产物里就带 `0Harmony.dll`）。
 加这个依赖意味着没引的 mod 都要重编。
+
+## 12. 新增物品与新增武器的差别
+
+**数据层是同一套**（`ItemFactory`）：克隆、typeID、名字、注册、上架、配方都不分武器与物品。
+差别在**调用方多给几样东西**。做一件新物品的完整流程见 `.pi/skills/add-item/SKILL.md`。
+
+| | 新增武器 | 新增物品 |
+|---|---|---|
+| 上架到哪 | 不写就默认 `Merchant_Weapon`（老约定）| **必须显式写 `merchantID`**（校验会拦）|
+| 模型层 | 手里那把活枪 + 场内实例 | 世界图形 + 卡片图标 |
+| 图标 | `icon.png` → `item.Icon` | 同一套 |
+| 额外几样 | 插槽偏移 `slots` | `tags`、`maxStackCount`、`value`、`weight` |
+
+### 图标与 `useSpriteForPickup` 不是一回事
+
+- `item.Icon`（一个 `Sprite`）是**背包卡片**上的图。`WeaponIcon.Apply` 就是把 png 抠成透明再设它，
+  任何物品都能用（名字带 Weapon 是历史原因）。
+- `useSpriteForPickup` 决定**世界里**用不用那张 2D 图代替模型。我们把模型换上去时会把它设成假。
+- 所以「换了模型但卡片还是原图」时，缺的是 `Item.Icon`，不是 `useSpriteForPickup`。
+
+### 重量要反射写
+
+`Item` 上 `weight` 只有**私有字段**，公开的 `SelfWeight` / `UnitSelfWeight` 都是只读属性。
+`ItemFactory.ApplyItemNumbers` 内部反射写它。**写完不用手动清缓存**：
+`TotalWeight` 的 getter 自己会比较 `_cachedWeight != SelfWeight`，不等就重算（反编译实证）。
+
+### Tag 决定分类、功能与掉落
+
+- **品类 tag 从原型继承**（克隆是完整拷贝）。config 里的 `tags` 是**额外标记，追加不是替换**。
+- **功能随 tag 走**：`Item.Repairable` / `Sticky` / `CanBeSold` 都是 `Tags.Contains("…")`；
+  插槽准入是 `Slot.CheckAbleToPlug` 判 `item.Tags.Check(requireTags, excludeTags)`。
+  ⇒ 品类 tag 选错不是分类难看，而是**功能会错**。
+- **掉落也随 tag 走**：掉落箱的 `LootBoxLoader.tags.entries[]` 是 tag 池，按物品自己的 tag 抽。
+  想上展示台就要 `ShowCase`（展示台的 12 个槽全都要求它）。
+- `Collection` / `Luxury` / `Daily` 截至编写时**没查到任何读取点**，写它们不会改变行为。
+- 反例提醒：代码读的是 `NotSellable`（`Item.CanBeSold`），而 `NotForSell` **没有代码读**。

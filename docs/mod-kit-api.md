@@ -98,9 +98,10 @@
 `ItemFactory`（`libs/mod-kit/ItemFactory.cs`）。做一件游戏里**本来没有**的东西时用。
 **换外观**走上面第 2 节与第 4 节。这里是**加新东西**。
 
-> **数据层本身对物品也适用**，但**物品模板还没接**：`reference/item_model/ModBehaviour.cs`
-> 不认 `action`，写 `new_item` 会被当成「没有 targets 的替换规则」而静默无效果。
-> 于是 `validate_mod` 现在**直接报错拦下** `new_item`。这一步待做。
+**物品也走这一节**（数据层不分武器与物品）：`action` 写 `new_item`。
+物品多三样要给的：**Tag**（`ApplyTags`）、**堆叠/价值/重量**（`ApplyItemNumbers`）、
+**卡片图标**（`AttachIcon`）。做一件新物品的完整流程见
+[`.pi/skills/add-item/SKILL.md`](../.pi/skills/add-item/SKILL.md)。
 
 **时机**：全部在**进关卡之前**（通常就是 `ModBehaviour.Start()`）。两个原因：
 商人的 `Awake` 会把商品条目抄进商店自己的列表；发东西需要玩家，而那时还没有玩家。
@@ -113,11 +114,19 @@
 | `AttachModel(item, mesh, tex, size, handheld, sizeTypeID)` | 把我们 GLB 的网格装到这个新物品上。内部**克隆图形**，不动原型。缩放参照 `sizeTypeID`，一般传原型枪的号 |
 | `ApplyStats(item, 字典, missing)` | 按名字覆盖数值，用**绝对值**。找不到的键收进 `missing`，不静默跳过 |
 | `ApplyQuality(item, quality, displayQuality)` | 覆盖品质。`quality` 是整数，-1 表示不改；`displayQuality` 是枚举名 |
-| `PutOnSale(merchantID, typeID, maxStock, priceFactor)` | 上架到商人的货架 |
+| `ApplyTags(item, add, remove, missing)` | 加/减 tag。**追加**，不改原型的分类。名字→`Tag` 用 `GameplayDataSettings.Tags.AllTags` |
+| `ApplyItemNumbers(item, maxStackCount, value, weight)` | 堆叠上限、价值、重量。重量是**私有字段**，内部反射写；缓存在读的时候自己会失效 |
+| `AttachIcon(item, pngPath)` | 把 png 设成卡片图标（`Item.Icon`）。包了一层 `WeaponIcon`（名字带 Weapon 是历史原因）|
+| `PutOnSale(merchantID, typeID, maxStock, priceFactor)` | 上架到商人的货架。**物品这条路必须给 `merchantID`**（缺了就失败，不默认商店）|
 | `AddRecipe(id, typeID, amount, money, materials, tags)` | 加一条制作台配方 |
 | `RemoveAdded()` | 把我们加过的条目、配方、动态条目全部撤掉（热重载与卸载用） |
 
-**取值**：三个商人是 `Merchant_Normal`、`Merchant_Ming`、`Merchant_Weapon`，默认用最后那个（卖枪的）。
+**取值**：商店档位**不写死**，游戏里实际有 12 个（`Merchant_Normal` 售货机 / `Merchant_Weapon` 老吴 /
+`Merchant_Equipment` 橘子 / `Merchant_Ming` 小明 / `Merchant_Mud` 泥巴 / `Merchant_Fo` 佛哥 /
+`Merchant_Myst`、`Merchant_Myst0`、`Merchant_MystIsland` 神秘商人 / `Merchant_Island`、`Merchant_IslandMobile` 岛），
+另有一套独立**黑市**（按 tag 选货，不是 `merchantID`）。
+**物品必须显式写 `merchantID`**（校验会拦）；武器不写仍默认 `Merchant_Weapon`（老约定）。
+现查：`inspect_game_data` 的 `class=StockShop, field=merchantID`。
 品质枚举是 `None`、`White`、`Green`、`Blue`、`Purple`、`Orange`、`Red`、`Q7`、`Q8`。
 
 **已有的能力不要重写**：手持那条走 `GameApi.EnsureHandheldAgent`（`AttachModel` 内部已经调了）；

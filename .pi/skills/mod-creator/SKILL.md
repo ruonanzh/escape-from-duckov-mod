@@ -53,7 +53,9 @@ description: Escape From Duckov 的 C# mod 制作与修改。覆盖目录结构�
 
 克隆一个现有物品，再注册成新物品（社区 mod 实测可行）。**优先用库里的 `ItemFactory.CloneAsNewItem(源typeID, 新typeID, 显示名, 简介)`**
 （内置 `DontDestroyOnLoad`、名字与简介走本地化、`useSpriteForPickup=false`）。
-想加一把新枪就走 `.pi/skills/add-weapon/`（那里有 config 字段表与完整流程）。手写版本：
+想加一把新枪就走 `.pi/skills/add-weapon/`（那里有 config 字段表与完整流程）。
+想加一件新物品（消耗品 / 装备 / 背包 / 材料 / 可展示收藏品）就走 `.pi/skills/add-item/`。
+手写版本：
 
 - 克隆：`Instantiate(ItemAssetsCollection.GetPrefab(源typeID).gameObject)`。必须调用 `DontDestroyOnLoad`。
   然后调用 `GetComponent<Item>()`。再调用 `SetTypeID(新typeID)`。
