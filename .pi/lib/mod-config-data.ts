@@ -87,8 +87,21 @@ export function validateDataLayer(cfg: unknown, gameIds: Set<number> | null): { 
       );
       return;
     }
-    // 剩下的 `replace_*` 不做新增类校验，直接过。
-    if (!NEW_ACTIONS.has(action)) return;
+    // 剩下的 `replace_*`：不做新增类校验，但**要查它认不认得出目标**。
+    // 一条既没有 targets 也没有 typeIDs 的替换规则，模板里 `Matches` 恒假，
+    // 于是**静默无效果**（装上游戏什么也不发生）。最常见的原因是忘写 `action`：
+    // 条目写的是 newTypeId / cloneFromItemId 那套，而 action 缺省成了 replace_weapon。
+    if (!NEW_ACTIONS.has(action)) {
+      const hasTargets =
+        (Array.isArray(e.targets) && e.targets.length > 0) || (Array.isArray(e.typeIDs) && e.typeIDs.length > 0);
+      if (!hasTargets) {
+        errors.push(
+          `${at} (${action}): this rule has neither targets nor typeIDs, so it can never match and nothing would happen.` +
+            ` If you meant to add a new weapon, write action: "new_weapon".`,
+        );
+      }
+      return;
+    }
 
     const zh = `${at} (${action})`;
     if (!isPosInt(e.cloneFromItemId)) errors.push(`${zh}: cloneFromItemId is required and must be a positive typeID`);

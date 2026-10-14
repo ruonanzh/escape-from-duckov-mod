@@ -127,6 +127,23 @@ check(
     GAME,
   ),
 );
+check(
+  "只写 targets 的替换规则也算能命中",
+  [],
+  errs({ entries: [{ action: "replace_weapon", targets: ["Item_SMG_MP5_Normal"], model: "a.glb" }] }, GAME),
+);
+// ↓ 这一条堵的是「忘写 action」：条目写的是新增武器那套字段，但 action 缺省成 replace_weapon，
+//   于是没有任何目标，Matches 恒假，静默无效果。
+check(
+  "替换规则没有 targets 也没有 typeIDs（忘写 action 的典型）必须报错",
+  1,
+  errs({ entries: [{ newTypeId: 900001, cloneFromItemId: 1629, displayName: "忘写 action", model: "x.glb" }] }, GAME).length,
+);
+check(
+  "那条报错要提示写 action: new_weapon",
+  true,
+  errs({ entries: [{ cloneFromItemId: 1629, model: "x.glb" }] }, GAME).some((e) => e.includes('new_weapon')),
+);
 check("new_item 还没实现，必须报错拦下（不得静默无效果）", 1, errs({ entries: [{ action: "new_item", cloneFromItemId: 36, displayName: "x" }] }).length);
 check(
   "new_item 的报错要说清是没实现",
