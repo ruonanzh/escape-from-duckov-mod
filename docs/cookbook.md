@@ -25,7 +25,7 @@
 | | 是什么 | 谁决定 |
 |---|---|---|
 | ① **世界模型** | 地上、展示、**穿戴**的样子 | config `world`（**默认开**）。纯外观，不改行为 |
-| ② **拿在手里** | 手里、装备的样子 | config `handheld`（**默认关**）。会**改行为**（变成可拿，UI 可选中）|
+| ② **拿在手里** | 手里、装备的样子 | config `handheld`（**默认关**）。会**改行为**（变成可拿，界面上可以选它）|
 | ③ **2D 图标** | 背包格子、「使用时」那张图 | **游戏自带**。我们**从不删**，但**可以替换** |
 
 - 第 ③ 层那张图是游戏自带的（`Duckov.UI.UsageUtilitiesDisplay`）。我们**不删**。
@@ -231,7 +231,7 @@ public static ItemGraphicInfo CreateAGraphic(Item item, Transform parent, bool s
 那个索引让你从图形找到它属于哪件物品，但它替代不了枚举。
 
 **代价提醒**：用 Harmony 需要 mod 在 csproj 里引用 `libs/0Harmony.dll`。
-仓库的两个模板（`reference/weapon_model`、`reference/item_model`）都没有引。`reference/example_mod` 引了。
+仓库的两个样例 mod（`reference/weapon_model`、`reference/item_model`）都没有引。`reference/example_mod` 引了。
 玩家自己的 mod 可能已经引了（例如 `weapon_editor` 的产物里就带 `0Harmony.dll`）。
 加这个依赖意味着没引的 mod 都要重编。
 

@@ -70,7 +70,7 @@ node --experimental-strip-types scripts/check-mod-install-staleness.mjs   # 0 = 
 
 **它查什么**：调用 `.pi/lib/mod-products.ts` 里的 `sourcesNewerThan`。
 那是**同一个函数**，扩展也导入它。
-五个用例：产物比源码新 · 本 mod 的源码比产物新 · kit 比产物新 · **模板比产物新**（不得判成过期）· 同一时刻。
+五个用例：产物比源码新 · 本 mod 的源码比产物新 · kit 比产物新 · **样例 mod 比产物新**（不得判成过期）· 同一时刻。
 
 ## `check-probe-tool-parity.mjs` —— 工具面一致性检查
 
@@ -102,5 +102,5 @@ node --experimental-strip-types scripts/check-mod-config-data.mjs   # 0 = 符合
 ```
 
 **已踩的坑**（写在这里免得再犯）：拿游戏 typeID 清单时用 `data-probe --action list`，一页是 500 个**资产**，
-而里面有些行不是物品（`typeID=-1`）。于是「这一页少于 500 个匹配」**不能**当末页判据，
+而里面有些行不是物品（`typeID=-1`）。于是「这一页少于 500 个命中」**不能**当末页判据，
 否则第一页就停、后面的号全看不到（662 就这样被误报成不存在）。

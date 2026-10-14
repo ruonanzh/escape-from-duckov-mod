@@ -7,7 +7,7 @@
     <AssemblyName>ItemModelSwap</AssemblyName>
     <RootNamespace>ItemModelSwap</RootNamespace>
 
-    <!-- 游戏目录：export DUCKOV_DIR=<游戏安装目录>（或跑 validate_mod，它会带上） -->
+    <!-- 游戏目录：export DUCKOV_DIR=<游戏目录>（或跑 validate_mod，它会带上） -->
     <DuckovDir Condition="'$(DUCKOV_DIR)' != ''">$(DUCKOV_DIR)</DuckovDir>
     <IsMac Condition="$([MSBuild]::IsOSPlatform('OSX'))">true</IsMac>
     <ManagedDir Condition="'$(IsMac)' == 'true'">$(DuckovDir)/Duckov.app/Contents/Resources/Data/Managed</ManagedDir>

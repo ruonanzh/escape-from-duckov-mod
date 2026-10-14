@@ -106,7 +106,7 @@ generate_model(action="generate",
 | 字段 | 默认 | 说明 |
 |---|---|---|
 | `world` | **开** | 换**世界里的模型**（地上、展示、穿戴着）。纯外观，不改行为 |
-| `handheld` | **关** | **只针对非装备物品**：连**拿在手里**那条也换。**会改行为**（物品变成「可拿在手里」与「UI 可选中」）。要开就先问玩家一句 |
+| `handheld` | **关** | **只针对非装备物品**：连**拿在手里**那条也换。**会改行为**（物品变成「可拿在手里」与「界面上可以选它」）。要开就先问玩家一句 |
 | `targets` | — | 物品**对象名全等**（数组，不区分大小写。例 `["Item_BackpackLV3"]`）|
 | `typeIDs` | — | 或按 typeID（数组）。**推荐**。物品对象名不好记。与 `targets` 可以同时给，任一命中即可 |
 | `model` | — | 放在本 mod 目录里的 GLB（相对名或绝对路径）|
@@ -132,7 +132,7 @@ var loaded = ModelKit.GltfLoader.LoadFile(路径, "auto");     // 返回 Mesh �
 // 主入口：一件物品（含它的模板）
 var res = ModelKit.ItemModel.Apply(item, loaded.Mesh, loaded.MainTexture, handheld: 开关);
 
-// handheld：是否**连「拿在手里」那条也换**（它会改行为：变成「可拿在手里」与「UI 可选中」。见 §4）
+// handheld：是否**连「拿在手里」那条也换**（它会改行为：变成「可拿在手里」与「界面上可以选它」。见 §4）
 // res.Report 用英文写着做了什么：旧外观数、挂到的挂点、有没有走「克隆加动态条目」。
 // res.Restore() 能全还原（热重载用）
 ```

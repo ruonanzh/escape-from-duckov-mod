@@ -70,7 +70,7 @@
 | API | 什么时候用 |
 |---|---|
 | `GameApi.AllItems()` | 枚举场上所有物品（含模板）—— 按 `typeIDs` 找目标 |
-| `GameApi.NameMatches(item, "MP5")` | 名字匹配（大小写不敏感的**子串**）|
+| `GameApi.NameMatches(item, "MP5")` | 按名字命中（大小写不敏感的**子串**）|
 | `GameApi.DeclaredRenderers(root)` | 游戏**自己声明**的渲染器清单（找「本体」最准，胜过「取最大」） |
 | `GameApi.ApplyOurTexture(mat, tex)` | 把我们的贴图换到一份游戏材质上（并清掉对不上的其它贴图槽） |
 | `GameApi.ApplyNormalMap(mat, normal, tag)` | 只接**法线**（`_BumpMap` 或 `_NormalMap` 加关键字）。只在 shader 名以 `SodaCraft/` 开头时才接。其余（雾效、精灵、UI）**一律跳过**。 |

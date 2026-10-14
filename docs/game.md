@@ -14,6 +14,6 @@ mod 产物：`<ModName>.dll` + `0Harmony.dll`（Harmony 2.4.1，patch 用）+ `i
 
 ## 数据流
 
-- 编译引用游戏安装目录的 `TeamSoda.*.dll`、`ItemStatsSystem.dll`、`Unity*.dll`（游戏 DLL，mod 作者本机提供，不进 repo）
+- 编译引用游戏目录的 `TeamSoda.*.dll`、`ItemStatsSystem.dll`、`Unity*.dll`（游戏 DLL，mod 作者本机提供，不进 repo）
 - `0Harmony.dll` 从 repo 的 `libs/` 引用，编译后随 mod 分发
 - 物品、角色与对话的 API 见 `docs/mod-api.md`
