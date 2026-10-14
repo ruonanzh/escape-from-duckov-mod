@@ -105,3 +105,61 @@
 于是按直觉写 `true` 的后果是**配方一直是锁的**。
 
 `unlockedFormulaIDs` 由 `CraftingManager.Save()` 存盘。于是**存档后重进仍是解锁的**。
+
+## 8. 哪些东西是「每件一份」，哪些是「共享的」
+
+要改一件物品身上的东西之前，先问一句：**它是不是这件物品自己 GameObject 上的组件。**
+是，克隆各有一份，改了只影响这一件。不是，它就是共享资产，改了会**连累所有人**。
+
+| 东西 | 是什么 | 改它会不会影响别人 |
+|---|---|---|
+| 数值（`StatCollection`）| 物品自己那个 GameObject 上的组件（数据 dump 实证：它的 `m_GameObject` 就是物品那个）| **不会**。克隆各有一份 |
+| 插槽 `slots`、`modifiers` | 同上 | **不会** |
+| 手持实体表 `agents` | `ItemAgentUtilities` 每件一个（`private ItemAgentUtilities agentUtilities = new ItemAgentUtilities();`），`agents` 是 `[SerializeField]` | **不会** |
+| **世界图形 `itemGraphic`** | 指向**一个共享资产**（枪的 prefab 里就是 `itemGraphic -> pathID …`）| **会。** 同型号那把枪共用同一个 |
+
+于是规矩只有一条：**要改图形，先把图形 `Instantiate` 一份，改克隆，再把克隆写回物品。**
+不克隆就直接改 = 把原型枪（以及所有同型号的枪）一起改掉。
+
+**标记键不要自己设。** 像 `IsGun`、`IsBullet` 这种，是物品上那个 `ItemSetting_*` 组件
+在**自己的 `Awake`** 里打的（`ItemSettingBase.Awake()` 调 `SetMarkerParam(Item)`，
+枪那份是 `SetBool("IsGun", true)`）。Unity 语义：`Instantiate` 出来的对象是激活的，
+于是 `Awake` **当场就跑**，标记也就打好了。自己再设一遍是多余。
+
+## 9. 动态条目（新增一个 typeID）到底做了什么
+
+`AddDynamicEntry(prefab)` 只做一件事：`dynamicDic[typeID] = { typeID, prefab }`。
+**它不碰 `entries`（主游戏那张表），也不碰 `nextTypeID`。** 三条结论都由这一句推出来：
+
+- **`NextTypeID` 不会推进。** 它的 getter 是 `entries.Max(e => e.typeID)` 起的缓存值，
+  而 `entries` 里只有主游戏的物品。于是**同一个会话里它会一直返回同一个号**。
+  一个 config 里两条都写「你自己给号」的规则，第二条必然撞号。
+  要自动分配，就得**自己在本地去重**（撞游戏、也撞自己分过的号，都往后挪）。
+- **元数据是从 prefab 现算的。** `DynamicEntry.MetaData` 是懒算：没值就 `new ItemMetaData(prefab)`。
+  于是注册之后 `GetMetaData(号)` 立刻可用（商店刷新与载入存档都会读它，不用怕它空）。
+- **存档按 typeID 走。** `ItemTreeData.DataEntry` 的字段是 `instanceID`、`typeID`、`variables`、
+  `slotContents`、`inventory`。于是**每次进游戏要用同一个号重新注册**，存档里那把枪才认得回来。
+
+**时机：注册要在进关卡之前**（mod 被激活的菜单阶段就做完）。两个原因都在这份 cookbook 里：
+商品表是商人在它自己的 `Awake` 里抄走的（第 6 节）；图形与标记键是在 `Instantiate` 那一刻定下的（第 8 节）。
+
+## 10. 手持实体：**交给游戏建**，不要自己造
+
+症状：新枪拿在手里**没有挂点**（配件挂不上去），或者手里显示的干脆是别的东西。
+
+游戏的做法（反编译）。`ItemExtensions.CreateHandheldAgent(item)` 里，枪走
+`ItemAgent_Gun.BuildAgent(item.ItemGraphic.gameObject)`，它做四件事：
+
+1. `Instantiate(图形)`。用的是**我们那份图形**，于是带着图形里的 `Sockets`。
+2. 没有 `Sockets` 就补一个，并保证 `Muzzle` 与 `Tec` 在，然后 `AddSocket`。
+3. 设 `handheldSocket = normalHandheld`。
+4. 设 `handAnimationType = gun`。
+
+所以**枪不要预造手持实体**。交给游戏在第一次被拿时建，它用的是我们那份已经换过网格的图形，
+于是手里就是我们的模型，而且挂点结构齐全。
+
+反过来，如果自己走「克隆通用模板，清空它的子物体，再挂上我们的网格」那条路，
+手里就**只剩一个网格**，`Sockets` 没了，配件没地方挂。
+
+- 物品 prefab 的数据里 `agents` 是**空的**，这是正常的。`HasHandHeldAgent` 在没拿出来之前是假，不是错。
+- 只有「本来没有图形」的物品才需要预造（那条才走通用模板）。
