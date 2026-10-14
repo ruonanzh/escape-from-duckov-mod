@@ -33,20 +33,48 @@ namespace ModelKit
             public string NameKey = "";
             public ItemStatsSystem.Item Item;
             public string Report = "";
-            /// <summary>config 里写了、但游戏里不存在的数值键（**不得静默跳过**）</summary>
-            public readonly List<string> MissingStats = new List<string>();
         }
 
         // ───────────────────────── ① typeID：分配与占用 ─────────────────────────
 
-        /// <summary>游戏自己的下一个空闲 typeID。config 不写 `newTypeId` 时用它。
+        /// <summary>游戏自己的下一个空闲 typeID。
         /// 单机游戏，没有并发争号的问题。
-        /// （编译器实证：`NextTypeID` 是**实例**属性，走 `Instance`。）</summary>
+        /// （编译器实证：`NextTypeID` 是**实例**属性，走 `Instance`。）
+        ///
+        /// **不要直接拿它当分配器** —— 见 <see cref="AllocateTypeID"/>。</summary>
         public static int NextFreeTypeID()
         {
             try { return ItemStatsSystem.ItemAssetsCollection.Instance.NextTypeID; }
             catch { return 0; }
         }
+
+        /// <summary>我们分过的号。
+        /// 用处：同一个 mod 里两条规则都不写 `newTypeId` 时，它们不能拿到同一个号；
+        /// 卸载或热重载后清空，于是同一个号能被重新用。</summary>
+        static readonly HashSet<int> _assigned = new HashSet<int>();
+
+        /// <summary>分一个新 typeID。
+        ///
+        /// **不得直接返回 `NextTypeID`。** 反编译实证：
+        /// `NextTypeID` 的 getter 是 `entries.Max(e => e.typeID)` 起的缓存值；
+        /// 而 `AddDynamicEntry` 只写 `dynamicDic`，**不碰 `entries`**。
+        /// 于是同一个会话里它会**一直返回同一个号**。
+        /// 后果：一个 config 里两条 `new_weapon` 都不写 `newTypeId` 时，
+        /// 第二条会拿到与第一条相同的号，于是被当成已创建而**静默跳过**。
+        /// 所以这里自己往后挪，直到既不撞游戏、也不撞我们分过的。
+        ///
+        /// 返回 0 = 分不到（调用方必须报错停下）。</summary>
+        public static int AllocateTypeID()
+        {
+            int id = NextFreeTypeID();
+            if (id <= 0) return 0;
+            while (IsTypeIDTaken(id) || _assigned.Contains(id)) id++;
+            _assigned.Add(id);
+            return id;
+        }
+
+        /// <summary>显式指定的号也要登记，否则后面自动分配时可能又挑到它。</summary>
+        static void MarkAssigned(int typeID) { if (typeID > 0) _assigned.Add(typeID); }
 
         /// <summary>这个 typeID 被占用了吗。
         /// 判据用 `GetPrefab(id) != null`（比 `GetAllTypeIds(ItemFilter)` 少一个依赖，结论相同）。
@@ -108,6 +136,7 @@ namespace ModelKit
 
             res.Item = item;
             res.Created = true;
+            MarkAssigned(newTypeID);
             _createdItems.Add(item);            // 卸载/热重载时用它反注册（RemoveAdded）
             res.Report = $"cloned typeID={srcTypeID} -> new typeID={newTypeID} (name key '{res.NameKey}')";
             return res;
@@ -360,6 +389,7 @@ namespace ModelKit
                 catch (Exception ex) { UnityEngine.Debug.LogWarning("[ItemFactory] cannot unregister the dynamic entry: " + ex.Message); }
             }
             _createdItems.Clear();
+            _assigned.Clear();      // 反注册之后这些号又空了，允许重新用（热重载常常用同一个号）
         }
 
         /// <summary>把一件（新的）物品上架到商人的货架。

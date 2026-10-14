@@ -93,10 +93,14 @@
 | `ItemModel.DebugOn` + `ItemModel.DumpNewObjects()` | 打开只读诊断：把场上我们造的每个物体打一行（层、位置、缩放、祖先链、材质与 shader、同门兄弟数）|
 | `Result.Report` | 每次换完都有一句人话报告。`Applied` 与 `NoOp` 用来决定「是否打日志」。 |
 
-## 10. 新增武器 / 新增物品（数据层）
+## 10. 新增武器（数据层）
 
 `ItemFactory`（`libs/mod-kit/ItemFactory.cs`）。做一件游戏里**本来没有**的东西时用。
 **换外观**走上面第 2 节与第 4 节。这里是**加新东西**。
+
+> **数据层本身对物品也适用**，但**物品模板还没接**：`reference/item_model/ModBehaviour.cs`
+> 不认 `action`，写 `new_item` 会被当成「没有 targets 的替换规则」而静默无效果。
+> 于是 `validate_mod` 现在**直接报错拦下** `new_item`。这一步待做。
 
 **时机**：全部在**进关卡之前**（通常就是 `ModBehaviour.Start()`）。两个原因：
 商人的 `Awake` 会把商品条目抄进商店自己的列表；发东西需要玩家，而那时还没有玩家。
@@ -110,7 +114,7 @@
 | `ApplyStats(item, 字典, missing)` | 按名字覆盖数值，用**绝对值**。找不到的键收进 `missing`，不静默跳过 |
 | `ApplyQuality(item, quality, displayQuality)` | 覆盖品质。`quality` 是整数，-1 表示不改；`displayQuality` 是枚举名 |
 | `PutOnSale(merchantID, typeID, maxStock, priceFactor)` | 上架到商人的货架 |
-| `AddRecipe(id, typeID, count, money, materials, tags)` | 加一条制作台配方 |
+| `AddRecipe(id, typeID, amount, money, materials, tags)` | 加一条制作台配方 |
 | `RemoveAdded()` | 把我们加过的条目、配方、动态条目全部撤掉（热重载与卸载用） |
 
 **取值**：三个商人是 `Merchant_Normal`、`Merchant_Ming`、`Merchant_Weapon`，默认用最后那个（卖枪的）。

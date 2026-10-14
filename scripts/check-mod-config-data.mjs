@@ -88,7 +88,12 @@ check("拿不到游戏数据时仍然报结构错", 1, errs(withEntry({ displayN
 console.log("别的写法：");
 check("扁平旧写法不查（由别的检查管）", [], errs({ typeIDs: [655], model: "mp5.glb" }));
 check("没有 entries 也不查", [], errs({}));
-check("new_item 同样要 cloneFromItemId", 1, errs({ entries: [{ action: "new_item", displayName: "x" }] }).length);
+check("new_item 还没实现，必须报错拦下（不得静默无效果）", 1, errs({ entries: [{ action: "new_item", cloneFromItemId: 36, displayName: "x" }] }).length);
+check(
+  "new_item 的报错要说清是没实现",
+  true,
+  errs({ entries: [{ action: "new_item", cloneFromItemId: 36, displayName: "x" }] }).every((e) => e.includes("not implemented")),
+);
 check(
   "entries 与扁平字段同时存在时给一条警告",
   1,

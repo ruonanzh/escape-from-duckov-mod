@@ -289,6 +289,15 @@ namespace WeaponModelSwap
         ///   · 商人的 `Awake` → `InitializeEntries()` 会把商品条目抄进商店自己的列表；我们要抢在它前面。
         ///   · 注册只在进关卡前做；而发物品需要玩家（那条另算）。
         ///
+        /// 这个时机靠什么保证（查过的证据）：
+        ///   · mod 由 `Duckov.Modding.ModManager.ScanAndActivateMods()` 激活（菜单阶段），
+        ///     激活时 `ActivateMod` 把 mod 的 GameObject 挂到 ModManager 底下。
+        ///   · 现装的替换 mod 在关卡里能生效，说明这个 GameObject 活过了换场景，
+        ///     也就是它的 `Start()` 在关卡加载之前就跑过了。
+        ///   · 于是关卡里那些 `StockShop` 的 `Awake` 在我们之后。
+        /// **例外**：如果 mod 是在**已经进了关卡**之后才激活（手动激活、装载后重载），
+        /// 那个关卡里的商店已经拄过条目了。补救就是重新进一次关卡（SKILL 里写了）。
+        ///
         /// 已造过的 typeID 不重复造（热重载会再跑一遍这个方法）：只把上架与配方重提一次。
         /// 上架与配方自己也是幂等的（同一条目/同一个 id 不重复加）。</summary>
         void ApplyNewEntries()
@@ -300,18 +309,29 @@ namespace WeaponModelSwap
                 { Debug.LogError($"[NewWeapon] '{e.DisplayName}' has no cloneFromItemId; skipped"); continue; }
 
                 int typeId = e.NewTypeId;
-                if (typeId <= 0)
+                if (typeId > 0)
                 {
-                    typeId = ItemFactory.NextFreeTypeID();
-                    if (typeId <= 0) { Debug.LogError("[NewWeapon] cannot get a free typeID; skipped"); continue; }
+                    // 显式写的号：撞号就报错停下，不静默换号（玩家写的就是他要的）
+                    if (ItemFactory.IsTypeIDTaken(typeId) && !_created.ContainsKey(typeId))
+                    { Debug.LogError($"[NewWeapon] typeID={typeId} is already taken by the game or another mod; nothing was created"); continue; }
+                }
+                else
+                {
+                    // 不写号：自己分一个。
+                    // **不得直接用 `NextTypeID`** —— 它在一个会话里会一直返回同一个号
+                    // （反编译实证：它是 `entries.Max(...)` 起的缓存值，而 `AddDynamicEntry`
+                    // 只写 `dynamicDic`，不碰 `entries`）。同一个 config 里两条不写号的规则
+                    // 就会拿到同一个号，第二条被当成已创建而静默跳过。
+                    int free = ItemFactory.AllocateTypeID();
+                    if (free <= 0) { Debug.LogError("[NewWeapon] cannot get a free typeID; skipped"); continue; }
+                    if (free != ItemFactory.NextFreeTypeID())
+                        Debug.LogWarning($"[NewWeapon] the game's NextTypeID ({ItemFactory.NextFreeTypeID()}) was already used by us or by the game, so this entry took {free}");
+                    typeId = free;
                     e.NewTypeId = typeId;      // 记回条目，于是 上架与配方的 id 跟着一致
                 }
 
                 if (!_created.ContainsKey(typeId))
                 {
-                    if (ItemFactory.IsTypeIDTaken(typeId))
-                    { Debug.LogError($"[NewWeapon] typeID={typeId} is already taken by the game or another mod; nothing was created"); continue; }
-
                     var r = ItemFactory.CloneAsNewItem(e.CloneFromItemId, typeId, e.DisplayName, e.Description);
                     if (!r.Created) { Debug.LogError("[NewWeapon] " + r.Report); continue; }
                     _created[typeId] = r;

@@ -14,7 +14,8 @@
 // 离线能做的在这里做；「typeID 是否被占号」要读游戏数据（data-probe），拿不到就只给 WARN。
 
 export const KNOWN_ACTIONS = new Set(["replace_weapon", "replace_item", "new_weapon", "new_item"]);
-export const NEW_ACTIONS = new Set(["new_weapon", "new_item"]);
+/** 已经实现的 action。`new_item` **不在**这里 —— 它是下一步。 */
+export const NEW_ACTIONS = new Set(["new_weapon"]);
 export const DISPLAY_QUALITIES = new Set(["None", "White", "Green", "Blue", "Purple", "Orange", "Red", "Q7", "Q8"]);
 export const KNOWN_MERCHANTS = new Set(["Merchant_Normal", "Merchant_Ming", "Merchant_Weapon"]);
 
@@ -70,7 +71,17 @@ export function validateDataLayer(cfg: unknown, gameIds: Set<number> | null): { 
       errors.push(`${at}: unknown action "${action}" (use one of ${[...KNOWN_ACTIONS].join(", ")})`);
       return;
     }
-    if (!NEW_ACTIONS.has(action)) return;
+    if (!NEW_ACTIONS.has(action)) {
+      // `new_item`（新增物品）是**下一步**。数据层（`ItemFactory`）对物品也适用，
+      // 但物品模板 `reference/item_model/ModBehaviour.cs` 还没接 `action`。
+      // 写进 config 后，模板把它当成「没有 targets 的替换规则」，匹配永远为假，
+      // 于是**静默无效果** —— 装上游戏却什么也不发生，最难查。
+      // 所以这里直接报错，不得让它悄悄过。
+      errors.push(
+        `${at}: ${action} is not implemented yet - the item template has no action support, so this rule would silently do nothing. Use new_weapon, or one of the replace actions.`,
+      );
+      return;
+    }
 
     const zh = `${at} (${action})`;
     if (!isPosInt(e.cloneFromItemId)) errors.push(`${zh}: cloneFromItemId is required and must be a positive typeID`);

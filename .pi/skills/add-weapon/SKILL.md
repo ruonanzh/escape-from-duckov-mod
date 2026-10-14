@@ -99,7 +99,11 @@ description: 玩家想**加一把新枪**时用（例如「给我做一把新枪
 **数值的键从哪来**：用 `inspect_game_data` 导出（命令见 `docs/guides/items.md` 的「数值」一节）。
 **不得手写猜的键** —— 键不存在时那一条不会生效，日志里会列出来。
 
-**同一份 config 里可以混装多种能力**：换外观一条、新增武器一条、新增物品一条，各写各的 `action`。
+**同一份 config 里可以混装多条**：换武器外观一条、换物品外观一条、新增武器一条，各写各的 `action`。
+
+**现在能用的是三个 action**：`replace_weapon`、`replace_item`、`new_weapon`。
+`new_item`（新增物品）还没接：物品模板 `reference/item_model/ModBehaviour.cs` 不认 `action`，
+写了会被当成「没有 targets 的替换规则」，因此 `validate_mod` 会直接报错拦下。它是下一步。
 
 ### ③ 装进游戏
 

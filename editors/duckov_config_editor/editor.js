@@ -21,7 +21,9 @@ const ACTION_LABEL = {
   replace_weapon: "换武器外观（replace_weapon）",
   replace_item: "换物品外观（replace_item）",
   new_weapon: "新增武器（new_weapon）",
-  new_item: "新增物品（new_item）",
+  // new_item（新增物品）是**下一步**：物品模板还没接 action，
+  // 写进 config 会被当成「没有 targets 的替换规则」，静默无效果。
+  // validate_mod 会直接报错拦下。于是编辑器也不列它。
 };
 const ACTION_FIELDS = {
   replace_weapon: ["typeIDs", "targets", "model", "front", "size", "icon", "world", "handheld", "debug"],
@@ -30,7 +32,6 @@ const ACTION_FIELDS = {
     "newTypeId", "cloneFromItemId", "displayName", "description", "model", "icon", "size",
     "merchantID", "maxStock", "priceFactor", "onSale", "quality", "displayQuality", "stats", "crafting",
   ],
-  new_item: ["newTypeId", "cloneFromItemId", "displayName", "description", "model", "size", "quality", "displayQuality", "stats"],
 };
 const FIELD = {
   typeIDs: { kind: "nums", hint: "按 typeID（推荐）。逗号分隔。用 inspect_game_data 查。" },
@@ -445,12 +446,17 @@ function slotTable(value) {
 
 function addEntryCard(entry) {
   const src = entry && typeof entry === "object" ? entry : {};
-  const action = ACTION_LABEL[src.action] ? src.action : "replace_weapon";
+  const raw = typeof src.action === "string" && src.action ? src.action : "replace_weapon";
+  const known = !!ACTION_LABEL[raw];
 
   const card = document.createElement("section");
   card.className = "card";
   card.__src = src;
-  card.dataset.action = action;
+  // 不认识的 action：**不得**悄悄改成 replace_weapon（那会把玩家的配置改掉）。
+  // 原值存在 `data-raw-action`，保存时原样写回，只给一条提示。
+  card.dataset.unknown = known ? "" : "1";
+  card.dataset.rawAction = raw;
+  card.dataset.action = known ? raw : "";
 
   const head = document.createElement("div");
   head.className = "cardhead";
@@ -462,11 +468,20 @@ function addEntryCard(entry) {
     op.textContent = label;
     pick.appendChild(op);
   }
-  pick.value = action;
+  if (!known) {
+    const op = document.createElement("option");
+    op.value = "";
+    op.textContent = `（不认识的 action：${raw}，原样保留）`;
+    pick.appendChild(op);
+  }
+  pick.value = known ? raw : "";
   pick.addEventListener("change", () => {
     // 先把当前 DOM 按**旧** action 快照下来，再换字段表 —— 否则切走再切回会丢值（实测踩到）
     card.__src = readEntryCard(card);
-    card.dataset.action = pick.value;
+    const next = pick.value || "replace_weapon";
+    card.dataset.action = next;
+    card.dataset.rawAction = next;
+    card.dataset.unknown = "";
     renderCardFields(card);
     setDirty(true);
   });
@@ -490,9 +505,25 @@ function addEntryCard(entry) {
 function renderCardFields(card) {
   const fields = card.querySelector(".fields");
   const action = card.dataset.action;
+  const unknown = card.dataset.unknown === "1";
   const matches = fields.childElementCount > 0 && card.dataset.rendered === action;
-  const cur = matches ? readEntryCard(card) : { ...(card.__src || {}) };
+  const cur = unknown || !matches ? { ...(card.__src || {}) } : readEntryCard(card);
   fields.textContent = "";
+
+  if (unknown) {
+    const note = document.createElement("div");
+    note.className = "hint";
+    note.style.marginLeft = "0";
+    note.textContent = `这个 action（${card.dataset.rawAction}）编辑器还不认识。原样保留，不改动。要改就手改 JSON。`;
+    fields.appendChild(note);
+    const pre = document.createElement("pre");
+    pre.textContent = JSON.stringify(cur, null, 2);
+    fields.appendChild(pre);
+    card.__src = cur;
+    card.dataset.rendered = action;
+    return;
+  }
+
   for (const key of ACTION_FIELDS[action] || ACTION_FIELDS.replace_weapon) {
     fields.appendChild(fieldRow(key, FIELD[key] || { kind: "text" }, cur[key]));
   }
@@ -508,6 +539,9 @@ function renderCardFields(card) {
 
 /** 读一张卡 → 一个 entry 对象（未知键从 `card.__src` 原样带回）*/
 function readEntryCard(card) {
+  // 不认识的 action：整条原样返回，不改成别的（改了就是悄悄换掉玩家的配置）
+  if (card.dataset.unknown === "1") return { ...(card.__src || {}) };
+
   const action = card.dataset.action || "replace_weapon";
   const out = { action };
   const src = card.__src || {};
@@ -577,6 +611,9 @@ function validateEntries(list) {
   const errors = [];
   list.forEach((e, i) => {
     const at = `entries[${i}]（${e.action}）`;
+    // 不认识的 action 不在这里报 —— 编辑器不得因为自己看不懂就拦住保存
+    // （原样保留，交给 validate_mod 报）。
+    if (!ACTION_LABEL[e.action]) return;
     if (e.action === "replace_weapon" || e.action === "replace_item") {
       if (e.typeIDs && e.typeIDs.some((n) => !Number.isFinite(n))) errors.push(`${at}：typeIDs 必须是数字`);
       if (!e.typeIDs && !e.targets) errors.push(`${at}：至少要给 typeIDs 或 targets 之一`);

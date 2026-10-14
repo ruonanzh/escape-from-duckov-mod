@@ -44,6 +44,11 @@ async function gameTypeIDs(repoRoot: string, gameDir: string, dotnet: string): P
       env.PATH = `${root}${isWin ? ";" : ":"}${env.PATH ?? ""}`;
     }
 
+    // 为什么 `--file resources.assets` 就够了（实测核对过）：
+    //   不加 `--file` 扫全部文件得到的 typeID 集合，与只扫 `resources.assets` **完全一样**
+    //   （都是 1569 个）；level4 里那 19 个 Item 的号也全部包含在内。
+    //   所以这一条命令行不能改动，改了只会变慢。
+
     const ids = new Set<number>();
     // 分页的停止条件不得用「匹配数 < 500」—— 一页是 500 个**资产**，
     // 而里面有些行不是物品（`typeID=-1`），于是第一页只会匹到 494 个 ✗（实测踩到：后面的号全看不到）。
