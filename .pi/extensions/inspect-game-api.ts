@@ -32,7 +32,7 @@ export default function (pi: ExtensionAPI) {
     promptGuidelines: [
       "Use inspect_game_api when docs/api does not answer the question. Use it for private members, the real implementation or behavior, or to confirm the current game version.",
       "inspect_game_api is read-only. It reads the DLL files, and it does not run the game code. Start with action=search to find the type. Then use members, decompile, or il on it.",
-      "Prefer docs/api and docs/data first. Use inspect_game_api when they are insufficient or possibly stale.",
+      "Prefer docs/api and inspect_game_data first. Use inspect_game_api when they are insufficient or possibly stale.",
       "inspect_game_api search and strings cap at 500 rows per call. Narrow the target, or page with offset. Increase the offset by 500 each time. Paging is the fallback, not the default.",
     ],
     parameters: Type.Object({
