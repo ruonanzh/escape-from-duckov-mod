@@ -38,96 +38,14 @@ using UnityEngine;
 
 namespace WeaponModelSwap
 {
+    /// <summary>一条规则。**类型定义在 `libs/mod-kit/ModConfig.cs`**（两个模板共用一份）
+    /// —— 以前两个模板各有一份几乎相同的读取代码，物品模板就因为少了一份而落队
+    /// （它读不了 `entries`，写 `new_item` 会静默无效）。字段没变，行为没变。
+    /// 默认 action 由 `ModConfig.Options.DefaultAction` 给（武器模板 = replace_weapon）。</summary>
+    using Entry = ModelKit.ModConfig.Entry;
+
     public class ModBehaviour : Duckov.Modding.ModBehaviour
     {
-        /// <summary>一条规则：换外观（action = replace_weapon）或新增一把枪（action = new_weapon）。一个 mod 可以有多条 </summary>
-        class Entry
-        {
-            /// <summary>"replace_weapon"（缺省）或 "new_weapon"。
-            /// 缺省等于**现在这个模板的老行为** —— 这是过渡写法（计划 §5.9）：只留在这里，以后可删。</summary>
-            public string Action = "replace_weapon";
-            public bool IsNew => string.Equals(Action, "new_weapon", StringComparison.OrdinalIgnoreCase);
-
-            public List<string> Targets = new List<string>();
-            public readonly HashSet<int> TypeIds = new HashSet<int>();
-            public string ModelFile = "";
-            public string Front = "auto";
-            public string IconFile = "icon.png";
-            /// <summary>config 的 `size`（**米**、可选）—— 目标最长边。
-            /// ≤0 = 没填，于是 用 <see cref="ModelSize.For"/> 的自动档位
-            /// **武器一般不用填** （已按游戏里那一档自动对齐）；只想特意做大/做小时才填 </summary>
-            public float Size;
-            /// <summary>算出来的目标最长边（米）；null = 不缩放（scale = 1）</summary>
-            public float? SizeTarget;
-            /// <summary> 最终乘在 `localScale` 上的适配系数 （抵消挂点缩放那部分另算）</summary>
-            public float Scale = 1f;
-            public string IconPath;          // 解析成绝对路径（相对 mod 目录）
-            /// <summary>config 里的 `slots`（**米** [x,y,z]，在**我们模型的局部空间**里；x 沿 X、y 沿 Y、z 沿 Z）——
-            /// 目前用来：① 换算成我们模型的局部坐标并打日志 ② 有 pivot 时用它当对齐基准
-            /// （step 2 会把保留的配件按这些点重新挂上）</summary>
-            public readonly Dictionary<string, Vector3> Slots = new Dictionary<string, Vector3>();
-            public Mesh Mesh;                // 每个条目各自的模型缓存
-            public Texture2D Texture;
-            public string Signature = "";    // model+front 指纹：用来判断热重载后要不得重读
-
-            // ── action = new_weapon 专用的字段 ──
-            public int NewTypeId;
-            public int CloneFromItemId;
-            public string DisplayName = "";
-            public string Description = "";
-            public string MerchantID = "";
-            public int MaxStock = 1;
-            public float PriceFactor = 1f;
-            public bool OnSale = true;          // config 写 "onSale": false 就不上架
-            public readonly Dictionary<string, float> Stats = new Dictionary<string, float>();
-            public int Quality = -1;            // -1 = 不改
-            public string DisplayQuality = "";  // 空 = 不改
-            public bool CraftRecipe;
-            public long CraftMoney;
-            public readonly Dictionary<int, int> CraftMaterials = new Dictionary<int, int>();
-            public List<string> CraftTags = new List<string>();
-
-            /// <summary>配方的 id：同一件物品固定一个，于是 热重载不会重复加。</summary>
-            public string RecipeId() => "ModelKit." + (NewTypeId > 0 ? NewTypeId.ToString() : "auto");
-
-            public bool Matches(ItemStatsSystem.Item item)
-            {
-                if (IsNew) return false;        // 新增那条不参与"换手里这把"的匹配
-                if (Targets.Count == 0 && TypeIds.Count == 0) return false;
-                if (TypeIds.Count > 0 && TypeIds.Contains(item.TypeID)) return true;
-                // 名字是**全等**匹配（不区分大小写）：子串会误伤
-                // （实测 target="MP5" 连 Item_BP_MP5 一起换、"Backpack" 命中 12 件）
-                //，于是 要一批，就写多个 typeIDs 或 targets
-                if (item.name != null)
-                    for (int i = 0; i < Targets.Count; i++)
-                        if (item.name.Equals(Targets[i], StringComparison.OrdinalIgnoreCase)) return true;
-                return false;
-            }
-
-            public void Resolve(string dir)
-            {
-                IconPath = string.IsNullOrEmpty(IconFile)
-                    ? null
-                    : (Path.IsPathRooted(IconFile) ? IconFile : Path.Combine(dir, IconFile));
-                Signature = ModelFile + "\n" + Front;   // 不含 Size （size 只影响挂载时的 scale 不影响 mesh 热重载不必重读）
-                // 指纹再带上**文件本身**的 mtime+size （旧版只看文件名，于是 同名换内容不重读、
-                // 而重建 Entry 后又永不重读 —— 两种毛病都靠这个指纹治）
-                var mp = ModelPath(dir);
-                try
-                {
-                    if (!string.IsNullOrEmpty(mp) && File.Exists(mp))
-                    {
-                        var fi = new FileInfo(mp);
-                        Signature += "\n" + fi.LastWriteTimeUtc.Ticks + ":" + fi.Length;
-                    }
-                }
-                catch { /* 拿不到指纹就退化成 路径+朝向 （= 旧行为）*/ }
-            }
-
-            public string ModelPath(string dir) =>
-                string.IsNullOrEmpty(ModelFile) ? null
-                : (Path.IsPathRooted(ModelFile) ? ModelFile : Path.Combine(dir, ModelFile));
-        }
 
         string _configPath;
         readonly List<Entry> _entries = new List<Entry>();
@@ -475,100 +393,21 @@ namespace WeaponModelSwap
             }
         }
 
+        /// <summary>读 config.json。**读取逻辑在 `libs/mod-kit/ModConfig.cs`**（两个模板共用一份）。
+        /// 武器模板的选项：条目没有目标也留着（不丢）；不认顶层 `size`；写法不对时打日志。</summary>
         void ReadConfig()
         {
-            try
+            _entries.Clear();
+            var entries = ModConfig.Read(_configPath, new ModConfig.Options
             {
-                var dir = ModelLoaderDir();
-                _entries.Clear();
-                if (!File.Exists(_configPath)) { Debug.LogWarning($"[WeaponModel] no config.json: {_configPath}"); return; }
-                var cfg = Json.Parse(File.ReadAllText(_configPath));
-
-                // ② 多条目写法（优先）
-                var arr = cfg["entries"];
-                if (arr != null && arr.IsArray && arr.Count > 0)
-                {
-                    for (int i = 0; i < arr.Count; i++)
-                    {
-                        var j = arr[i];
-                        if (j == null || !j.IsObject) { Debug.LogWarning($"[WeaponModel] entries[{i}] is not an object; skipped"); continue; }
-                        _entries.Add(EntryFrom(j));
-                    }
-                }
-                // ① 旧写法：扁平字段 = 一条规则 （向后兼容 已装的 mod 不用改）
-                else if (cfg.Has("targets") || cfg.Has("typeIDs") || cfg.Has("model"))
-                {
-                    _entries.Add(EntryFrom(cfg));
-                }
-                else Debug.LogWarning("[WeaponModel] config.json has no entries and no targets, typeIDs, or model");
-
-                foreach (var e in _entries) e.Resolve(dir);
-            }
-            catch (Exception e) { Debug.LogError($"[WeaponModel] config read failed: {e.Message}"); }
-        }
-
-        static Entry EntryFrom(JsonValue j)
-        {
-            var e = new Entry
-            {
-                Action = j.GetStr("action", "replace_weapon"),
-                Targets = Json.Strings(j, "targets"),
-                ModelFile = j.GetStr("model", ""),
-                Front = j.GetStr("front", "auto"),
-                IconFile = j.GetStr("icon", "icon.png"),
-                Size = j.GetFloat("size", 0f),
-                NewTypeId = j.GetInt("newTypeId", 0),
-                CloneFromItemId = j.GetInt("cloneFromItemId", 0),
-                DisplayName = j.GetStr("displayName", ""),
-                Description = j.GetStr("description", ""),
-                MerchantID = j.GetStr("merchantID", ""),
-                MaxStock = j.GetInt("maxStock", 1),
-                PriceFactor = j.GetFloat("priceFactor", 1f),
-                OnSale = j.GetBool("onSale", true),
-                Quality = j.GetInt("quality", -1),
-                DisplayQuality = j.GetStr("displayQuality", ""),
-            };
-            var ids = j["typeIDs"];
-            if (ids != null && ids.IsArray) for (int i = 0; i < ids.Count; i++) e.TypeIds.Add(ids[i].AsInt(0));
-            foreach (var kv in ParseSlots(j)) e.Slots[kv.Key] = kv.Value;
-
-            // stats = { "Damage": 13.0, … } —— 键用游戏自己的 `Stat.Key`
-            var stats = j["stats"];
-            if (stats != null && stats.IsObject)
-                foreach (var kv in stats.Object) e.Stats[kv.Key] = kv.Value.AsFloat(0f);
-
-            // crafting = { "money": 0, "materials": { "662": 5 }, "tags": ["..."] }
-            var craft = j["crafting"];
-            if (craft != null && craft.IsObject)
-            {
-                e.CraftRecipe = true;
-                e.CraftMoney = (long)craft.GetFloat("money", 0f);
-                e.CraftTags = Json.Strings(craft, "tags");
-                var mats = craft["materials"];
-                if (mats != null && mats.IsObject)
-                    foreach (var kv in mats.Object)
-                    {
-                        int id;
-                        if (int.TryParse(kv.Key, out id)) e.CraftMaterials[id] = kv.Value.AsInt(0);
-                    }
-            }
-            return e;
-        }
-
-        /// <summary>读 config 的 `slots`：{ "muzzle": [x,y,z], … } —— 键名**大小写不敏感**，我们统一写小写；每个值必须是≥3 个数的数组（**米**，可负）</summary>
-        static Dictionary<string, Vector3> ParseSlots(JsonValue j)
-        {
-            var dict = new Dictionary<string, Vector3>(StringComparer.OrdinalIgnoreCase);
-            var s = j["slots"];
-            if (s == null || !s.IsObject) return dict;
-            foreach (var kv in s.Object)
-            {
-                var a = kv.Value;
-                if (a == null || !a.IsArray || a.Count < 3)
-                { Debug.LogWarning($"[WeaponModel] slots.{kv.Key} must be three numbers [x,y,z] in metres; skipped"); continue; }
-                dict[kv.Key] = new Vector3(a[0].AsFloat(0f), a[1].AsFloat(0f), a[2].AsFloat(0f));
-            }
-            return dict;
+                LogTag = "[WeaponModel]",
+                DefaultAction = ModConfig.ReplaceWeapon,
+                SkipReplaceEntriesWithoutTargets = false,   // 老行为：留着，让日志里看得见
+                ApplyTopLevelSize = false,                  // 老行为：武器不认顶层 size
+                WarnOnNonObjectEntry = true,
+                WarnWhenNothing = true,
+            });
+            _entries.AddRange(entries);
         }
 
         static string ModelLoaderDir() => ModelCache.ModDir();   // 搬到 kit（ModelCache.ModDir）

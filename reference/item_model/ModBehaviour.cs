@@ -39,47 +39,12 @@ using UnityEngine;
 
 namespace ItemModelSwap
 {
+    /// <summary>一条规则。**类型定义在 `libs/mod-kit/ModConfig.cs`**（两个模板共用一份）。
+    /// 字段是超集：换外观那套与新增那套都在里面。默认 action = replace_item。</summary>
+    using Entry = ModelKit.ModConfig.Entry;
+
     public class ModBehaviour : Duckov.Modding.ModBehaviour
     {
-        /// <summary>一条规则："给哪些物品，换成哪个模型" </summary>
-        class Entry
-        {
-            public List<string> Targets = new List<string>();
-            public readonly List<int> TypeIds = new List<int>();
-            public string ModelFile = "";
-
-            // 三层里我们要"往上加"的两层 （第三层 = 游戏自带的 2D 图片 永远不动）
-            // world = 世界/展示那条（地上） 默认 **开** （纯外观 不改行为）
-            // handheld = 拿在手里那条（会改行为：可拿/UI 可选中），于是 默认 **关** 必须显式开
-            public bool World = true;
-            public bool Handheld = false;
-            public string Front = "auto";
-            public string ResolvedPath = "";
-            /// <summary>config 的 `size`（**米**、可选）—— 目标最长边。
-            /// ≤0 = 没填，于是 用 <see cref="ModelSize.For"/> 的自动档位
-            /// **武器/装备一般不用填** （已按游戏里那一档自动对齐）；只想特意做大/做小时才填 </summary>
-            public float Size;
-
-            public bool Matches(ItemStatsSystem.Item item)
-            {
-                if (item == null) return false;
-                if (Targets.Count == 0 && TypeIds.Count == 0) return false;
-                if (TypeIds.Count > 0 && TypeIds.Contains(item.TypeID)) return true;
-                // 名字是**全等**匹配（不区分大小写）：子串会误伤
-                // （实测 target="MP5" 连 Item_BP_MP5 一起换、"Backpack" 命中 12 件）
-                //，于是 要一批，就写多个 typeIDs 或 targets
-                if (item.name != null)
-                    for (int i = 0; i < Targets.Count; i++)
-                        if (item.name.Equals(Targets[i], StringComparison.OrdinalIgnoreCase)) return true;
-                return false;
-            }
-
-            public void Resolve(string dir)
-            {
-                ResolvedPath = string.IsNullOrEmpty(ModelFile) ? ""
-                    : (Path.IsPathRooted(ModelFile) ? ModelFile : Path.Combine(dir, ModelFile));
-            }
-        }
 
         string _configPath;
         readonly List<Entry> _entries = new List<Entry>();
@@ -240,7 +205,7 @@ namespace ItemModelSwap
                 try
                 {
                     string who = owner != null ? owner.name : gi.name;
-                    int tid = owner != null ? owner.TypeID : (hit.TypeIds.Count > 0 ? hit.TypeIds[0] : 0);
+                    int tid = owner != null ? owner.TypeID : (hit.TypeIds.Count > 0 ? hit.TypeIds.First() : 0);
                     var rc = ItemModel.ApplyToGraphicClone(gi, who, tid, cm.Mesh, cm.Texture,
                                                            ModelSize.FactorFor(tid, hit.Size, cm.Mesh));
                     if (rc.Applied)
@@ -402,57 +367,22 @@ namespace ItemModelSwap
 
         // ───────────────────────── config ─────────────────────────
 
+        /// <summary>读 config.json。**读取逻辑在 `libs/mod-kit/ModConfig.cs`**（两个模板共用一份）。
+        /// 物品模板的选项：没有目标的 **replace** 条目丢掉；认顶层 `size` 当默认；写法不对时静默跳过。
+        /// （`new_item` 条目本来就没有目标，不会被丢掉 —— 见第 5 步。）</summary>
         void ReadConfig()
         {
             _entries.Clear();
-            if (!File.Exists(_configPath)) return;
-            JsonValue root;
-            try { root = Json.Parse(File.ReadAllText(_configPath)); }
-            catch (Exception ex) { Debug.LogWarning("[ItemModel] config.json parse failed: " + ex.Message); return; }
-
-            var arr = root["entries"];
-            if (root.Has("entries") && arr != null && arr.IsArray)
+            var entries = ModConfig.Read(_configPath, new ModConfig.Options
             {
-                foreach (var it in arr.Array)
-                {
-                    var e = ReadEntry(it);
-                    if (e != null) _entries.Add(e);
-                }
-            }
-            else
-            {
-                var e = ReadEntry(root);
-                if (e != null) _entries.Add(e);
-            }
-            // 顶层 `"size": <米>` = 所有条目的默认值 （条目自己写了就听条目）
-            // 用户实测报过：写在顶层却只认条目，于是 以为"size 无效"
-            float topSize = root.GetFloat("size", 0f);
-            if (topSize > 0f)
-                foreach (var e in _entries) if (e.Size <= 0f) e.Size = topSize;
-            foreach (var e in _entries) e.Resolve(ModLoaderDir());
-        }
-
-        Entry ReadEntry(JsonValue j)
-        {
-            if (j == null || j.Kind != JsonKind.Object) return null;
-            var e = new Entry
-            {
-                Targets = Json.Strings(j, "targets"),
-                ModelFile = j.GetStr("model", ""),
-                Front = j.GetStr("front", "auto"),
-                World = j.GetBool("world", true),        // 世界那条默认开
-                Handheld = j.GetBool("handheld", false), // 手持那条默认关 （它会改行为）
-                Size = j.GetFloat("size", 0f),
-            };
-            var tids = j["typeIDs"];
-            if (tids != null && tids.IsArray)
-                foreach (var t in tids.Array)
-                {
-                    var v = t.AsInt(0);
-                    if (v > 0) e.TypeIds.Add(v);
-                }
-            if (e.TypeIds.Count == 0 && e.Targets.Count == 0) return null;   // 没给匹配条件
-            return e;
+                LogTag = "[ItemModel]",
+                DefaultAction = ModConfig.ReplaceItem,
+                SkipReplaceEntriesWithoutTargets = true,    // 老行为：没目标的替换条目直接丢
+                ApplyTopLevelSize = true,                   // 老行为：顶层 size 当默认值
+                WarnOnNonObjectEntry = false,
+                WarnWhenNothing = false,
+            });
+            _entries.AddRange(entries);
         }
     }
 }
