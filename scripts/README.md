@@ -81,7 +81,7 @@ node scripts/check-probe-tool-parity.mjs     # 0 = 对齐；1 = 有缺口
 **为什么需要**：`data-probe`（CLI）认的参数写在 `tools/data-probe/*.cs`，而 agent 能传的参数写在
 `.pi/extensions/inspect-game-data.ts` —— **两处各写各的**，没有任何东西保证一致。这个错**犯过两次**：
 `9b26ae5`（CLI 加了 `export` + `match/field/rows`，扩展没跟上）· 后来（CLI 加了
-`--mesh/--exact/--has/refs --by`，扩展又没跟上 ⇒ agent 只能绕道 bash 跑 CLI）。
+`--mesh/--exact/--has/refs --by`，扩展又没跟上，于是 agent 只能绕道 bash 跑 CLI）。
 
 **它查什么**：CLI 的 `Opt(o,"x")` / `o.ContainsKey("x")` / `AllOpts(args,"x")` + `Usage` 里的
 `--action <a|b|c>` ⟷ 扩展的 `params.x` + `Type.Union` 里的 `Type.Literal("x")`。
