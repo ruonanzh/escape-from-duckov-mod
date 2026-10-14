@@ -91,7 +91,7 @@ namespace ModelKit
         ///
         /// **必须在进关卡之后调** —— 注册新物品通常发生在进关卡**之前**，那时还没有玩家。
         ///
-        /// 兵底：老的私有反射（拿 `CharacterMainControl.itemControl` 再调 `PickupItem`）。
+        /// 兜底：老的私有反射（拿 `CharacterMainControl.itemControl` 再调 `PickupItem`）。
         /// 保留它是因为官方那条万一不可用（游戏版本变了）还能有一条路。</summary>
         public static bool GiveItemToPlayer(ItemStatsSystem.Item item)
         {
