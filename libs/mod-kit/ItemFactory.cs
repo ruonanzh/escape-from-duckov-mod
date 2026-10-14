@@ -125,6 +125,11 @@ namespace ModelKit
             {
                 item = UnityEngine.Object.Instantiate(src);
                 if (item == null) { res.Report = "Instantiate returned null"; return res; }
+                // 官方做法是 `Item.CreateInstance()`，它就是 `Instantiate` + `Initialize()`。
+                // Unity 的 Instantiate 会让 Awake 跑，而 `Item.Awake` 里就会调 Initialize（反编译实证），
+                // 所以本来也已经初始化。这里显式再调一次是**不依赖 Awake 的时机**（Initialize 幂等），
+                // 保护「使用组件 / Effects / UsageUtilities 已就绪」这条。
+                item.Initialize();
                 item.gameObject.name = "ModelKit_new_" + src.name;
                 // 运行时造出来的东西必须活过换场景（图形、物品模板、手持实体都是）
                 UnityEngine.Object.DontDestroyOnLoad(item.gameObject);
@@ -321,6 +326,135 @@ namespace ModelKit
             return did;
         }
 
+        // ───────────────── ④b 分类（Tag）、物品数字、图标 ─────────────────
+        //
+        // 为什么有这三个：新增「物品」比新增「武器」多几样东西要给。反编译依据都写在方法上。
+
+        /// <summary>给新物品**加** tag（也支持移除）。
+        ///
+        /// **追加，不是替换**：品类 tag 从原型继承下来，这里加的是**额外标记**
+        /// （`ShowCase` = 可摆上展示台；`Collection` / `Luxury` / `Daily` = 归类）。
+        /// 所以 config 写 `tags` 不会把原型的分类抹掉。
+        ///
+        /// 反编译依据（为什么分类重要）：
+        ///  · `Item.Repairable` / `Item.Sticky` / `Item.CanBeSold` 都是 `Tags.Contains("…")`
+        ///    —— **功能就是从 tag 算出来的**；
+        ///  · 插槽准入是 `Slot.CheckAbleToPlug` 里的 `item.Tags.Check(requireTags, excludeTags)`；
+        ///    展示台（`Building_Showcase_01` 下的 `Slots`）那 12 个槽全部要求 `ShowCase`。
+        ///
+        /// `Item.Tags` 这个**属性**只读，但它返回的 `TagCollection` 有 `Add` / `Remove`
+        /// （`Duckov.Utilities.TagCollection`），所以改得动。
+        /// 名字→`Tag` 用 `GameplayDataSettings.Tags.AllTags` 逐个比 `tag.name`：
+        /// 游戏自己的 `TagsData.Get(string)` 是 `internal`，只能拿公开的 `AllTags` 自己找。
+        ///
+        /// 找不到的名字**不静默跳过**：收集到 `missing` 里让调用方报出来（config 是玩家手写的）。</summary>
+        public static int ApplyTags(ItemStatsSystem.Item item, IList<string> add, IList<string> remove,
+                                    IList<string> missing = null)
+        {
+            if (item == null) return 0;
+            Duckov.Utilities.TagCollection tags = null;
+            try { tags = item.Tags; }
+            catch (Exception ex) { UnityEngine.Debug.LogWarning("[ItemFactory] cannot read Item.Tags: " + ex.Message); }
+            if (tags == null)
+            {
+                if (missing != null) missing.Add("<Item.Tags is null>");
+                return 0;
+            }
+
+            int changed = 0;
+            if (remove != null)
+                foreach (var name in remove)
+                {
+                    var t = FindTag(name);
+                    if (t == null) { if (missing != null) missing.Add(name); continue; }
+                    try { if (tags.Contains(t)) { tags.Remove(t); changed++; } } catch { }
+                }
+            if (add != null)
+                foreach (var name in add)
+                {
+                    var t = FindTag(name);
+                    if (t == null) { if (missing != null) missing.Add(name); continue; }
+                    try { if (!tags.Contains(t)) { tags.Add(t); changed++; } } catch { }
+                }
+            return changed;
+        }
+
+        /// <summary>按名字找一个 `Tag`。名字**大小写不敏感**（config 是玩家手写的）。
+        /// 游戏自己的查法是遍历 `AllTags` 比 `name`（`TagsData.Get` 的反编译实现），这里一样。</summary>
+        static Duckov.Utilities.Tag FindTag(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return null;
+            try
+            {
+                var data = Duckov.Utilities.GameplayDataSettings.Tags;
+                if (data == null) return null;
+                var all = data.AllTags;
+                if (all == null) return null;
+                foreach (var t in all)
+                    if (t != null && string.Equals(t.name, name, StringComparison.OrdinalIgnoreCase)) return t;
+            }
+            catch (Exception ex)
+            {
+                UnityEngine.Debug.LogWarning($"[ItemFactory] cannot look up the tag '{name}': {ex.Message}");
+            }
+            return null;
+        }
+
+        /// <summary>覆盖物品专有的数字：堆叠上限、价值、重量。
+        /// `maxStackCount` ≤ 0 不改；`value` &lt; 0 不改；`weight` &lt; 0 不改（都表示「沿用原型」）。
+        ///
+        /// **重量要反射**：`Item` 上 `weight` 只有**私有字段**（`api-probe members` 实测），
+        /// 公开的 `SelfWeight` / `UnitSelfWeight` 都是只读属性。
+        ///
+        /// **写完为什么不用手动清缓存**：`TotalWeight` 的 getter 自己会比较
+        /// `_cachedWeight != SelfWeight`，不等就重算（反编译实证）。所以写字段就够。
+        /// 只为保险把 `_cachedTotalWeight` 置空（万一 `StackCount` 为 0 时比较不出差别）。</summary>
+        public static int ApplyItemNumbers(ItemStatsSystem.Item item, int maxStackCount, int value, float weight)
+        {
+            if (item == null) return 0;
+            int changed = 0;
+
+            if (maxStackCount > 0)
+            {
+                try { item.MaxStackCount = maxStackCount; changed++; }
+                catch (Exception ex) { UnityEngine.Debug.LogWarning("[ItemFactory] cannot set maxStackCount: " + ex.Message); }
+            }
+            if (value >= 0)
+            {
+                try { item.Value = value; changed++; }
+                catch (Exception ex) { UnityEngine.Debug.LogWarning("[ItemFactory] cannot set value: " + ex.Message); }
+            }
+            if (weight >= 0f)
+            {
+                try
+                {
+                    var t = typeof(ItemStatsSystem.Item);
+                    var f = t.GetField("weight", Priv);
+                    if (f == null)
+                    {
+                        UnityEngine.Debug.LogWarning("[ItemFactory] the private field 'weight' was not found; the weight was not changed");
+                    }
+                    else
+                    {
+                        f.SetValue(item, weight);
+                        changed++;
+                        var cache = t.GetField("_cachedTotalWeight", Priv);
+                        if (cache != null) cache.SetValue(item, null);      // 强制重算
+                    }
+                }
+                catch (Exception ex) { UnityEngine.Debug.LogWarning("[ItemFactory] cannot set weight: " + ex.Message); }
+            }
+            return changed;
+        }
+
+        /// <summary>把 `icon.png` 设成物品的卡片图标（`item.Icon`）。
+        ///
+        /// 为什么包一层：真正的实现是 `WeaponIcon.Apply` —— 名字带 Weapon 是历史原因，
+        /// 它做的就是「把 png 抠成透明并设成 `Item.Icon`」，**任何物品都能用**（不改名，
+        /// 已有玩家 mod 在引它）。图标与 `useSpriteForPickup` 是两件事：
+        /// `Icon` 给背包卡片，`useSpriteForPickup` 决定世界里用不用 2D 精灵代替模型。</summary>
+        public static string AttachIcon(ItemStatsSystem.Item item, string pngPath) => WeaponIcon.Apply(item, pngPath);
+
         // ───────────────────────── ⑤ 上架到商人，与 ⑥ 加配方 ─────────────────────────
         //
         // 两条机制同构：**ScriptableObject 里的一个 List，注册期追加**（都是反编译实证）。
@@ -418,11 +552,25 @@ namespace ModelKit
         /// `possibility` 固定写 **1** —— 反编译实证：`DoRefreshStock` 只对 `0 < possibility < 1` 的条目摸骰子，
         /// 摸不中就 `Show=false` 加清空库存；等于 1 则 `Show=true` 加 `CurrentStock=MaxStock`（每次刷新还补货）。</summary>
         public static StepResult PutOnSale(string merchantID, int typeID, int maxStock, float priceFactor,
-                                           bool forceUnlock = true)
+                                           bool forceUnlock = true, bool requireExplicitMerchant = false)
         {
             var res = new StepResult();
             if (typeID <= 0) { res.Report = "typeID is missing or not positive"; return res; }
-            if (string.IsNullOrEmpty(merchantID)) merchantID = DefaultMerchantID;
+            if (string.IsNullOrEmpty(merchantID))
+            {
+                if (requireExplicitMerchant)
+                {
+                    // 物品那条路**不得默认商店**（2026-10-14 定）。游戏里有 **12 个商店档位**
+                    // （Merchant_Normal 售货机 / Merchant_Weapon 老吴 / Merchant_Equipment 橘子 /
+                    //  Merchant_Ming 小明 / Merchant_Mud 泥巴 / Merchant_Fo 佛哥 /
+                    //  Merchant_Myst ×3 神秘商人 / Merchant_Island ×2）加一套独立**黑市**。
+                    // 默认上到某一个店是猜的，猜错了玩家在正确的店里看不到东西。
+                    // 所以要显式写 merchantID（在线校验也会拦）。
+                    res.Report = "merchantID is missing: do not default to a shop, ask the player which one";
+                    return res;
+                }
+                merchantID = DefaultMerchantID;   // 武器那条路的旧约定（老吴的武器店）
+            }
 
             try
             {
