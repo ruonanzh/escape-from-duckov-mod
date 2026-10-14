@@ -5,7 +5,7 @@ import { readFileSync, existsSync, statSync, readdirSync } from "node:fs";
 import { join, basename, resolve, dirname } from "node:path";
 import { execFileSync } from "node:child_process";
 import { runAsync } from "../lib/proc";
-import { NEW_ACTIONS, stripJsonComments, validateDataLayer } from "../lib/mod-config-data";
+import { NEW_ACTIONS, stripJsonComments, validateDataLayer, type GameNames } from "../lib/mod-config-data";
 import os from "node:os";
 
 function parseIni(text: string) {
@@ -67,6 +67,59 @@ async function gameTypeIDs(repoRoot: string, gameDir: string, dotnet: string): P
     return { ids, reason: "" };
   } catch (e) {
     return { ids: null, reason: `data-probe failed: ${(e as Error).message.split("\n")[0]}` };
+  }
+}
+
+/**
+ * 游戏里现有的 tag 名与商店档位（`data-probe` 现查）。
+ *
+ * 为什么**不写死**：旧的 `KNOWN_MERCHANTS` 只列了 3 个 `merchantID`，而实际有 12 个档位
+ * （售货机 / 老吴 / 橘子 / 小明 / 泥巴 / 佛哥 / 神秘商人 ×3 / 岛 ×2）加一套独立黑市。
+ * tag 那边也一样（134 个 tag 资产，会随版本变）。写死既不全、也会过期。
+ *
+ * 每一项失败都只降级为 WARN（调用方跳过那一项检查），不阻断校验。
+ */
+async function gameNames(repoRoot: string, gameDir: string, dotnet: string): Promise<{ names: GameNames | null; reason: string }> {
+  try {
+    const isWin = process.platform === "win32";
+    const probe = join(repoRoot, "tools", "data-probe", "bin", "Release", "net8.0", isWin ? "data-probe.exe" : "data-probe");
+    if (!existsSync(probe)) return { names: null, reason: "tools/data-probe is not built (run: dotnet build tools/data-probe -c Release)" };
+    const dataDir = join(gameDir, isWin ? "Duckov_Data" : join("Duckov.app", "Contents", "Resources", "Data"));
+    const managed = join(dataDir, "Managed");
+    if (!existsSync(managed)) return { names: null, reason: `the game's Managed directory is missing: ${managed}` };
+
+    const env: NodeJS.ProcessEnv = { ...process.env };
+    if (dotnet) {
+      const root = dirname(dotnet);
+      env.DOTNET_ROOT = root;
+      env.PATH = `${root}${isWin ? ";" : ":"}${env.PATH ?? ""}`;
+    }
+
+    // tag 名：`m_Name` 列就是 `Tag.name`（`TagsData.Get` 也比较它）
+    const rt = await runAsync(
+      probe,
+      ["--managed", managed, "--data", dataDir, "--action", "export", "--class", "Tag", "--file", "resources.assets", "--field", "m_Name"],
+      { timeoutMs: 60_000, env },
+    );
+    const tags = new Set<string>();
+    for (const line of rt.stdout.split("\n")) {
+      const cols = line.split("\t");
+      if (cols.length >= 4 && cols[3] && cols[3] !== "m_Name") tags.add(cols[3].trim());
+    }
+
+    // 商店档位：12 个（含 `Merchant_Normal` 等）。`StockShop` 的 `merchantID` 字段就是 config 要写的值。
+    const rm = await runAsync(
+      probe,
+      ["--managed", managed, "--data", dataDir, "--action", "export", "--class", "StockShop", "--field", "merchantID"],
+      { timeoutMs: 60_000, env },
+    );
+    const merchants = new Set<string>();
+    for (const m of rm.stdout.matchAll(/Merchant_[A-Za-z0-9_]+/g)) merchants.add(m[0]);
+
+    if (!tags.size && !merchants.size) return { names: null, reason: "data-probe returned no tag names or merchant ids" };
+    return { names: { tags, merchants }, reason: "" };
+  } catch (e) {
+    return { names: null, reason: `data-probe failed: ${(e as Error).message.split("\n")[0]}` };
   }
 }
 
@@ -168,18 +221,23 @@ export default function (pi: ExtensionAPI) {
             Array.isArray(list) &&
             list.some((e) => e && typeof e === "object" && NEW_ACTIONS.has(String((e as Record<string, unknown>).action)));
           let ids: Set<number> | null = null;
+          let names: GameNames | null = null;
           if (hasNew) {
             const st = loadState(repoRoot);
             const cached = st.runtime?.dotnet ?? st.dotnet;
             const gameDir = typeof st.gameDir === "string" ? st.gameDir : "";
             if (!gameDir) warnings.push("the game directory is unknown, so the typeID checks were skipped (run try_set_game_dir)");
             else {
-              const r0 = await gameTypeIDs(repoRoot, gameDir, typeof cached === "string" ? cached : "");
+              const dotnetPath = typeof cached === "string" ? cached : "";
+              const r0 = await gameTypeIDs(repoRoot, gameDir, dotnetPath);
               ids = r0.ids;
               if (!ids) warnings.push(`${r0.reason} - the typeID checks were skipped`);
+              const r1 = await gameNames(repoRoot, gameDir, dotnetPath);
+              names = r1.names;
+              if (!names) warnings.push(`${r1.reason} - the tag-name and merchantID checks were skipped`);
             }
           }
-          const r = validateDataLayer(cfg, ids);
+          const r = validateDataLayer(cfg, ids, names);
           errors.push(...r.errors);
           warnings.push(...r.warnings);
         } catch (e) {

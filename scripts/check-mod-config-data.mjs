@@ -18,9 +18,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const { DISPLAY_QUALITIES, KNOWN_MERCHANTS, stripJsonComments, validateDataLayer } = await import(
-  join(here, "..", ".pi", "lib", "mod-config-data.ts")
-);
+const { DISPLAY_QUALITIES, KNOWN_ACTIONS, NEW_ACTIONS, NOT_IMPLEMENTED_ACTIONS, stripJsonComments, validateDataLayer } =
+  await import(join(here, "..", ".pi", "lib", "mod-config-data.ts"));
 
 let failed = 0;
 const check = (name, expected, got) => {
@@ -49,11 +48,29 @@ const good = {
   ],
 };
 const withEntry = (patch) => ({ entries: [{ ...good.entries[0], ...patch }] });
-const errs = (cfg, ids = null) => validateDataLayer(cfg, ids).errors;
-const warns = (cfg, ids = null) => validateDataLayer(cfg, ids).warnings;
+const errs = (cfg, ids = null, names = null) => validateDataLayer(cfg, ids, names).errors;
+const warns = (cfg, ids = null, names = null) => validateDataLayer(cfg, ids, names).warnings;
 
 /** 游戏里已有的号（模拟 data-probe 读到的集合） */
-const GAME = new Set([36, 655, 662, 1629]);
+const GAME = new Set([36, 655, 662, 743, 1629]);   // 743 = Item_fiber（材料，new_item 用例的原型）
+
+/** 游戏里已有的 tag 名与商店档位（模拟 data-probe 现查的结果；**12 个档位，不是 3 个**） */
+const NAMES = {
+  tags: new Set(["ShowCase", "Collection", "Luxury", "Daily", "Material", "Food", "Armor", "Backpack", "Helmat", "NotSellable"]),
+  merchants: new Set([
+    "Merchant_Normal",
+    "Merchant_Weapon",
+    "Merchant_Equipment",
+    "Merchant_Ming",
+    "Merchant_Mud",
+    "Merchant_Fo",
+    "Merchant_Myst",
+    "Merchant_Myst0",
+    "Merchant_MystIsland",
+    "Merchant_Island",
+    "Merchant_IslandMobile",
+  ]),
+};
 
 console.log("一份好的 config：");
 check("没有错误", [], errs(good, GAME));
@@ -70,7 +87,7 @@ check("quality 是负数", 1, errs(withEntry({ quality: -3 })).length);
 check("displayQuality 不是枚举里的值", 1, errs(withEntry({ displayQuality: "PurpleRain" })).length);
 check("stats 的值是字符串", 1, errs(withEntry({ stats: { Damage: "13" } })).length);
 check("stats 不是对象", 1, errs(withEntry({ stats: [13] })).length);
-check("merchantID 不认识", 1, errs(withEntry({ merchantID: "Merchant_Nope" })).length);
+check("merchantID 不认识（要游戏数据）", 1, errs(withEntry({ merchantID: "Merchant_Nope" }), null, NAMES).length);
 check("maxStock 是 0", 1, errs(withEntry({ maxStock: 0 })).length);
 check("priceFactor 是负数", 1, errs(withEntry({ priceFactor: -1 })).length);
 check("size 是 0", 1, errs(withEntry({ size: 0 })).length);
@@ -152,11 +169,66 @@ check(
   true,
   errs({ entries: [{ cloneFromItemId: 1629, model: "x.glb" }] }, GAME).some((e) => e.includes('new_weapon')),
 );
-check("new_item 还没实现，必须报错拦下（不得静默无效果）", 1, errs({ entries: [{ action: "new_item", cloneFromItemId: 36, displayName: "x" }] }).length);
+// 2026-10-14：`new_item` 接上了。这条以前断言「必须报错拦下」，现在反过来 ——
+// 它必须**被接受**（物品模板已经认 action）。把它放回未实现集合会让这两条红。
 check(
-  "new_item 的报错要说清是没实现",
+  "new_item 必须被接受（不得再报未实现）",
+  false,
+  errs({ entries: [{ action: "new_item", cloneFromItemId: 36, displayName: "x" }] }).some((e) => e.includes("not implemented")),
+);
+check(
+  "new_item 的合法 config 没有错误",
+  [],
+  errs(
+    {
+      entries: [
+        {
+          action: "new_item",
+          cloneFromItemId: 743,
+          displayName: "超大纤维束",
+          merchantID: "Merchant_Normal",
+          tags: ["ShowCase", "Luxury"],
+          maxStackCount: 99,
+          value: 500,
+          weight: 0.35,
+        },
+      ],
+    },
+    GAME,
+    NAMES,
+  ),
+);
+
+console.log("新增物品（new_item）专有的判据：");
+const item = (patch) => ({
+  entries: [{ action: "new_item", cloneFromItemId: 743, displayName: "x", merchantID: "Merchant_Normal", ...patch }],
+});
+check("缺 merchantID（onSale 缺省为真）必须报错", 1, errs(item({ merchantID: undefined })).length);
+check(
+  "缺 merchantID 的报错要说清「不得默认商店」",
   true,
-  errs({ entries: [{ action: "new_item", cloneFromItemId: 36, displayName: "x" }] }).every((e) => e.includes("not implemented")),
+  errs(item({ merchantID: undefined })).some((e) => e.includes("do not default to one")),
+);
+check("写了 onSale: false 就不必写 merchantID", [], errs(item({ merchantID: undefined, onSale: false })));
+check("merchantID 是游戏里没有的档位", 1, errs(item({ merchantID: "Merchant_Nope" }), null, NAMES).length);
+check(
+  "12 个商店档位都认得（不是只认三个）",
+  [],
+  errs(item({ merchantID: "Merchant_IslandMobile" }), null, NAMES),
+);
+check("tags 不是数组", 1, errs(item({ tags: "ShowCase" })).length);
+check("tags 里有空名字", 1, errs(item({ tags: ["ShowCase", "  "] })).length);
+check("tags 里有游戏里不存在的名字", 1, errs(item({ tags: ["NotATag"] }), null, NAMES).length);
+check("tags 的名字都对时不报错", [], errs(item({ tags: ["ShowCase", "Collection"] }), null, NAMES));
+check("maxStackCount 是 0", 1, errs(item({ maxStackCount: 0 })).length);
+check("value 是负数", 1, errs(item({ value: -1 })).length);
+check("weight 是负数", 1, errs(item({ weight: -0.5 })).length);
+check("不带模型、不带 tags 也能过（全部沿用原型）", [], errs(item({})));
+// 武器那条「不写 merchantID 也不报错」是**老约定**，不得被物品这条带偏
+check(
+  "回归守卫：new_weapon 不写 merchantID 仍不得报错（老约定）",
+  [],
+  errs({ entries: [{ action: "new_weapon", cloneFromItemId: 1629, displayName: "老枪" }] }, GAME),
 );
 check(
   "entries 与扁平字段同时存在时给一条警告",
@@ -179,8 +251,13 @@ check(
 check("中文注释也去掉", { a: 1 }, JSON.parse(stripJsonComments('{"a":1} // 中文说明')));
 
 console.log("常量与 mod-kit 对齐（数值写错时这里会红）：");
-check("商人是那三个", ["Merchant_Normal", "Merchant_Ming", "Merchant_Weapon"], [...KNOWN_MERCHANTS]);
 check("品质枚举是九个", 9, DISPLAY_QUALITIES.size);
+check("四个 action 都认", ["replace_item", "replace_weapon", "new_item", "new_weapon"].sort(), [...KNOWN_ACTIONS].sort());
+check("done: 新增那两个都算「新增类」", true, NEW_ACTIONS.has("new_weapon") && NEW_ACTIONS.has("new_item"));
+// ↓ 回归守卫：`new_item` 不得被放回「未实现」。放回去 = 校验会拦下它 = 这个功能又没了。
+//   （上一次的教训是反过来的：把集合合并，导致 replace_* 被误报成未实现。）
+check("回归守卫：new_item 不得在未实现集合里", false, NOT_IMPLEMENTED_ACTIONS.has("new_item"));
+check("回归守卫：new_weapon 不得在未实现集合里", false, NOT_IMPLEMENTED_ACTIONS.has("new_weapon"));
 
 console.log(failed ? `\n  ${failed} 条不符合预期` : "\n  全部符合预期");
 process.exit(failed ? 1 : 0);

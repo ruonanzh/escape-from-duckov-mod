@@ -18,11 +18,18 @@ export const KNOWN_ACTIONS = new Set(["replace_weapon", "replace_item", "new_wea
  * 只有这两个用途：① 后面那些 cloneFromItemId / displayName / stats 的检查；
  * ② `mod-lint.ts` 据此决定要不要读游戏 typeID 清单。
  * **不得**拿它当「未实现的 action」判据 —— `replace_*` 不在里面，但它好好的。 */
-export const NEW_ACTIONS = new Set(["new_weapon"]);
-/** 还没实现的 action。目前只有 `new_item`（物品模板不认 `action`）。 */
-export const NOT_IMPLEMENTED_ACTIONS = new Set(["new_item"]);
+export const NEW_ACTIONS = new Set(["new_weapon", "new_item"]);
+/** 还没实现的 action。**现在是空的** —— `new_item` 已在 2026-10-14 接上（物品模板开始认 action）。
+ * 保留这个集合，是因为它回答一个**独立的问题**：名字存在（`KNOWN_ACTIONS`）不等于已经能用。
+ * 上次把两者合并，收紧时把 `replace_weapon` / `replace_item` 误报成「未实现」（回归 R1）。 */
+export const NOT_IMPLEMENTED_ACTIONS = new Set<string>([]);
 export const DISPLAY_QUALITIES = new Set(["None", "White", "Green", "Blue", "Purple", "Orange", "Red", "Q7", "Q8"]);
-export const KNOWN_MERCHANTS = new Set(["Merchant_Normal", "Merchant_Ming", "Merchant_Weapon"]);
+
+/** 游戏里现有的名字（tag / 商店档位）。
+ *
+ * **不得写死在代码里**（旧的 `KNOWN_MERCHANTS` 只有 3 个，而实际有 12 个商店档位加一套黑市，
+ * 而且改一次版本就可能多一个）。与 `gameIds` 一样从游戏数据传入；为 null 时跳过那两项。 */
+export type GameNames = { tags: Set<string>; merchants: Set<string> };
 
 /** 去掉 `//` 行注释（字符串内的不碰）—— config 允许写注释，校验不得因此报错 */
 export function stripJsonComments(text: string): string {
@@ -51,8 +58,12 @@ export function stripJsonComments(text: string): string {
 
 const isPosInt = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v) && v > 0;
 
-/** 只查 config 的结构（纯函数，好测）。`gameIds` 为 null 时跳过“占号”那两项。 */
-export function validateDataLayer(cfg: unknown, gameIds: Set<number> | null): { errors: string[]; warnings: string[] } {
+/** 只查 config 的结构（纯函数，好测）。`gameIds` / `gameNames` 为 null 时跳过“占号”与“名字存在”那几项。 */
+export function validateDataLayer(
+  cfg: unknown,
+  gameIds: Set<number> | null,
+  gameNames: GameNames | null = null,
+): { errors: string[]; warnings: string[] } {
   const errors: string[] = [];
   const warnings: string[] = [];
   const root = (cfg ?? {}) as Record<string, unknown>;
@@ -118,7 +129,9 @@ export function validateDataLayer(cfg: unknown, gameIds: Set<number> | null): { 
     }
 
     const zh = `${at} (${action})`;
-    if (!isPosInt(e.cloneFromItemId)) errors.push(`${zh}: cloneFromItemId is required and must be a positive typeID`);
+    const what = action === "new_weapon" ? "gun" : "item";
+    if (!isPosInt(e.cloneFromItemId))
+      errors.push(`${zh}: cloneFromItemId is required and must be a positive typeID (the ${what} to clone)`);
     if (typeof e.displayName !== "string" || !e.displayName.trim()) errors.push(`${zh}: displayName is required`);
     if (e.newTypeId != null && !isPosInt(e.newTypeId)) errors.push(`${zh}: newTypeId must be a positive integer, or leave it out`);
     if (isPosInt(e.newTypeId)) {
@@ -131,10 +144,48 @@ export function validateDataLayer(cfg: unknown, gameIds: Set<number> | null): { 
     if (e.displayQuality != null && String(e.displayQuality) !== "" && !DISPLAY_QUALITIES.has(String(e.displayQuality)))
       errors.push(`${zh}: displayQuality "${String(e.displayQuality)}" is not one of ${[...DISPLAY_QUALITIES].join(", ")}`);
     if (e.size != null && !(typeof e.size === "number" && e.size > 0)) errors.push(`${zh}: size must be a number > 0, or leave it out`);
-    if (e.merchantID != null && String(e.merchantID) !== "" && !KNOWN_MERCHANTS.has(String(e.merchantID)))
-      errors.push(`${zh}: merchantID "${String(e.merchantID)}" is unknown (known: ${[...KNOWN_MERCHANTS].join(", ")})`);
+
+    // 上架到哪个商店：**物品这条路必须显式写**（除 onSale: false）。游戏里有 12 个商店档位加一套独立黑市，
+    // 默认上到某一个店是猜的、猜错玩家在正确的店里看不到东西。
+    // **武器那条不改**：`PutOnSale` 对武器仍缺省 `Merchant_Weapon`（老约定），所以不写也不报错。
+    const onSale = e.onSale !== false;
+    const merchant = typeof e.merchantID === "string" ? e.merchantID.trim() : "";
+    if (onSale && !merchant && action === "new_item")
+      errors.push(
+        `${zh}: merchantID is required when the item is on sale - there are 12 shop profiles plus a black market,` +
+          ` so do not default to one; ask the player which shop (or write "onSale": false)`,
+      );
+    if (merchant && gameNames && !gameNames.merchants.has(merchant))
+      errors.push(
+        `${zh}: merchantID "${merchant}" is not a shop profile in the game - list them with` +
+          ` inspect_game_data (class=StockShop, field=merchantID)`,
+      );
+
     if (e.maxStock != null && !isPosInt(e.maxStock)) errors.push(`${zh}: maxStock must be a positive integer`);
     if (e.priceFactor != null && !(typeof e.priceFactor === "number" && e.priceFactor > 0)) errors.push(`${zh}: priceFactor must be a number > 0`);
+
+    // 额外标记（Additional Tag）。**追加不是替换**：品类 tag 从原型继承，这里加的是在它之上的标记。
+    // tag 同时决定功能（可修、可卖、插槽准入）与掉落池，所以名字写错不是小事。
+    if (e.tags != null) {
+      if (!Array.isArray(e.tags)) errors.push(`${zh}: tags must be an array of tag names such as ["ShowCase"]`);
+      else
+        for (const t of e.tags as unknown[]) {
+          if (typeof t !== "string" || !t.trim()) errors.push(`${zh}: every tags entry must be a non-empty tag name`);
+          else if (gameNames && !gameNames.tags.has(t.trim()))
+            errors.push(
+              `${zh}: tag "${t}" does not exist in the game - list them with inspect_game_data (class=Tag, field=m_Name).` +
+                ` Note that tags are ADDED on top of the prototype's own tags`,
+            );
+        }
+    }
+
+    // 物品专有的数字（0 / 负数 = 不改，沿用原型）
+    if (e.maxStackCount != null && !isPosInt(e.maxStackCount))
+      errors.push(`${zh}: maxStackCount must be a positive integer, or leave it out`);
+    if (e.value != null && !(Number.isInteger(e.value) && (e.value as number) >= 0))
+      errors.push(`${zh}: value must be an integer >= 0, or leave it out`);
+    if (e.weight != null && !(typeof e.weight === "number" && e.weight >= 0))
+      errors.push(`${zh}: weight must be a number >= 0, or leave it out`);
 
     if (e.stats != null) {
       if (typeof e.stats !== "object" || Array.isArray(e.stats))
@@ -169,7 +220,7 @@ export function validateDataLayer(cfg: unknown, gameIds: Set<number> | null): { 
     // 占号检查（要有游戏数据）
     if (gameIds) {
       if (isPosInt(e.cloneFromItemId) && !gameIds.has(e.cloneFromItemId))
-        errors.push(`${zh}: cloneFromItemId ${e.cloneFromItemId} does not exist in the game - pick a real gun (inspect_game_data)`);
+        errors.push(`${zh}: cloneFromItemId ${e.cloneFromItemId} does not exist in the game - pick a real ${what} (inspect_game_data)`);
       if (isPosInt(e.newTypeId) && gameIds.has(e.newTypeId))
         errors.push(
           `${zh}: newTypeId ${e.newTypeId} is already taken by the game - pick a free id, or leave newTypeId out and let the game assign one`,
