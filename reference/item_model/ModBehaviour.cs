@@ -101,6 +101,8 @@ namespace ItemModelSwap
         /// <summary> 场上克隆的补挂结果 （热重载一起恢复 有借有还）</summary>
         readonly Dictionary<int, ItemModel.Result> _appliedClone = new Dictionary<int, ItemModel.Result>();
         float _nextCloneSweep;
+        /// <summary>钩子说「刚有新图形或新手持实体」时为真。下一次扫描就用短间隔。</summary>
+        bool _sweepDue;
 
         void Start()
         {
@@ -111,6 +113,25 @@ namespace ItemModelSwap
             Debug.Log($"[ItemModel] rules ({_entries.Count}): " + string.Join(" / ",
                 _entries.Select(e => $"targets=[{string.Join(",", e.Targets)}] typeIDs=[{string.Join(",", e.TypeIds)}]"
                     + $" world={(e.World ? "on" : "off")} handheld={(e.Handheld ? "on" : "off")} model='{e.ModelFile}'")));
+
+            // 事件驱动。两个挂钩点的反编译依据见 libs/mod-kit/ItemHooks.cs。
+            // 过滤一下：只有命中规则的物品才触发扫描，无关的图形不动。
+            try
+            {
+                ItemHooks.OnGraphicReady = (item, _graphic) => { if (MatchesAny(item)) _sweepDue = true; };
+                ItemHooks.OnAgentReady = (item, _agent) => { if (MatchesAny(item)) _sweepDue = true; };
+                var ok = ItemHooks.Install();
+                Debug.Log($"[ItemModel] hooks: {(ok ? "on (event-driven; periodic sweep 5s)" : "off (periodic sweep only)")} | {ItemHooks.Report}");
+            }
+            catch (Exception ex) { Debug.LogWarning("[ItemModel] hooks: install threw: " + ex.Message); }
+        }
+
+        /// <summary>这件物品命中任何一条规则吗（钩子用它过滤）</summary>
+        bool MatchesAny(ItemStatsSystem.Item item)
+        {
+            if (item == null || item.name == null || item.name.StartsWith("ModelKit_item_")) return false;
+            for (int i = 0; i < _entries.Count; i++) if (_entries[i].Matches(item)) return true;
+            return false;
         }
 
         /// <summary>本 mod 的目录（DLL 所在处）</summary>
@@ -188,8 +209,8 @@ namespace ItemModelSwap
         void SweepGraphicClones()
         {
             if (_entries.Count == 0) return;
-            if (Time.unscaledTime < _nextCloneSweep) return;      // 0.5 秒一次 （全场景扫 要节流）
-            _nextCloneSweep = Time.unscaledTime + 0.5f;
+            if (Time.unscaledTime < _nextCloneSweep) return;      // 有事件时 0.5 秒一次；否则 5 秒
+            _nextCloneSweep = Time.unscaledTime + (_sweepDue ? 0.5f : 5f);
 
             List<ItemGraphicInfo> all;
             try { all = UnityEngine.Resources.FindObjectsOfTypeAll<ItemGraphicInfo>().ToList(); }
@@ -239,10 +260,12 @@ namespace ItemModelSwap
         void ApplyAll()
         {
             if (_entries.Count == 0) return;
-            // 节流 0.5 秒：`GameApi.AllItems()` 内部是 `FindObjectsOfTypeAll<Item>`
-            // （**整场景对象扫描**），于是 每帧做一次会明显拖慢游戏 （实测：越玩越卡）
+            // 有事件时 0.5 秒内扫一次；没事件时 5 秒兜底一次。
+            // 5 秒这条必要：`useSpriteForPickup` 为真的路径、以及已经造好的图形，都不会触发钩子。
+            // （旧写法：固定 0.5 秒。`AllItems()` 内部是整场景对象扫描，于是 3 个这类 mod 就是每秒 6 次。）
             if (Time.unscaledTime < _nextApply) return;
-            _nextApply = Time.unscaledTime + 0.5f;
+            _nextApply = Time.unscaledTime + (_sweepDue ? 0.5f : 5f);
+            _sweepDue = false;
 
             List<ItemStatsSystem.Item> all;
             try { all = GameApi.AllItems().ToList(); }

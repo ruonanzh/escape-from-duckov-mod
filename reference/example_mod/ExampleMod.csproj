@@ -38,4 +38,11 @@
       <Private>true</Private>
     </Reference>
   </ItemGroup>
+
+  <!-- Harmony 要进 mod 根：install_mod 只拷 mod 根的文件，bin/ 被跳过。 -->
+  <Target Name="CopyHarmonyToModRoot" AfterTargets="Build">
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)../../libs/0Harmony.dll"
+          DestinationFolder="$(MSBuildThisFileDirectory)"
+          SkipUnchangedFiles="true" />
+  </Target>
 </Project>

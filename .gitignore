@@ -21,3 +21,6 @@ __pycache__/
 
 # 本仓不装 npm 依赖；node_modules 只可能是临时产物（别提交 ✗）
 node_modules/
+
+# 构建时从 libs/ 复制到 mod 根（install_mod 只拷 mod 根）
+**/0Harmony.dll

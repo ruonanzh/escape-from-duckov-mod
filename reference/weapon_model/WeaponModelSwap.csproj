@@ -23,6 +23,8 @@
     <Reference Include="$(ManagedDir)/TeamSoda.*"><Private>false</Private></Reference>
     <Reference Include="$(ManagedDir)/ItemStatsSystem.dll"><Private>false</Private></Reference>
     <Reference Include="$(ManagedDir)/Unity*"><Private>false</Private></Reference>
+    <!-- Harmony：libs/mod-kit/ItemHooks.cs 用它挂钩子（代替轮询扫描）。Private=true 让 DLL 随 mod 走。 -->
+    <Reference Include="$(MSBuildThisFileDirectory)../../libs/0Harmony.dll"><Private>true</Private></Reference>
   </ItemGroup>
 
   <!-- 运行时库（libs/mod-kit）：这个示例 mod 只写配置，能力都在库里 -->
@@ -30,4 +32,12 @@
     <!-- 运行时库（libs/mod-kit）：**通配** ✓ —— kit 加文件不用再改 csproj ✗ -->
     <Compile Include="../../libs/mod-kit/*.cs" />
   </ItemGroup>
+
+  <!-- Harmony 要进 mod 根：install_mod 只拷 mod 根的文件，bin/ 被跳过。
+       只复制这一个依赖。注意：不得把 OutputPath 指到项目根 —— 那会让 SDK 产出空壳 dll。 -->
+  <Target Name="CopyHarmonyToModRoot" AfterTargets="Build">
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)../../libs/0Harmony.dll"
+          DestinationFolder="$(MSBuildThisFileDirectory)"
+          SkipUnchangedFiles="true" />
+  </Target>
 </Project>
