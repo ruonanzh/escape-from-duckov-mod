@@ -96,7 +96,14 @@ version = 1.0
 
 ### tags 可选值
 
-Weapon / Equipment & Gear / Loot & Economy / Quality of Life / Cheats & Exploits / Visual Enhancements / Sound / Quest & Progression
+- Weapon
+- Equipment & Gear
+- Loot & Economy
+- Quality of Life
+- Cheats & Exploits
+- Visual Enhancements
+- Sound
+- Quest & Progression
 
 ## csproj 要点
 

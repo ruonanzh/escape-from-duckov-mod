@@ -2,7 +2,7 @@
 
 > 每条都注明依据：**反编译**（`tools/api-probe`）、**数据 dump**（`tools/data-probe`）
 > 或**运行时实测**。改结论前先复看依据。依据没了（代码改了、也测不了），就把那条删掉，
-> 不要留没人验过的说法。
+> 不得留没人验过的说法。
 >
 > 写到游戏行为时，先问一句「这条有依据吗」。没有就先查，再写。
 
@@ -137,7 +137,7 @@
 于是规矩只有一条：**要改图形，先把图形 `Instantiate` 一份，改克隆，再把克隆写回物品。**
 不克隆就直接改 = 把原型枪（以及所有同型号的枪）一起改掉。
 
-**标记键不要自己设。** 像 `IsGun`、`IsBullet` 这种，是物品上那个 `ItemSetting_*` 组件
+**标记键不得自己设。** 像 `IsGun`、`IsBullet` 这种，是物品上那个 `ItemSetting_*` 组件
 在**自己的 `Awake`** 里打的（`ItemSettingBase.Awake()` 调 `SetMarkerParam(Item)`，
 枪那份是 `SetBool("IsGun", true)`）。Unity 语义：`Instantiate` 出来的对象是激活的，
 于是 `Awake` **当场就跑**，标记也就打好了。自己再设一遍是多余。
@@ -159,7 +159,7 @@
 **时机：注册要在进关卡之前**（mod 被激活的菜单阶段就做完）。两个原因都在这份 cookbook 里：
 商品表是商人在它自己的 `Awake` 里抄走的（第 6 节）；图形与标记键是在 `Instantiate` 那一刻定下的（第 8 节）。
 
-## 10. 手持实体：**交给游戏建**，不要自己造
+## 10. 手持实体：**交给游戏建**，不得自己造
 
 症状：新枪拿在手里**没有挂点**（配件挂不上去），或者手里显示的干脆是别的东西。
 
@@ -171,7 +171,7 @@
 3. 设 `handheldSocket = normalHandheld`。
 4. 设 `handAnimationType = gun`。
 
-所以**枪不要预造手持实体**。交给游戏在第一次被拿时建，它用的是我们那份已经换过网格的图形，
+所以**枪不得预造手持实体**。交给游戏在第一次被拿时建，它用的是我们那份已经换过网格的图形，
 于是手里就是我们的模型，而且挂点结构齐全。
 
 反过来，如果自己走「克隆通用模板，清空它的子物体，再挂上我们的网格」那条路，
@@ -180,7 +180,7 @@
 - 物品 prefab 的数据里 `agents` 是**空的**，这是正常的。`HasHandHeldAgent` 在没拿出来之前是假，不是错。
 - 只有「本来没有图形」的物品才需要预造（那条才走通用模板）。
 
-## 11. 别用 `FindObjectsOfType*` 找东西：先看有没有现成入口
+## 11. 不得用 `FindObjectsOfType*` 找东西：先看有没有现成入口
 
 `FindObjectsOfType` 和 `Resources.FindObjectsOfTypeAll` 都是**整场景枚举**。
 它们不得放进每帧或高频循环。
@@ -200,9 +200,9 @@
 | 等关卡 | `LevelManager.LevelInited` 与 `AfterInit`。两个都是静态 |
 | 兜底 | 菜单阶段还没有关卡，`MainCharacter` 是空。这时才退回扫描 |
 
-**② 等时机，不要轮询**
+**② 等时机，不得轮询**
 
-需要「进关卡之后做一次」时，先找这种静态标志，不要每帧问一次。
+需要「进关卡之后做一次」时，先找这种静态标志，不得每帧问一次。
 `LevelManager.LevelInited`、`AfterInit`、`LevelInitializing` 都是静态的。
 
 **③ 枚举物品实例**
@@ -216,7 +216,7 @@
 
 按来源枚举会漏。漏掉的物品保持旧外观。所以它只有在拿不到事件时才是好选择。
 
-**④ 图形创建：挂钩子，不要轮询**
+**④ 图形创建：挂钩子，不得轮询**
 
 游戏每次造世界图形都会走 `ItemGraphicInfo.CreateAGraphic`：
 
@@ -244,7 +244,7 @@ public static ItemGraphicInfo CreateAGraphic(Item item, Transform parent, bool s
 |---|---|---|
 | 上架到哪 | 不写就默认 `Merchant_Weapon`（老约定）| **必须显式写 `merchantID`**（校验会拦）|
 | 模型层 | 手里那把活枪 + 场内实例 | 世界图形 + 卡片图标 |
-| 图标 | `icon.png` → `item.Icon` | 同一套 |
+| 图标 | `icon.png` 设成 `item.Icon` | 同一套 |
 | 额外几样 | 插槽偏移 `slots` | `tags`、`maxStackCount`、`value`、`weight` |
 
 ### 图标与 `useSpriteForPickup` 不是一回事
@@ -252,7 +252,7 @@ public static ItemGraphicInfo CreateAGraphic(Item item, Transform parent, bool s
 - `item.Icon`（一个 `Sprite`）是**背包卡片**上的图。`WeaponIcon.Apply` 就是把 png 抠成透明再设它，
   任何物品都能用（名字带 Weapon 是历史原因）。
 - `useSpriteForPickup` 决定**世界里**用不用那张 2D 图代替模型。我们把模型换上去时会把它设成假。
-- 所以「换了模型但卡片还是原图」时，缺的是 `Item.Icon`，不是 `useSpriteForPickup`。
+- 所以「换了模型但卡片还是游戏原本的图标」时，缺的是 `Item.Icon`，不是 `useSpriteForPickup`。
 
 ### 重量要反射写
 
@@ -271,7 +271,7 @@ public static ItemGraphicInfo CreateAGraphic(Item item, Transform parent, bool s
 - `Collection` / `Luxury` / `Daily` 截至编写时**没查到任何读取点**，写它们不会改变行为。
 - 反例提醒：代码读的是 `NotSellable`（`Item.CanBeSold`），而 `NotForSell` **没有代码读**。
 
-## 13. `inspect_game_data` 速查（「我要查 X」→ 用哪条）
+## 13. `inspect_game_data` 速查（「我要查 X」该用哪条）
 
 **这里只放任务与命令。** 路径语法、`match` 运算符、`--file`、`--limit`、`--offset` 那些机制
 见 `docs/guides/00-overview.md`（那是数据查询指南，概念与语法都在那里）。
@@ -281,7 +281,7 @@ public static ItemGraphicInfo CreateAGraphic(Item item, Transform parent, bool s
 | 我要查 | 命令 |
 |---|---|
 | 游戏里有哪些类（含资产类）| `action=classes`（实测：`Material` 2870 · `Mesh` 3162 · `Texture2D` 4366 · `Sprite` 1371 · `Shader` 320）|
-| 按名字找一个资产（美术、脚本、预制体都行）| `action=search, pattern=T_Showcase` → 回类名与 `pathID` |
+| 按名字找一个资产（美术、脚本、预制体都行）| `action=search, pattern=T_Showcase`，返回类名与 `pathID` |
 | 某一类资产的名字清单 | `action=export, class=Texture2D, field=["m_Name"]` |
 | 物品的 typeID 与名字键 | `action=export, class=Item, file=resources.assets, field=["typeID","displayName"]` |
 | 按 tag 筛物品 | 上面那条加 `match=["tags.list[].#name=Food"]` |

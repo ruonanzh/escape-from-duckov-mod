@@ -50,12 +50,12 @@ managedDir 由 `mod-repo.json` 的 `compile.managedDir` 按平台推导（mac `D
 
 ## 注意事项
 
-1. **maintainer-only**：脚本读的是维护者本机的游戏安装目录；玩家/agent 不要跑，产品不负责这里的运行时。
-2. **游戏 patch 后重跑**：`docs/api` 是「某游戏版本的快照」
-确认 `git diff docs/api mod-repo.json` 无误后手动提交
-4. **跨平台路径**：managedDir/dataDir 按 `mod-repo.json` + 平台推导，不要在脚本里写死路径。
-5. **编译/字节码产物不进 git**：`.gitignore` 已排 `**/bin/`、`**/obj/`、`__pycache__/`、`*.pyc`——`dotnet run` 和 python 脚本都会生成这些，不要提交。
-6. **Windows 终端编码**：脚本输出含中文 + emoji（✅/❌），Windows 请用 UTF-8 终端（Windows Terminal / Git Bash / VSCode 集成终端），GBK 下会乱码。
+1. **maintainer-only**：脚本读的是维护者本机的游戏目录。玩家与 agent 不得运行这些脚本；产品不负责这里的运行时。
+2. **游戏 patch 后重跑**：`docs/api` 是「某游戏版本的快照」。游戏更新后必须重跑 refresh。
+3. **review 后提交**：`refresh.py` 只生成，不自动 commit。确认 `git diff docs/api mod-repo.json` 无误后手动提交。
+4. **跨平台路径**：managedDir/dataDir 按 `mod-repo.json` + 平台推导，不得在脚本里写死路径。
+5. **编译/字节码产物不进 git**：`.gitignore` 已排 `**/bin/`、`**/obj/`、`__pycache__/`、`*.pyc`——`dotnet run` 和 python 脚本都会生成这些，不得提交。
+6. **Windows 终端编码**：脚本输出含中文 + emoji（✅/❌），Windows 必须用 UTF-8 终端（Windows Terminal / Git Bash / VSCode 集成终端），GBK 下会乱码。
 
 ## `check-mod-install-staleness.mjs` —— 产物过期判据的检查
 

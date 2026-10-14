@@ -114,7 +114,7 @@
 | `AttachModel(item, mesh, tex, size, handheld, sizeTypeID)` | 把我们 GLB 的网格装到这个新物品上。内部**克隆图形**，不动原型。缩放参照 `sizeTypeID`，一般传原型枪的号 |
 | `ApplyStats(item, 字典, missing)` | 按名字覆盖数值，用**绝对值**。找不到的键收进 `missing`，不静默跳过 |
 | `ApplyQuality(item, quality, displayQuality)` | 覆盖品质。`quality` 是整数，-1 表示不改；`displayQuality` 是枚举名 |
-| `ApplyTags(item, add, remove, missing)` | 加/减 tag。**追加**，不改原型的分类。名字→`Tag` 用 `GameplayDataSettings.Tags.AllTags` |
+| `ApplyTags(item, add, remove, missing)` | 加 tag 或减 tag。**追加**，不改原型的分类。按名字找 `Tag` 用 `GameplayDataSettings.Tags.AllTags` |
 | `ApplyItemNumbers(item, maxStackCount, value, weight)` | 堆叠上限、价值、重量。重量是**私有字段**，内部反射写；缓存在读的时候自己会失效 |
 | `AttachIcon(item, pngPath)` | 把 png 设成卡片图标（`Item.Icon`）。包了一层 `WeaponIcon`（名字带 Weapon 是历史原因）|
 | `PutOnSale(merchantID, typeID, maxStock, priceFactor)` | 上架到商人的货架。**物品这条路必须给 `merchantID`**（缺了就失败，不默认商店）|
@@ -129,7 +129,7 @@
 现查：`inspect_game_data` 的 `class=StockShop, field=merchantID`。
 品质枚举是 `None`、`White`、`Green`、`Blue`、`Purple`、`Orange`、`Red`、`Q7`、`Q8`。
 
-**已有的能力不要重写**：手持那条走 `GameApi.EnsureHandheldAgent`（`AttachModel` 内部已经调了）；
+**已有的能力不得重写**：手持那条走 `GameApi.EnsureHandheldAgent`（`AttachModel` 内部已经调了）；
 发给玩家走 `GameApi.GiveItemToPlayer`（内部先调官方的 `ItemUtilities.SendToPlayer`，反射兜底；**必须在进关卡之后**）。
 
 两条机制的细节见 [`cookbook.md`](cookbook.md) 第 6 节与第 7 节。
