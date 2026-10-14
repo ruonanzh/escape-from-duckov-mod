@@ -179,3 +179,58 @@
 
 - 物品 prefab 的数据里 `agents` 是**空的**，这是正常的。`HasHandHeldAgent` 在没拿出来之前是假，不是错。
 - 只有「本来没有图形」的物品才需要预造（那条才走通用模板）。
+
+## 11. 别用 `FindObjectsOfType*` 找东西：先看有没有现成入口
+
+`FindObjectsOfType` 和 `Resources.FindObjectsOfTypeAll` 都是**整场景枚举**。
+它们不得放进每帧或高频循环。
+
+我们踩过：物品模板的 `ApplyAll` 原本每帧调一次。症状是「越玩越卡」。
+记录在 `reference/item_model/ModBehaviour.cs` 的注释里，节流是 `58f3bef` 加的。
+
+三个高频需求都有现成接口。先查这里，再考虑扫描。
+
+**① 找玩家**
+
+| 做法 | 接口 |
+|---|---|
+| **首选** | `LevelManager.Instance.MainCharacter`。反编译实证：getter 就是 `=> mainCharacter`，读一个缓存字段 |
+| 同类 | `ControllingCharacter`（当前操作的角色）、`PetCharacter`（宠物） |
+| 事件 | `LevelManager.OnControllingCharacterChanged`。它是静态 `Action<CharacterMainControl>` |
+| 等关卡 | `LevelManager.LevelInited` 与 `AfterInit`。两个都是静态 |
+| 兜底 | 菜单阶段还没有关卡，`MainCharacter` 是空。这时才退回扫描 |
+
+**② 等时机，不要轮询**
+
+需要「进关卡之后做一次」时，先找这种静态标志，不要每帧问一次。
+`LevelManager.LevelInited`、`AfterInit`、`LevelInitializing` 都是静态的。
+
+**③ 枚举物品实例**
+
+游戏**没有**「全部物品实例」的注册表。只能按来源枚举。
+
+| 来源 | 接口 |
+|---|---|
+| 某个背包 | `Inventory.Content`（`List<Item>`）或 `Inventory.GetEnumerator()` |
+| 战利品箱 | `LevelManager.LootBoxInventories`（静态字典） |
+
+按来源枚举会漏。漏掉的物品保持旧外观。所以它只有在拿不到事件时才是好选择。
+
+**④ 图形创建：挂钩子，不要轮询**
+
+游戏每次造世界图形都会走 `ItemGraphicInfo.CreateAGraphic`：
+
+```csharp
+public static ItemGraphicInfo CreateAGraphic(Item item, Transform parent, bool snapGround, bool useSpriteIfNoGraphic)
+```
+
+它是**公开静态**方法。要「图形一造出来就换成我们的」，就在它上面挂 Harmony 的 postfix。
+这样一次扫描都不用。轮询只在拿不到这个依赖时才用。
+
+`ItemGraphicInfo.Setup(item)` 会写反向索引 `ItemRefrence`。
+那个索引让你从图形找到它属于哪件物品，但它替代不了枚举。
+
+**代价提醒**：用 Harmony 需要 mod 在 csproj 里引用 `libs/0Harmony.dll`。
+仓库的两个模板（`reference/weapon_model`、`reference/item_model`）都没有引。`reference/example_mod` 引了。
+玩家自己的 mod 可能已经引了（例如 `weapon_editor` 的产物里就带 `0Harmony.dll`）。
+加这个依赖意味着没引的 mod 都要重编。
