@@ -21,9 +21,27 @@ namespace ModelKit
         /// <summary>全部角色（玩家 + NPC + 宠物）。在关卡里才有，主菜单是空的，于是 需要等。</summary>
         public static CharacterMainControl[] AllCharacters() => Object.FindObjectsOfType<CharacterMainControl>();
 
-        /// <summary>玩家。用 IsMainCharacter 判定 —— 不得拿 FindObjectsOfType 的第一个，那可能是 NPC。</summary>
+        /// <summary>玩家。
+        ///
+        /// **优先走游戏自己的入口**：`LevelManager.Instance.MainCharacter`。
+        /// 反编译实证：它的 getter 就是 `=> mainCharacter`，读一个缓存字段，O(1)。
+        /// 旧的写法是 `FindObjectsOfType<CharacterMainControl>` 再筛 `IsMainCharacter`，
+        /// 那是**整场景枚举**，而 3 个武器 mod 每 2 秒各调一次。
+        ///
+        /// **兜底必须留着**：菜单阶段还没有关卡，这时 `MainCharacter` 是 null；
+        /// `LevelManager.Instance` 自己也会惰性初始化。两条任一不成，就退回扫描。
+        /// （不要拿掉这个兜底，否则进关卡前会白白返回 null。）</summary>
         public static CharacterMainControl FindMainCharacter()
-            => AllCharacters().FirstOrDefault(c => c != null && c.IsMainCharacter);
+        {
+            try
+            {
+                var lm = LevelManager.Instance;
+                var main = lm != null ? lm.MainCharacter : null;
+                if (main != null) return main;
+            }
+            catch { /* 单例还没就绪，退回扫描 */ }
+            return AllCharacters().FirstOrDefault(c => c != null && c.IsMainCharacter);
+        }
 
         /// <summary>按名字找角色（GameObject 名，例如 'Character(Clone)' 是玩家；NPC 用它们的名字/模型名筛）。</summary>
         public static CharacterMainControl FindCharacter(string name)
