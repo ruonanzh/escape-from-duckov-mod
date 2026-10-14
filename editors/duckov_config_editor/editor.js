@@ -14,6 +14,51 @@ const SIMPLE = ["typeIDs", "targets", "model", "front", "size", "icon", "world",
 const BOOL = new Set(["world", "handheld", "debug"]);
 const SLOT_KEYS = ["muzzle", "stock", "grip", "scope", "tec", "pivot"];
 
+// ── 条目模式（config 里有 entries 时）──────────────────────────────────────
+// 一个 mod 可以**混装多种能力**，于是 entries 里每条自带一个 `action`，字段表按 action 换。
+// 与 `libs/mod-kit` 与模板 `reference/weapon_model/ModBehaviour.cs` 对齐。
+const ACTION_LABEL = {
+  replace_weapon: "换武器外观（replace_weapon）",
+  replace_item: "换物品外观（replace_item）",
+  new_weapon: "新增武器（new_weapon）",
+  new_item: "新增物品（new_item）",
+};
+const ACTION_FIELDS = {
+  replace_weapon: ["typeIDs", "targets", "model", "front", "size", "icon", "world", "handheld", "debug"],
+  replace_item: ["typeIDs", "targets", "model", "front", "size", "icon", "world", "handheld", "debug"],
+  new_weapon: [
+    "newTypeId", "cloneFromItemId", "displayName", "description", "model", "icon", "size",
+    "merchantID", "maxStock", "priceFactor", "onSale", "quality", "displayQuality", "stats", "crafting",
+  ],
+  new_item: ["newTypeId", "cloneFromItemId", "displayName", "description", "model", "size", "quality", "displayQuality", "stats"],
+};
+const FIELD = {
+  typeIDs: { kind: "nums", hint: "按 typeID（推荐）。逗号分隔。用 inspect_game_data 查。" },
+  targets: { kind: "list", hint: "或按对象名**全等**（不区分大小写）。逗号分隔。" },
+  model: { kind: "text", hint: "本 mod 目录下的 glb（相对名或绝对路径）。新增武器可以留空：沿用原型外形。" },
+  front: { kind: "select", options: ["auto", "+z", "-z", "+x", "-x", "up"], def: "auto" },
+  size: { kind: "number", hint: "目标**最长边**（米）。不填 = 不缩放 / 按枪种档位。" },
+  icon: { kind: "text", def: "icon.png" },
+  world: { kind: "bool", def: true },
+  handheld: { kind: "bool", def: false },
+  debug: { kind: "bool", def: false },
+  newTypeId: { kind: "number", hint: "不填 = 游戏自己的下一个空闲号（ItemAssetsCollection.NextTypeID）。" },
+  cloneFromItemId: { kind: "number", hint: "拿哪把现有枪当**原型**（数值、插槽、品质全继承它）。" },
+  displayName: { kind: "text" },
+  description: { kind: "text" },
+  merchantID: { kind: "text", def: "Merchant_Weapon", hint: "上架到哪个商人。默认 Merchant_Weapon（卖枪那个）。" },
+  maxStock: { kind: "number", def: "1" },
+  priceFactor: { kind: "number", def: "1" },
+  onSale: { kind: "bool", def: true },
+  quality: { kind: "number", hint: "整数。不填 = 沿用原型。" },
+  displayQuality: { kind: "select", options: ["", "None", "White", "Green", "Blue", "Purple", "Orange", "Red", "Q7", "Q8"] },
+  stats: { kind: "lines", hint: "覆盖数值，**每行一个** `Damage=13.0`。键用游戏自己的名字；值用绝对值。" },
+  crafting: { kind: "craft", hint: "制作台配方。材料每行一个 `662=5`。" },
+};
+
+let entriesMode = false;
+let entries = [];          // 每条：{ action, … }（原对象）
+
 let writable = false;
 let revision = null;
 let model = {};          // 解析后的原始对象（未知键原样带回）
@@ -101,6 +146,7 @@ function readSlots() {
 
 // ── 表单 <-> 对象 ──────────────────────────────────────────────────────────
 function readForm() {
+  if (entriesMode) return { ...model, entries: readEntries() };
   const next = { ...model };
   for (const f of SIMPLE) {
     const el = $(`f-${f}`);
@@ -138,6 +184,7 @@ function readForm() {
 }
 
 function validate(value) {
+  if (entriesMode) return validateEntries(value.entries || []);
   const errors = [];
   if (value.typeIDs && value.typeIDs.some((n) => !Number.isFinite(n))) errors.push("typeIDs 必须是数字");
   if (!value.typeIDs && !value.targets) errors.push("至少要给 typeIDs 或 targets 之一");
@@ -165,6 +212,17 @@ function setDirty(next) {
 
 function fill(value) {
   model = value && typeof value === "object" ? { ...value } : {};
+  // 有 entries 就走条目模式；否则沿用老表单（老 config 照原样渲染，行为不变）
+  entriesMode = Array.isArray(model.entries) && model.entries.length > 0;
+  if (entriesMode) {
+    fillEntries(model.entries);
+    applyMode();
+    dirty = false;
+    showError("");
+    paint();
+    return;
+  }
+  applyMode();
   for (const f of SIMPLE) {
     const el = $(`f-${f}`);
     const cur = model[f];
@@ -241,7 +299,328 @@ async function save() {
   showError("");
 }
 
+// ── 条目模式：渲染 / 读回 ──────────────────────────────────────────────
+
+function numOrText(v) { return v == null ? "" : String(v); }
+
+/** 把 `Key=Value` 多行文本读成对象；空行与 `#` 开头的行跳过 */
+function readLines(text, numericKeys) {
+  const out = {};
+  for (const raw of String(text || "").split("\n")) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#")) continue;
+    const i = line.indexOf("=");
+    if (i < 0) continue;
+    const k = line.slice(0, i).trim();
+    const v = line.slice(i + 1).trim();
+    if (!k) continue;
+    out[k] = numericKeys ? Number(v) : v;
+  }
+  return out;
+}
+
+function linesToText(obj) {
+  if (!obj || typeof obj !== "object") return "";
+  return Object.entries(obj).map(([k, v]) => `${k}=${v}`).join("\n");
+}
+
+/** 一个字段行。值从 `entry[key]` 取；写回由 `readEntryCard` 统一做 */
+function fieldRow(key, spec, value) {
+  const wide = spec.kind === "lines" || spec.kind === "craft";
+  const row = document.createElement(wide ? "div" : "label");
+  row.className = "row";
+  row.dataset.field = key;
+  const name = document.createElement("span");
+  name.className = "k";
+  name.textContent = key;
+  row.appendChild(name);
+
+  let el;
+  if (spec.kind === "bool") {
+    el = document.createElement("input");
+    el.type = "checkbox";
+    el.checked = value == null ? !!spec.def : !!value;
+  } else if (spec.kind === "select") {
+    el = document.createElement("select");
+    for (const o of spec.options) {
+      const op = document.createElement("option");
+      op.value = o;
+      op.textContent = o === "" ? "（不改）" : o;
+      el.appendChild(op);
+    }
+    el.value = value == null ? spec.def ?? "" : String(value);
+  } else if (spec.kind === "lines") {
+    el = document.createElement("textarea");
+    el.rows = 4;
+    el.value = linesToText(value);
+  } else if (spec.kind === "craft") {
+    const money = document.createElement("input");
+    money.type = "number";
+    money.dataset.role = "money";
+    money.value = numOrText((value && value.money) ?? 0);
+    money.placeholder = "money";
+    const tags = document.createElement("input");
+    tags.type = "text";
+    tags.dataset.role = "tags";
+    tags.value = Array.isArray(value && value.tags) ? value.tags.join(", ") : "";
+    tags.placeholder = "tags（逗号分隔）";
+    row.appendChild(money);
+    row.appendChild(tags);
+    el = document.createElement("textarea");
+    el.rows = 4;
+    el.dataset.role = "materials";
+    el.value = linesToText((value && value.materials) || {});
+  } else if (spec.kind === "nums" || spec.kind === "number") {
+    el = document.createElement("input");
+    el.type = spec.kind === "nums" ? "text" : "number";
+    el.step = "any";
+    el.value = spec.kind === "nums" ? listToText(value) : numOrText(value);
+  } else {
+    el = document.createElement("input");
+    el.type = "text";
+    el.value = numOrText(value);
+  }
+  el.classList.add("v");
+  el.addEventListener("input", () => setDirty(true));
+  el.addEventListener("change", () => setDirty(true));
+  row.appendChild(el);
+  if (spec.hint) {
+    const hint = document.createElement("div");
+    hint.className = "hint";
+    hint.textContent = spec.hint;
+    row.appendChild(hint);
+  }
+  return row;
+}
+
+/** 挂点表的一行（条目模式用；老表单那套 `addSlotRow` 写的是固定容器，不动它）*/
+function slotRow(key, value) {
+  const tr = document.createElement("tr");
+  const arr = Array.isArray(value) ? value : [0, 0, 0];
+  const idx = { x: 0, y: 1, z: 2 };
+  for (const cls of ["k", "x", "y", "z"]) {
+    const td = document.createElement("td");
+    const inp = document.createElement("input");
+    inp.className = cls;
+    if (cls === "k") {
+      inp.type = "text";
+      inp.value = key || "";
+    } else {
+      inp.type = "number";
+      inp.step = "0.01";
+      inp.dataset.axis = cls;
+      inp.value = arr[idx[cls]] ?? 0;
+    }
+    inp.addEventListener("input", () => setDirty(true));
+    td.appendChild(inp);
+    tr.appendChild(td);
+  }
+  const td = document.createElement("td");
+  td.className = "del";
+  const del = document.createElement("button");
+  del.type = "button";
+  del.textContent = "×";
+  del.addEventListener("click", () => { tr.remove(); setDirty(true); });
+  td.appendChild(del);
+  tr.appendChild(td);
+  return tr;
+}
+
+function slotTable(value) {
+  const box = document.createElement("div");
+  const table = document.createElement("table");
+  table.className = "slots";
+  table.innerHTML = '<thead><tr><th>键</th><th>x</th><th>y</th><th>z</th><th></th></tr></thead>';
+  const body = document.createElement("tbody");
+  table.appendChild(body);
+  box.appendChild(table);
+  const add = document.createElement("button");
+  add.type = "button";
+  add.textContent = "加一行挂点";
+  add.addEventListener("click", () => { body.appendChild(slotRow("muzzle", [0, 0, 0])); setDirty(true); });
+  box.appendChild(add);
+  for (const [k, v] of Object.entries(value && typeof value === "object" ? value : {})) body.appendChild(slotRow(k, v));
+  return box;
+}
+
+function addEntryCard(entry) {
+  const src = entry && typeof entry === "object" ? entry : {};
+  const action = ACTION_LABEL[src.action] ? src.action : "replace_weapon";
+
+  const card = document.createElement("section");
+  card.className = "card";
+  card.__src = src;
+  card.dataset.action = action;
+
+  const head = document.createElement("div");
+  head.className = "cardhead";
+  const pick = document.createElement("select");
+  pick.className = "action";
+  for (const [k, label] of Object.entries(ACTION_LABEL)) {
+    const op = document.createElement("option");
+    op.value = k;
+    op.textContent = label;
+    pick.appendChild(op);
+  }
+  pick.value = action;
+  pick.addEventListener("change", () => {
+    // 先把当前 DOM 按**旧** action 快照下来，再换字段表 —— 否则切走再切回会丢值（实测踩到）
+    card.__src = readEntryCard(card);
+    card.dataset.action = pick.value;
+    renderCardFields(card);
+    setDirty(true);
+  });
+  head.appendChild(pick);
+  const del = document.createElement("button");
+  del.type = "button";
+  del.textContent = "删除这条";
+  del.addEventListener("click", () => { card.remove(); setDirty(true); });
+  head.appendChild(del);
+  card.appendChild(head);
+
+  const fields = document.createElement("div");
+  fields.className = "fields";
+  card.appendChild(fields);
+  renderCardFields(card);
+  $("entries").appendChild(card);
+}
+
+/** 按 `card.dataset.action` 重建这张卡的字段区。
+ * 数据来源：DOM 的字段表与当前 action 对得上就读 DOM；对不上（首次渲染 / 刚切完 action）就拿 `card.__src`。*/
+function renderCardFields(card) {
+  const fields = card.querySelector(".fields");
+  const action = card.dataset.action;
+  const matches = fields.childElementCount > 0 && card.dataset.rendered === action;
+  const cur = matches ? readEntryCard(card) : { ...(card.__src || {}) };
+  fields.textContent = "";
+  for (const key of ACTION_FIELDS[action] || ACTION_FIELDS.replace_weapon) {
+    fields.appendChild(fieldRow(key, FIELD[key] || { kind: "text" }, cur[key]));
+  }
+  const slotsTitle = document.createElement("div");
+  slotsTitle.className = "hint";
+  slotsTitle.style.marginLeft = "0";
+  slotsTitle.textContent = "slots（米，我们模型的局部空间；键名大小写不敏感）";
+  fields.appendChild(slotsTitle);
+  fields.appendChild(slotTable(cur.slots));
+  card.__src = cur;                 // 下一次重建的兵底值
+  card.dataset.rendered = action;   // 记住这一屏是给哪个 action 渲染的
+}
+
+/** 读一张卡 → 一个 entry 对象（未知键从 `card.__src` 原样带回）*/
+function readEntryCard(card) {
+  const action = card.dataset.action || "replace_weapon";
+  const out = { action };
+  const src = card.__src || {};
+  const known = new Set([...(ACTION_FIELDS[action] || []), "action", "slots"]);
+  for (const [k, v] of Object.entries(src)) if (!known.has(k)) out[k] = v;
+
+  for (const row of card.querySelectorAll(".fields .row")) {
+    const key = row.dataset.field;
+    const spec = FIELD[key] || { kind: "text" };
+    const el = row.querySelector(".v");
+    if (!el) continue;
+    if (spec.kind === "bool") {
+      if (el.checked !== !!spec.def) out[key] = el.checked;
+    } else if (spec.kind === "lines") {
+      const o = readLines(el.value, true);      // 值必须是**数字**（mod 那边按 float 读）
+      if (Object.keys(o).length) out[key] = o;
+    } else if (spec.kind === "craft") {
+      const craft = {};
+      const money = Number((row.querySelector("[data-role=money]") || {}).value) || 0;
+      const mats = readLines((row.querySelector("[data-role=materials]") || {}).value, true);
+      const tags = textToList((row.querySelector("[data-role=tags]") || {}).value, false);
+      const hasMats = Object.keys(mats).length > 0;
+      const hasTags = !!(tags && tags.length);
+      // **只有真写了内容才写这个键** —— 写一个空的 `crafting: {}` 会让 mod 以为要加配方
+      if (hasMats || hasTags || money) {
+        craft.money = money;
+        if (hasMats) craft.materials = mats;
+        if (hasTags) craft.tags = tags;
+        out[key] = craft;
+      }
+    } else if (spec.kind === "select") {
+      if (el.value !== "" && el.value !== (spec.def ?? "")) out[key] = el.value;
+    } else if (spec.kind === "nums") {
+      const list = textToList(el.value, true);
+      if (list && list.length) out[key] = list;
+    } else if (spec.kind === "number") {
+      const raw = el.value.trim();
+      if (raw !== "") out[key] = Number(raw);
+    } else {
+      // 文本字段：**只看是否为空**，不得因为等于 `def` 就丢掉
+      // （否则玩家显式写的 merchantID 会被默默删掉）
+      const raw = el.value.trim();
+      if (raw !== "") out[key] = raw;
+    }
+  }
+
+  const slots = {};
+  for (const tr of card.querySelectorAll(".fields table.slots tr")) {
+    const kEl = tr.querySelector("input.k");
+    if (!kEl) continue;
+    const k = kEl.value.trim();
+    if (!k) continue;
+    const get = (a) => Number((tr.querySelector(`input[data-axis=${a}]`) || {}).value) || 0;
+    slots[k] = [get("x"), get("y"), get("z")];
+  }
+  if (Object.keys(slots).length) out.slots = slots;
+  return out;
+}
+
+function readEntries() {
+  const out = [];
+  for (const card of $("entries").querySelectorAll(".card")) out.push(readEntryCard(card));
+  return out;
+}
+
+function validateEntries(list) {
+  const errors = [];
+  list.forEach((e, i) => {
+    const at = `entries[${i}]（${e.action}）`;
+    if (e.action === "replace_weapon" || e.action === "replace_item") {
+      if (e.typeIDs && e.typeIDs.some((n) => !Number.isFinite(n))) errors.push(`${at}：typeIDs 必须是数字`);
+      if (!e.typeIDs && !e.targets) errors.push(`${at}：至少要给 typeIDs 或 targets 之一`);
+      if (!String(e.model || "").trim()) errors.push(`${at}：model 不能为空（要指向一个 glb）`);
+    } else {
+      if (!(Number(e.cloneFromItemId) > 0)) errors.push(`${at}：cloneFromItemId 必填（原型枪的 typeID）`);
+      if (e.newTypeId != null && !(Number(e.newTypeId) > 0)) errors.push(`${at}：newTypeId 要么不填，要么大于 0`);
+      if (e.stats && Object.values(e.stats).some((v) => !Number.isFinite(Number(v)))) errors.push(`${at}：stats 的值必须是数字`);
+    }
+    if (e.size != null && !(Number(e.size) > 0)) errors.push(`${at}：size 要么留空，要么大于 0`);
+    for (const [k, v] of Object.entries(e.slots || {})) {
+      if (!Array.isArray(v) || v.length < 3) errors.push(`${at}：slots.${k} 必须是三个数`);
+      else if (v.some((n) => !Number.isFinite(n))) errors.push(`${at}：slots.${k} 的三个数必须是数字`);
+    }
+  });
+  return errors;
+}
+
+function fillEntries(list) {
+  entries = Array.isArray(list) ? list : [];
+  $("entries").textContent = "";
+  for (const e of entries) addEntryCard(e);
+}
+
+/** 切换两种模式：条目模式只看 `#entriesSection`，扁平模式只看老那几节 */
+function applyMode() {
+  $("entriesSection").style.display = entriesMode ? "" : "none";
+  for (const id of ["secPick", "secModel", "secLayer", "secSlots"]) $(id).style.display = entriesMode ? "none" : "";
+  $("mkentries").style.display = entriesMode ? "none" : "";
+}
+
 function start() {
+  $("addentry").addEventListener("click", () => { addEntryCard({ action: "replace_weapon" }); setDirty(true); });
+  $("mkentries").addEventListener("click", () => {
+    // 把当前扁平表单包成一条 entries（于是 一份 config 可以慢慢长出多条）
+    const one = readForm();
+    entriesMode = true;
+    model = { ...one };
+    for (const f of SIMPLE) delete model[f];
+    delete model.slots;
+    fillEntries([{ action: "replace_weapon", ...one }]);
+    applyMode();
+    setDirty(true);
+  });
   for (const f of SIMPLE) {
     const el = $(`f-${f}`);
     if (!el) continue;

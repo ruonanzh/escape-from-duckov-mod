@@ -82,12 +82,32 @@ namespace ModelKit
             catch { return false; }
         }
 
-        /// <summary>把一件物品塞给玩家（作新增物品的演示/自测用）：`PickupItem` 失败就退到 `inventory.AddItem`。
-        /// `CharacterMainControl.itemControl` 是**私有字段**（`CharacterItemControl`），只能反射拿。</summary>
+        /// <summary>把一件物品送给玩家（新物品的获得途径之一，也用来自测）。
+        ///
+        /// **优先官方的 `ItemUtilities.SendToPlayer`**（官方 mod 指南 `xvrsl/duckov_modding`
+        /// 的 `Documents/NotableAPIs.md` 推荐的就是这条路；签名在我们的
+        /// `docs/api/TeamSoda.Duckov.Core.md:5320`）。
+        /// 官方的这个方法没有返回值，于是 调完没抛就算成。
+        ///
+        /// **必须在进关卡之后调** —— 注册新物品通常发生在进关卡**之前**，那时还没有玩家。
+        ///
+        /// 兵底：老的私有反射（拿 `CharacterMainControl.itemControl` 再调 `PickupItem`）。
+        /// 保留它是因为官方那条万一不可用（游戏版本变了）还能有一条路。</summary>
         public static bool GiveItemToPlayer(ItemStatsSystem.Item item)
         {
+            if (item == null) return false;
+            try
+            {
+                ItemUtilities.SendToPlayer(item, dontMerge: false, sendToStorage: true);
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                UnityEngine.Debug.LogWarning("[GameApi] ItemUtilities.SendToPlayer failed, falling back to the reflection path: " + ex.Message);
+            }
+
             var player = FindMainCharacter();
-            if (player == null || item == null) return false;
+            if (player == null) return false;
             try
             {
                 var f = typeof(CharacterMainControl).GetField("itemControl",

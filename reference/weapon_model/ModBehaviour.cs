@@ -13,15 +13,21 @@
 // { "typeIDs": [655], "model": "mp5.glb", "front": "-x" } ] }
 //
 // 字段（每条都能用）：
-// targets = 武器**对象名全等**（数组 不区分大小写；例 ["Item_SMG_MP5_Normal"]）
-// typeIDs = 或精确命中（数组 例 [238, 655]）
-// model = 放在本 mod 目录里的 GLB 文件（相对路径或绝对路径）
-// icon = 图标文件名（默认 icon.png；没有就只换模型、不换图标）
-// front = 仅"用户自带的模型"需要：auto/+z/-z/+x/-x 声明枪口朝向（Tripo 出的由提示词保证）
+// action = replace_weapon（缺省，换已有枪的外观）| new_weapon（**新增一把枪**）
+// targets / typeIDs / model / icon / front / size / slots = 见下方各条
 //
-// 运行时会做（都在 libs/mod-kit 里，见 WeaponModel.cs / GltfLoader.cs / GameApi.cs）：
-// 读 GLB，于是 建 Mesh+贴图（坐标系/绕序/UV 转换 + 握把归零）
-//，于是 找到你手里那把枪，于是 关掉旧模型零件，于是 挂上我们的模型，于是 对齐，于是 克隆游戏材质 + 换贴图
+// **新增武器**（action = "new_weapon"）的字段：
+// newTypeId = 新 typeID（不写就取游戏自己的下一个空闲号）
+// cloneFromItemId = 拿哪把现有枪当原型（数值/插槽全继承它）
+// displayName / description = 界面上的名字与简介
+// merchantID = 上架到哪个商人（缺省 Merchant_Weapon）；maxStock / priceFactor = 备货与价格倍数
+// stats = 覆盖数值（绝对值，键用游戏自己的名字）；quality / displayQuality = 覆盖品质
+// crafting = { "money": 0, "materials": { "662": 5 }, "tags": ["..."] } 制作台配方
+//
+// 运行时会做（都在 libs/mod-kit 里，见 ItemFactory.cs / WeaponModel.cs / GltfLoader.cs / GameApi.cs）：
+// 换外观：读 GLB 建 Mesh+贴图（坐标系/绕序/UV 转换 + 握把归零），于是 找到你手里那把枪，
+//        于是 关掉旧模型零件，于是 挂上我们的模型，于是 对齐，于是 克隆游戏材质 + 换贴图
+// 新增武器：克隆原型 → 换图形 → 覆盖数值与品质 → 上架到商人 → 加一条制作台配方
 
 using System;
 using System.Collections.Generic;
@@ -34,9 +40,14 @@ namespace WeaponModelSwap
 {
     public class ModBehaviour : Duckov.Modding.ModBehaviour
     {
-        /// <summary>一条规则："给哪些武器，换成哪套素材"。一个 mod 可以有多条 </summary>
+        /// <summary>一条规则：换外观（action = replace_weapon）或新增一把枪（action = new_weapon）。一个 mod 可以有多条 </summary>
         class Entry
         {
+            /// <summary>"replace_weapon"（缺省）或 "new_weapon"。
+            /// 缺省等于**现在这个模板的老行为** —— 这是过渡写法（计划 §5.9）：只留在这里，以后可删。</summary>
+            public string Action = "replace_weapon";
+            public bool IsNew => string.Equals(Action, "new_weapon", StringComparison.OrdinalIgnoreCase);
+
             public List<string> Targets = new List<string>();
             public readonly HashSet<int> TypeIds = new HashSet<int>();
             public string ModelFile = "";
@@ -59,8 +70,29 @@ namespace WeaponModelSwap
             public Texture2D Texture;
             public string Signature = "";    // model+front 指纹：用来判断热重载后要不得重读
 
+            // ── action = new_weapon 专用的字段 ──
+            public int NewTypeId;
+            public int CloneFromItemId;
+            public string DisplayName = "";
+            public string Description = "";
+            public string MerchantID = "";
+            public int MaxStock = 1;
+            public float PriceFactor = 1f;
+            public bool OnSale = true;          // config 写 "onSale": false 就不上架
+            public readonly Dictionary<string, float> Stats = new Dictionary<string, float>();
+            public int Quality = -1;            // -1 = 不改
+            public string DisplayQuality = "";  // 空 = 不改
+            public bool CraftRecipe;
+            public long CraftMoney;
+            public readonly Dictionary<int, int> CraftMaterials = new Dictionary<int, int>();
+            public List<string> CraftTags = new List<string>();
+
+            /// <summary>配方的 id：同一件物品固定一个，于是 热重载不会重复加。</summary>
+            public string RecipeId() => "ModelKit." + (NewTypeId > 0 ? NewTypeId.ToString() : "auto");
+
             public bool Matches(ItemStatsSystem.Item item)
             {
+                if (IsNew) return false;        // 新增那条不参与"换手里这把"的匹配
                 if (Targets.Count == 0 && TypeIds.Count == 0) return false;
                 if (TypeIds.Count > 0 && TypeIds.Contains(item.TypeID)) return true;
                 // 名字是**全等**匹配（不区分大小写）：子串会误伤
@@ -116,12 +148,17 @@ namespace WeaponModelSwap
         float _nextCloneSweep;
         string _lastHeld;
 
+        // 新增武器（action = "new_weapon"）造出来的东西：typeID → 结果
+        readonly Dictionary<int, ItemFactory.Result> _created = new Dictionary<int, ItemFactory.Result>();
+        readonly List<ModelKit.ItemModel.Result> _newAttached = new List<ModelKit.ItemModel.Result>();
+
         void Start()
         {
             _configPath = Path.Combine(ModelLoaderDir(), "config.json");
             ReadConfig();
             _cfgStamp = File.Exists(_configPath) ? File.GetLastWriteTimeUtc(_configPath) : DateTime.MinValue;
             LoadModels();
+            ApplyNewEntries();      // 新增武器那条（必须在进关卡之前，见方法注释）
             // 启动就读好模型，于是 玩家掏出枪时能**立刻**换（不然会先看到原模型）
             Debug.Log($"[WeaponModel] rules ({_entries.Count}): " + string.Join(" / ",
                 _entries.Select((e, i) => $"#{i + 1} targets=[{string.Join(",", e.Targets)}] typeIDs=[{string.Join(",", e.TypeIds)}] model='{e.ModelFile}'")));
@@ -246,6 +283,79 @@ namespace WeaponModelSwap
             }
         }
 
+        /// <summary>`action = "new_weapon"` 的规则：造一件游戏里本来没有的枪。
+        ///
+        /// **时机在 `Start()`**，也就是进关卡之前。两个原因（都是反编译实证）：
+        ///   · 商人的 `Awake` → `InitializeEntries()` 会把商品条目抄进商店自己的列表；我们要抢在它前面。
+        ///   · 注册只在进关卡前做；而发物品需要玩家（那条另算）。
+        ///
+        /// 已造过的 typeID 不重复造（热重载会再跑一遍这个方法）：只把上架与配方重提一次。
+        /// 上架与配方自己也是幂等的（同一条目/同一个 id 不重复加）。</summary>
+        void ApplyNewEntries()
+        {
+            foreach (var e in _entries)
+            {
+                if (!e.IsNew) continue;
+                if (e.CloneFromItemId <= 0)
+                { Debug.LogError($"[NewWeapon] '{e.DisplayName}' has no cloneFromItemId; skipped"); continue; }
+
+                int typeId = e.NewTypeId;
+                if (typeId <= 0)
+                {
+                    typeId = ItemFactory.NextFreeTypeID();
+                    if (typeId <= 0) { Debug.LogError("[NewWeapon] cannot get a free typeID; skipped"); continue; }
+                    e.NewTypeId = typeId;      // 记回条目，于是 上架与配方的 id 跟着一致
+                }
+
+                if (!_created.ContainsKey(typeId))
+                {
+                    if (ItemFactory.IsTypeIDTaken(typeId))
+                    { Debug.LogError($"[NewWeapon] typeID={typeId} is already taken by the game or another mod; nothing was created"); continue; }
+
+                    var r = ItemFactory.CloneAsNewItem(e.CloneFromItemId, typeId, e.DisplayName, e.Description);
+                    if (!r.Created) { Debug.LogError("[NewWeapon] " + r.Report); continue; }
+                    _created[typeId] = r;
+
+                    // 模型（不写 model 就沿用原型外形）
+                    if (e.Mesh != null)
+                    {
+                        var ra = ItemFactory.AttachModel(r.Item, e.Mesh, e.Texture, e.Size,
+                                                         handheld: true, sizeTypeID: e.CloneFromItemId);
+                        if (ra != null) { _newAttached.Add(ra); Debug.Log("[NewWeapon] " + ra.Report); }
+                    }
+
+                    // 数值与品质（只改 config 里写了的）
+                    var missing = new List<string>();
+                    int changed = ItemFactory.ApplyStats(r.Item, e.Stats, missing);
+                    ItemFactory.ApplyQuality(r.Item, e.Quality, e.DisplayQuality);
+                    if (missing.Count > 0)
+                        Debug.LogError("[NewWeapon] these stats do not exist in the game, so they were NOT applied: "
+                                       + string.Join(", ", missing) + " (copy the keys from inspect_game_data)");
+
+                    Debug.Log($"[NewWeapon] created typeID={typeId} (name key '{r.NameKey}') from prototype {e.CloneFromItemId}"
+                              + $" | name='{e.DisplayName}' | model={(e.Mesh != null ? "ours" : "none, keeps the prototype's look")}"
+                              + $" | stats written={changed} | quality={(e.Quality >= 0 || !string.IsNullOrEmpty(e.DisplayQuality) ? "overridden" : "inherited")}");
+
+                    // 图标（可选）
+                    if (e.IconPath != null) Debug.Log("[NewWeapon] " + ModelKit.WeaponIcon.Apply(r.Item, e.IconPath));
+                }
+
+                // 上架到商人（幂等：同一个 typeID 不加第二次）
+                if (e.OnSale)
+                {
+                    var rs = ItemFactory.PutOnSale(e.MerchantID, typeId, e.MaxStock, e.PriceFactor);
+                    Debug.Log((rs.Ok ? "[NewWeapon] " : "[NewWeapon] FAILED ") + rs.Report);
+                }
+
+                // 制作台配方（幂等：同一个 id 不加第二次）
+                if (e.CraftRecipe)
+                {
+                    var rr = ItemFactory.AddRecipe(e.RecipeId(), typeId, 1, e.CraftMoney, e.CraftMaterials, e.CraftTags.ToArray());
+                    Debug.Log((rr.Ok ? "[NewWeapon] " : "[NewWeapon] FAILED ") + rr.Report);
+                }
+            }
+        }
+
         /// <summary>config.json 一改存盘就重新生效（不用重启游戏）：重读配置、丢旧实例、必要时重读模型 </summary>
         void ReloadIfChanged()
         {
@@ -272,11 +382,18 @@ namespace WeaponModelSwap
                 _applied.Clear();
                 foreach (var kv in _appliedClone) if (kv.Value != null) kv.Value.Restore();
                 _appliedClone.Clear();
+                // 新增武器：挂上的模型要还（有借有还），商品条目/配方/动态条目要撤
+                // （不撤的话每改一次配置，货架上就多一条、配方也多一条）
+                foreach (var r in _newAttached) if (r != null) r.Restore();
+                _newAttached.Clear();
+                ItemFactory.RemoveAdded();
+                _created.Clear();
                 _lastHeld = null;
                 // **每次都重读模型**：热重载会把 Entry 重建（Mesh 变 null），
                 // 而旧代码只在 model/front 指纹变了时才重读，于是 只改 slots/target/icon 时会
                 // “永远挂不上” （同样导致枪不见）。重读一个 GLB 只要几十毫秒 换来正确性。
                 LoadModels();
+                ApplyNewEntries();      // 新配置里的新增武器重新造一遍（已撤掉了旧的）
                 Debug.Log($"[WeaponModel] config hot reloaded: {_entries.Count} rules (old instances dropped; the new config re-applies later)");
             }
             catch (Exception e) { Debug.LogWarning($"[WeaponModel] hot reload failed: {e.Message}"); }
@@ -294,6 +411,8 @@ namespace WeaponModelSwap
             var dir = ModelLoaderDir();
             foreach (var e in _entries)
             {
+                // 新增武器可以**不带模型**（沿用原型枪的外形）—— 不算错，不必报警
+                if (e.IsNew && string.IsNullOrEmpty(e.ModelFile)) continue;
                 var path = e.ModelPath(dir);
                 if (string.IsNullOrEmpty(path)) { Debug.LogWarning($"[WeaponModel] rule model='{e.ModelFile}' is empty; skipped"); continue; }
                 if (!File.Exists(path)) { Debug.LogWarning($"[WeaponModel] no model file: {path}"); continue; }
@@ -360,15 +479,47 @@ namespace WeaponModelSwap
         {
             var e = new Entry
             {
+                Action = j.GetStr("action", "replace_weapon"),
                 Targets = Json.Strings(j, "targets"),
                 ModelFile = j.GetStr("model", ""),
                 Front = j.GetStr("front", "auto"),
                 IconFile = j.GetStr("icon", "icon.png"),
                 Size = j.GetFloat("size", 0f),
+                NewTypeId = j.GetInt("newTypeId", 0),
+                CloneFromItemId = j.GetInt("cloneFromItemId", 0),
+                DisplayName = j.GetStr("displayName", ""),
+                Description = j.GetStr("description", ""),
+                MerchantID = j.GetStr("merchantID", ""),
+                MaxStock = j.GetInt("maxStock", 1),
+                PriceFactor = j.GetFloat("priceFactor", 1f),
+                OnSale = j.GetBool("onSale", true),
+                Quality = j.GetInt("quality", -1),
+                DisplayQuality = j.GetStr("displayQuality", ""),
             };
             var ids = j["typeIDs"];
             if (ids != null && ids.IsArray) for (int i = 0; i < ids.Count; i++) e.TypeIds.Add(ids[i].AsInt(0));
             foreach (var kv in ParseSlots(j)) e.Slots[kv.Key] = kv.Value;
+
+            // stats = { "Damage": 13.0, … } —— 键用游戏自己的 `Stat.Key`
+            var stats = j["stats"];
+            if (stats != null && stats.IsObject)
+                foreach (var kv in stats.Object) e.Stats[kv.Key] = kv.Value.AsFloat(0f);
+
+            // crafting = { "money": 0, "materials": { "662": 5 }, "tags": ["..."] }
+            var craft = j["crafting"];
+            if (craft != null && craft.IsObject)
+            {
+                e.CraftRecipe = true;
+                e.CraftMoney = (long)craft.GetFloat("money", 0f);
+                e.CraftTags = Json.Strings(craft, "tags");
+                var mats = craft["materials"];
+                if (mats != null && mats.IsObject)
+                    foreach (var kv in mats.Object)
+                    {
+                        int id;
+                        if (int.TryParse(kv.Key, out id)) e.CraftMaterials[id] = kv.Value.AsInt(0);
+                    }
+            }
             return e;
         }
 

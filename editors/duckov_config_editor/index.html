@@ -39,6 +39,14 @@
       padding:8px 10px; border-radius:6px; margin-bottom:12px; white-space:pre-wrap; }
     details { margin-top:8px; } summary { cursor:pointer; color:var(--dim); }
     pre { background:#f6f7f8; padding:8px; border-radius:6px; overflow:auto; max-height:260px; }
+    /* 条目模式（config 里有 entries 时）：一个 mod 可以混装多种能力，每条自带 action */
+    .card { background:#fafbfc; border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-bottom:10px; }
+    .cardhead { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+    .cardhead select.action { flex:0 0 auto; min-width:240px; }
+    .cardhead button { margin-left:auto; }
+    .card .row { flex-wrap:wrap; }
+    .card textarea { flex:1; font:inherit; padding:4px 6px; border:1px solid var(--line);
+      border-radius:4px; background:#fff; min-width:0; }
   </style>
 </head>
 <body>
@@ -47,15 +55,27 @@
     <div class="sub">改哪件物品、用哪个模型、朝向、尺寸、挂点。Ctrl+S 保存。</div>
     <div id="error"></div>
 
-    <section>
+    <section id="secPick">
       <h2>换哪件</h2>
       <label class="row"><span class="k">typeIDs</span><input type="text" id="f-typeIDs" placeholder="655, 238"></label>
       <div class="hint">按 typeID（推荐）。逗号分隔。用 <code>inspect_game_data</code> 查。</div>
       <label class="row"><span class="k">targets</span><input type="text" id="f-targets" placeholder="Item_SMG_MP5_Normal"></label>
       <div class="hint">或按对象名**全等**（不区分大小写）。逗号分隔。</div>
+      <div style="margin-top:8px">
+        <button id="mkentries" type="button">改成多条（entries）</button>
+        <span class="hint" style="margin-left:8px">一个 mod 可以混装多种能力：换外观 + 新增武器各自一条。</span>
+      </div>
     </section>
 
-    <section>
+    <section id="entriesSection" style="display:none">
+      <h2>条目（每条一个动作）</h2>
+      <div class="hint" style="margin-left:0">每条自带一个 <code>action</code>：换武器外观 / 换物品外观 / 新增武器 / 新增物品。
+        一个 mod 可以混装多条。</div>
+      <div id="entries"></div>
+      <button id="addentry" type="button">加一条</button>
+    </section>
+
+    <section id="secModel">
       <h2>用哪个模型</h2>
       <label class="row"><span class="k">model</span><input type="text" id="f-model" placeholder="mp5.glb"></label>
       <div class="hint">本 mod 目录下的 glb。相对名或绝对路径。</div>
@@ -76,13 +96,13 @@
       <div class="hint">武器图标文件名（默认 icon.png）。</div>
     </section>
 
-    <section>
+    <section id="secLayer">
       <h2>换哪一层</h2>
       <label class="row"><span class="k">world</span><input type="checkbox" id="f-world"><span>世界里的模型（地上 / 展示 / 穿戴着）</span></label>
       <label class="row"><span class="k">handheld</span><input type="checkbox" id="f-handheld"><span>拿在手里那条也换（会改行为）</span></label>
     </section>
 
-    <section>
+    <section id="secSlots">
       <h2>挂点 <span style="color:var(--dim);font-weight:400">（只有枪用）</span></h2>
       <div class="hint" style="margin-left:0">单位 <b>米</b>，在 <b>我们模型的局部空间</b>里（<b>枪：握把归零后，零点在握把点</b>）：<b>x</b> 沿 X（左右）· <b>y</b> 沿 Y（上下）· <b>z</b> 沿 Z（枪口 +Z）。可负。
         有 <code>pivot</code> 就用它当对齐基准；否则用 muzzle+stock 中点；都没有就按包围盒映射。三个框的顺序就是数组下标 0、1、2。</div>

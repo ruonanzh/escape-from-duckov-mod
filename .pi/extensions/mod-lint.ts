@@ -2,9 +2,10 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { CODE_IDENTIFIER_RE, isCodeIdentifier } from "../lib/mod-identity";
 import { Type } from "typebox";
 import { readFileSync, existsSync, statSync, readdirSync } from "node:fs";
-import { join, basename, resolve } from "node:path";
+import { join, basename, resolve, dirname } from "node:path";
 import { execFileSync } from "node:child_process";
 import { runAsync } from "../lib/proc";
+import { NEW_ACTIONS, stripJsonComments, validateDataLayer } from "../lib/mod-config-data";
 import os from "node:os";
 
 function parseIni(text: string) {
@@ -21,6 +22,47 @@ function truncateLines(text: string, maxLines = 200): string {
   const lines = text.split("\n");
   if (lines.length <= maxLines) return text;
   return `${lines.slice(0, maxLines).join("\n")}\n... (${lines.length - maxLines} more lines truncated)`;
+}
+
+/** 游戏里全部物品的 typeID（`data-probe` 分页读）。
+ * `dotnet` 是 `state.runtime.dotnet` 里的那个可执行文件（探针是 apphost，找不到运行时就跑不起来）。
+ * 拿不到时把**原因**一并返回 —— 只报“跳过了”没法排查。 */
+async function gameTypeIDs(repoRoot: string, gameDir: string, dotnet: string): Promise<{ ids: Set<number> | null; reason: string }> {
+  try {
+    const isWin = process.platform === "win32";
+    const probe = join(repoRoot, "tools", "data-probe", "bin", "Release", "net8.0", isWin ? "data-probe.exe" : "data-probe");
+    if (!existsSync(probe)) return { ids: null, reason: "tools/data-probe is not built (run: dotnet build tools/data-probe -c Release)" };
+    const dataDir = join(gameDir, isWin ? "Duckov_Data" : join("Duckov.app", "Contents", "Resources", "Data"));
+    const managed = join(dataDir, "Managed");
+    if (!existsSync(managed)) return { ids: null, reason: `the game's Managed directory is missing: ${managed}` };
+
+    // apphost 要能找到 .NET 运行时：把缓存的 dotnet 目录放到 DOTNET_ROOT 与 PATH 前面
+    const env: NodeJS.ProcessEnv = { ...process.env };
+    if (dotnet) {
+      const root = dirname(dotnet);
+      env.DOTNET_ROOT = root;
+      env.PATH = `${root}${isWin ? ";" : ":"}${env.PATH ?? ""}`;
+    }
+
+    const ids = new Set<number>();
+    // 分页的停止条件不得用「匹配数 < 500」—— 一页是 500 个**资产**，
+    // 而里面有些行不是物品（`typeID=-1`），于是第一页只会匹到 494 个 ✗（实测踩到：后面的号全看不到）。
+    // 改用「这一页没带来新号就停」。
+    for (let offset = 0, page = 0; offset < 20_000 && page < 40; offset += 500, page++) {
+      const r = await runAsync(
+        probe,
+        ["--managed", managed, "--data", dataDir, "--action", "list", "--class", "Item", "--file", "resources.assets", "--offset", String(offset)],
+        { timeoutMs: 60_000, env },
+      );
+      const before = ids.size;
+      for (const m of r.stdout.matchAll(/typeID=(\d+)/g)) ids.add(Number(m[1]));
+      if (ids.size === before) break;      // 没有新号 = 到末页了
+    }
+    if (!ids.size) return { ids: null, reason: "data-probe returned no typeIDs" };
+    return { ids, reason: "" };
+  } catch (e) {
+    return { ids: null, reason: `data-probe failed: ${(e as Error).message.split("\n")[0]}` };
+  }
 }
 
 /**
@@ -108,6 +150,35 @@ export default function (pi: ExtensionAPI) {
           errors.push(
             `info.ini name (${modName}) does not match ModBehaviour.cs namespace (${ns}) - the game looks for ${modName}.ModBehaviour and will silently not load this mod`,
           );
+        }
+      }
+
+      // 2.7 数据层（新增武器 / 新增物品的 config）：与 libs/mod-kit/ItemFactory.cs 对齐
+      const cfgPath = join(modDir, "config.json");
+      if (existsSync(cfgPath)) {
+        try {
+          const cfg = JSON.parse(stripJsonComments(readFileSync(cfgPath, "utf8")));
+          const list = (cfg as { entries?: unknown }).entries;
+          const hasNew =
+            Array.isArray(list) &&
+            list.some((e) => e && typeof e === "object" && NEW_ACTIONS.has(String((e as Record<string, unknown>).action)));
+          let ids: Set<number> | null = null;
+          if (hasNew) {
+            const st = loadState(repoRoot);
+            const cached = st.runtime?.dotnet ?? st.dotnet;
+            const gameDir = typeof st.gameDir === "string" ? st.gameDir : "";
+            if (!gameDir) warnings.push("the game directory is unknown, so the typeID checks were skipped (run try_set_game_dir)");
+            else {
+              const r0 = await gameTypeIDs(repoRoot, gameDir, typeof cached === "string" ? cached : "");
+              ids = r0.ids;
+              if (!ids) warnings.push(`${r0.reason} - the typeID checks were skipped`);
+            }
+          }
+          const r = validateDataLayer(cfg, ids);
+          errors.push(...r.errors);
+          warnings.push(...r.warnings);
+        } catch (e) {
+          errors.push(`config.json is not valid JSON: ${(e as Error).message}`);
         }
       }
 

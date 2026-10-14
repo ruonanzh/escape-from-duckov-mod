@@ -33,11 +33,37 @@
 
 **写盘时会省略等于默认值的字段**（例如 `front: "auto"` 不写），**未知字段原样保留**。
 
+## 条目模式（config 里有 `entries` 时）
+
+一个 mod **可以混装多种能力**（换外观 + 新增武器各一条），所以 `entries[]` 里每条自带一个 `action`。
+编辑器看到 `entries` 就自动换成条目模式：一行一个动作，下面按动作换字段表。
+
+| `action` | 干什么 | 字段 |
+| --- | --- | --- |
+| `replace_weapon` | 换已有武器外观 | 上表那套（缺省值，等于老写法）|
+| `replace_item` | 换已有物品外观 | 同上 |
+| `new_weapon` | **新增一把枪** | `newTypeId` / `cloneFromItemId` / `displayName` / `description` / `model` / `icon` / `size` / `merchantID` / `maxStock` / `priceFactor` / `onSale` / `quality` / `displayQuality` / `stats` / `crafting` |
+| `new_item` | 新增一件物品（**下一步**）| `newTypeId` / `cloneFromItemId` / `displayName` / `description` / `model` / `size` / `quality` / `displayQuality` / `stats` |
+
+四条都能用 `slots`（写法与上面一样）。
+
+**两个写法的关系**：
+
+- 没有 `entries` 的旧 config **照原样渲染**（就是上面那个老表单），行为一字不变。
+- 上方的「**改成多条（entries）**」按钮把当前表单包成一条 `entries`，于是可以慢慢长出多条。
+- 切 `action` 不会丢已填的值（切走再切回，`newTypeId` 那些还在）。
+
+**两个字段的写法**（都是“每行一个”，好手写也好粘贴）：
+
+```
+stats     每行 `Damage=13.0`（键用游戏自己的名字，值用绝对值）
+crafting  上面一行 money 与 tags，下面材料每行 `662=5`；三样都空就不写 crafting（写了空对象会被当成“要加配方”）
+```
+
 ## 界面
 
-- **换哪件**：`typeIDs` / `targets`
-- **用哪个模型**：`model` / `front` / `size` / `icon`
-- **换哪一层**：`world` / `handheld`
+- **扁平模式**（旧 config）：换哪件 / 用哪个模型 / 换哪一层 / 挂点 / 诊断
+- **条目模式**（有 `entries`）：每条一张卡片（下拉选动作 + 字段表 + 挂点），可加条、可删条
 - **挂点**：表（键 + `[x,y,z]`），可加行、可删行。只有枪用
 - **诊断**：`debug` + 「其他字段」折叠区（未识别的键原样显示，需要手改 JSON 时看这里）
 - 底栏：状态 · 重新加载 · 保存（Ctrl+S）

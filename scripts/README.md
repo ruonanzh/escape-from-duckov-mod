@@ -2,6 +2,18 @@
 
 本目录的工具是 **repo 作者（维护者）** 用的，**玩家/agent 从不运行**——它们只 `grep` 生成的 `docs/api` 和 `docs/data`，从不跑这些脚本。
 
+## 自检脚本（判据的机器检查）
+
+这三个跑起来不花积分，也不装任何东西。改判据前后各跑一次。
+
+```bash
+node --experimental-strip-types scripts/check-mod-install-staleness.mjs   # 产物过期判据
+node --experimental-strip-types scripts/check-mod-config-data.mjs         # config 数据层判据
+node scripts/check-probe-tool-parity.mjs                                  # 工具面一致性
+```
+
+它们都导入 `.pi/lib/` 里的**同一份**函数，扩展也导入那份。于是判据只有一份，不会漂。
+
 ## 工具清单
 
 | 工具 | 运行时 | 产出 | 用途 |
@@ -76,3 +88,19 @@ node scripts/check-probe-tool-parity.mjs     # 0 = 对齐；1 = 有缺口
 白名单只有 `data` / `managed`（扩展自己算的游戏路径）。
 
 已接到 `lefthook.yml` 的 `pre-commit`（装了 lefthook 才自动跑；否则手跑）。
+
+## `check-mod-config-data.mjs` —— config 数据层判据的检查
+
+`validate_mod` 用它判「新增武器 / 新增物品」的 `config.json`。判据本体在 `.pi/lib/mod-config-data.ts`。
+
+它覆盖：action 名、必填字段（`cloneFromItemId`、`displayName`）、`newTypeId` 是否重复或已被游戏占用、
+`quality` 与 `displayQuality` 的取值、`stats` 的键值类型、`merchantID` 是否认识、`crafting.materials` 的 id 与数量、
+以及 `//` 注释的处理（字符串里的 `//` 不得被吃掉）。
+
+```bash
+node --experimental-strip-types scripts/check-mod-config-data.mjs   # 0 = 符合预期；1 = 有不符合
+```
+
+**已踩的坑**（写在这里免得再犯）：拿游戏 typeID 清单时用 `data-probe --action list`，一页是 500 个**资产**，
+而里面有些行不是物品（`typeID=-1`）。于是「这一页少于 500 个匹配」**不能**当末页判据，
+否则第一页就停、后面的号全看不到（662 就这样被误报成不存在）。

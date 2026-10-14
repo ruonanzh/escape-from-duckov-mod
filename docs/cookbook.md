@@ -72,3 +72,36 @@
 耳机使用 `helmatSocket`。实测中，帽子 `IG_Helmat_Hat(Clone)` 和耳机 `IG_Headset_LV1V2(Clone)` 是 `HelmatSocket` 下的兄弟节点，世界坐标相同。
 
 运行时的玩家模型是 `0_CharacterModel_Custom_Template(Clone)`。它的挂点偏移与鸭子 prefab 不同，因此 3D editor 的挂点标记必须按运行时数值校准。
+
+## 6. 上架到商人（往货架加一件东西）
+
+**商品清单在 `StockShopDatabase` 里**，一个商人档案对应一个条目列表。
+商人的 `Awake` 跑到 `InitializeEntries()` 时会把条目**抄**进商店自己的列表。于是：
+
+**必须在进关卡之前往档案里追加条目**，商人的 `Awake` 才抄得到它，货架上才有货。
+
+判据收在 `ItemFactory.PutOnSale`。自己写时的要点：
+
+- 条目类型是 `StockShopDatabase.ItemEntry`，字段有 `typeID`、`maxStock`、`forceUnlock`、`priceFactor`、`possibility`、`lockInDemo`，有无参构造。
+- **`possibility` 写 1**。`DoRefreshStock()` 只对 `0 < possibility < 1` 的条目掷骰子，掷不中就隐藏并清零；等于 1 时每次刷新补满货。
+- **存档扛得住**：`GenerateSaveData` 只按 typeID 存存货数量；`SetupSaveData` 只给**已经在列表里**的条目配对存货。新 typeID 在旧存档里没有记录，那一段整体跳过。
+- **`GetMetaData(typeID)` 会被调用**。于是新物品必须**先注册**，商人的 `Awake` 再跑。
+- 商人是场景里的组件，`data-probe` 读不到实例。于是只能改数据库。
+
+## 7. 加一条制作台配方
+
+配方清单在 `CraftingFormulaCollection.Instance.list`，元素类型是 `CraftingFormula`。
+
+一条配方有：`id`、`result`（`{id, amount}`）、`tags`、`cost`（`{money, items[]}`）、`unlockByDefault`、`lockInDemo`、`requirePerk`、`hideInIndex`。
+
+**`unlockByDefault` 必须写 false，然后调 `CraftingManager.UnlockFormula(id)`。**
+
+原因（反编译实证）：
+
+- `IsFormulaUnlocked` 只看 `unlockedFormulaIDs`，**不看** `unlockByDefault`。
+- 那个列表只在 `CraftingManager.Awake()` 到 `Load()` 这段里靠 `unlockByDefault` 填，而我们追加配方**晚于**它。
+- `UnlockFormula` 碰到 `unlockByDefault == true` 会**直接报错返回**，不加 id。
+
+于是按直觉写 `true` 的后果是**配方一直是锁的**。
+
+`unlockedFormulaIDs` 由 `CraftingManager.Save()` 存盘。于是**存档后重进仍是解锁的**。

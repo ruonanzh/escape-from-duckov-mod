@@ -51,15 +51,16 @@ description: Escape From Duckov 的 C# mod 制作与修改。覆盖目录结构�
 
 ## 新增物品（数据层）
 
-克隆一个现有物品，再注册成新物品（社区 mod 实测可行）。**优先用库里的 `ItemFactory.CloneAsNewItem(源typeID, 新typeID, 显示名)`**
-（内置 `DontDestroyOnLoad`、名字走本地化、`useSpriteForPickup=false`、枪自动打 `IsGun`）。手写版本：
+克隆一个现有物品，再注册成新物品（社区 mod 实测可行）。**优先用库里的 `ItemFactory.CloneAsNewItem(源typeID, 新typeID, 显示名, 简介)`**
+（内置 `DontDestroyOnLoad`、名字与简介走本地化、`useSpriteForPickup=false`）。
+想加一把新枪就走 `.pi/skills/add-weapon/`（那里有 config 字段表与完整流程）。手写版本：
 
 - 克隆：`Instantiate(ItemAssetsCollection.GetPrefab(源typeID).gameObject)`。必须调用 `DontDestroyOnLoad`。
   然后调用 `GetComponent<Item>()`。再调用 `SetTypeID(新typeID)`。
 - 名字：`LocalizationManager.SetOverrideText(key, 文本)` 与 `DisplayNameRaw = key`。
   直接塞字面量会被显示成 `*字面量*`。
 - 注册：`ItemAssetsCollection.AddDynamicEntry(item)`。同一个 typeID 会覆盖原版并打警告。失败时必须销毁克隆体。
-- **模型**由模型侧提供：`model-kit` 的 `BuildGraphicClone(源typeID)` 与 `WriteGraphicTo(item, g)`。
+- **模型**由模型侧提供：`ItemFactory.AttachModel(item, mesh, 贴图, size)`（内部**克隆图形**，不动原型）与 `ItemModel.WriteGraphic(item, graphic)`。
   `itemGraphic` 是数据层与模型层唯一的连接点。
 - **运行时造的对象必须 `DontDestroyOnLoad`**（图形克隆、新物品模板、手持实体）。否则换场景时（菜单到关卡）这些对象被销毁。`itemGraphic` 变成「已销毁引用」（Unity 的 `== null` 判 true），物品回退成图标。
 - 注意：注册通常发生在**进关卡之前**（那时没有玩家），发放或掉落到地上必须等进关卡后再做。新物品还需要**获得途径**（工作台配方、掉落或发放）。

@@ -92,3 +92,31 @@
 |---|---|
 | `ItemModel.DebugOn` + `ItemModel.DumpNewObjects()` | 打开只读诊断：把场上我们造的每个物体打一行（层、位置、缩放、祖先链、材质与 shader、同门兄弟数）|
 | `Result.Report` | 每次换完都有一句人话报告。`Applied` 与 `NoOp` 用来决定「是否打日志」。 |
+
+## 10. 新增武器 / 新增物品（数据层）
+
+`ItemFactory`（`libs/mod-kit/ItemFactory.cs`）。做一件游戏里**本来没有**的东西时用。
+**换外观**走上面第 2 节与第 4 节。这里是**加新东西**。
+
+**时机**：全部在**进关卡之前**（通常就是 `ModBehaviour.Start()`）。两个原因：
+商人的 `Awake` 会把商品条目抄进商店自己的列表；发东西需要玩家，而那时还没有玩家。
+
+| API | 什么时候用 |
+|---|---|
+| `CloneAsNewItem(源typeID, 新typeID, 显示名, 简介)` | **主入口**：克隆一件现有物品成新 typeID，写名字与简介，注册成动态条目。名字走本地化，键是 `<mod名>.<新typeID>.name`；描述键由游戏派生，是它加 `_Desc` |
+| `NextFreeTypeID()` | 取游戏自己的下一个空闲 typeID（config 没写 `newTypeId` 时用） |
+| `IsTypeIDTaken(id)` | 这个号被占了吗。**必须在注册之前查** |
+| `AttachModel(item, mesh, tex, size, handheld, sizeTypeID)` | 把我们 GLB 的网格装到这个新物品上。内部**克隆图形**，不动原型。缩放参照 `sizeTypeID`，一般传原型枪的号 |
+| `ApplyStats(item, 字典, missing)` | 按名字覆盖数值，用**绝对值**。找不到的键收进 `missing`，不静默跳过 |
+| `ApplyQuality(item, quality, displayQuality)` | 覆盖品质。`quality` 是整数，-1 表示不改；`displayQuality` 是枚举名 |
+| `PutOnSale(merchantID, typeID, maxStock, priceFactor)` | 上架到商人的货架 |
+| `AddRecipe(id, typeID, count, money, materials, tags)` | 加一条制作台配方 |
+| `RemoveAdded()` | 把我们加过的条目、配方、动态条目全部撤掉（热重载与卸载用） |
+
+**取值**：三个商人是 `Merchant_Normal`、`Merchant_Ming`、`Merchant_Weapon`，默认用最后那个（卖枪的）。
+品质枚举是 `None`、`White`、`Green`、`Blue`、`Purple`、`Orange`、`Red`、`Q7`、`Q8`。
+
+**已有的能力不要重写**：手持那条走 `GameApi.EnsureHandheldAgent`（`AttachModel` 内部已经调了）；
+发给玩家走 `GameApi.GiveItemToPlayer`（内部先调官方的 `ItemUtilities.SendToPlayer`，反射兜底；**必须在进关卡之后**）。
+
+两条机制的细节见 [`cookbook.md`](cookbook.md) 第 6 节与第 7 节。
