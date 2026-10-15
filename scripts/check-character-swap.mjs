@@ -156,6 +156,12 @@ checkTrue("手臂可并到躯干（否则刚性放置的模型手臂会脱开飘
   && /case "UpperArm\.L": case "ForeArm\.L": case "Hand\.L":/.test(swap), "找不到手臂重定向");
 checkTrue("对齐是纯旋转 ⇒ 不需要翻绕序",
   !/flipWinding/.test(swap), "还留着 flipWinding");
+checkTrue("新部件用钩子处理（钩子优先，循环只做兜底）",
+  /ItemHooks\.OnGraphicReady \+= OnGraphicReady;/.test(swap) && /static void OnGraphicReady\(ItemStatsSystem\.Item item, ItemGraphicInfo graphic\)/.test(swap),
+  "找不到外观部件的钩子");
+checkTrue("隐藏判据只有一份（循环与钩子共用 HideOne）",
+  /static void HideOne\(Transform root, Renderer r, Result res\)/.test(swap)
+  && (swap.match(/UnderKeepVisible\(/g) || []).length === 2, "HideOne 或保留名单判据被写了两份");
 checkTrue("重申没有被双重限流挡掉（以前 Tick 先设限额再调 Reassert ⇒ 永远不执行）",
   /r\.Reassert\(now, interval\);/.test(swap) && !/_nextReassert = now \+ interval;[\s\S]{0,200}?if \(r\.Body == null/.test(swap),
   "Tick 里还是先设限额再调 Reassert");
@@ -169,9 +175,10 @@ checkTrue("原网格包围盒在赋值前取（L1）",
   /var origBounds = res\.OriginalMesh/.test(swap) && !/body was \{mesh\.bounds/.test(swap), "origBounds 取得太晚");
 checkTrue("隐藏会扫角色整棵层级（五官/头发不在 CharacterModel.renderers 里）",
   /character\.GetComponentsInChildren<Renderer>\(true\)/.test(swap) && /UnderKeepVisible/.test(swap), "找不到整棵层级扫描");
-checkTrue("保留名单在 hide 内部（每一遍都查；只在最后一遍查会把枪藏掉）",
-  /Action<object> hide = \(o\) =>[\s\S]{0,500}?UnderKeepVisible\(character\.transform, r\.transform\)/.test(swap),
-  "hide 里没查保留名单");
+checkTrue("每一遍隐藏都走同一个判据（只在最后一遍查会把枪藏掉）",
+  /Action<object> hide = \(o\) =>[\s\S]{0,300}?HideOne\(/.test(swap)
+  && /static void HideOne\(Transform root, Renderer r, Result res\)[\s\S]{0,300}?UnderKeepVisible\(root, r\.transform\)/.test(swap),
+  "hide 没走 HideOne，或 HideOne 没查保留名单");
 checkTrue("装备与非角色几何在保留名单里（枪/背包/护甲/粒子）",
   ["Hand.Soket.L", "HandObj.L", "BackpackSocket", "ArmorSocket", "RunParticle"].every((n) => swap.includes(`"${n}"`)),
   "保留名单缺项");

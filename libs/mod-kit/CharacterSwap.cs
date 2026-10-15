@@ -90,7 +90,11 @@ namespace ModelKit
                         Body.sharedMesh = OriginalMesh;
                         Body.sharedMaterial = OriginalMaterial;
                     }
-                    if (_current == this) _current = null;
+                    if (_current == this)
+                    {
+                        _current = null;
+                        if (_hooked) { try { ItemHooks.OnGraphicReady -= OnGraphicReady; } catch { } _hooked = false; }
+                    }
                 }
                 catch (Exception ex) { Debug.LogWarning("[CharacterSwap] restore mesh failed: " + ex.Message); }
                 if (NewMaterial != null)
@@ -108,6 +112,33 @@ namespace ModelKit
         }
 
         static Result _current;
+        static bool _hooked;
+
+        /// <summary>`ItemGraphicInfo.Setup` 的钩子：游戏给角色造出**新部件**（头发、眼睛、帽子、鞋、尾巴）时
+        /// 立刻判断并隐藏，不必等一秒的循环。
+        ///
+        /// <para>本仓的定法：钩子优先，循环只做兜底（与 `ItemHooks` 那套一致）。</para>
+        ///
+        /// <para>为什么这些部件来得晚：它们由物品外观系统生成（名字都是 `IG_*`），
+        /// 在关卡初始化之后才挂到角色的骨骼挂点上。</para></summary>
+        static void OnGraphicReady(ItemStatsSystem.Item item, ItemGraphicInfo graphic)
+        {
+            try
+            {
+                var r = _current;
+                if (r == null || !r.Applied || graphic == null || r.Character == null) return;
+                var root = r.Character.transform;
+                var t = graphic.transform;
+                bool mine = false;
+                for (var cur = t; cur != null; cur = cur.parent) if (cur == root) { mine = true; break; }
+                if (!mine) return;                                     // 别的角色（宠物、商人）不动
+                int before = r.Disabled.Count;
+                foreach (var rd in graphic.GetComponentsInChildren<Renderer>(true)) HideOne(root, rd, r);
+                int hid = r.Disabled.Count - before;
+                if (hid > 0) Debug.Log($"[CharacterSwap] graphic hook hid {hid} renderer(s) under {graphic.name} (total {r.Disabled.Count})");
+            }
+            catch (Exception ex) { Debug.LogWarning("[CharacterSwap] graphic hook failed: " + ex.Message); }
+        }
 
         /// <summary>每帧调一次（推荐入口）。做两件事：重申隐藏与网格；角色被游戏重建时**整个重新搬运一遍**。
         /// <para>实测：搬运会发生在 `[Level Initialization] Done!` **之前**，关卡初始化可能重建角色 ⇒
@@ -322,6 +353,16 @@ namespace ModelKit
             res.OriginalMaterial = body.sharedMaterial;
             var origBounds = res.OriginalMesh != null ? res.OriginalMesh.bounds.size : Vector3.zero;  // L1：必须在赋值前取
             res.NewMesh = mesh;
+            if (!_hooked)
+            {
+                _hooked = true;
+                try
+                {
+                    ItemHooks.Install();                               // 幂等；本 mod 可能不是那个装钩子的 mod
+                    ItemHooks.OnGraphicReady += OnGraphicReady;
+                }
+                catch (Exception ex) { Debug.LogWarning("[CharacterSwap] hook install failed: " + ex.Message); }
+            }
             res.CharacterModel = cm;
             res.Renderers = renderers;
             res.Character = character;
@@ -404,6 +445,16 @@ namespace ModelKit
             return true;
         }
 
+        /// <summary>隐藏一个渲染器（保留名单里的、以及身体本身以外的都藏）。
+        /// <para>循环与钩子共用这一个判据，不得写两份。</para></summary>
+        static void HideOne(Transform root, Renderer r, Result res)
+        {
+            if (r == null || !r.enabled || res == null || r == res.Body) return;
+            if (root != null && UnderKeepVisible(root, r.transform)) return;   // 手里/背上的物品不藏
+            r.enabled = false;
+            res.Disabled.Add(r);
+        }
+
         /// <summary>坐标架的第二列 = 「上」。</summary>
         static Vector3 col1(Matrix4x4 m) { return new Vector3(m.m01, m.m11, m.m21); }
 
@@ -484,10 +535,8 @@ namespace ModelKit
             Action<object> hide = (o) =>
             {
                 var r = o as Renderer;
-                if (r == null || r == body || !r.enabled) return;
-                if (character != null && UnderKeepVisible(character.transform, r.transform)) return;
-                r.enabled = false;
-                res.Disabled.Add(r);
+                if (r == null || r == body) return;
+                HideOne(character != null ? character.transform : null, r, res);
             };
             foreach (var o in renderers) hide(o);
 
