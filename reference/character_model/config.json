@@ -5,9 +5,7 @@
       "model": "model.glb",
       "scale": 1.2,
       "bindArms": false,
-      "perBone": true,
-      "perBoneBlend": 0.5,
-      "perBoneBones": "UpperArm.L,UpperArm.R,ForeArm.L,ForeArm.R,Hand.L,Hand.R"
+      "perBone": false
     }
   ]
 }
