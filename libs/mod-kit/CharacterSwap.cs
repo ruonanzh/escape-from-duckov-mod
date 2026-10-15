@@ -449,10 +449,14 @@ namespace ModelKit
         /// <summary>把除身体以外的渲染器全部停掉：`renderers` 列表、`subVisuals[].renderers`、`customFace`。</summary>
         static void HideAllBut(Component character, object cm, IList renderers, SkinnedMeshRenderer body, Result res)
         {
+            // ⚠️ **每一遍**都要查保留名单，不能只在最后一遍查。
+            // 实测踩过：`customFace` 指的是 `CustomFaceInstance`，而它是**整个模型的根**
+            // （下面挂着 `Armature`，手里的枪也在里面）⇒ 那一遍把枪一起藏了 ⇒ 游戏里枪消失。
             Action<object> hide = (o) =>
             {
                 var r = o as Renderer;
                 if (r == null || r == body || !r.enabled) return;
+                if (character != null && UnderKeepVisible(character.transform, r.transform)) return;
                 r.enabled = false;
                 res.Disabled.Add(r);
             };
@@ -475,12 +479,7 @@ namespace ModelKit
             // 翅膀（`Wings.L/R`）、手臂网格（`Arms`）都不在 `CharacterModel.renderers` 里。
             // 只靠那个列表会「五官头发还露着」（实测踩过）。
             if (character != null)
-                foreach (var r in character.GetComponentsInChildren<Renderer>(true))
-                {
-                    if (r == null) continue;
-                    if (UnderKeepVisible(character.transform, r.transform)) continue;
-                    hide(r);
-                }
+                foreach (var r in character.GetComponentsInChildren<Renderer>(true)) hide(r);
         }
 
         /// <summary>从 `t` 往上走到 `root`，路上碰到保留名单里的名字就返回 true（那个渲染器是物品或特效）。</summary>

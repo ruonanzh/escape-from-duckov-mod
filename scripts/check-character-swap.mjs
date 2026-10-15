@@ -162,6 +162,9 @@ checkTrue("原网格包围盒在赋值前取（L1）",
   /var origBounds = res\.OriginalMesh/.test(swap) && !/body was \{mesh\.bounds/.test(swap), "origBounds 取得太晚");
 checkTrue("隐藏会扫角色整棵层级（五官/头发不在 CharacterModel.renderers 里）",
   /character\.GetComponentsInChildren<Renderer>\(true\)/.test(swap) && /UnderKeepVisible/.test(swap), "找不到整棵层级扫描");
+checkTrue("保留名单在 hide 内部（每一遍都查；只在最后一遍查会把枪藏掉）",
+  /Action<object> hide = \(o\) =>[\s\S]{0,500}?UnderKeepVisible\(character\.transform, r\.transform\)/.test(swap),
+  "hide 里没查保留名单");
 checkTrue("装备与非角色几何在保留名单里（枪/背包/护甲/粒子）",
   ["Hand.Soket.L", "HandObj.L", "BackpackSocket", "ArmorSocket", "RunParticle"].every((n) => swap.includes(`"${n}"`)),
   "保留名单缺项");
