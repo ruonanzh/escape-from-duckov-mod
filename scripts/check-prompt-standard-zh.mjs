@@ -140,7 +140,10 @@ const RULES = [
 ];
 
 function main() {
-  const files = collect();
+  // 默认扫 prompt-standard 第一节规定的范围。给了命令行参数就只扫那些文件
+  // （工具自己的 README 等文件不在范围内，但要**能被量**，否则「合不合规」只能靠感觉）。
+  const args = process.argv.slice(2);
+  const files = args.length > 0 ? args : collect();
   const hits = [];
 
   for (const file of files) {
@@ -179,5 +182,7 @@ function main() {
   );
   return 1;
 }
+
+export { RULES, stripCode };
 
 process.exit(main());

@@ -41,19 +41,19 @@ dotnet run --project tools/data-probe -- \
 - **`--has <组件名>`**（`transform`）⇒ 只保留**挂着该组件**的对象 ✓
   （例：`--has MeshFilter` 只看有模型的 ✓；`--has ItemGraphicInfo` 找"换外观"的中枢 ✓）
 - ⭐⭐ **`refs --by <类名>`** ⇒ **反查** ✗：**哪些该类的对象引用了它** ✓
-  - ⚠️ **反查父物体时，定位要指向「子物体的 `Transform`」，不是子 `GameObject`** ✗ ——
-    父物体引用的是子 **`Transform`**（字段 `m_Father`）✓，不是子 `GameObject` ✓。
-    实测踩过：指 `GameObject` 只会得到它自己的那个 Transform（`via m_GameObject` ✓），
-    看起来像「找不到父物体」✗，其实是定位错了对象 ✓。
-    两步拿到父链（可循环一路向上 ✓）：
+  - 注意：**反查父物体时，定位要指向「子物体的 `Transform`」，不是子 `GameObject`**。
+    父物体引用的是子 `Transform`（字段 `m_Father`），不是子 `GameObject`。
+    实测踩过：指 `GameObject` 只会得到它自己的那个 Transform（`via m_GameObject`），
+    看起来像「找不到父物体」，其实是定位错了对象。
+    两步拿到父链，可循环一路向上：
     ```bash
     # ① 先由 GameObject 拿到它自己的 Transform
     data-probe ... --action refs --class GameObject --pathid <GameObject> --by Transform
     # ② 再由那个 Transform 拿父物体；结果里 `m_Father` 那行是父，`data` 那行是父的 m_Children 数组
     data-probe ... --action refs --class Transform  --pathid <上一步的 Transform> --by Transform
     ```
-    实测例：`Arm.Upper.R` 向上是 `Arm.Root.R < Spine.003 < Spine.002 < Spine.001 < Hip < Root < Duck_Armature`
-    —— 于是离线就能看出这套手臂模型挂在 **`Spine.003`** 下，属于 NPC 骨架（本例 `0_CharacterModel_Boss_Wu`）✓
+    实测例：`Arm.Upper.R` 的父链向上是 `Arm.Root.R`、`Spine.003`、`Spine.002`、`Spine.001`、`Hip`、`Root`、`Duck_Armature`。
+    于是离线就能看出这套手臂模型挂在 `Spine.003` 下，属于 NPC 骨架（本例 `0_CharacterModel_Boss_Wu`）。
   （正向 `refs` 是"我引用了谁"✗ —— 反方向以前完全没有 ✗）
   例：`refs --class Mesh --name Rifle02 --exact --file sharedassets4.assets,level4 --by MeshFilter`
   ⇒ `MeshFilter (pathID 3321) via m_Mesh (resolved)` ✓
