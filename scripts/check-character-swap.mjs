@@ -151,9 +151,9 @@ checkTrue("高度用真实顶点跨度，不用包围盒投影（投影会在上
   /static float ExtentAlong\(Mesh mesh, Vector3 axis\)/.test(swap)
   && /float srcH = ExtentAlong\(skin\.Mesh, col1\(fs\)\)/.test(swap)
   && !/Vector3\.Dot\(skin\.Mesh\.bounds\.size, col1\(fs\)\)/.test(swap), "还在用包围盒投影");
-checkTrue("「不绑定手」开关存在（手骨权重并到前臂）",
-  /public static bool BindHandBones = true;/.test(swap) && /static int RedirectHand\(Transform\[\] bones, int gi\)/.test(swap)
-  && /case "Hand\.L": target = "ForeArm\.L";/.test(swap), "找不到手部重定向");
+checkTrue("手臂可并到躯干（否则刚性放置的模型手臂会脱开飘走）",
+  /public static bool BindArmBones = true;/.test(swap) && /static int RedirectToTorso\(Transform\[\] bones, int gi\)/.test(swap)
+  && /case "UpperArm\.L": case "ForeArm\.L": case "Hand\.L":/.test(swap), "找不到手臂重定向");
 checkTrue("对齐是纯旋转 ⇒ 不需要翻绕序",
   !/flipWinding/.test(swap), "还留着 flipWinding");
 checkTrue("重申没有被双重限流挡掉（以前 Tick 先设限额再调 Reassert ⇒ 永远不执行）",

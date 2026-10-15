@@ -179,10 +179,14 @@ namespace ModelKit
         /// `CharacterRig.ExtraDuckBones` 是**离线核对用**的（整体换身体时用不到）—— 见 L3。</para>
         ///
         /// <para>调用后请每帧调 `Result.Reassert(Time.unscaledTime)`：游戏会把隐藏的部件改回来（M1）。</para></summary>
-        /// <summary>把手的权重并到前臂上（「不绑定手」）。实测我们的模型是刚性放置的，
-        /// 而手骨绕鸭子自己的手腕转，转轴落在模型的前臂里面 ⇒ 手部看起来会扭。
-        /// 取 false 时手部只跟前臂走，不再自己转。</summary>
-        public static bool BindHandBones = true;
+        /// <summary>手臂与手是否绑到鸭子的手臂骨。
+        ///
+        /// <para>取 false 时，`UpperArm.L/R`、`ForeArm.L/R`、`Hand.L/R` 的权重全部并到 `Spine.004`（躯干）。
+        /// 实测原因：我们的模型是**刚性放置**的，而鸭子手臂骨的**转轴**在鸭子自己的肩关节上；
+        /// 模型的手臂网格不在那个轴上 ⇒ 动画一摆，手臂就**脱开身体飘走**（实测：左手飘在枪旁边）。</para>
+        ///
+        /// <para>并到躯干后手臂跟着身体走，不再单独摆动。代价是手臂不会再摆。</para></summary>
+        public static bool BindArmBones = true;
 
         public static Result Apply(Component character, GltfLoader.Loaded skin)
         {
@@ -279,7 +283,7 @@ namespace ModelKit
                     if (w <= 0.0001f || ji < 0 || ji >= map.Length) continue;
                     int gi = map[ji];
                     if (gi < 0) continue;                                  // 没映射上 ⇒ 这根骨的权重丢掉
-                    if (!BindHandBones) gi = RedirectHand(gameBones, gi);   // 实验：手不单独绑
+                    if (!BindArmBones) gi = RedirectToTorso(gameBones, gi);   // 实验：手臂不单独绑
                     wsum += w;
                     if (keep < 4) { keepIdx[keep] = gi; keepW[keep] = w; keep++; }
                 }
@@ -507,19 +511,19 @@ namespace ModelKit
                 foreach (var r in character.GetComponentsInChildren<Renderer>(true)) hide(r);
         }
 
-        /// <summary>`Hand.L/R` 换成 `ForeArm.L/R`（「不绑定手」实验用）。找不到就原样返回。</summary>
-        static int RedirectHand(Transform[] bones, int gi)
+        /// <summary>手臂那几根骨换成 `Spine.004`（躯干）。找不到就原样返回。</summary>
+        static int RedirectToTorso(Transform[] bones, int gi)
         {
             if (bones == null || gi < 0 || gi >= bones.Length || bones[gi] == null) return gi;
-            string target;
             switch (bones[gi].name)
             {
-                case "Hand.L": target = "ForeArm.L"; break;
-                case "Hand.R": target = "ForeArm.R"; break;
+                case "UpperArm.L": case "ForeArm.L": case "Hand.L":
+                case "UpperArm.R": case "ForeArm.R": case "Hand.R":
+                    break;
                 default: return gi;
             }
             for (int i = 0; i < bones.Length; i++)
-                if (bones[i] != null && string.Equals(bones[i].name, target, StringComparison.Ordinal)) return i;
+                if (bones[i] != null && string.Equals(bones[i].name, "Spine.004", StringComparison.Ordinal)) return i;
             return gi;
         }
 
