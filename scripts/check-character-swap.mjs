@@ -152,6 +152,8 @@ checkTrue("镜像时翻转三角形绕序（M2）",
   /\.determinant < 0f/.test(swap) && /if \(flipWinding\)/.test(swap), "找不到行列式判断");
 checkTrue("低频重申隐藏的部件（M1：游戏会改回来）",
   /public void Reassert\(float now/.test(swap) && /Body\.sharedMesh != NewMesh/.test(swap), "找不到 Reassert");
+checkTrue("角色被游戏重建后会重新搬运（关卡初始化在搬运之后跑）",
+  /public static void Tick\(float now/.test(swap) && /if \(r\.Body == null \|\| r\.Character == null\) \{ Reapply\(\); return; \}/.test(swap), "找不到 Tick/Reapply");
 checkTrue("还原时销毁克隆材质（L2：否则每次热重载漏一份）",
   /UnityEngine\.Object\.Destroy\(NewMaterial\)/.test(swap), "找不到材质销毁");
 checkTrue("原网格包围盒在赋值前取（L1）",

@@ -53,6 +53,8 @@ namespace ModelKit
             internal readonly List<Renderer> Disabled = new List<Renderer>();
             internal object CharacterModel;
             internal IList Renderers;
+            internal Component Character;
+            internal GltfLoader.Loaded Skin;
             internal float _nextReassert;
 
             /// <summary>游戏会**把被隐藏的部件改回来**（换装备、刷新模型、切场景），也会把网格换回去。
@@ -88,6 +90,7 @@ namespace ModelKit
                         Body.sharedMesh = OriginalMesh;
                         Body.sharedMaterial = OriginalMaterial;
                     }
+                    if (_current == this) _current = null;
                 }
                 catch (Exception ex) { Debug.LogWarning("[CharacterSwap] restore mesh failed: " + ex.Message); }
                 if (NewMaterial != null)
@@ -102,6 +105,47 @@ namespace ModelKit
                 }
                 Disabled.Clear();
             }
+        }
+
+        static Result _current;
+
+        /// <summary>每帧调一次（推荐入口）。做两件事：重申隐藏与网格；角色被游戏重建时**整个重新搬运一遍**。
+        /// <para>实测：搬运会发生在 `[Level Initialization] Done!` **之前**，关卡初始化可能重建角色 ⇒
+        /// 不重来的话换上去的网格会消失。</para></summary>
+        public static void Tick(float now, float interval = 1f)
+        {
+            var r = _current;
+            if (r == null || !r.Applied) return;
+            if (now < r._nextReassert) return;
+            r._nextReassert = now + interval;
+            // 角色或身体渲染器被销毁（Unity 的假 null 判定）⇒ 关卡重建了角色 ⇒ 重新搬运
+            if (r.Body == null || r.Character == null) { Reapply(); return; }
+            r.Reassert(now, interval);
+        }
+
+        static void Reapply()
+        {
+            var r = _current;
+            if (r == null || r.Skin == null) return;
+            var mc = r.Character != null ? r.Character : MainCharacter();
+            if (mc == null) return;                       // 关卡还没起来 ⇒ 下一 tick 再试
+            var nr = Apply(mc, r.Skin);
+            if (nr.Applied)
+            {
+                nr.Reasserted = r.Reasserted + 1;
+                Debug.Log("[CharacterSwap] re-applied after the game rebuilt the character: " + nr.Report);
+            }
+        }
+
+        /// <summary>当前关卡的主角色（游戏自己维护的引用，不得用 FindObjectsOfType）。</summary>
+        static Component MainCharacter()
+        {
+            try
+            {
+                var lm = LevelManager.Instance;
+                return lm != null ? lm.MainCharacter : null;
+            }
+            catch { return null; }
         }
 
         /// <summary>把 `skin`（`GltfLoader` 读出来的带骨骼网格）装到 `character`（`CharacterMainControl` 那个组件）身上。
@@ -266,6 +310,9 @@ namespace ModelKit
             res.NewMesh = mesh;
             res.CharacterModel = cm;
             res.Renderers = renderers;
+            res.Character = character;
+            res.Skin = skin;
+            _current = res;
             body.sharedMesh = mesh;
             try
             {
