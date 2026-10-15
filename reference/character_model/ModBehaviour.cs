@@ -110,6 +110,10 @@ namespace CharacterModelSwap
                 JsonValue e = doc;
                 var arr = doc["entries"];
                 if (arr != null && arr.Count > 0) e = arr[0];
+                // 运行时自检：条目必须是 replace_character。写错 action 时不要静默按角色处理。
+                var act = e.GetStr("action", ModConfig.ReplaceCharacter);
+                if (!string.Equals(act, ModConfig.ReplaceCharacter, StringComparison.OrdinalIgnoreCase))
+                    Debug.LogWarning($"[CharacterModel] config action is '{act}', expected '{ModConfig.ReplaceCharacter}'; continuing anyway");
 
                 _modelFile = e.GetStr("model", _modelFile);
                 var sc = e["scale"];

@@ -28,6 +28,8 @@ namespace ModelKit
         public const string ReplaceItem = "replace_item";
         public const string NewWeapon = "new_weapon";
         public const string NewItem = "new_item";
+        /// <summary>换**角色**的规则。角色不是物品，没有 targets / typeIDs。</summary>
+        public const string ReplaceCharacter = "replace_character";
 
         /// <summary>一条规则。**把所有模板用到的字段都放这里**（超集），
         /// 于是模板不需要再各自维护一份，也不会读到不存在的字段。</summary>

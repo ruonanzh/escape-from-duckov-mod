@@ -6,7 +6,8 @@
 //   · 游戏的角色 Avatar **不是 Humanoid**（`avatar.isHuman = False`）⇒ Unity 的人形重定向用不上，
 //     `HumanPoseHandler` 也不可用。所以要**自己把顶点搬到游戏的骨架空间**。
 //   · 玩家的身体是**一个蒙皮网格** `DuckBody`（`SkinnedMeshRenderer`，26 个骨骼槽、bindposes 26）。
-//   · 按玩家批注的简化方案：**换整个身体 + 把游戏原有的头/五官/翅膀/鞋/装备全部隐藏**，
+//   · 按玩家批注的简化方案：**换整个身体 + 把角色自己的部件隐藏**（头、五官、头发、翅膀、鞋、尾巴）。
+//     挂在手部与背部**挂点**上的物品（枪、背包、护甲）不在隐藏之列 —— 见 `KeepVisible`。
 //     不做「把我们的部件一个个挂到游戏骨骼上」那条路（§3.4）。
 //
 // 搬运公式（每个顶点）：
@@ -217,7 +218,9 @@ namespace ModelKit
                 Reapply();
                 return;
             }
-            if (now < r._fastUntil) { r.Reassert(now, 0f); return; }   // 换好后的一小段时间逐帧扫
+            // 换好后的一小段逐帧扫（兜底）。主要靠 CharacterModel 的钩子，所以窗口不必长：
+            // 15 秒 × 60 帧约 900 次全树扫描，装备多时会占帧。改成 4 秒。
+            if (now < r._fastUntil) { r.Reassert(now, 0f); return; }
             // ⚠️ 限流只在这里做、只做一次：以前 Tick 先设 `_nextReassert` 再调 Reassert，
             // 而 Reassert 自己也会查同一个字段 ⇒ 它**永远**提前返回 ⇒ 重申从来没执行过
             // （实测：头发/眼睛/眉毛/翅膀/鞋/尾巴都在搬运之后才生成，因此一直露着）。
@@ -509,7 +512,7 @@ namespace ModelKit
             res.Renderers = renderers;
             res.Character = character;
             res.Skin = skin;
-            try { res._fastUntil = Time.unscaledTime + 15f; } catch { res._fastUntil = 0f; }
+            try { res._fastUntil = Time.unscaledTime + 4f; } catch { res._fastUntil = 0f; }
             _current = res;
             body.sharedMesh = mesh;
             try
@@ -535,7 +538,7 @@ namespace ModelKit
                        + $", new mesh bounds {mesh.bounds.size} (body was {origBounds})"
                        + (skin.VertexTransform != Matrix4x4.identity ? ", WARN the model was loaded with front!=auto or zeroGrip:true (now compensated, but load it with front=auto, zeroGrip:false)" : "")
                        + $", scale {scale:0.###}{(PerBonePlacement ? $", per-bone placement {Mathf.Clamp(PerBoneBlend, 0f, 1f):0.##}" : "")}"
-                       + (res.UnweightedVertices > 0 ? $", {res.UnweightedVertices} vertices had no mapped weight" : "");
+                       + "";
             return res;
         }
 
@@ -596,7 +599,7 @@ namespace ModelKit
             if (r == null || !r.enabled || res == null || r == res.Body) return;
             if (root != null && UnderKeepVisible(root, r.transform)) return;   // 手里/背上的物品不藏
             r.enabled = false;
-            res.Disabled.Add(r);
+            if (!res.Disabled.Contains(r)) res.Disabled.Add(r);   // 游戏重开某个部件时不得重复记录
         }
 
         /// <summary>坐标架的第二列 = 「上」。</summary>
@@ -740,21 +743,6 @@ namespace ModelKit
                 if (p != null && p.CanRead) return p.GetValue(o);
             }
             return null;
-        }
-
-        /// <summary>Unity 的 `Matrix4x4` **没有加法运算符** ⇒ 自己按 16 个元素加（矩阵有索引器 ✓）。
-        /// 顶点搬运要把每根骨贡献的矩阵加权求和，所以必须自己加。</summary>
-        static Matrix4x4 Add(Matrix4x4 a, Matrix4x4 b)
-        {
-            for (int i = 0; i < 16; i++) a[i] += b[i];
-            return a;
-        }
-
-        /// <summary>`Matrix4x4 * float` 在游戏这版 UnityEngine 里也没有 ⇒ 自己按元素乘。</summary>
-        static Matrix4x4 Scale(Matrix4x4 m, float s)
-        {
-            for (int i = 0; i < 16; i++) m[i] *= s;
-            return m;
         }
 
         static int BoneIndex(BoneWeight w, int k)
