@@ -68,6 +68,9 @@ generate_model(action="generate", image=".preview/<名字>.preview.png",
 - 玩家只要一句话、没图时，用 `prompt="…"`。**提示词里也必须写朝向**。
 - 玩家自带 `.glb` 时，③④⑤ 全跳过，直接把他的文件放进 `your_mods/<目录名>/`。
 
+生成前先读 mod 目录里的 `asset_manifest.jsonl`（只看最后几行）：同一个模型不得重复生成，
+同一个任务可以用 `generate_model action=convert taskId=<原来的 taskId>` 重新导出，比重新生成便宜。
+
 > **朝向只能靠提示词**：`..., the barrel and muzzle point to the LEFT, the stock is on the right`
 > **「to the left」让枪口落在 +Z，也就是 Unity 前向**。进游戏不用再转。
 > 实测：提示词写「points to the right」时枪口落在 −Z。玩家自带的 GLB 没有这个保证，用 `config.json` 的 `front` 兜底。

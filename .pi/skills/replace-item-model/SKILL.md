@@ -55,6 +55,9 @@ generate_model(action="generate",
 
 - **图到 3D 比纯文字准得多**。
 - 玩家自带 `.glb` 时，③④ 全跳过，直接把他的文件放进 mod 目录。
+
+生成前先读 mod 目录里的 `asset_manifest.jsonl`（只看最后几行）：同一个模型不得重复生成，
+同一个任务可以用 `generate_model action=convert taskId=<原来的 taskId>` 重新导出，比重新生成便宜。
 - 玩家只要了一句话、没图时，用 `prompt="…"` 出模型。
 
 ### ⑤ 图标

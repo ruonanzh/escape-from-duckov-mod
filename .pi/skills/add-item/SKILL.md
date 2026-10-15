@@ -166,6 +166,9 @@ generate_image(model="your_mods/<目录名>/<物品名>.glb",
 
 
 玩家自带 `.glb` 时跳过生成，直接把文件放进 mod 目录。
+
+生成前先读 mod 目录里的 `asset_manifest.jsonl`（只看最后几行）：同一个模型不得重复生成，
+同一个任务可以用 `generate_model action=convert taskId=<原来的 taskId>` 重新导出，比重新生成便宜。
 玩家不需要模型时，`config.json` 里**不写 `model`**，新物品就沿用原型的外形。
 
 ## 4. 执行
