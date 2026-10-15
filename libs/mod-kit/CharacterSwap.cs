@@ -230,38 +230,34 @@ namespace ModelKit
                 }
             }
 
-            // ③ 两边的「绑定世界矩阵」= bindposes 的逆
-            var gameBind = new Matrix4x4[gameBones.Length];
-            for (int i = 0; i < gameBones.Length; i++) gameBind[i] = gamePoses[i].inverse;
-            // H1：加载期顶点被**旋转/平移**过（`front` 朝向声明 + 握把归零）。骨架必须跟顶点同一坐标系，
-            // 所以把同一个变换也左乘上去。漏了它：顶点与骨架错位 ⇒ 角色歪掉或飘走。
-            var srcBind = new Matrix4x4[skin.InverseBind.Length];
-            for (int i = 0; i < srcBind.Length; i++)
-                srcBind[i] = skin.VertexTransform * skin.InverseBind[i].inverse;
-
-            // M2：如果映射链上带**镜像**（行列式 < 0），搬完的三角形绕序会翻 ⇒ `RecalculateNormals` 得到朝内的法线。
-            // 用第一根映射上的骨骼判断即可 —— 所有骨骼共享同一个整体手性差。
-            bool flipWinding = false;
-            for (int i = 0; i < map.Length; i++)
+            // ③ 身体地标对齐：把整个模型**刚性**地放进鸭子的网格空间。
+            //
+            // 为什么不再逐骨重定姿态（实测结论，见设计仓 10-character-replacement-research.md §6）：
+            // 逐骨用 `G_b · S_b⁻¹` 保留「骨局部坐标」，等于假定两副骨架的**骨局部朝向约定相同**。
+            // 实测这对骨架完全不同：逐骨变换相对全局对齐的偏差平均 120 度、最大 177 度
+            // （比例全是 1.000 ⇒ 纯旋转问题）。于是每个部件各自被转了不同角度 ⇒ 模型拧成一团。
+            // 地标对齐只用「上」与「左」两个身体方向，不可能拧。
+            Matrix4x4 align;
+            string alignWhy;
+            if (!TryBodyAlignment(skin, gameBones, gamePoses, out align, out alignWhy))
             {
-                if (map[i] < 0) continue;
-                flipWinding = (gameBind[map[i]] * srcBind[i].inverse).determinant < 0f;
-                break;
+                res.Report = "cannot align the model to the character body: " + alignWhy;
+                return res;
             }
 
-            // ④ 顶点搬运 + 权重重映射
+            // ④ 顶点按同一个矩阵刚性搬运；权重只换骨骼下标并归一化（位置不再逐骨分化）
             var srcMesh = skin.Mesh;
             var sv = srcMesh.vertices;
             var nv = new Vector3[sv.Length];
             var nw = new BoneWeight[sv.Length];
             for (int i = 0; i < sv.Length; i++)
             {
+                nv[i] = align.MultiplyPoint3x4(sv[i]);
                 var bw = i < skin.Weights.Length ? skin.Weights[i] : new BoneWeight();
-                Matrix4x4 acc = new Matrix4x4();
-                float wsum = 0f;
                 var keepIdx = new int[4];
                 var keepW = new float[4];
                 int keep = 0;
+                float wsum = 0f;
                 for (int k = 0; k < 4; k++)
                 {
                     int ji = BoneIndex(bw, k);
@@ -269,23 +265,9 @@ namespace ModelKit
                     if (w <= 0.0001f || ji < 0 || ji >= map.Length) continue;
                     int gi = map[ji];
                     if (gi < 0) continue;                                  // 没映射上 ⇒ 这根骨的权重丢掉
-                    acc = Add(acc, Scale(gameBind[gi] * srcBind[ji].inverse, w));
                     wsum += w;
                     if (keep < 4) { keepIdx[keep] = gi; keepW[keep] = w; keep++; }
                 }
-
-                if (wsum <= 0.0001f)
-                {
-                    // 这件模型的权重一根都没映射上：保持原位置，并记一笔（不得静默 ✗）
-                    nv[i] = sv[i];
-                    res.UnweightedVertices++;
-                }
-                else
-                {
-                    float inv = 1f / wsum;
-                    nv[i] = Scale(acc, inv).MultiplyPoint3x4(sv[i]);
-                }
-
                 var outW = new BoneWeight();
                 if (keep > 0)
                 {
@@ -295,6 +277,10 @@ namespace ModelKit
                     if (keep > 2) { outW.boneIndex2 = keepIdx[2]; outW.weight2 = keepW[2] * inv; }
                     if (keep > 3) { outW.boneIndex3 = keepIdx[3]; outW.weight3 = keepW[3] * inv; }
                 }
+                else
+                {
+                    res.UnweightedVertices++;                              // 不得静默 ✗
+                }
                 nw[i] = outW;
             }
 
@@ -303,13 +289,8 @@ namespace ModelKit
             if (nv.Length > 65000) mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
             mesh.vertices = nv;
             mesh.uv = srcMesh.uv;
-            var srcTris = srcMesh.triangles;
-            if (flipWinding)                                  // M2：镜像 ⇒ 绕序翻回来，否则法线朝内
-                for (int t = 0; t + 2 < srcTris.Length; t += 3)
-                {
-                    var tmp = srcTris[t + 1]; srcTris[t + 1] = srcTris[t + 2]; srcTris[t + 2] = tmp;
-                }
-            mesh.triangles = srcTris;
+            // 对齐是纯旋转（行列式 +1）⇒ 绕序不用翻；镜像在加载期已经处理过
+            mesh.triangles = srcMesh.triangles;
             mesh.boneWeights = nw;
             mesh.bindposes = gamePoses;                     // **游戏的绑定姿势**（不得用模型的 ✗）
             // 法线必须重算：顶点被搬过，原来的法线不再成立（切线与法线贴图一起重算）
@@ -350,8 +331,95 @@ namespace ModelKit
                        + $", hidden parts {res.Disabled.Count}"
                        + $", new mesh bounds {mesh.bounds.size} (body was {origBounds})"
                        + (skin.VertexTransform != Matrix4x4.identity ? ", WARN the model was loaded with front!=auto or zeroGrip:true (now compensated, but load it with front=auto, zeroGrip:false)" : "")
-                       + (flipWinding ? ", mirrored (triangle winding flipped)" : "");
+                       + (res.UnweightedVertices > 0 ? $", {res.UnweightedVertices} vertices had no mapped weight" : "");
             return res;
+        }
+
+        /// <summary>用身体地标把源模型刚性对齐到鸭子：骨盆到头的方向为「上」，左腿到右腿的方向为「左」，
+        /// 第三个轴由叉乘得出。两边用**同一个构造**，所以只能得到旋转，不会得到镜像或拧。
+        ///
+        /// <para>源侧地标取自 `inverseBindMatrices` 的平移列，并做两件事：乘以加载期的顶点净变换
+        /// （`front` 旋转与握把归零）；再取反 X —— 因为加载器已经取反过顶点的 X，地标不跟着取反就会左右翻。</para></summary>
+        static bool TryBodyAlignment(GltfLoader.Loaded skin, Transform[] gameBones, Matrix4x4[] gamePoses,
+                                     out Matrix4x4 align, out string why)
+        {
+            align = Matrix4x4.identity;
+            why = "";
+            Vector3 srcPelvis, srcHead, srcLeft, srcRight;
+            if (!SourceLandmark(skin, "Pelvis", out srcPelvis) || !SourceLandmark(skin, "Head", out srcHead)
+                || !SourceLandmark(skin, "Thigh.L", out srcLeft) || !SourceLandmark(skin, "Thigh.R", out srcRight))
+            { why = "the model is missing hips, head or leg joints"; return false; }
+
+            Vector3 duckPelvis, duckHead, duckLeft, duckRight;
+            if (!DuckLandmark(gameBones, gamePoses, "Pelvis", out duckPelvis)
+                || !DuckLandmark(gameBones, gamePoses, "Head", out duckHead)
+                || !DuckLandmark(gameBones, gamePoses, "Thigh.L", out duckLeft)
+                || !DuckLandmark(gameBones, gamePoses, "Thigh.R", out duckRight))
+            { why = "the character is missing hips, head or leg bones"; return false; }
+
+            Matrix4x4 fs, fd;
+            if (!BodyFrame(srcPelvis, srcHead, srcLeft, srcRight, out fs)
+                || !BodyFrame(duckPelvis, duckHead, duckLeft, duckRight, out fd))
+            { why = "the body landmarks are degenerate"; return false; }
+
+            var rot = fd * fs.transpose;                       // 正交基 ⇒ 转置就是逆
+            rot.m03 = 0f; rot.m13 = 0f; rot.m23 = 0f; rot.m33 = 1f;
+            var t = duckPelvis - rot.MultiplyPoint3x4(srcPelvis);
+            align = rot;
+            align.m03 = t.x; align.m13 = t.y; align.m23 = t.z;
+            return true;
+        }
+
+        /// <summary>源关节的绑定位置（先做顶点净变换，再取反 X）。用「映射到哪根鸭骨」反查关节。</summary>
+        static bool SourceLandmark(GltfLoader.Loaded skin, string duckBone, out Vector3 p)
+        {
+            p = Vector3.zero;
+            for (int i = 0; i < skin.JointNames.Length; i++)
+            {
+                string duck;
+                if (!CharacterRig.TryMap(skin.JointNames[i], out duck)
+                    || !string.Equals(duck, duckBone, StringComparison.Ordinal)) continue;
+                if (i >= skin.InverseBind.Length) return false;
+                var world = skin.InverseBind[i].inverse;
+                var v = skin.VertexTransform.MultiplyPoint3x4(new Vector3(world.m03, world.m13, world.m23));
+                p = new Vector3(-v.x, v.y, v.z);
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>游戏骨骼的绑定位置（`bindposes[骨]` 的逆的平移列）。</summary>
+        static bool DuckLandmark(Transform[] gameBones, Matrix4x4[] gamePoses, string name, out Vector3 p)
+        {
+            p = Vector3.zero;
+            for (int j = 0; j < gameBones.Length; j++)
+            {
+                if (gameBones[j] == null || !string.Equals(gameBones[j].name, name, StringComparison.Ordinal)) continue;
+                if (j >= gamePoses.Length) return false;
+                var w = gamePoses[j].inverse;
+                p = new Vector3(w.m03, w.m13, w.m23);
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>由「上」与「左」建正交基（列 = 左 / 上 / 前）。两边同构造 ⇒ 只能得到旋转。</summary>
+        static bool BodyFrame(Vector3 pelvis, Vector3 head, Vector3 leftHip, Vector3 rightHip, out Matrix4x4 m)
+        {
+            m = Matrix4x4.identity;
+            var up = head - pelvis;
+            if (up.sqrMagnitude < 1e-8f) return false;
+            up = up.normalized;
+            var left = leftHip - rightHip;
+            left -= up * Vector3.Dot(left, up);
+            if (left.sqrMagnitude < 1e-8f) return false;
+            left = left.normalized;
+            var fwd = Vector3.Cross(left, up);
+            m.m00 = left.x; m.m10 = left.y; m.m20 = left.z;    // 第 0 列 = 左
+            m.m01 = up.x;   m.m11 = up.y;   m.m21 = up.z;      // 第 1 列 = 上
+            m.m02 = fwd.x;  m.m12 = fwd.y;  m.m22 = fwd.z;     // 第 2 列 = 前
+            m.m33 = 1f;
+            return true;
         }
 
         /// <summary>把除身体以外的渲染器全部停掉：`renderers` 列表、`subVisuals[].renderers`、`customFace`。</summary>
