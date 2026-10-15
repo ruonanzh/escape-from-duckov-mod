@@ -11,6 +11,7 @@ node --experimental-strip-types scripts/check-mod-install-staleness.mjs   # 产�
 node --experimental-strip-types scripts/check-mod-config-data.mjs         # config 数据层判据
 node scripts/check-probe-tool-parity.mjs                                  # 工具面一致性
 node scripts/check-prompt-standard-zh.mjs                                 # 中文提示词规范（情态词、箭头、术语）
+node scripts/check-character-rig.mjs                                      # 角色替换的骨骼映射表
 ```
 
 它们都导入 `.pi/lib/` 里的**同一份**函数，扩展也导入那份。于是判据只有一份，不会漂。
@@ -57,6 +58,22 @@ managedDir 由 `mod-repo.json` 的 `compile.managedDir` 按平台推导（mac `D
 4. **跨平台路径**：managedDir/dataDir 按 `mod-repo.json` + 平台推导，不得在脚本里写死路径。
 5. **编译/字节码产物不进 git**：`.gitignore` 已排 `**/bin/`、`**/obj/`、`__pycache__/`、`*.pyc`——`dotnet run` 和 python 脚本都会生成这些，不得提交。
 6. **Windows 终端编码**：脚本输出含中文 + emoji（✅/❌），Windows 必须用 UTF-8 终端（Windows Terminal / Git Bash / VSCode 集成终端），GBK 下会乱码。
+
+## `check-character-rig.mjs` —— 角色替换的骨骼映射表检查
+
+角色替换的成败全压在 `libs/mod-kit/CharacterRig.cs` 那张表上。表错一条，游戏里就是**某个部位不动**或**整块歪掉**，
+而且不报错 —— 又一次「静默无效果」。所以拿实测值机器查。
+
+```bash
+node scripts/check-character-rig.mjs     # 0 = 表自洽；1 = 有问题
+```
+
+查四类：① `DuckBones` 与**运行时实测名单逐项一致（含顺序）**；② 22 个 Mixamo 关节一个不漏；
+③ 多出来的 7 根骨都在名单里、都挂到了名单内的骨头、且没被映射表重复指到；
+④ 24 根实骨全部被覆盖。另外还查**解析到的条数**（表被改坏/解析失败时要显式红，不能靠空数组假通过）。
+
+实测名单的唯一来源是设计仓 `docs/unity-3d-assets/10-character-replacement-research.md` §4.5。
+游戏更新后先重跑探针，再改这里与 `CharacterRig.cs`。
 
 ## `check-prompt-standard-zh.mjs` —— 中文提示词规范的检查
 
