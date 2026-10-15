@@ -85,7 +85,17 @@ function readDuckDump(path) {
       cur = new Map();
     }
   }
-  return mats;
+  // 网格包围盒（m_LocalAABB）：头的占比要用它当分母，不能用骨架最高点
+  // （Mixamo 那套骨架的最高关节往往就是头关节本身，用它当分母会算出 100%）
+  const aabb = text.slice(text.indexOf("m_LocalAABB"));
+  const num = (key) => {
+    const m = aabb.match(new RegExp(`${key}\\s*=\\s*(-?[0-9.eE+-]+)`));
+    return m ? Number(m[1]) : null;
+  };
+  const center = [num("x"), num("y"), num("z")];
+  const extent = [...aabb.matchAll(/x = (-?[0-9.eE+-]+)\s*\n\s*y = (-?[0-9.eE+-]+)\s*\n\s*z = (-?[0-9.eE+-]+)/g)]
+    .map((m) => [Number(m[1]), Number(m[2]), Number(m[3])])[1] ?? null;
+  return { mats, aabb: center[0] !== null && extent ? { min: center.map((c, i) => c - extent[i]), max: center.map((c, i) => c + extent[i]) } : null };
 }
 
 // ── 4x4 求逆（仿射，高斯-约当）──
@@ -156,14 +166,20 @@ function readGlb(path) {
     // glTF 列主序 → 行主序
     mats.push([0, 1, 2, 3].map((r) => [0, 1, 2, 3].map((c) => f[c * 4 + r])));
   }
-  return { names: skin.joints.map((j) => nodes[j].name ?? `#${j}`), ibm: mats };
+  const prim = json.meshes?.[0]?.primitives?.[0];
+  const pa = prim ? json.accessors[prim.attributes.POSITION] : null;
+  const pos = pa?.min && pa?.max ? { min: pa.min, max: pa.max } : null;
+  return { names: skin.joints.map((j) => nodes[j].name ?? `#${j}`), ibm: mats, pos };
 }
 
 // ── 主流程 ──
 let duckMats;
+let duckAabb = null;
 let glb;
 try {
-  duckMats = readDuckDump(dumpPath);
+  const duckRead = readDuckDump(dumpPath);
+  duckMats = duckRead.mats;
+  duckAabb = duckRead.aabb;
   glb = readGlb(glbPath);
 } catch (e) {
   console.error(`FAIL  ${e.message}`);
@@ -238,5 +254,31 @@ const ang = rows.map((r) => r[1]);
 console.log(`\n  位移：中位 ${disp[disp.length >> 1].toFixed(3)} m  最大 ${disp[disp.length - 1].toFixed(3)} m`);
 console.log(`  朝向偏差：平均 ${(ang.reduce((s, x) => s + x, 0) / ang.length).toFixed(1)} 度  ` +
   `最大 ${Math.max(...ang).toFixed(1)} 度`);
+// ── 尺寸建议：自动部分已按「网格高度」对齐，剩下的差额来自头的占比 ──
+//   占比 =（头骨高度 − 网格最低点）/ 网格高度，两侧各算一次；建议倍数 = 角色占比 ÷ 模型占比。
+const duckHead = posOf(duckW[duckIndex.get("Head")]);
+const srcHeadIdx = glb.names.indexOf("mixamorig:Head");
+const srcHead = srcHeadIdx >= 0 ? srcPos("mixamorig:Head") : null;
+function frac(head, aabb) {
+  if (!head || !aabb) return null;
+  const span = aabb.max[2] - aabb.min[2];
+  if (span < 1e-6) return null;
+  return (head[2] - aabb.min[2]) / span;
+}
+const duckFrac = frac(duckHead, duckAabb);
+const srcFrac = srcHead && glb.pos ? (() => {
+  const span = glb.pos.max[1] - glb.pos.min[1];              // glTF 是 Y 向上
+  return span > 1e-6 ? (srcHead[1] - glb.pos.min[1]) / span : null;
+})() : null;
+if (duckFrac && srcFrac) {
+  console.log(`\n  头的占比（头骨高度 − 网格最低点）/ 网格高度：` +
+    `角色 ${(duckFrac * 100).toFixed(1)}%  模型 ${(srcFrac * 100).toFixed(1)}%` +
+    `  ⇒ 建议 scale = ${(duckFrac / srcFrac).toFixed(2)}`);
+  console.log("  用法：写进 config.json 的 \"scale\"。自动部分只按网格高度对齐，这一项补头的占比差。");
+  console.log("  不写也可以（默认 1.0），但矮胖的模型会看起来偏小。");
+} else {
+  console.log("\n  头的占比算不出来（缺网格包围盒）。尺寸只能按网格高度对齐，即 scale 保持 1.0。");
+}
+
 console.log("\n  读法：位移越大，「把部件搬到角色骨上」对形状破坏越大；朝向偏差大而整齐，说明两副骨架");
 console.log("  的骨轴约定不同，搬之前要先按 K_b = R_tᵀ·R_A·R_s 求对应。当前实现只做刚性放置（形状保真优先）。");
