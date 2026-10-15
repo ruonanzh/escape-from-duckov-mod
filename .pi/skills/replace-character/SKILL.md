@@ -12,7 +12,7 @@ description: 把玩家角色的模型换成自己做的一个。触发：玩家�
 
 与另外四个 SKILL 一样，本 SKILL 不重写工具说明里已经写过的朝向、面数、积分与不得连发那些话。
 
-## 1. 需要的输入（只问两件）
+## 1. 需要的输入（只有下面两项，问清这两项即可）
 
 | 输入 | 说明 |
 |---|---|
@@ -137,8 +137,7 @@ node scripts/measure-skeleton-gap.mjs <角色名>_rigged.glb /tmp/duckbody.txt
 | ③ 风格化预览图 | `generate_image` | 约 10 |
 | ④ 3D 模型（含格式转换） | `generate_model action=generate` | 约 50 |
 | ⑤ 绑骨 | `generate_model action=rig` | 约 25 |
-| 需要走路动画时再加 | `generate_model action=retarget` | 约 10 |
-| | | **约 85（不含动画）** |
+| | | **约 85** |
 
 数字只在本表维护，别处不再重复写。
 
