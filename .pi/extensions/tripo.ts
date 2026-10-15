@@ -454,17 +454,26 @@ export default function (pi: ExtensionAPI) {
     name: "generate_model",
     label: "Generate Model (Tripo)",
     description:
-      "Generate a 3D model (GLB) with Tripo from a text prompt or a reference picture, and save it to out=. The tool downloads the model immediately, because the remote URL expires in 5 minutes. It exports the model in the game's orientation convention (front = +Z). This costs credits: about 40 for a textured low-poly model, plus about 10 for the format conversion. Do not call it in a loop. It needs the Tripo API key in ~/.gamer-agent-pi/api-keys.json, under the key 'tripo'.",
+      "Generate a 3D model (GLB) with Tripo from a text prompt or a reference picture, and save it to out=. The tool downloads the model immediately, because the remote URL expires in 5 minutes. It exports the model in the game's orientation convention (front = +Z). With action=rig it adds bones to a finished model, and with action=retarget it bakes one preset animation into the rigged model. This costs credits: about 40 for a textured low-poly model, plus about 10 for the format conversion. Do not call it in a loop. It needs the Tripo API key in ~/.gamer-agent-pi/api-keys.json, under the key 'tripo'.",
     promptSnippet: "Generate a 3D model (GLB) with Tripo from a prompt or image",
     promptGuidelines: [
       "Use generate_model only when no model file exists yet. If the player already has a .glb, use that file.",
       "Use generate_model with image= when a picture is available to build from. An image is far more accurate than text alone. Use prompt= when there is only a description. faceLimit= caps the triangles (default 3000).",
+      "Rig in three steps: action=rig-check to see whether the model can take bones, then action=rig (spec=mixamo gives the standard Mixamo humanoid names, biped only), then action=retarget with animation=preset:walk. Each call spends credits.",
+      "The input pose decides the rig quality: a standing figure with clearly separated limbs rigs well, while a sitting or curled one gives a coarse skeleton. rig-check is advice only, so always read the joint list that rig= prints in its result.",
       "Do not call generate_model again for a better result. Each call costs credits, and the API rate-limits short bursts.",
       "Before generating an asset again, read asset_manifest.jsonl in the mod directory (last lines only). If the model already exists, reuse its task_id with action=convert instead of generating.",
     ],
     parameters: Type.Object({
       action: Type.Union(
-        [Type.Literal("generate"), Type.Literal("convert"), Type.Literal("balance")],
+        [
+          Type.Literal("generate"),
+          Type.Literal("convert"),
+          Type.Literal("balance"),
+          Type.Literal("rig-check"),
+          Type.Literal("rig"),
+          Type.Literal("retarget"),
+        ],
         { description: "generate: make a new model from a prompt or an image. convert: re-export an existing task. balance: show the credits left." },
       ),
       prompt: Type.Optional(
@@ -476,6 +485,35 @@ export default function (pi: ExtensionAPI) {
       faceLimit: Type.Optional(Type.Number({ description: "Max triangles (default 3000). Game assets: 1500-4000." })),
       animated: Type.Optional(Type.Boolean({ description: "Keep skeleton or animation data (default false). A static model is correct for props and weapons." })),
       noTexture: Type.Optional(Type.Boolean({ description: "Skip texturing (cheaper, faster)." })),
+      rigType: Type.Optional(
+        Type.Union(
+          [
+            Type.Literal("biped"),
+            Type.Literal("quadruped"),
+            Type.Literal("hexapod"),
+            Type.Literal("octopod"),
+            Type.Literal("avian"),
+            Type.Literal("serpentine"),
+            Type.Literal("aquatic"),
+          ],
+          {
+            description:
+              "rig= and rig-check only: skeleton type, default biped. The input pose decides the quality: a standing figure with clearly separated limbs rigs well, while a sitting or curled one gives a coarse skeleton (measured: a sitting cat gave 14 joints and no tail, a standing one gave 24 joints with four leg chains and a tail).",
+          },
+        ),
+      ),
+      spec: Type.Optional(
+        Type.Union([Type.Literal("mixamo"), Type.Literal("tripo")], {
+          description:
+            "rig= only: bone naming, default mixamo. mixamo gives the standard Mixamo humanoid names (mixamorig:Hips, Spine, Spine1, ... LeftToeBase) and applies to biped only; a non-biped rig returns tripo:: names whatever you pass.",
+        }),
+      ),
+      animation: Type.Optional(
+        Type.String({
+          description:
+            "retarget= only: one preset animation such as preset:walk (90+ presets exist for biped). The animation is baked into the returned GLB.",
+        }),
+      ),
     }),
 
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
@@ -492,7 +530,11 @@ export default function (pi: ExtensionAPI) {
       }
 
       let taskId = params.taskId ?? "";
-      let firstOut = params.out && !isAbsolute(params.out) ? resolve(cwd, params.out) : params.out ?? resolve(cwd, "model.glb");
+      const defaultName =
+        params.action === "rig" ? "model-rigged.glb"
+        : params.action === "retarget" ? "model-animated.glb"
+        : "model.glb";
+      let firstOut = params.out && !isAbsolute(params.out) ? resolve(cwd, params.out) : params.out ?? resolve(cwd, defaultName);
       // ⭐ 已存在就报错 ✓（“绝不静默覆盖” ✓）—— 放在建任务**之前** ✓ 否则白花积分 ✗
       guardOutNotExists(firstOut);
 
@@ -622,6 +664,123 @@ export default function (pi: ExtensionAPI) {
         };
       }
 
+      // action=rig-check：先问能不能绑（官方建议）。⚠️ 实测它**只是建议**：坐着的猫回 false 也照样绑出来了 ✗
+      if (params.action === "rig-check") {
+        if (!taskId) throw new Error("rig-check needs taskId= (from an earlier generate)");
+        const rigType = params.rigType ?? "biped";
+        const created = await api("/animations/rig-check", { input: taskId, rig_type: rigType });
+        const done = await waitTask(String(created.task_id), "rig-check");
+        const o = done.output ?? {};
+        const ok = o.riggable === true || o.riggable === "true";
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                `${ok ? "PASS" : "WARN"}: rig-check riggable=${o.riggable} rig_type=${o.rig_type ?? rigType}` +
+                (ok
+                  ? ""
+                  : ". This check is advice only. The rig may still come out, but with a coarse skeleton. Read the joint list that action=rig prints."),
+            },
+          ],
+        };
+      }
+
+      // action=rig：给一个成品模型加骨骼。v1.0 只支持人形，v2.5 支持四足/六足/八足/鸟/蛇/鱼
+      if (params.action === "rig") {
+        if (!taskId) throw new Error("rig needs taskId= (from an earlier generate)");
+        const modRoot = modRootOf(cwd, firstOut);
+        const name = outName(firstOut);
+        const warns: string[] = [];
+        const rigType = params.rigType ?? "biped";
+        const model = rigType === "biped" ? "v1.0-20240301" : "v2.5-20260210";
+        const spec = params.spec ?? "mixamo";
+        const body: Record<string, unknown> = { input: taskId, model, rig_type: rigType, spec, out_format: "glb" };
+        const step: PendingStep = {
+          endpoint: "/v3/animations/rig",
+          requestId: null,
+          parent: taskId,
+          seed: null,
+          filesAbs: [firstOut],
+          buildInput: () => ({ ...body }),
+        };
+        let done: any;
+        try {
+          const created = await api("/animations/rig", body);
+          step.requestId = String(created.task_id);
+          done = await waitTask(step.requestId, "rig");
+        } catch (e) {
+          const w = flushStep(modRoot, name, step, String((e as Error).message));
+          if (w) warns.push(w);
+          throw e;
+        }
+        const url = pickUrl(done.output);
+        if (!url) throw new Error("rig succeeded but no URL");
+        const size = await download(url, firstOut);
+        { const w = flushStep(modRoot, name, step); if (w) warns.push(w); }
+        const joints = tripoGlbJoints(firstOut);
+        const notes: string[] = [];
+        if (!joints.length) notes.push("Could not read a joint list from the GLB. Open the file and check.");
+        if (spec === "mixamo" && rigType !== "biped")
+          notes.push("spec=mixamo applies to biped only. This rig uses tripo:: names, so map them yourself.");
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                `PASS: rigged model saved to ${firstOut} (${size}) task_id=${step.requestId} rig_type=${rigType} spec=${spec} model=${model}\n` +
+                (joints.length ? `Joints (${joints.length}): ${joints.join(", ")}.\n` : "") +
+                (notes.length ? notes.join("\n") + "\n" : "") +
+                warnLine(warns),
+            },
+          ],
+        };
+      }
+
+      // action=retarget：往骨架上套一个预置动画，烘焙进 GLB
+      if (params.action === "retarget") {
+        if (!taskId) throw new Error("retarget needs taskId= (the rig task id from action=rig)");
+        if (!params.animation) throw new Error("retarget needs animation= (for example preset:walk)");
+        const modRoot = modRootOf(cwd, firstOut);
+        const name = outName(firstOut);
+        const warns: string[] = [];
+        const body: Record<string, unknown> = { input: taskId, animation: params.animation, bake_animation: true };
+        const step: PendingStep = {
+          endpoint: "/v3/animations/retarget",
+          requestId: null,
+          parent: taskId,
+          seed: null,
+          filesAbs: [firstOut],
+          buildInput: () => ({ ...body }),
+        };
+        let done: any;
+        try {
+          const created = await api("/animations/retarget", body);
+          step.requestId = String(created.task_id);
+          done = await waitTask(step.requestId, "retarget");
+        } catch (e) {
+          const w = flushStep(modRoot, name, step, String((e as Error).message));
+          if (w) warns.push(w);
+          throw e;
+        }
+        const url = pickUrl(done.output);
+        if (!url) throw new Error("retarget succeeded but no URL");
+        const size = await download(url, firstOut);
+        { const w = flushStep(modRoot, name, step); if (w) warns.push(w); }
+        const anims = tripoGlbAnimations(firstOut);
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                `PASS: animation "${params.animation}" baked into ${firstOut} (${size}) task_id=${step.requestId}\n` +
+                (anims.length ? `Animations: ${anims.join(", ")}.` : "") +
+                warnLine(warns),
+            },
+          ],
+        };
+      }
+
       // action=convert
       if (!taskId) throw new Error("convert needs taskId= (from an earlier generate)");
       // 清单：写清单要的两样东西（设计 §5.1）—— 独立 convert 没有上一步 → parent 是 null ✓
@@ -675,4 +834,33 @@ async function convert(api: (p: string, b?: unknown) => Promise<any>, waitTask: 
   const id = String(created.task_id);
   // 返回值带上转换任务的 id —— 清单要它当 request_id（设计 §5.2 写入点 5）
   return { id, out: await waitTask(id, "convert") };
+}
+
+/** 只读 GLB 头里的 JSON 块（不解码几何 ✗）。用来把骨骼名与动画名报给 agent ✓ */
+function tripoGlbJson(path: string): any | null {
+  try {
+    const buf = readFileSync(path);
+    if (buf.length < 20 || buf.readUInt32LE(0) !== 0x46546c67) return null; // "glTF"
+    const jsonLen = buf.readUInt32LE(12);
+    return JSON.parse(buf.subarray(20, 20 + jsonLen).toString("utf8"));
+  } catch {
+    return null;
+  }
+}
+
+/** GLB 里的骨骼名（skin 的 joints 指向的节点名）。读不出就返回空数组 ✓（不是错误 ✓） */
+function tripoGlbJoints(path: string): string[] {
+  const g = tripoGlbJson(path);
+  if (!g) return [];
+  const nodes: any[] = g.nodes ?? [];
+  const out: string[] = [];
+  for (const skin of g.skins ?? []) for (const j of skin.joints ?? []) out.push(nodes[j]?.name ?? "?");
+  return out;
+}
+
+/** GLB 里的动画名。读不出就返回空数组 ✓ */
+function tripoGlbAnimations(path: string): string[] {
+  const g = tripoGlbJson(path);
+  if (!g) return [];
+  return (g.animations ?? []).map((a: any) => a?.name ?? "(unnamed)");
 }
