@@ -3,9 +3,7 @@
     {
       "action": "replace_character",
       "model": "model.glb",
-      "scale": 1.2,
-      "bindArms": false,
-      "perBone": false
+      "scale": 1.2
     }
   ]
 }

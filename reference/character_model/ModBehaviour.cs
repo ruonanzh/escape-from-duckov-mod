@@ -12,7 +12,7 @@
 //      不得用包围盒尺寸投影到上轴：上轴一倾斜，投影偏大，模型反而被缩小。
 //   ③ 隐藏：钩子（`CharacterModel` 的五个方法）立刻藏，`Tick` 的逐帧窗口与每秒重申兜底。
 //      物品挂点（手、背、护甲）在保留名单里，不得藏 —— 枪和背包要留着。
-//   ④ 手臂：`bindArms` 为假时，手臂与手的权重并到躯干。模型是刚性放置的，
+//   ④ 手臂：手臂与手的权重并到躯干（`BindArmBones` 默认 false）。模型是刚性放置的，
 //      鸭子手臂骨的转轴不在模型的手臂里，绑上去会脱开飘走。
 
 using System;
@@ -27,10 +27,6 @@ namespace CharacterModelSwap
         string _configPath = "";
         string _modelFile = "model.glb";
         float _extraScale = 1.2f;
-        bool _bindArms = false;
-        bool _perBone = false;
-        float _perBoneBlend = 1f;
-        string _perBoneBones = null;
 
         long _stamp = -1;
         GltfLoader.Loaded _loaded;
@@ -57,10 +53,6 @@ namespace CharacterModelSwap
                     if (mc == null) return;                       // 还没进关卡 ⇒ 下一帧再看
                     _character = mc;
                     CharacterSwap.ExtraScale = _extraScale;
-                    CharacterSwap.BindArmBones = _bindArms;
-                    CharacterSwap.PerBonePlacement = _perBone;
-                    CharacterSwap.PerBoneBlend = _perBoneBlend;
-                    if (_perBoneBones != null) CharacterSwap.PerBoneBones = _perBoneBones;
                     _result = CharacterSwap.Apply(mc, _loaded);
                     _applied = _result.Applied;
                     Debug.Log("[CharacterModel] " + (_applied ? "APPLIED: " : "FAILED: ") + _result.Report);
@@ -118,12 +110,6 @@ namespace CharacterModelSwap
                 _modelFile = e.GetStr("model", _modelFile);
                 var sc = e["scale"];
                 if (sc != null) _extraScale = (float)sc.Number;
-                _bindArms = e.GetBool("bindArms", _bindArms);
-                _perBone = e.GetBool("perBone", _perBone);
-                var pb = e["perBoneBlend"];
-                if (pb != null) _perBoneBlend = (float)pb.Number;
-                var pbb = e["perBoneBones"];
-                if (pbb != null) _perBoneBones = pbb.AsString(null);
 
                 var path = Path.Combine(ModelCache.ModDir(), _modelFile);
                 if (!File.Exists(path))
@@ -133,7 +119,7 @@ namespace CharacterModelSwap
                 }
                 // 角色模型必须用 front=auto、zeroGrip:false 加载；否则加载期的旋转或位移会让顶点与骨架错位。
                 _loaded = GltfLoader.LoadFile(path, e.GetStr("front", "auto"), zeroGrip: false);
-                Debug.Log($"[CharacterModel] config: model={_modelFile} scale={_extraScale} bindArms={_bindArms} perBone={_perBone} blend={_perBoneBlend} | {_loaded.Report}");
+                Debug.Log($"[CharacterModel] config: model={_modelFile} scale={_extraScale} | {_loaded.Report}");
 
                 if (_result != null) { _result.Restore(); _result = null; }   // 有借有还：换了配置先把旧的还回去
                 _applied = false;

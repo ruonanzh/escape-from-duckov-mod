@@ -122,10 +122,6 @@ export function validateDataLayer(
         errors.push(`${at} (${action}): model is required (the GLB file name next to the DLL)`);
       }
       if ("scale" in e && typeof e.scale !== "number") errors.push(`${at}: scale must be a number`);
-      if ("bindArms" in e && typeof e.bindArms !== "boolean") errors.push(`${at}: bindArms must be true or false`);
-      if ("perBone" in e && typeof e.perBone !== "boolean") errors.push(`${at}: perBone must be true or false`);
-      if ("perBoneBlend" in e && typeof e.perBoneBlend !== "number") errors.push(`${at}: perBoneBlend must be a number`);
-      if ("perBoneBones" in e && typeof e.perBoneBones !== "string") errors.push(`${at}: perBoneBones must be a string`);
       return;
     }
     if (NOT_IMPLEMENTED_ACTIONS.has(action)) {

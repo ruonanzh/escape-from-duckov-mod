@@ -278,45 +278,21 @@ namespace ModelKit
         /// <para>调用后请每帧调 `Result.Reassert(Time.unscaledTime)`：游戏会把隐藏的部件改回来（M1）。</para></summary>
         /// <summary>手臂与手是否绑到鸭子的手臂骨。
         ///
+        /// <para>**默认 false，现阶段恒为 false。** 原因：没有找到把模型手臂挂到游戏手臂骨上的好办法
+        /// （逐骨落位做过、量化过，代价见设计仓研究记录 §5.6）。形状保真是首要目标，所以不用它。</para>
+        ///
         /// <para>取 false 时，`UpperArm.L/R`、`ForeArm.L/R`、`Hand.L/R` 的权重全部并到 `Spine.004`（躯干）。
         /// 实测原因：我们的模型是**刚性放置**的，而鸭子手臂骨的**转轴**在鸭子自己的肩关节上；
         /// 模型的手臂网格不在那个轴上 ⇒ 动画一摆，手臂就**脱开身体飘走**（实测：左手飘在枪旁边）。</para>
         ///
         /// <para>并到躯干后手臂跟着身体走，不再单独摆动。代价是手臂不会再摆。</para></summary>
-        public static bool BindArmBones = true;
+        public static bool BindArmBones = false;
 
-        /// <summary>逐骨落位（默认关）。
-        ///
-        /// <para>关：整个模型**刚性**放置。形状百分百不变；但鸭子手臂骨的转轴不在模型的手臂里，
-        /// 动画一摆，手臂就离开身体。</para>
-        ///
-        /// <para>开：顶点改成 `g_b + L·(v − s_b)`（`g_b` = 鸭子骨绑定位置，`s_b` = 源骨绑定位置，
-        /// `L` = 对齐矩阵的线性部分）。也就是**偏移只按统一旋转转**（不会像旧的逐骨版那样按每根骨
-        /// 自己的朝向转），平移则逐骨落位 ⇒ 手臂挂到鸭子手臂骨的位置上，摆臂时绕**正确的关节**转。</para>
-        ///
-        /// <para>代价：各骨的平移量不同 ⇒ 关节接缝会被拉。实测鸭猫：边长比中位 1.003、p99 1.99、最大 4.12
-        /// （旧的逐骨版是 1.014 / 10.41 / 17.40；刚性版全是 1.000）。</para>
-        ///
-        /// <para>推导：`K_b = R_tᵀ·R_A·R_s` ⇒ `G_b·K_b·S_b⁻¹ = T(g_b)·R_A·T(−s_b)`。</para></summary>
-        public static bool PerBonePlacement = false;
-
-        /// <summary>逐骨落位的混合系数（0 到 1）。0 = 完全刚性，1 = 完全逐骨。
-        ///
-        /// <para>实测：完全逐骨会把手臂从身体拽到鸭子肩关节的位置，接缝被拉长 ⇒ 手臂看起来变细。
-        /// 中间值（例如 0.5）让手臂移到一半，接缝少拉一半。</para>
-        ///
-        /// <para>代价仍然存在：转轴始终在鸭子骨骼上，位移只影响「部件起始位置离转轴多远」。</para></summary>
-        public static float PerBoneBlend = 1f;
-
-        /// <summary>允许逐骨落位的骨名（逗号分隔）。**默认只给手臂**。
-        ///
-        /// <para>为什么必须限制：位移不只作用在手臂上。实测鸭猫（blend = 1 时的全额）：
-        /// 头 0.261 m、`Spine.004` 0.148 m、`Spine.003` 0.119 m；穿靴子的猫更大（头 0.451 m、手 0.816 m）。
-        /// 躯干一动，钉在**游戏骨骼挂点**上的物品（背包、护甲）就与身体分家 —— 实测踩过：
-        /// 背包漂到身体后面。</para>
-        ///
-        /// <para>空字符串表示不限制（所有骨都逐骨落位，只在确认模型骨骼与角色几乎一致时用）。</para></summary>
-        public static string PerBoneBones = "UpperArm.L,UpperArm.R,ForeArm.L,ForeArm.R,Hand.L,Hand.R";
+        // 逐骨落位（把每个部件搬到角色对应骨的位置）已从代码中移除，原因是量化后不划算：
+        //   · 形状被改变（边长比最大 4.12，刚性是 1.000），而形状保真是首要目标；
+        //   · 不限躯干时，挂点物品（背包、护甲）与身体分家；
+        //   · 只限制到手臂时，肩部接缝仍被拉，手臂变细。
+        // 完整测量见设计仓 docs/unity-3d-assets/10-character-replacement-research.md 与 11-lessons-2026-10-15.md。
 
         /// <summary>额外倍数（默认 1.0）。
         ///
@@ -403,42 +379,15 @@ namespace ModelKit
                 return res;
             }
 
-            // ④ 顶点搬运。默认刚性：整个模型乘同一个矩阵。
-            //    `PerBonePlacement` 打开时改成逐骨落位：偏移按统一旋转转，平移逐骨（见那个字段的注释）。
+            // ④ 顶点搬运：整个模型乘同一个矩阵（刚性）。形状保真是首要目标，不做逐骨落位。
             var srcMesh = skin.Mesh;
             var sv = srcMesh.vertices;
             var nv = new Vector3[sv.Length];
             var nw = new BoneWeight[sv.Length];
 
-            // 逐骨落位要先算每根 [源关节 → 鸭骨] 的平移：t = g_b − L·s_b（L = 对齐矩阵的线性部分）
-            var boneShift = new Vector3[map.Length];
-            if (PerBonePlacement)
-            {
-                // 只有清单里的骨才逐骨落位。空清单 = 不限制。
-                var allow = new HashSet<string>(StringComparer.Ordinal);
-                if (!string.IsNullOrEmpty(PerBoneBones))
-                    foreach (var n in PerBoneBones.Split(','))
-                    {
-                        var t0 = n.Trim();
-                        if (t0.Length > 0) allow.Add(t0);
-                    }
-                for (int ji = 0; ji < map.Length; ji++)
-                {
-                    int gi = map[ji];
-                    if (gi < 0) continue;
-                    if (allow.Count > 0 && !(gameBones[gi] != null && allow.Contains(gameBones[gi].name))) continue;
-                    var sWorld = skin.InverseBind[ji].inverse;
-                    var sPos = skin.VertexTransform.MultiplyPoint3x4(new Vector3(sWorld.m03, sWorld.m13, sWorld.m23));
-                    sPos = new Vector3(-sPos.x, sPos.y, sPos.z);                  // 顶点在加载期被取反过 X
-                    var gWorld = gamePoses[gi].inverse;
-                    var gPos = new Vector3(gWorld.m03, gWorld.m13, gWorld.m23);
-                    boneShift[ji] = (gPos - align.MultiplyVector(sPos)) * Mathf.Clamp(PerBoneBlend, 0f, 1f);
-                }
-            }
-
             for (int i = 0; i < sv.Length; i++)
             {
-                nv[i] = PerBonePlacement ? Vector3.zero : align.MultiplyPoint3x4(sv[i]);
+                nv[i] = align.MultiplyPoint3x4(sv[i]);
                 var bw = i < skin.Weights.Length ? skin.Weights[i] : new BoneWeight();
                 var keepIdx = new int[4];
                 var keepW = new float[4];
@@ -451,8 +400,7 @@ namespace ModelKit
                     if (w <= 0.0001f || ji < 0 || ji >= map.Length) continue;
                     int gi = map[ji];
                     if (gi < 0) continue;                                  // 没映射上 ⇒ 这根骨的权重丢掉
-                    if (!BindArmBones) gi = RedirectToTorso(gameBones, gi);   // 实验：手臂不单独绑
-                    if (PerBonePlacement) nv[i] += boneShift[ji] * w;          // 逐骨落位：平移按权重叠加
+                    if (!BindArmBones) gi = RedirectToTorso(gameBones, gi);   // 手臂并到躯干
                     wsum += w;
                     if (keep < 4) { keepIdx[keep] = gi; keepW[keep] = w; keep++; }
                 }
@@ -468,12 +416,6 @@ namespace ModelKit
                 else
                 {
                     res.UnweightedVertices++;                              // 不得静默 ✗
-                }
-                if (PerBonePlacement)
-                {
-                    // 线性部分统一 ⇒ 顶点只乘一次；平移已经在上面按权重叠加好了
-                    // 平移按权重**归一化**后再叠加（源权重一般已经是 1，但不假定）
-                    nv[i] = align.MultiplyVector(sv[i]) + (wsum > 1e-4f ? nv[i] / wsum : Vector3.zero);
                 }
                 nw[i] = outW;
             }
@@ -537,7 +479,7 @@ namespace ModelKit
                        + $", hidden parts {res.Disabled.Count}"
                        + $", new mesh bounds {mesh.bounds.size} (body was {origBounds})"
                        + (skin.VertexTransform != Matrix4x4.identity ? ", WARN the model was loaded with front!=auto or zeroGrip:true (now compensated, but load it with front=auto, zeroGrip:false)" : "")
-                       + $", scale {scale:0.###}{(PerBonePlacement ? $", per-bone placement {Mathf.Clamp(PerBoneBlend, 0f, 1f):0.##}" : "")}"
+                       + $", scale {scale:0.###}"
                        + "";
             return res;
         }

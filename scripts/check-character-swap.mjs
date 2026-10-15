@@ -153,19 +153,10 @@ checkTrue("高度用真实顶点跨度，不用包围盒投影（投影会在上
   /static float ExtentAlong\(Mesh mesh, Vector3 axis\)/.test(swap)
   && /float srcH = ExtentAlong\(skin\.Mesh, col1\(fs\)\)/.test(swap)
   && !/Vector3\.Dot\(skin\.Mesh\.bounds\.size, col1\(fs\)\)/.test(swap), "还在用包围盒投影");
-checkTrue("逐骨落位是开关，位移按统一旋转、平移逐骨（不得按每根骨自己的朝向转）",
-  /public static bool PerBonePlacement = false;/.test(swap)
-  && /boneShift\[ji\] = \(gPos - align\.MultiplyVector\(sPos\)\) \* Mathf\.Clamp\(PerBoneBlend, 0f, 1f\);/.test(swap)
-  && /nv\[i\] = align\.MultiplyVector\(sv\[i\]\) \+ \(wsum > 1e-4f \? nv\[i\] \/ wsum : Vector3\.zero\);/.test(swap),
-  "找不到逐骨落位");
-checkTrue("逐骨落位限制到手臂（躯干一动，挂点物品就与身体分家）",
-  /public static string PerBoneBones = "UpperArm\.L,UpperArm\.R,ForeArm\.L,ForeArm\.R,Hand\.L,Hand\.R";/.test(swap)
-  && /allow\.Contains\(gameBones\[gi\]\.name\)/.test(swap), "找不到骨名清单");
-checkTrue("逐骨落位有混合系数（位移可调，接缝拉伸也按比例减少）",
-  /public static float PerBoneBlend = 1f;/.test(swap)
-  && /\* Mathf\.Clamp\(PerBoneBlend, 0f, 1f\);/.test(swap), "找不到 PerBoneBlend");
-checkTrue("手臂可并到躯干（否则刚性放置的模型手臂会脱开飘走）",
-  /public static bool BindArmBones = true;/.test(swap) && /static int RedirectToTorso\(Transform\[\] bones, int gi\)/.test(swap)
+checkTrue("逐骨落位不得回到代码里（量化后不划算：形状被改变、挂点物品分家、肩部接缝被拉）",
+  !/PerBonePlacement|PerBoneBlend|PerBoneBones|boneShift/.test(swap), "逐骨落位的残留");
+checkTrue("手臂默认并到躯干（刚性放置 + 手臂转轴不在模型手臂里 ⇒ 绑手臂骨会脱开）",
+  /public static bool BindArmBones = false;/.test(swap) && /static int RedirectToTorso\(Transform\[\] bones, int gi\)/.test(swap)
   && /case "UpperArm\.L": case "ForeArm\.L": case "Hand\.L":/.test(swap), "找不到手臂重定向");
 checkTrue("对齐是纯旋转 ⇒ 不需要翻绕序",
   !/flipWinding/.test(swap), "还留着 flipWinding");

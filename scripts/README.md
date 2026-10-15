@@ -13,6 +13,7 @@ node scripts/check-probe-tool-parity.mjs                                  # 工�
 node scripts/check-prompt-standard-zh.mjs                                 # 中文提示词规范（情态词、箭头、术语）
 node scripts/check-character-rig.mjs                                      # 角色替换的骨骼映射表
 node scripts/check-character-swap.mjs                                     # 角色替换的搬运算法与接线
+node scripts/measure-skeleton-gap.mjs                                      # 量模型骨架与游戏骨架的差距
 ```
 
 它们都导入 `.pi/lib/` 里的**同一份**函数，扩展也导入那份。于是判据只有一份，不会漂。
@@ -75,6 +76,18 @@ node scripts/check-character-rig.mjs     # 0 = 表自洽；1 = 有问题
 
 实测名单的唯一来源是设计仓 `docs/unity-3d-assets/10-character-replacement-research.md` §4.5。
 游戏更新后先重跑探针，再改这里与 `CharacterRig.cs`。
+
+## `measure-skeleton-gap.mjs` —— 量模型骨架与游戏骨架的差距
+
+角色替换用刚性搬运（形状保真优先），代价是手臂不跟游戏手臂骨摆。要不要考虑更复杂的做法，
+先量两副骨架差多少。这个差**随模型变**，不是常数。
+
+```bash
+node scripts/measure-skeleton-gap.mjs /path/to/model.glb /tmp/duckbody.txt
+```
+
+输出每根骨的**位移**（米，越大越说明「搬到角色骨上」会破坏形状）与**朝向偏差**（度，
+大而整齐说明骨轴约定不同）。缺文件或缺地标时退出码 1。
 
 ## `check-character-swap.mjs` —— 角色替换的搬运算法与运行时接线
 

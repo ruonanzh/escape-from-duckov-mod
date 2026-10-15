@@ -328,3 +328,43 @@ Character_Ming,小明,#20250807035821,Characters
    （以前那份 `docs/data/*.csv` 条目少得多：Items 只有 892 条，而游戏自带的有 2944 条，
    已经害过几次「以为没有，其实有」）。要文案就读游戏自带那份，或先 `inspect_game_data` 现查。
 2. **不得把文案抄进代码**（会随版本变）。
+
+
+## 15. 量骨架差距（角色替换前必做）
+
+角色替换是**刚性搬运**：整个模型乘一个矩阵，形状百分百保真，但手臂不跟着游戏手臂骨摆。
+要不要考虑更复杂的做法，先看两副骨架差多少。差多少**随模型变**，必须每个模型量一次。
+
+```bash
+# ① 把游戏鸭子那副骨架的绑定姿势读出来（离线，不必进游戏）
+data-probe --managed "<游戏>/Duckov.app/Contents/Resources/Data/Managed" \
+  --data "<游戏>/Duckov.app/Contents/Resources/Data" \
+  --action dump --class Mesh --name DuckBody --exact --depth 4 --out /tmp/duckbody.txt
+
+# ② 量这个模型与游戏骨架的差距
+node scripts/measure-skeleton-gap.mjs /path/to/model.glb /tmp/duckbody.txt
+```
+
+输出两列，读法：
+
+- **位移**：模型那根骨与角色那根骨的绑定位置差（经过整体对齐，单位米）。位移越大，
+  「把每个部件搬到角色骨上」对形状的破坏越大。实测鸭猫中位 0.291、最大 0.588；
+  穿靴子的猫中位 0.252、最大 0.491。
+- **朝向偏差**：两副骨架的骨轴约定差多少度。实测两个模型都在平均 139 到 143 度。
+  这一列大而整齐，说明不能直接按「保留每根骨自己的坐标系位置」搬，必须先求骨轴对应关系。
+
+当前实现的结论：**形状保真是首要目标**，所以默认刚性搬运；逐骨落位量化后不划算，已从代码移除。
+完整测量在设计仓 `docs/unity-3d-assets/10-character-replacement-research.md` 与
+`11-lessons-2026-10-15.md`。
+
+## 16. 反查父物体（离线查层级用）
+
+父物体引用的是子物体的 **Transform**，不是子 GameObject。指 GameObject 只会拿到它自己
+那个 Transform，看起来像「找不到父物体」。两步走：
+
+```bash
+# ① 由 GameObject 拿到它自己的 Transform
+data-probe ... --action refs --class GameObject --pathid <GameObject> --by Transform
+# ② 再由那个 Transform 拿父物体；`m_Father` 那行是父，`data` 那行是父的 m_Children 数组
+data-probe ... --action refs --class Transform  --pathid <上一步的 Transform> --by Transform
+```
