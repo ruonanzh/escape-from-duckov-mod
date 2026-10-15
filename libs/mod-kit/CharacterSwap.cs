@@ -22,6 +22,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using HarmonyLib;
 using UnityEngine;
 
 namespace ModelKit
@@ -56,6 +57,8 @@ namespace ModelKit
             internal Component Character;
             internal GltfLoader.Loaded Skin;
             internal float _nextReassert;
+            /// <summary>这段时间内**每帧**重申（换好之后的新部件会陆续出现，逐帧扫才没有可见延迟）。</summary>
+            internal float _fastUntil;
 
             /// <summary>游戏会**把被隐藏的部件改回来**（换装备、刷新模型、切场景），也会把网格换回去。
             /// <para>每帧调一次即可，内部自己限流（默认 1 秒一次）。物品侧同样问题已用周期重申解决。</para></summary>
@@ -121,6 +124,65 @@ namespace ModelKit
         ///
         /// <para>为什么这些部件来得晚：它们由物品外观系统生成（名字都是 `IG_*`），
         /// 在关卡初始化之后才挂到角色的骨骼挂点上。</para></summary>
+        /// <summary>角色模型自己的钩子。`ItemGraphicInfo.Setup` 那条实测**不覆盖**这些部件
+        /// （跑了一次，钩子一次都没命中），所以改挂角色模型的方法。</summary>
+        static class ModelHooks
+        {
+            static bool _installed;
+            /// <summary>装钩子（幂等）。装不上不得抛出去。</summary>
+            public static void Install()
+            {
+                if (_installed) return;
+                _installed = true;
+                try
+                {
+                    var h = new Harmony("gamer-agent-pi.mod-kit.character-swap");
+                    bool a = Patch(h, "AddSubVisuals");
+                    bool b = Patch(h, "SetFaceFromData");
+                    bool c = Patch(h, "SetFaceFromPreset");
+                    bool d = Patch(h, "OnHelmatSlotContentChange");
+                    bool e = Patch(h, "OnFaceMaskSlotContentChange");
+                    Debug.Log($"[CharacterSwap] character model hooks: AddSubVisuals={a} SetFaceFromData={b} "
+                              + $"SetFaceFromPreset={c} HelmatSlot={d} FaceMaskSlot={e}");
+                }
+                catch (Exception ex) { Debug.LogWarning("[CharacterSwap] model hooks failed: " + ex.Message); }
+            }
+
+            static bool Patch(Harmony h, string name)
+            {
+                try
+                {
+                    var m = AccessTools.Method(typeof(CharacterModel), name);
+                    if (m == null) return false;
+                    h.Patch(m, postfix: new HarmonyMethod(AccessTools.Method(typeof(ModelHooks), nameof(Post))));
+                    return true;
+                }
+                catch { return false; }
+            }
+
+            /// <summary>任何一个 hook 命中，就立刻把属于我们的部件藏干净（判据仍然是 HideOne）。</summary>
+            static void Post(CharacterModel __instance)
+            {
+                try
+                {
+                    var r = _current;
+                    if (r == null || !r.Applied || __instance == null || r.Character == null) return;
+                    if (__instance.transform != r.Character.transform && !IsUnder(r.Character.transform, __instance.transform)) return;
+                    int before = r.Disabled.Count;
+                    HideAllBut(r.Character, __instance, r.Renderers, r.Body, r);
+                    int hid = r.Disabled.Count - before;
+                    if (hid > 0) Debug.Log($"[CharacterSwap] model hook hid {hid} renderer(s) (total {r.Disabled.Count})");
+                }
+                catch (Exception ex) { Debug.LogWarning("[CharacterSwap] model hook failed: " + ex.Message); }
+            }
+
+            static bool IsUnder(Transform root, Transform t)
+            {
+                for (var cur = t; cur != null; cur = cur.parent) if (cur == root) return true;
+                return false;
+            }
+        }
+
         static void OnGraphicReady(ItemStatsSystem.Item item, ItemGraphicInfo graphic)
         {
             try
@@ -155,6 +217,7 @@ namespace ModelKit
                 Reapply();
                 return;
             }
+            if (now < r._fastUntil) { r.Reassert(now, 0f); return; }   // 换好后的一小段时间逐帧扫
             // ⚠️ 限流只在这里做、只做一次：以前 Tick 先设 `_nextReassert` 再调 Reassert，
             // 而 Reassert 自己也会查同一个字段 ⇒ 它**永远**提前返回 ⇒ 重申从来没执行过
             // （实测：头发/眼睛/眉毛/翅膀/鞋/尾巴都在搬运之后才生成，因此一直露着）。
@@ -360,6 +423,7 @@ namespace ModelKit
                 {
                     ItemHooks.Install();                               // 幂等；本 mod 可能不是那个装钩子的 mod
                     ItemHooks.OnGraphicReady += OnGraphicReady;
+                    ModelHooks.Install();
                 }
                 catch (Exception ex) { Debug.LogWarning("[CharacterSwap] hook install failed: " + ex.Message); }
             }
@@ -367,6 +431,7 @@ namespace ModelKit
             res.Renderers = renderers;
             res.Character = character;
             res.Skin = skin;
+            try { res._fastUntil = Time.unscaledTime + 15f; } catch { res._fastUntil = 0f; }
             _current = res;
             body.sharedMesh = mesh;
             try

@@ -156,6 +156,12 @@ checkTrue("手臂可并到躯干（否则刚性放置的模型手臂会脱开飘
   && /case "UpperArm\.L": case "ForeArm\.L": case "Hand\.L":/.test(swap), "找不到手臂重定向");
 checkTrue("对齐是纯旋转 ⇒ 不需要翻绕序",
   !/flipWinding/.test(swap), "还留着 flipWinding");
+checkTrue("换好之后有一段时间逐帧重申（否则新部件会晚一秒才消失）",
+  /res\._fastUntil = Time\.unscaledTime \+ 15f;/.test(swap) && /if \(now < r\._fastUntil\) \{ r\.Reassert\(now, 0f\); return; \}/.test(swap),
+  "找不到逐帧重申窗口");
+checkTrue("角色模型钩子挂的是 CharacterModel 的方法（ItemGraphicInfo.Setup 实测不覆盖这些部件）",
+  /typeof\(CharacterModel\), name\)/.test(swap) && /"AddSubVisuals"/.test(swap) && /"SetFaceFromData"/.test(swap),
+  "找不到角色模型钩子");
 checkTrue("新部件用钩子处理（钩子优先，循环只做兜底）",
   /ItemHooks\.OnGraphicReady \+= OnGraphicReady;/.test(swap) && /static void OnGraphicReady\(ItemStatsSystem\.Item item, ItemGraphicInfo graphic\)/.test(swap),
   "找不到外观部件的钩子");
