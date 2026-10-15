@@ -179,6 +179,11 @@ namespace ModelKit
         /// `CharacterRig.ExtraDuckBones` 是**离线核对用**的（整体换身体时用不到）—— 见 L3。</para>
         ///
         /// <para>调用后请每帧调 `Result.Reassert(Time.unscaledTime)`：游戏会把隐藏的部件改回来（M1）。</para></summary>
+        /// <summary>把手的权重并到前臂上（「不绑定手」）。实测我们的模型是刚性放置的，
+        /// 而手骨绕鸭子自己的手腕转，转轴落在模型的前臂里面 ⇒ 手部看起来会扭。
+        /// 取 false 时手部只跟前臂走，不再自己转。</summary>
+        public static bool BindHandBones = true;
+
         public static Result Apply(Component character, GltfLoader.Loaded skin)
         {
             var res = new Result();
@@ -247,8 +252,8 @@ namespace ModelKit
             Matrix4x4 align;
             string alignWhy;
             float scale;
-            var duckMeshSize = body.sharedMesh != null ? body.sharedMesh.bounds.size : Vector3.zero;
-            if (!TryBodyAlignment(skin, gameBones, gamePoses, duckMeshSize, out align, out alignWhy, out scale))
+            var duckMesh = body.sharedMesh;                        // 换网格**之前**拿到鸭子自己的网格
+            if (!TryBodyAlignment(skin, gameBones, gamePoses, duckMesh, out align, out alignWhy, out scale))
             {
                 res.Report = "cannot align the model to the character body: " + alignWhy;
                 return res;
@@ -274,6 +279,7 @@ namespace ModelKit
                     if (w <= 0.0001f || ji < 0 || ji >= map.Length) continue;
                     int gi = map[ji];
                     if (gi < 0) continue;                                  // 没映射上 ⇒ 这根骨的权重丢掉
+                    if (!BindHandBones) gi = RedirectHand(gameBones, gi);   // 实验：手不单独绑
                     wsum += w;
                     if (keep < 4) { keepIdx[keep] = gi; keepW[keep] = w; keep++; }
                 }
@@ -351,7 +357,7 @@ namespace ModelKit
         /// <para>源侧地标取自 `inverseBindMatrices` 的平移列，并做两件事：乘以加载期的顶点净变换
         /// （`front` 旋转与握把归零）；再取反 X —— 因为加载器已经取反过顶点的 X，地标不跟着取反就会左右翻。</para></summary>
         static bool TryBodyAlignment(GltfLoader.Loaded skin, Transform[] gameBones, Matrix4x4[] gamePoses,
-                                     Vector3 duckMeshSize, out Matrix4x4 align, out string why, out float scale)
+                                     Mesh duckMesh, out Matrix4x4 align, out string why, out float scale)
         {
             align = Matrix4x4.identity;
             why = "";
@@ -380,8 +386,11 @@ namespace ModelKit
             // 实测（鸭猫）：模型 1.00 m、鸭子 1.05 m ⇒ 缩放 1.05。不缩放就会“稍微小一些”。
             const float MinScale = 0.25f, MaxScale = 4f;
             scale = 1f;
-            float srcH = Mathf.Abs(Vector3.Dot(skin.Mesh.bounds.size, col1(fs)));
-            float duckH = Mathf.Abs(Vector3.Dot(duckMeshSize, col1(fd)));
+            // ⚠️ 用**真实顶点跨度**，不要用「包围盒尺寸投影到上轴」：上轴一旦倾斜，
+            // 投影会把尺寸放大（实测：源模型上轴偏 6 度 ⇒ 算出 1.11 而不是 1.00
+            // ⇒ 缩放被算成 0.97，模型反而变小）。
+            float srcH = ExtentAlong(skin.Mesh, col1(fs));
+            float duckH = ExtentAlong(duckMesh, col1(fd));
             if (srcH > 1e-4f && duckH > 1e-4f) scale = Mathf.Clamp(duckH / srcH, MinScale, MaxScale);
 
             var lin = Matrix4x4.Scale(new Vector3(scale, scale, scale)) * rot;
@@ -393,6 +402,22 @@ namespace ModelKit
 
         /// <summary>坐标架的第二列 = 「上」。</summary>
         static Vector3 col1(Matrix4x4 m) { return new Vector3(m.m01, m.m11, m.m21); }
+
+        /// <summary>网格顶点沿指定方向的**真实跨度**（最大投影减最小投影）。</summary>
+        static float ExtentAlong(Mesh mesh, Vector3 axis)
+        {
+            if (mesh == null) return 0f;
+            var vs = mesh.vertices;
+            if (vs == null || vs.Length == 0) return 0f;
+            float lo = float.MaxValue, hi = float.MinValue;
+            for (int i = 0; i < vs.Length; i++)
+            {
+                float d = Vector3.Dot(vs[i], axis);
+                if (d < lo) lo = d;
+                if (d > hi) hi = d;
+            }
+            return hi - lo;
+        }
 
         /// <summary>源关节的绑定位置（先做顶点净变换，再取反 X）。用「映射到哪根鸭骨」反查关节。</summary>
         static bool SourceLandmark(GltfLoader.Loaded skin, string duckBone, out Vector3 p)
@@ -480,6 +505,22 @@ namespace ModelKit
             // 只靠那个列表会「五官头发还露着」（实测踩过）。
             if (character != null)
                 foreach (var r in character.GetComponentsInChildren<Renderer>(true)) hide(r);
+        }
+
+        /// <summary>`Hand.L/R` 换成 `ForeArm.L/R`（「不绑定手」实验用）。找不到就原样返回。</summary>
+        static int RedirectHand(Transform[] bones, int gi)
+        {
+            if (bones == null || gi < 0 || gi >= bones.Length || bones[gi] == null) return gi;
+            string target;
+            switch (bones[gi].name)
+            {
+                case "Hand.L": target = "ForeArm.L"; break;
+                case "Hand.R": target = "ForeArm.R"; break;
+                default: return gi;
+            }
+            for (int i = 0; i < bones.Length; i++)
+                if (bones[i] != null && string.Equals(bones[i].name, target, StringComparison.Ordinal)) return i;
+            return gi;
         }
 
         /// <summary>从 `t` 往上走到 `root`，路上碰到保留名单里的名字就返回 true（那个渲染器是物品或特效）。</summary>
