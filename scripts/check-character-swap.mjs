@@ -144,6 +144,9 @@ checkTrue("用身体地标对齐（同一个构造建两边的坐标架）",
   /static bool BodyFrame\(/.test(swap) && /var rot = fd \* fs\.transpose;/.test(swap), "找不到 BodyFrame 或对齐乘法");
 checkTrue("新网格用**游戏的**绑定姿势（用模型的就是歪的）",
   /mesh\.bindposes = gamePoses;/.test(swap) && !/mesh\.bindposes = skin\./.test(swap), "bindposes 赋错");
+checkTrue("按身体高度等比缩放（不缩放会“稍微小一些”）",
+  /const float MinScale = 0\.25f, MaxScale = 4f;/.test(swap) && /Mathf\.Clamp\(duckH \/ srcH, MinScale, MaxScale\)/.test(swap)
+  && /Vector3\.Dot\(skin\.Mesh\.bounds\.size, col1\(fs\)\)/.test(swap), "找不到尺寸对齐");
 checkTrue("对齐是纯旋转 ⇒ 不需要翻绕序",
   !/flipWinding/.test(swap), "还留着 flipWinding");
 checkTrue("低频重申隐藏的部件（M1：游戏会改回来）",

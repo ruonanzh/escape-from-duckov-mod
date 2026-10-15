@@ -239,7 +239,9 @@ namespace ModelKit
             // 地标对齐只用「上」与「左」两个身体方向，不可能拧。
             Matrix4x4 align;
             string alignWhy;
-            if (!TryBodyAlignment(skin, gameBones, gamePoses, out align, out alignWhy))
+            float scale;
+            var duckMeshSize = body.sharedMesh != null ? body.sharedMesh.bounds.size : Vector3.zero;
+            if (!TryBodyAlignment(skin, gameBones, gamePoses, duckMeshSize, out align, out alignWhy, out scale))
             {
                 res.Report = "cannot align the model to the character body: " + alignWhy;
                 return res;
@@ -331,6 +333,7 @@ namespace ModelKit
                        + $", hidden parts {res.Disabled.Count}"
                        + $", new mesh bounds {mesh.bounds.size} (body was {origBounds})"
                        + (skin.VertexTransform != Matrix4x4.identity ? ", WARN the model was loaded with front!=auto or zeroGrip:true (now compensated, but load it with front=auto, zeroGrip:false)" : "")
+                       + $", scale {scale:0.###}"
                        + (res.UnweightedVertices > 0 ? $", {res.UnweightedVertices} vertices had no mapped weight" : "");
             return res;
         }
@@ -341,10 +344,11 @@ namespace ModelKit
         /// <para>源侧地标取自 `inverseBindMatrices` 的平移列，并做两件事：乘以加载期的顶点净变换
         /// （`front` 旋转与握把归零）；再取反 X —— 因为加载器已经取反过顶点的 X，地标不跟着取反就会左右翻。</para></summary>
         static bool TryBodyAlignment(GltfLoader.Loaded skin, Transform[] gameBones, Matrix4x4[] gamePoses,
-                                     out Matrix4x4 align, out string why)
+                                     Vector3 duckMeshSize, out Matrix4x4 align, out string why, out float scale)
         {
             align = Matrix4x4.identity;
             why = "";
+            scale = 1f;
             Vector3 srcPelvis, srcHead, srcLeft, srcRight;
             if (!SourceLandmark(skin, "Pelvis", out srcPelvis) || !SourceLandmark(skin, "Head", out srcHead)
                 || !SourceLandmark(skin, "Thigh.L", out srcLeft) || !SourceLandmark(skin, "Thigh.R", out srcRight))
@@ -364,11 +368,24 @@ namespace ModelKit
 
             var rot = fd * fs.transpose;                       // 正交基 ⇒ 转置就是逆
             rot.m03 = 0f; rot.m13 = 0f; rot.m23 = 0f; rot.m33 = 1f;
-            var t = duckPelvis - rot.MultiplyPoint3x4(srcPelvis);
-            align = rot;
+
+            // 尺寸：按「两侧身体的**包围盒高度**」等比缩放，让模型与角色同高。
+            // 实测（鸭猫）：模型 1.00 m、鸭子 1.05 m ⇒ 缩放 1.05。不缩放就会“稍微小一些”。
+            const float MinScale = 0.25f, MaxScale = 4f;
+            scale = 1f;
+            float srcH = Mathf.Abs(Vector3.Dot(skin.Mesh.bounds.size, col1(fs)));
+            float duckH = Mathf.Abs(Vector3.Dot(duckMeshSize, col1(fd)));
+            if (srcH > 1e-4f && duckH > 1e-4f) scale = Mathf.Clamp(duckH / srcH, MinScale, MaxScale);
+
+            var lin = Matrix4x4.Scale(new Vector3(scale, scale, scale)) * rot;
+            var t = duckPelvis - lin.MultiplyPoint3x4(srcPelvis);
+            align = lin;
             align.m03 = t.x; align.m13 = t.y; align.m23 = t.z;
             return true;
         }
+
+        /// <summary>坐标架的第二列 = 「上」。</summary>
+        static Vector3 col1(Matrix4x4 m) { return new Vector3(m.m01, m.m11, m.m21); }
 
         /// <summary>源关节的绑定位置（先做顶点净变换，再取反 X）。用「映射到哪根鸭骨」反查关节。</summary>
         static bool SourceLandmark(GltfLoader.Loaded skin, string duckBone, out Vector3 p)
