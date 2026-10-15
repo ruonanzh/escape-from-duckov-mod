@@ -40,8 +40,11 @@ namespace ModelKit
         /// <summary>骨骼槽总数（含末尾两个 `null` 槽）。和 `SkinnedMeshRenderer.bindposes` 的长度一致。</summary>
         public const int DuckSlotCount = 26;
 
-        /// <summary>游戏鸭子有、Mixamo 没有的骨：挂到**最近的已映射父骨**上（玩家批注的简化方案）。
-        /// 键 = 多出来的骨，值 = 挂到哪根。`null` 槽不在这里。</summary>
+        /// <summary>游戏鸭子有、Mixamo 没有的骨：挂到**最近的已映射父骨**上。
+        /// 键 = 多出来的骨，值 = 挂到哪根。`null` 槽不在这里。
+        /// <para>**L3：这份表是离线核对用的**（读代码的人知道鸭子比 Mixamo 多哪几根）。
+        /// `CharacterSwap` 整体换身体时用不到它 —— 权重只从源关节来，这几根拿不到权重是**无害**的。
+        /// 别以为「挂到父骨」已经在运行时实现了。</para></summary>
         public static readonly Dictionary<string, string> ExtraDuckBones = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             { "HeadTip",      "Head" },
@@ -97,7 +100,9 @@ namespace ModelKit
             duckBone = null;
             if (string.IsNullOrEmpty(mixamoBoneName)) return false;
             if (Table.TryGetValue(mixamoBoneName, out duckBone)) return true;
-            // 前缀可有可无：Tripo 的 `spec=tripo` 名字没有 `mixamorig:`，`spec=mixamo` 有
+            // 前缀可有可无：Tripo 的 `spec=tripo` 名字没有 `mixamorig:`，`spec=mixamo` 有。
+            // ⚠️ 两种写法都要试：`Table` 里 `Root` 是无前缀的 ⇒ 只试带前缀会漏掉 `mixamorig:Root`。
+            if (Table.TryGetValue(StripPrefix(mixamoBoneName), out duckBone)) return true;
             return Table.TryGetValue("mixamorig:" + StripPrefix(mixamoBoneName), out duckBone);
         }
 

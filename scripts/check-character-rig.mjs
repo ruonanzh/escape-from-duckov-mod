@@ -111,6 +111,20 @@ check(
 checkTrue("映射没有指向名单外的骨头", table.every(([, to]) => duckBones.includes(to)),
   JSON.stringify(table.filter(([, to]) => !duckBones.includes(to))));
 
+// 运行时候选查表（与 `CharacterRig.TryMap` 的三步一致）：`mixamorig:` 前缀可有可无。
+// 只试带前缀的写法会漏掉 `mixamorig:Root`（表里 `Root` 是无前缀的）—— L4。
+const tryMap = (name) => {
+  if (mapped.has(name)) return mapped.get(name);
+  const stripped = name.includes(":") ? name.slice(name.indexOf(":") + 1) : name;
+  return mapped.get(stripped) ?? mapped.get(`mixamorig:${stripped}`) ?? null;
+};
+check("运行时候选查表：mixamorig:Root 命中 Root", "Root", tryMap("mixamorig:Root"));
+check("运行时候选查表：无前缀的 Hips 命中 Pelvis", "Pelvis", tryMap("Hips"));
+check("运行时候选查表：mixamorig:LeftHand 命中 Hand.L", "Hand.L", tryMap("mixamorig:LeftHand"));
+check("运行时候选查表：查不到的返回 null", null, tryMap("mixamorig:RightEye"));
+checkTrue("TryMap 会用去掉前缀的名字兜底（否则 mixamorig:Root 查不到）",
+  /Table\.TryGetValue\(StripPrefix\(/.test(src), "找不到 StripPrefix 兜底");
+
 console.log("\n多出来的骨（游戏有、Mixamo 没有的）：");
 checkTrue("每个多出骨都在名单里", extras.every(([from]) => duckBones.includes(from)),
   JSON.stringify(extras.filter(([from]) => !duckBones.includes(from))));

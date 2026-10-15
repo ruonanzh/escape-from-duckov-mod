@@ -12,6 +12,7 @@ node --experimental-strip-types scripts/check-mod-config-data.mjs         # conf
 node scripts/check-probe-tool-parity.mjs                                  # 工具面一致性
 node scripts/check-prompt-standard-zh.mjs                                 # 中文提示词规范（情态词、箭头、术语）
 node scripts/check-character-rig.mjs                                      # 角色替换的骨骼映射表
+node scripts/check-character-swap.mjs                                     # 角色替换的搬运算法与接线
 ```
 
 它们都导入 `.pi/lib/` 里的**同一份**函数，扩展也导入那份。于是判据只有一份，不会漂。
@@ -74,6 +75,21 @@ node scripts/check-character-rig.mjs     # 0 = 表自洽；1 = 有问题
 
 实测名单的唯一来源是设计仓 `docs/unity-3d-assets/10-character-replacement-research.md` §4.5。
 游戏更新后先重跑探针，再改这里与 `CharacterRig.cs`。
+
+## `check-character-swap.mjs` —— 角色替换的搬运算法与运行时接线
+
+`libs/mod-kit/CharacterSwap.cs` 把外部模型的顶点搬到游戏骨架上。这一步踩过三次「静默错」：
+逆绑定矩阵只读到一个 float（模型消失）、顶点被旋转而骨架没跟上（错位）、镜像没翻绕序（法线朝内）。
+三种都不抛异常，只在游戏里看着不对。
+
+```bash
+node scripts/check-character-swap.mjs     # 0 = 符合预期；1 = 有问题
+```
+
+查两类：① 用 JavaScript 复算搬运公式，对**手算得出的期望值**断言（单骨平移、带旋转的骨局部偏移、
+两骨加权平均、没映射上的骨权重丢弃后归一化、全没映射保持原位、顶点净变换参与）；
+② 对 C# 原文做关键字断言，防止那三个坑回来（`MAT4 = 16`、`normalized` 除法、`VertexTransform` 参与、
+`bindposes` 用游戏的、行列式为负时翻绕序、`Reassert`、克隆材质销毁）。
 
 ## `check-prompt-standard-zh.mjs` —— 中文提示词规范的检查
 

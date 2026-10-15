@@ -25,6 +25,20 @@ namespace ModelKit
             public Texture2D NormalTexture;    // 法线（Tripo 的 `normalTexture` 可能为 null）
             public int VertexCount;
             public int TriangleCount;
+            /// <summary>这个 GLB 带蒙皮吗（`skins` 非空且权重读到了）。角色替换要它 ✓</summary>
+            public bool HasSkin;
+            /// <summary>关节名（**按 skin 的 joints 顺序**）。顶点权重里的下标指的就是这个数组。</summary>
+            public string[] JointNames = new string[0];
+            /// <summary>每根关节的**逆绑定矩阵**（mesh 空间，glTF 原样）。取逆就是它在绑定姿势下的世界矩阵。</summary>
+            public Matrix4x4[] InverseBind = new Matrix4x4[0];
+            /// <summary>每个顶点的骨权重（最多 4 根，只读 `JOINTS_0`/`WEIGHTS_0`）。
+            /// 下标是 `JointNames` 的下标，**不是** Unity 的骨骼下标。
+            /// <para>**限制**：不读 `JOINTS_1`/`WEIGHTS_1`（多组关节）。Tripo 一模型一骨架一组合格。</para></summary>
+            public BoneWeight[] Weights = new BoneWeight[0];
+            /// <summary>加载期对**顶点**做过的变换（朝向旋转 + 握把归零位移）：`v_读入 → VertexTransform · v_读入`。
+            /// <para>**带蒙皮的模型做重定向时必须带上它** —— 否则顶点在一个坐标系、骨架在另一个坐标系，
+            /// 角色会歪掉或飘走（实测踩过）。恒等 = 没动过顶点。</para></summary>
+            public Matrix4x4 VertexTransform = Matrix4x4.identity;
             public string Report = "";
         }
 
@@ -63,6 +77,7 @@ namespace ModelKit
             var norms = new List<Vector3>();
             var uvs = new List<Vector2>();
             var tris = new List<int>();
+            var weights = new List<BoneWeight>();
 
             for (int mi = 0; mi < meshes.Count; mi++)
             {
@@ -81,6 +96,21 @@ namespace ModelKit
                         norms.Add(nrm != null ? new Vector3(-nrm[i][0], nrm[i][1], nrm[i][2]) : Vector3.up);
                         uvs.Add(uv != null ? new Vector2(uv[i][0], 1f - uv[i][1]) : Vector2.zero);   // V 翻转
                     }
+                    // 蒙皮权重：glTF 每个顶点最多 4 根骨（只读第 0 组 ✓；JOINTS_1 这类多组不处理）
+                    var jnt = attrs.Has("JOINTS_0") ? ReadAccessor(accessors, views, bin, attrs["JOINTS_0"].AsInt(-1), 4) : null;
+                    var wgt = attrs.Has("WEIGHTS_0") ? ReadAccessor(accessors, views, bin, attrs["WEIGHTS_0"].AsInt(-1), 4) : null;
+                    for (int i = 0; i < pos.Count; i++)
+                    {
+                        var bw = new BoneWeight();
+                        if (jnt != null && wgt != null && i < jnt.Count && i < wgt.Count)
+                        {
+                            bw.boneIndex0 = (int)jnt[i][0]; bw.weight0 = wgt[i][0];
+                            bw.boneIndex1 = (int)jnt[i][1]; bw.weight1 = wgt[i][1];
+                            bw.boneIndex2 = (int)jnt[i][2]; bw.weight2 = wgt[i][2];
+                            bw.boneIndex3 = (int)jnt[i][3]; bw.weight3 = wgt[i][3];
+                        }
+                        weights.Add(bw);
+                    }
                     var idx = ReadIndices(accessors, views, bin, prim.Has("indices") ? prim["indices"].AsInt(-1) : -1);
                     for (int t = 0; t + 2 < idx.Count; t += 3)                                    // 绕序反转（左手系）
                     {
@@ -97,12 +127,15 @@ namespace ModelKit
             // 写 "to the right"，于是 落在 −Z。所以**朝向在生成阶段就定好**
             // 用户自己给的 GLB 没有这个保证，于是 用 mod 的 `config.json` 的 "front" 声明（下面会转）
 
-            ApplyFrontDeclaration(verts, norms, front);
+            Quaternion vrot;
+            ApplyFrontDeclaration(verts, norms, front, out vrot);
 
             // ② 握把归零（枪：枪口朝 +Z，于是 枪托在 −Z；枪托端起 8%~35% 区间的最低点 = 握把）
             // 近战传 zeroGrip:false 跳过 （理由见 LoadFile 的参数说明）
             var grip = zeroGrip ? GuessGrip(verts) : Vector3.zero;
             if (grip != Vector3.zero) for (int i = 0; i < verts.Count; i++) verts[i] -= grip;
+            // 顶点净变换 = 先绕原点转 vrot，再平移 −grip ⇒ T(−grip)·R(vrot)。带蒙皮时骨架要用同一个 ✗ 否则对不上
+            r.VertexTransform = Matrix4x4.TRS(-grip, vrot, Vector3.one);
 
             var mesh = new Mesh { name = "glb_model" };
             if (verts.Count > 65000) mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
@@ -117,17 +150,81 @@ namespace ModelKit
             mesh.RecalculateBounds();
             r.Mesh = mesh; r.VertexCount = verts.Count; r.TriangleCount = tris.Count / 3;
 
+            // ①b 蒙皮：`skins[0]` 的 joints 名字 + 逆绑定矩阵（权重上面跟着顶点读好了 ✓）
+            //     只处理第一个 skin ✓ —— Tripo 一个模型只有一个骨架 ✓
+            try
+            {
+                var skins = doc["skins"];
+                var nodes = doc["nodes"];
+                if (skins != null && skins.Count > 0 && nodes != null)
+                {
+                    var skin0 = skins[0];
+                    var joints = skin0["joints"];
+                    int n = joints?.Count ?? 0;
+                    if (n > 0)
+                    {
+                        var names = new string[n];
+                        for (int i = 0; i < n; i++)
+                        {
+                            int ni = joints[i].AsInt(-1);
+                            names[i] = (ni >= 0 && ni < nodes.Count) ? nodes[ni]["name"].AsString("joint" + ni) : "joint" + i;
+                        }
+                        var inv = new List<Matrix4x4>();
+                        int ibm = skin0.Has("inverseBindMatrices") ? skin0["inverseBindMatrices"].AsInt(-1) : -1;
+                        if (ibm >= 0)
+                        {
+                            foreach (var r16 in ReadAccessor(accessors, views, bin, ibm, 16))
+                            {
+                                // glTF 是**列主序**：前 4 个数是第 0 列 ⇒ 填到 m00 m10 m20 m30
+                                var m = new Matrix4x4();
+                                m.m00 = r16[0]; m.m10 = r16[1]; m.m20 = r16[2]; m.m30 = r16[3];
+                                m.m01 = r16[4]; m.m11 = r16[5]; m.m21 = r16[6]; m.m31 = r16[7];
+                                m.m02 = r16[8]; m.m12 = r16[9]; m.m22 = r16[10]; m.m32 = r16[11];
+                                m.m03 = r16[12]; m.m13 = r16[13]; m.m23 = r16[14]; m.m33 = r16[15];
+                                inv.Add(m);
+                            }
+                        }
+                        r.JointNames = names;
+                        r.InverseBind = inv.ToArray();
+                        r.Weights = weights.ToArray();
+                        r.HasSkin = inv.Count == n && weights.Count == verts.Count;
+                    }
+                }
+            }
+            catch { r.HasSkin = false; }
+
             // ② 贴图：优先材质上的 baseColorTexture，否则第一张
             r.MainTexture = LoadBaseColor(doc, views, bin);
             // 法线 —— 只读这一张 （**不读 ORM**：金属/光滑一律不碰）
             r.NormalTexture = LoadNormal(doc, views, bin);
-            r.Report = $"GLB: vertices {r.VertexCount}, triangles {r.TriangleCount}, texture {(r.MainTexture != null ? r.MainTexture.name + $" {r.MainTexture.width}x{r.MainTexture.height}" : "none")}, normal map {(r.NormalTexture != null ? "yes" : "no")}, bounds {mesh.bounds.size}, grip zeroed {grip}";
+            // 逆绑定矩阵的平移量：**非零**才说明 MAT4 真读进来了（全零 = 解析又坏了 ✗）
+            string ibHint = "";
+            if (r.HasSkin && r.InverseBind.Length > 0)
+            {
+                var t0 = new Vector3(r.InverseBind[0].m03, r.InverseBind[0].m13, r.InverseBind[0].m23);
+                ibHint = $"inverseBind[0].t=({t0.x:0.###},{t0.y:0.###},{t0.z:0.###})";
+            }
+            string vtHint = "";
+            if (r.VertexTransform != Matrix4x4.identity)
+            {
+                var vt = r.VertexTransform;
+                vtHint = $" [vertex transform: t=({vt.m03:0.###},{vt.m13:0.###},{vt.m23:0.###}) - a rigged model must be loaded with front=auto, zeroGrip:false]";
+            }
+            r.Report = (r.HasSkin ? $"skin {r.JointNames.Length} joints {ibHint}, " : "") + $"GLB: vertices {r.VertexCount}, triangles {r.TriangleCount}, texture {(r.MainTexture != null ? r.MainTexture.name + $" {r.MainTexture.width}x{r.MainTexture.height}" : "none")}, normal map {(r.NormalTexture != null ? "yes" : "no")}, bounds {mesh.bounds.size}, grip zeroed {grip}{vtHint}";
             return r;
         }
 
         /// <summary>按声明旋转（用户自带的 GLB 用）：front = "auto"（不转）/"-z"/"+x"/"-x"，于是 把枪口转到 +Z </summary>
         public static void ApplyFrontDeclaration(List<Vector3> verts, List<Vector3> norms, string front)
         {
+            Quaternion ignored;
+            ApplyFrontDeclaration(verts, norms, front, out ignored);
+        }
+
+        /// <summary>同上，另交出**实际用过的旋转**（重定向要拿它对骨架做同一个变换）。</summary>
+        public static void ApplyFrontDeclaration(List<Vector3> verts, List<Vector3> norms, string front, out Quaternion rot)
+        {
+            rot = Quaternion.identity;
             if (string.IsNullOrEmpty(front) || front == "auto" || front == "+z") return;
             // 近战专用 "up"：把**最长轴**转到 **+Y**（立起来）—— 刀 = 刃朝上 · 柄朝下
             // 其余 ±x/±z 都是**绕 Y**转，对“躺着的刀”不管用 （实测：Tripo 出的菜刀长轴在 X）
@@ -139,6 +236,7 @@ namespace ModelKit
                     : ax == 0 ? UnityEngine.Quaternion.Euler(0f, 0f, 90f)             // X，于是 +Y （-90 会到 -Y 倒过来）
                               : UnityEngine.Quaternion.Euler(-90f, 0f, 0f);           // Z，于是 Y
                 for (int i = 0; i < verts.Count; i++) { verts[i] = q * verts[i]; norms[i] = q * norms[i]; }
+                rot = q;
                 // **不得**再绕 Y 转 —— 试过（把厚度轴变 Z ⇒ 刀面**正对镜头**）但那是给“出图”的要求；
                 // 真实握刀是**刀面与视线平行** ⇒ 厚度轴保持 X （实测预测 [0.10, 1.00, 0.57]）。
                 return;
@@ -148,11 +246,12 @@ namespace ModelKit
                 for (int i = 0; i < verts.Count; i++)
                 {
                     var v = verts[i]; var n = norms[i]; Vector3 nv; Vector3 nn;
+                    // 这三支都是**绕 Y 的纯旋转**（行列式 +1）⇒ 用四元数记下来给骨架用
                     switch (front)
                     {
-                        case "-z": nv = new Vector3(-v.x, v.y, -v.z); nn = new Vector3(-n.x, n.y, -n.z); break;
-                        case "+x": nv = new Vector3(-v.z, v.y, v.x); nn = new Vector3(-n.z, n.y, n.x); break;
-                        case "-x": nv = new Vector3(v.z, v.y, -v.x); nn = new Vector3(n.z, n.y, -n.x); break;
+                        case "-z": nv = new Vector3(-v.x, v.y, -v.z); nn = new Vector3(-n.x, n.y, -n.z); rot = Quaternion.Euler(0f, 180f, 0f); break;
+                        case "+x": nv = new Vector3(-v.z, v.y, v.x); nn = new Vector3(-n.z, n.y, n.x); rot = Quaternion.Euler(0f, -90f, 0f); break;
+                        case "-x": nv = new Vector3(v.z, v.y, -v.x); nn = new Vector3(n.z, n.y, -n.x); rot = Quaternion.Euler(0f, 90f, 0f); break;
                         default: nv = v; nn = n; break;
                     }
                     verts[i] = nv; norms[i] = nn;
@@ -307,8 +406,13 @@ namespace ModelKit
             int accOff = acc.Has("byteOffset") ? acc["byteOffset"].AsInt(0) : 0;
             int compType = acc["componentType"].AsInt(0);
             int count = acc["count"].AsInt(0);
+            // `normalized: true` 的整数分量要除满量程（ubyte 权重 0..255 ⇒ 0..1）。
+            // 漏了它：权重变成 0..255 ⇒ 顶点被算飞（实测踩过）。
+            bool norm = acc.Has("normalized") && acc["normalized"].AsInt(0) != 0;
             string type = acc["type"].AsString("VEC3");
-            int comps = type == "VEC3" ? 3 : type == "VEC2" ? 2 : type == "VEC4" ? 4 : 1;
+            // ⚠️ MAT4 是 **16 个分量**（逆绑定矩阵就是它）。漏了它只读 1 个 float ⇒ 矩阵全是垃圾 ✗
+            // 实测踩过：角色替换时顶点被算飞、模型在空中只剩几片碎片。
+            int comps = type == "MAT4" ? 16 : type == "VEC4" ? 4 : type == "VEC3" ? 3 : type == "VEC2" ? 2 : 1;
             int elem = compType == 5126 ? 4 : compType == 5123 ? 2 : compType == 5121 ? 1 : 4;
             int stride = bv.Has("byteStride") ? bv["byteStride"].AsInt(0) : elem * comps;
             int baseOff = bvOff + accOff;
@@ -323,8 +427,8 @@ namespace ModelKit
                     switch (compType)
                     {
                         case 5126: v[c] = BitConverter.ToSingle(bin, q); break;
-                        case 5123: v[c] = BitConverter.ToUInt16(bin, q); break;
-                        case 5121: v[c] = bin[q]; break;
+                        case 5123: { ushort u = BitConverter.ToUInt16(bin, q); v[c] = norm ? u / 65535f : u; break; }
+                        case 5121: v[c] = norm ? bin[q] / 255f : bin[q]; break;
                         case 5125: v[c] = BitConverter.ToUInt32(bin, q); break;
                     }
                 }
