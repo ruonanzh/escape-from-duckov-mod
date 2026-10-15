@@ -152,6 +152,10 @@ checkTrue("镜像时翻转三角形绕序（M2）",
   /\.determinant < 0f/.test(swap) && /if \(flipWinding\)/.test(swap), "找不到行列式判断");
 checkTrue("低频重申隐藏的部件（M1：游戏会改回来）",
   /public void Reassert\(float now/.test(swap) && /Body\.sharedMesh != NewMesh/.test(swap), "找不到 Reassert");
+checkTrue("隐藏会扫角色整棵层级（五官/头发不在 CharacterModel.renderers 里）",
+  /character\.GetComponentsInChildren<Renderer>\(true\)/.test(swap) && /UnderKeepVisible/.test(swap), "找不到整棵层级扫描");
+checkTrue("装备与非角色几何在保留名单里（枪/背包/护甲/粒子）",
+  ["Hand.Soket.L", "HandObj.L", "BackpackSocket", "ArmorSocket", "RunParticle"].every((n) => swap.includes(`"${n}"`)), "保留名单缺项");
 checkTrue("角色被游戏重建后会重新搬运（关卡初始化在搬运之后跑）",
   /public static void Tick\(float now/.test(swap) && /if \(r\.Body == null \|\| r\.Character == null\) \{ Reapply\(\); return; \}/.test(swap), "找不到 Tick/Reapply");
 checkTrue("还原时销毁克隆材质（L2：否则每次热重载漏一份）",

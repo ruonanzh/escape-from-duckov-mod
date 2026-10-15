@@ -73,7 +73,7 @@ namespace ModelKit
                 }
                 catch (Exception ex) { Debug.LogWarning("[CharacterSwap] reassert mesh failed: " + ex.Message); }
                 // 再扫一遍：既重新隐藏被打开的，也顺手隐藏新出现的部件（换了装备会有新的渲染器）
-                if (CharacterModel != null && Renderers != null) HideAllBut(CharacterModel, Renderers, Body, this);
+                if (CharacterModel != null && Renderers != null) HideAllBut(Character, CharacterModel, Renderers, Body, this);
                 else foreach (var r in Disabled)
                 {
                     try { if (r != null && r.enabled) { r.enabled = false; Reasserted++; } } catch { }
@@ -136,6 +136,20 @@ namespace ModelKit
                 Debug.Log("[CharacterSwap] re-applied after the game rebuilt the character: " + nr.Report);
             }
         }
+
+        /// <summary>隐藏时要**保留**的名字。分两类：
+        /// <para>① 玩家装备的挂点。这些子树里的渲染器是**物品**（枪、背包、护甲），不是角色本体。</para>
+        /// <para>② 非角色几何。飘字挂点、跑步粒子、草地碰撞体。</para>
+        /// <para>名字都来自运行时层级实测（设计仓 `10-character-replacement-research.md` §4.5）。
+        /// 头部的挂点（`HairSocket`、`HelmatSocket`、`FaceMaskSocket`、`MouthSocket`）**故意不在**名单里：
+        /// 脸上的东西一律隐藏，否则会和我们的头穿插。</para></summary>
+        static readonly HashSet<string> KeepVisible = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "Hand.Soket.L", "Hand.Soket.R", "HandObj.L", "HandObj.R",
+            "LeftHandSocket", "RightHandSocket", "MeleeWeaponSocket", "TestBowSocket",
+            "BackpackSocket", "ArmorSocket",
+            "PopTextSocket", "RunParticle", "GrassCollider",
+        };
 
         /// <summary>当前关卡的主角色（游戏自己维护的引用，不得用 FindObjectsOfType）。</summary>
         static Component MainCharacter()
@@ -326,7 +340,7 @@ namespace ModelKit
             }
             catch (Exception ex) { Debug.LogWarning("[CharacterSwap] material swap failed: " + ex.Message); }
 
-            HideAllBut(cm, renderers, body, res);
+            HideAllBut(character, cm, renderers, body, res);
 
             res.Applied = true;
             res.Report = $"swapped the body mesh: {nv.Length} vertices, {mesh.triangles.Length / 3} triangles,"
@@ -341,7 +355,7 @@ namespace ModelKit
         }
 
         /// <summary>把除身体以外的渲染器全部停掉：`renderers` 列表、`subVisuals[].renderers`、`customFace`。</summary>
-        static void HideAllBut(object cm, IList renderers, SkinnedMeshRenderer body, Result res)
+        static void HideAllBut(Component character, object cm, IList renderers, SkinnedMeshRenderer body, Result res)
         {
             Action<object> hide = (o) =>
             {
@@ -363,6 +377,26 @@ namespace ModelKit
             var face = Member(cm, "customFace") as Component;
             if (face != null)
                 foreach (var r in face.GetComponentsInChildren<Renderer>(true)) hide(r);
+
+            // ③ 兜底：沿**角色整棵层级**再扫一遍，凡不在保留名单里的渲染器一律隐藏。
+            // 实测：五官（`Duck_Beak`、`Duck_Eye.L/R`）、头发（`HairSocket` 下）、脚（`Sphere`、`Duck_Foot_L/R`）、
+            // 翅膀（`Wings.L/R`）、手臂网格（`Arms`）都不在 `CharacterModel.renderers` 里。
+            // 只靠那个列表会「五官头发还露着」（实测踩过）。
+            if (character != null)
+                foreach (var r in character.GetComponentsInChildren<Renderer>(true))
+                {
+                    if (r == null) continue;
+                    if (UnderKeepVisible(character.transform, r.transform)) continue;
+                    hide(r);
+                }
+        }
+
+        /// <summary>从 `t` 往上走到 `root`，路上碰到保留名单里的名字就返回 true（那个渲染器是物品或特效）。</summary>
+        static bool UnderKeepVisible(Transform root, Transform t)
+        {
+            for (var cur = t; cur != null && cur != root; cur = cur.parent)
+                if (KeepVisible.Contains(cur.name)) return true;
+            return false;
         }
 
         // ── 反射小工具（游戏字段的公开性不保证，用反射最稳）──
