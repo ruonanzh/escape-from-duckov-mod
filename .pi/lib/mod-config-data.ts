@@ -13,7 +13,16 @@
 // 判据与 `libs/mod-kit/ItemFactory.cs` 和 `.pi/skills/add-weapon/SKILL.md` 对齐。
 // 离线能做的在这里做；「typeID 是否被占号」要读游戏数据（data-probe），拿不到就只给 WARN。
 
-export const KNOWN_ACTIONS = new Set(["replace_weapon", "replace_item", "new_weapon", "new_item"]);
+export const KNOWN_ACTIONS = new Set([
+  "replace_weapon",
+  "replace_item",
+  "new_weapon",
+  "new_item",
+  "replace_character",
+]);
+/** 换**角色**的规则。角色不是物品，没有 `targets` 也没有 `typeIDs`，
+ * 所以**不得**走下面那条「没有 targets 就静默无效果」的检查。 */
+export const CHARACTER_ACTIONS = new Set(["replace_character"]);
 /** **要做新增类字段校验**的 action。
  * 只有这两个用途：① 后面那些 cloneFromItemId / displayName / stats 的检查；
  * ② `mod-lint.ts` 据此决定要不要读游戏 typeID 清单。
@@ -104,6 +113,16 @@ export function validateDataLayer(
     const action = typeof e.action === "string" ? e.action : "replace_weapon";
     if (!KNOWN_ACTIONS.has(action)) {
       errors.push(`${at}: unknown action "${action}" (use one of ${[...KNOWN_ACTIONS].join(", ")})`);
+      return;
+    }
+    if (CHARACTER_ACTIONS.has(action)) {
+      // 角色规则的字段与物品不同：模型文件名、额外倍数、手臂是否绑骨。
+      // 最常见的静默无效果是**忘写 model**：模板会退回默认 model.glb，文件不存在就什么也不发生。
+      if (typeof e.model !== "string" || !e.model.trim()) {
+        errors.push(`${at} (${action}): model is required (the GLB file name next to the DLL)`);
+      }
+      if ("scale" in e && typeof e.scale !== "number") errors.push(`${at}: scale must be a number`);
+      if ("bindArms" in e && typeof e.bindArms !== "boolean") errors.push(`${at}: bindArms must be true or false`);
       return;
     }
     if (NOT_IMPLEMENTED_ACTIONS.has(action)) {

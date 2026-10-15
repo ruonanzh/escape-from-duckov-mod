@@ -18,7 +18,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const { DISPLAY_QUALITIES, KNOWN_ACTIONS, NEW_ACTIONS, NOT_IMPLEMENTED_ACTIONS, stripJsonComments, validateDataLayer } =
+const { CHARACTER_ACTIONS, DISPLAY_QUALITIES, KNOWN_ACTIONS, NEW_ACTIONS, NOT_IMPLEMENTED_ACTIONS, stripJsonComments, validateDataLayer } =
   await import(join(here, "..", ".pi", "lib", "mod-config-data.ts"));
 
 let failed = 0;
@@ -269,7 +269,13 @@ check("中文注释也去掉", { a: 1 }, JSON.parse(stripJsonComments('{"a":1} /
 
 console.log("常量与 mod-kit 对齐（数值写错时这里会红）：");
 check("品质枚举是九个", 9, DISPLAY_QUALITIES.size);
-check("四个 action 都认", ["replace_item", "replace_weapon", "new_item", "new_weapon"].sort(), [...KNOWN_ACTIONS].sort());
+check(
+  "五个 action 都认",
+  ["replace_item", "replace_weapon", "new_item", "new_weapon", "replace_character"].sort(),
+  [...KNOWN_ACTIONS].sort(),
+);
+// 角色规则没有 targets / typeIDs，必须走自己的分支，不得被「没有 targets 就静默无效果」拦下。
+check("角色规则在自己的集合里", true, CHARACTER_ACTIONS.has("replace_character"));
 check("done: 新增那两个都算「新增类」", true, NEW_ACTIONS.has("new_weapon") && NEW_ACTIONS.has("new_item"));
 // ↓ 回归守卫：`new_item` 不得被放回「未实现」。放回去 = 校验会拦下它 = 这个功能又没了。
 //   （上一次的教训是反过来的：把集合合并，导致 replace_* 被误报成未实现。）
