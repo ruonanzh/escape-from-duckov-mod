@@ -149,10 +149,13 @@ checkTrue("按身体高度等比缩放（不缩放会“稍微小一些”）",
   && /Vector3\.Dot\(skin\.Mesh\.bounds\.size, col1\(fs\)\)/.test(swap), "找不到尺寸对齐");
 checkTrue("对齐是纯旋转 ⇒ 不需要翻绕序",
   !/flipWinding/.test(swap), "还留着 flipWinding");
+checkTrue("重申没有被双重限流挡掉（以前 Tick 先设限额再调 Reassert ⇒ 永远不执行）",
+  /r\.Reassert\(now, interval\);/.test(swap) && !/_nextReassert = now \+ interval;[\s\S]{0,200}?if \(r\.Body == null/.test(swap),
+  "Tick 里还是先设限额再调 Reassert");
 checkTrue("低频重申隐藏的部件（M1：游戏会改回来）",
   /public void Reassert\(float now/.test(swap) && /Body\.sharedMesh != NewMesh/.test(swap), "找不到 Reassert");
 checkTrue("角色被游戏重建后会重新搬运（关卡初始化在搬运之后跑）",
-  /public static void Tick\(float now/.test(swap) && /Reapply\(\); return;/.test(swap), "找不到 Tick/Reapply");
+  /public static void Tick\(float now/.test(swap) && /\n\s*Reapply\(\);/.test(swap), "找不到 Tick/Reapply");
 checkTrue("还原时销毁克隆材质（L2：否则每次热重载漏一份）",
   /UnityEngine\.Object\.Destroy\(NewMaterial\)/.test(swap), "找不到材质销毁");
 checkTrue("原网格包围盒在赋值前取（L1）",

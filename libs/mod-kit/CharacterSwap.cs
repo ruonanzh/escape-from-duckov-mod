@@ -116,10 +116,17 @@ namespace ModelKit
         {
             var r = _current;
             if (r == null || !r.Applied) return;
-            if (now < r._nextReassert) return;
-            r._nextReassert = now + interval;
             // 角色或身体渲染器被销毁（Unity 的假 null 判定）⇒ 关卡重建了角色 ⇒ 重新搬运
-            if (r.Body == null || r.Character == null) { Reapply(); return; }
+            if (r.Body == null || r.Character == null)
+            {
+                if (now < r._nextReassert) return;
+                r._nextReassert = now + interval;
+                Reapply();
+                return;
+            }
+            // ⚠️ 限流只在这里做、只做一次：以前 Tick 先设 `_nextReassert` 再调 Reassert，
+            // 而 Reassert 自己也会查同一个字段 ⇒ 它**永远**提前返回 ⇒ 重申从来没执行过
+            // （实测：头发/眼睛/眉毛/翅膀/鞋/尾巴都在搬运之后才生成，因此一直露着）。
             r.Reassert(now, interval);
         }
 
