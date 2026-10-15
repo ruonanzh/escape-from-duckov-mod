@@ -155,9 +155,12 @@ checkTrue("高度用真实顶点跨度，不用包围盒投影（投影会在上
   && !/Vector3\.Dot\(skin\.Mesh\.bounds\.size, col1\(fs\)\)/.test(swap), "还在用包围盒投影");
 checkTrue("逐骨落位是开关，位移按统一旋转、平移逐骨（不得按每根骨自己的朝向转）",
   /public static bool PerBonePlacement = false;/.test(swap)
-  && /boneShift\[ji\] = gPos - align\.MultiplyVector\(sPos\);/.test(swap)
+  && /boneShift\[ji\] = \(gPos - align\.MultiplyVector\(sPos\)\) \* Mathf\.Clamp\(PerBoneBlend, 0f, 1f\);/.test(swap)
   && /nv\[i\] = align\.MultiplyVector\(sv\[i\]\) \+ \(wsum > 1e-4f \? nv\[i\] \/ wsum : Vector3\.zero\);/.test(swap),
   "找不到逐骨落位");
+checkTrue("逐骨落位有混合系数（位移可调，接缝拉伸也按比例减少）",
+  /public static float PerBoneBlend = 1f;/.test(swap)
+  && /\* Mathf\.Clamp\(PerBoneBlend, 0f, 1f\);/.test(swap), "找不到 PerBoneBlend");
 checkTrue("手臂可并到躯干（否则刚性放置的模型手臂会脱开飘走）",
   /public static bool BindArmBones = true;/.test(swap) && /static int RedirectToTorso\(Transform\[\] bones, int gi\)/.test(swap)
   && /case "UpperArm\.L": case "ForeArm\.L": case "Hand\.L":/.test(swap), "找不到手臂重定向");

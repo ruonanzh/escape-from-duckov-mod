@@ -29,6 +29,7 @@ namespace CharacterModelSwap
         float _extraScale = 1.2f;
         bool _bindArms = false;
         bool _perBone = false;
+        float _perBoneBlend = 1f;
 
         long _stamp = -1;
         GltfLoader.Loaded _loaded;
@@ -57,6 +58,7 @@ namespace CharacterModelSwap
                     CharacterSwap.ExtraScale = _extraScale;
                     CharacterSwap.BindArmBones = _bindArms;
                     CharacterSwap.PerBonePlacement = _perBone;
+                    CharacterSwap.PerBoneBlend = _perBoneBlend;
                     _result = CharacterSwap.Apply(mc, _loaded);
                     _applied = _result.Applied;
                     Debug.Log("[CharacterModel] " + (_applied ? "APPLIED: " : "FAILED: ") + _result.Report);
@@ -112,6 +114,8 @@ namespace CharacterModelSwap
                 if (sc != null) _extraScale = (float)sc.Number;
                 _bindArms = e.GetBool("bindArms", _bindArms);
                 _perBone = e.GetBool("perBone", _perBone);
+                var pb = e["perBoneBlend"];
+                if (pb != null) _perBoneBlend = (float)pb.Number;
 
                 var path = Path.Combine(ModelCache.ModDir(), _modelFile);
                 if (!File.Exists(path))
@@ -121,7 +125,7 @@ namespace CharacterModelSwap
                 }
                 // 角色模型必须用 front=auto、zeroGrip:false 加载；否则加载期的旋转或位移会让顶点与骨架错位。
                 _loaded = GltfLoader.LoadFile(path, e.GetStr("front", "auto"), zeroGrip: false);
-                Debug.Log($"[CharacterModel] config: model={_modelFile} scale={_extraScale} bindArms={_bindArms} perBone={_perBone} | {_loaded.Report}");
+                Debug.Log($"[CharacterModel] config: model={_modelFile} scale={_extraScale} bindArms={_bindArms} perBone={_perBone} blend={_perBoneBlend} | {_loaded.Report}");
 
                 if (_result != null) { _result.Restore(); _result = null; }   // 有借有还：换了配置先把旧的还回去
                 _applied = false;

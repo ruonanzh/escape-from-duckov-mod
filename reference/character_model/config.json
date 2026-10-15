@@ -5,7 +5,8 @@
       "model": "model.glb",
       "scale": 1.2,
       "bindArms": false,
-      "perBone": false
+      "perBone": true,
+      "perBoneBlend": 0.5
     }
   ]
 }

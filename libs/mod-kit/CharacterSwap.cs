@@ -297,6 +297,14 @@ namespace ModelKit
         /// <para>推导：`K_b = R_tᵀ·R_A·R_s` ⇒ `G_b·K_b·S_b⁻¹ = T(g_b)·R_A·T(−s_b)`。</para></summary>
         public static bool PerBonePlacement = false;
 
+        /// <summary>逐骨落位的混合系数（0 到 1）。0 = 完全刚性，1 = 完全逐骨。
+        ///
+        /// <para>实测：完全逐骨会把手臂从身体拽到鸭子肩关节的位置，接缝被拉长 ⇒ 手臂看起来变细。
+        /// 中间值（例如 0.5）让手臂移到一半，接缝少拉一半。</para>
+        ///
+        /// <para>代价仍然存在：转轴始终在鸭子骨骼上，位移只影响「部件起始位置离转轴多远」。</para></summary>
+        public static float PerBoneBlend = 1f;
+
         /// <summary>额外倍数（默认 1.0）。
         ///
         /// <para>按「身体高度」对齐只能让**包围盒**一样高。实测这对模型：鸭子的头骨在 Z=0.800，
@@ -402,7 +410,7 @@ namespace ModelKit
                     sPos = new Vector3(-sPos.x, sPos.y, sPos.z);                  // 顶点在加载期被取反过 X
                     var gWorld = gamePoses[gi].inverse;
                     var gPos = new Vector3(gWorld.m03, gWorld.m13, gWorld.m23);
-                    boneShift[ji] = gPos - align.MultiplyVector(sPos);
+                    boneShift[ji] = (gPos - align.MultiplyVector(sPos)) * Mathf.Clamp(PerBoneBlend, 0f, 1f);
                 }
             }
 
@@ -507,7 +515,7 @@ namespace ModelKit
                        + $", hidden parts {res.Disabled.Count}"
                        + $", new mesh bounds {mesh.bounds.size} (body was {origBounds})"
                        + (skin.VertexTransform != Matrix4x4.identity ? ", WARN the model was loaded with front!=auto or zeroGrip:true (now compensated, but load it with front=auto, zeroGrip:false)" : "")
-                       + $", scale {scale:0.###}{(PerBonePlacement ? ", per-bone placement" : "")}"
+                       + $", scale {scale:0.###}{(PerBonePlacement ? $", per-bone placement {Mathf.Clamp(PerBoneBlend, 0f, 1f):0.##}" : "")}"
                        + (res.UnweightedVertices > 0 ? $", {res.UnweightedVertices} vertices had no mapped weight" : "");
             return res;
         }
