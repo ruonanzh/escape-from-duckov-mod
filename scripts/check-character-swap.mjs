@@ -147,6 +147,8 @@ checkTrue("新网格用**游戏的**绑定姿势（用模型的就是歪的）",
 checkTrue("按身体高度等比缩放（不缩放会“稍微小一些”）",
   /const float MinScale = 0\.25f, MaxScale = 4f;/.test(swap) && /Mathf\.Clamp\(duckH \/ srcH, MinScale, MaxScale\)/.test(swap),
   "找不到尺寸对齐");
+checkTrue("有额外倍数旋钮（包围盒对齐不了「高瘦对矮胖」的视觉差）",
+  /public static float ExtraScale = 1f;/.test(swap) && /scale \*= Mathf\.Clamp\(ExtraScale, 0\.1f, 4f\);/.test(swap), "找不到 ExtraScale");
 checkTrue("高度用真实顶点跨度，不用包围盒投影（投影会在上轴倾斜时放大，导致模型变小）",
   /static float ExtentAlong\(Mesh mesh, Vector3 axis\)/.test(swap)
   && /float srcH = ExtentAlong\(skin\.Mesh, col1\(fs\)\)/.test(swap)

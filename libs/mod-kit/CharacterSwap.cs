@@ -282,6 +282,16 @@ namespace ModelKit
         /// <para>并到躯干后手臂跟着身体走，不再单独摆动。代价是手臂不会再摆。</para></summary>
         public static bool BindArmBones = true;
 
+        /// <summary>额外倍数（默认 1.0）。
+        ///
+        /// <para>按「身体高度」对齐只能让**包围盒**一样高。实测这对模型：鸭子的头骨在 Z=0.800，
+        /// 鸭猫的头关节在 Y=0.580（占自身高度的 58%）⇒ 比值 0.72。也就是**高瘦对矮胖**：
+        /// 包围盒一样高，头却低 28%，看起来就小一截。</para>
+        ///
+        /// <para>想让**头顶**对齐到鸭子的高度，把这里设成 1.38（模型总高会到约 1.45 m）。
+        /// 折中值 1.2 也不难看。</para></summary>
+        public static float ExtraScale = 1f;
+
         public static Result Apply(Component character, GltfLoader.Loaded skin)
         {
             var res = new Result();
@@ -502,6 +512,7 @@ namespace ModelKit
             float srcH = ExtentAlong(skin.Mesh, col1(fs));
             float duckH = ExtentAlong(duckMesh, col1(fd));
             if (srcH > 1e-4f && duckH > 1e-4f) scale = Mathf.Clamp(duckH / srcH, MinScale, MaxScale);
+            scale *= Mathf.Clamp(ExtraScale, 0.1f, 4f);
 
             var lin = Matrix4x4.Scale(new Vector3(scale, scale, scale)) * rot;
             var t = duckPelvis - lin.MultiplyPoint3x4(srcPelvis);
