@@ -30,6 +30,7 @@ namespace CharacterModelSwap
         bool _bindArms = false;
         bool _perBone = false;
         float _perBoneBlend = 1f;
+        string _perBoneBones = null;
 
         long _stamp = -1;
         GltfLoader.Loaded _loaded;
@@ -59,6 +60,7 @@ namespace CharacterModelSwap
                     CharacterSwap.BindArmBones = _bindArms;
                     CharacterSwap.PerBonePlacement = _perBone;
                     CharacterSwap.PerBoneBlend = _perBoneBlend;
+                    if (_perBoneBones != null) CharacterSwap.PerBoneBones = _perBoneBones;
                     _result = CharacterSwap.Apply(mc, _loaded);
                     _applied = _result.Applied;
                     Debug.Log("[CharacterModel] " + (_applied ? "APPLIED: " : "FAILED: ") + _result.Report);
@@ -116,6 +118,8 @@ namespace CharacterModelSwap
                 _perBone = e.GetBool("perBone", _perBone);
                 var pb = e["perBoneBlend"];
                 if (pb != null) _perBoneBlend = (float)pb.Number;
+                var pbb = e["perBoneBones"];
+                if (pbb != null) _perBoneBones = pbb.AsString(null);
 
                 var path = Path.Combine(ModelCache.ModDir(), _modelFile);
                 if (!File.Exists(path))

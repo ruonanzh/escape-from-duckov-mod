@@ -125,6 +125,7 @@ export function validateDataLayer(
       if ("bindArms" in e && typeof e.bindArms !== "boolean") errors.push(`${at}: bindArms must be true or false`);
       if ("perBone" in e && typeof e.perBone !== "boolean") errors.push(`${at}: perBone must be true or false`);
       if ("perBoneBlend" in e && typeof e.perBoneBlend !== "number") errors.push(`${at}: perBoneBlend must be a number`);
+      if ("perBoneBones" in e && typeof e.perBoneBones !== "string") errors.push(`${at}: perBoneBones must be a string`);
       return;
     }
     if (NOT_IMPLEMENTED_ACTIONS.has(action)) {

@@ -158,6 +158,9 @@ checkTrue("逐骨落位是开关，位移按统一旋转、平移逐骨（不得
   && /boneShift\[ji\] = \(gPos - align\.MultiplyVector\(sPos\)\) \* Mathf\.Clamp\(PerBoneBlend, 0f, 1f\);/.test(swap)
   && /nv\[i\] = align\.MultiplyVector\(sv\[i\]\) \+ \(wsum > 1e-4f \? nv\[i\] \/ wsum : Vector3\.zero\);/.test(swap),
   "找不到逐骨落位");
+checkTrue("逐骨落位限制到手臂（躯干一动，挂点物品就与身体分家）",
+  /public static string PerBoneBones = "UpperArm\.L,UpperArm\.R,ForeArm\.L,ForeArm\.R,Hand\.L,Hand\.R";/.test(swap)
+  && /allow\.Contains\(gameBones\[gi\]\.name\)/.test(swap), "找不到骨名清单");
 checkTrue("逐骨落位有混合系数（位移可调，接缝拉伸也按比例减少）",
   /public static float PerBoneBlend = 1f;/.test(swap)
   && /\* Mathf\.Clamp\(PerBoneBlend, 0f, 1f\);/.test(swap), "找不到 PerBoneBlend");

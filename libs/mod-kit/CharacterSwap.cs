@@ -305,6 +305,16 @@ namespace ModelKit
         /// <para>代价仍然存在：转轴始终在鸭子骨骼上，位移只影响「部件起始位置离转轴多远」。</para></summary>
         public static float PerBoneBlend = 1f;
 
+        /// <summary>允许逐骨落位的骨名（逗号分隔）。**默认只给手臂**。
+        ///
+        /// <para>为什么必须限制：位移不只作用在手臂上。实测鸭猫（blend = 1 时的全额）：
+        /// 头 0.261 m、`Spine.004` 0.148 m、`Spine.003` 0.119 m；穿靴子的猫更大（头 0.451 m、手 0.816 m）。
+        /// 躯干一动，钉在**游戏骨骼挂点**上的物品（背包、护甲）就与身体分家 —— 实测踩过：
+        /// 背包漂到身体后面。</para>
+        ///
+        /// <para>空字符串表示不限制（所有骨都逐骨落位，只在确认模型骨骼与角色几乎一致时用）。</para></summary>
+        public static string PerBoneBones = "UpperArm.L,UpperArm.R,ForeArm.L,ForeArm.R,Hand.L,Hand.R";
+
         /// <summary>额外倍数（默认 1.0）。
         ///
         /// <para>按「身体高度」对齐只能让**包围盒**一样高。实测这对模型：鸭子的头骨在 Z=0.800，
@@ -401,10 +411,19 @@ namespace ModelKit
             var boneShift = new Vector3[map.Length];
             if (PerBonePlacement)
             {
+                // 只有清单里的骨才逐骨落位。空清单 = 不限制。
+                var allow = new HashSet<string>(StringComparer.Ordinal);
+                if (!string.IsNullOrEmpty(PerBoneBones))
+                    foreach (var n in PerBoneBones.Split(','))
+                    {
+                        var t0 = n.Trim();
+                        if (t0.Length > 0) allow.Add(t0);
+                    }
                 for (int ji = 0; ji < map.Length; ji++)
                 {
                     int gi = map[ji];
                     if (gi < 0) continue;
+                    if (allow.Count > 0 && !(gameBones[gi] != null && allow.Contains(gameBones[gi].name))) continue;
                     var sWorld = skin.InverseBind[ji].inverse;
                     var sPos = skin.VertexTransform.MultiplyPoint3x4(new Vector3(sWorld.m03, sWorld.m13, sWorld.m23));
                     sPos = new Vector3(-sPos.x, sPos.y, sPos.z);                  // 顶点在加载期被取反过 X
