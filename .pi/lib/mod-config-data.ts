@@ -123,6 +123,7 @@ export function validateDataLayer(
       }
       if ("scale" in e && typeof e.scale !== "number") errors.push(`${at}: scale must be a number`);
       if ("bindArms" in e && typeof e.bindArms !== "boolean") errors.push(`${at}: bindArms must be true or false`);
+      if ("perBone" in e && typeof e.perBone !== "boolean") errors.push(`${at}: perBone must be true or false`);
       return;
     }
     if (NOT_IMPLEMENTED_ACTIONS.has(action)) {

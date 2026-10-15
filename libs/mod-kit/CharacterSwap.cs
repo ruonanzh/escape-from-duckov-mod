@@ -282,6 +282,21 @@ namespace ModelKit
         /// <para>并到躯干后手臂跟着身体走，不再单独摆动。代价是手臂不会再摆。</para></summary>
         public static bool BindArmBones = true;
 
+        /// <summary>逐骨落位（默认关）。
+        ///
+        /// <para>关：整个模型**刚性**放置。形状百分百不变；但鸭子手臂骨的转轴不在模型的手臂里，
+        /// 动画一摆，手臂就离开身体。</para>
+        ///
+        /// <para>开：顶点改成 `g_b + L·(v − s_b)`（`g_b` = 鸭子骨绑定位置，`s_b` = 源骨绑定位置，
+        /// `L` = 对齐矩阵的线性部分）。也就是**偏移只按统一旋转转**（不会像旧的逐骨版那样按每根骨
+        /// 自己的朝向转），平移则逐骨落位 ⇒ 手臂挂到鸭子手臂骨的位置上，摆臂时绕**正确的关节**转。</para>
+        ///
+        /// <para>代价：各骨的平移量不同 ⇒ 关节接缝会被拉。实测鸭猫：边长比中位 1.003、p99 1.99、最大 4.12
+        /// （旧的逐骨版是 1.014 / 10.41 / 17.40；刚性版全是 1.000）。</para>
+        ///
+        /// <para>推导：`K_b = R_tᵀ·R_A·R_s` ⇒ `G_b·K_b·S_b⁻¹ = T(g_b)·R_A·T(−s_b)`。</para></summary>
+        public static bool PerBonePlacement = false;
+
         /// <summary>额外倍数（默认 1.0）。
         ///
         /// <para>按「身体高度」对齐只能让**包围盒**一样高。实测这对模型：鸭子的头骨在 Z=0.800，
@@ -367,14 +382,33 @@ namespace ModelKit
                 return res;
             }
 
-            // ④ 顶点按同一个矩阵刚性搬运；权重只换骨骼下标并归一化（位置不再逐骨分化）
+            // ④ 顶点搬运。默认刚性：整个模型乘同一个矩阵。
+            //    `PerBonePlacement` 打开时改成逐骨落位：偏移按统一旋转转，平移逐骨（见那个字段的注释）。
             var srcMesh = skin.Mesh;
             var sv = srcMesh.vertices;
             var nv = new Vector3[sv.Length];
             var nw = new BoneWeight[sv.Length];
+
+            // 逐骨落位要先算每根 [源关节 → 鸭骨] 的平移：t = g_b − L·s_b（L = 对齐矩阵的线性部分）
+            var boneShift = new Vector3[map.Length];
+            if (PerBonePlacement)
+            {
+                for (int ji = 0; ji < map.Length; ji++)
+                {
+                    int gi = map[ji];
+                    if (gi < 0) continue;
+                    var sWorld = skin.InverseBind[ji].inverse;
+                    var sPos = skin.VertexTransform.MultiplyPoint3x4(new Vector3(sWorld.m03, sWorld.m13, sWorld.m23));
+                    sPos = new Vector3(-sPos.x, sPos.y, sPos.z);                  // 顶点在加载期被取反过 X
+                    var gWorld = gamePoses[gi].inverse;
+                    var gPos = new Vector3(gWorld.m03, gWorld.m13, gWorld.m23);
+                    boneShift[ji] = gPos - align.MultiplyVector(sPos);
+                }
+            }
+
             for (int i = 0; i < sv.Length; i++)
             {
-                nv[i] = align.MultiplyPoint3x4(sv[i]);
+                nv[i] = PerBonePlacement ? Vector3.zero : align.MultiplyPoint3x4(sv[i]);
                 var bw = i < skin.Weights.Length ? skin.Weights[i] : new BoneWeight();
                 var keepIdx = new int[4];
                 var keepW = new float[4];
@@ -388,6 +422,7 @@ namespace ModelKit
                     int gi = map[ji];
                     if (gi < 0) continue;                                  // 没映射上 ⇒ 这根骨的权重丢掉
                     if (!BindArmBones) gi = RedirectToTorso(gameBones, gi);   // 实验：手臂不单独绑
+                    if (PerBonePlacement) nv[i] += boneShift[ji] * w;          // 逐骨落位：平移按权重叠加
                     wsum += w;
                     if (keep < 4) { keepIdx[keep] = gi; keepW[keep] = w; keep++; }
                 }
@@ -403,6 +438,12 @@ namespace ModelKit
                 else
                 {
                     res.UnweightedVertices++;                              // 不得静默 ✗
+                }
+                if (PerBonePlacement)
+                {
+                    // 线性部分统一 ⇒ 顶点只乘一次；平移已经在上面按权重叠加好了
+                    // 平移按权重**归一化**后再叠加（源权重一般已经是 1，但不假定）
+                    nv[i] = align.MultiplyVector(sv[i]) + (wsum > 1e-4f ? nv[i] / wsum : Vector3.zero);
                 }
                 nw[i] = outW;
             }
@@ -466,7 +507,7 @@ namespace ModelKit
                        + $", hidden parts {res.Disabled.Count}"
                        + $", new mesh bounds {mesh.bounds.size} (body was {origBounds})"
                        + (skin.VertexTransform != Matrix4x4.identity ? ", WARN the model was loaded with front!=auto or zeroGrip:true (now compensated, but load it with front=auto, zeroGrip:false)" : "")
-                       + $", scale {scale:0.###}"
+                       + $", scale {scale:0.###}{(PerBonePlacement ? ", per-bone placement" : "")}"
                        + (res.UnweightedVertices > 0 ? $", {res.UnweightedVertices} vertices had no mapped weight" : "");
             return res;
         }
