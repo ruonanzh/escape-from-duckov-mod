@@ -40,7 +40,48 @@ description: 玩家想**加一把新枪**时用（例如「给我做一把新枪
 
 **先建骨架，再产模型，最后装** —— 与 `replace-gun-model` 的顺序相同。
 
-本 SKILL 不重写那几段提示词。`generate_image` 与 `generate_model` 的**工具说明**里已经写了朝向、配色、面数、积分与不得连发那些话，照它做即可。
+### 风格化预览图：**清理、居中、加粗**
+
+**配方与 `replace-gun-model` 的 ③ 相同。改那一边必须同步改这一边。**
+
+**本作的枪偏「厚实」**（枪管粗、机匣壮、枪托结实），而 Tripo 会**严格照图生成**。
+只清理不加粗，出来的模型就是「细长」的（实测中厚比长 0.136，本作原枪 0.226）。
+所以这一步的提示词必须同时做三件事：**清理、居中、加粗**。
+
+**下面那段 `prompt=` 是实测下来最贴本作风格的默认配方**，就是基准。使用方式分三种：
+
+| 玩家给了什么 | 怎么用这段配方 |
+|---|---|
+| **只给图**（没说别的） | **直接照用，一字不改** |
+| **图，并说「再帮我改成……」或「加点……」** | 在这段配方基础上改，把玩家的要求加进去，并改掉冲突那句 |
+| **只给文字描述**（没图） | 在这段配方基础上改，改成描述这把枪该长什么样，并保留朝向、居中、加粗三件 |
+
+```
+generate_image(
+  image="<玩家的图>",                       // 只给文字时省略，此时纯提示词出图
+  prompt="Redraw the weapon from the input as a clean, isolated in-game asset: keep ONLY the main item - if the input shows several objects, take the largest, centered one and ignore the rest. The whole weapon alone and complete - keep EVERY part of it (stock, pad, magazine, sights, mounts); remove only what is not the weapon (the background, any floating pieces, text, frames). Put it on a plain uniform white background: no scenery, no props, no shadow, no smoke, no hands, no text. Keep the weapon's own design and colors the same, but render it in a CARTOON / toon-shaded style like the game's own assets (flat stylized colors, clean shading - not photoreal), and make it noticeably BULKIER and THICKER: a chunky barrel, a thick handguard and a stout stock - heavy, sturdy proportions like a stylized low-poly game asset. Side view with the barrel and muzzle pointing LEFT, and perfectly CENTERED in the frame, with a clear margin on all sides.",
+  out="your_mods/<目录名>/.preview/<名字>.preview.png")   // 中间图放 mod 目录下的 .preview/
+```
+
+- 这段配方里有 8 件事都**不得丢**：**只留主物品**、**整把武器都在**（部件一个不少）、**只移除不是武器的东西**、**纯白均一背景**、**保持原设计与原颜色并做卡通渲染**、**加粗**、**朝向 LEFT**、**居中留边**。
+- 改配方时**不得弄丢朝向与居中**。玩家只说要改颜色，也不得顺手把朝向删了。玩家要「细一点」时，那是**改配方**（把加粗那句改掉），不是加一句反向要求。
+- 出图后**把文件路径给玩家**（工具返回里就是绝对路径），再问他「就要这个吗」。
+  图大于 1.5MB 时工具不内联显示，所以**必须把路径写出来**，不得写成「玩家会自动看到」。
+- `.preview/` 放在 mod 目录下。`install_mod` 会跳过它（不进游戏）。
+- 不像就改 `prompt=` 再来一次，每次都便宜。**没确认前不得做下一步。**
+
+### 图标（新枪必须有）
+
+背包格子里本来没有这把枪的图，所以要出一张：
+
+```
+generate_image(model="your_mods/<目录名>/<武器名>.glb",
+               prompt="clean game inventory icon, side profile, centered, the weapon occupies about 80% of the frame width",
+               out="your_mods/<目录名>/icon.png")
+```
+
+用模型自己的渲染图（`model=`）**不花积分**；要新画一张才花。`config.json` 的 `icon` 默认就是 `icon.png`。
+
 
 玩家自带 `.glb` 时跳过生成，直接把文件放进 mod 目录。
 玩家不需要模型时，`config.json` 里**不写 `model`**，新枪就沿用原型枪的外形。

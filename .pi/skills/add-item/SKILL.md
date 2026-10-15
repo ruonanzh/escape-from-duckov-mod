@@ -131,7 +131,39 @@ action=refs, class=Tag, name=<Tag 名>, by=Item
 
 **先建骨架，再产模型，最后装** —— 与 `replace-item-model` 的顺序相同。
 
-本 SKILL 不重写那几段提示词。`generate_image` 与 `generate_model` 的**工具说明**里已经写了朝向、配色、面数、积分与不得连发那些话，照它做即可。
+### 风格化预览图：**清理、居中、加粗**
+
+**配方与 `replace-item-model` 的 ③ 相同。改那一边必须同步改这一边。**
+
+**本作的美术偏厚实**，而 Tripo 会**严格照图生成**。只清理不加粗，出来的会偏「细」。
+所以这一步的提示词同时做三件事：**清理、居中、加粗**。
+
+```
+generate_image(
+  image="<玩家的图>",                       // 只给文字描述时省略，此时纯提示词出图
+  prompt="Redraw the item from the input as a clean, isolated in-game asset: keep ONLY the main item - if the input shows several objects, take the largest, centered one and ignore the rest. The whole item alone and complete - keep EVERY part of it; remove only what is not the item (the background, any floating pieces, text, frames). Put it on a plain uniform white background: no scenery, no props, no shadow, no smoke, no hands, no text. Keep the item's own design and colors the same, but render it in a CARTOON / toon-shaded style like the game's own assets (flat stylized colors, clean shading - not photoreal), and make it noticeably BULKIER and THICKER: heavy, sturdy proportions like a stylized low-poly game asset, about 0.50 m tall (game scale). Show it from the SIDE (a profile view that shows its thickness and depth), NOT a front view, and perfectly CENTERED in the frame, with a clear margin on all sides.",
+  out="your_mods/<目录名>/.preview/<物品名>.preview.png")   // 中间图放 mod 目录下的 .preview/
+```
+
+- 这段配方里有 **8 件事都不得丢**：**只留主物品**、**整件物品都在**、**只移除不是它的东西**、**纯白均一背景**、**保持原设计与原颜色并做卡通渲染**、**加粗**、**侧视**、**居中留边**。
+- `about 0.50 m tall (game scale)` 那句里的数字**按物品类别换**（见本 SKILL 第 1 节末尾的尺寸表）。
+- 出图后**把文件路径给玩家**（工具返回里就是绝对路径），再问他「就要这个吗」。
+  图大于 1.5MB 时工具不内联显示，所以**必须把路径写出来**。
+- `.preview/` 放在 mod 目录下。`install_mod` 会跳过它（不进游戏）。
+- 不像就改 `prompt=` 再来一次。每次都便宜。**没确认前不得做下一步。**
+
+### 图标（新物品必须有）
+
+背包格子里本来没有这件物品的图，所以要出一张：
+
+```
+generate_image(model="your_mods/<目录名>/<物品名>.glb",
+               prompt="clean game inventory icon, three-quarter view, centered, the item occupies about 80% of the frame width",
+               out="your_mods/<目录名>/icon.png")
+```
+
+用模型自己的渲染图（`model=`）**不花积分**。`config.json` 的 `icon` 默认就是 `icon.png`。
+
 
 玩家自带 `.glb` 时跳过生成，直接把文件放进 mod 目录。
 玩家不需要模型时，`config.json` 里**不写 `model`**，新物品就沿用原型的外形。
