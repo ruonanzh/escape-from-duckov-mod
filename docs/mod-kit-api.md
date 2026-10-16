@@ -121,6 +121,8 @@
 | `AddRecipe(id, typeID, amount, money, materials, tags)` | 加一条制作台配方 |
 | `RemoveAdded()` | 把我们加过的条目、配方、动态条目全部撤掉（热重载与卸载用） |
 
+**手上已经有 `Sprite` 时**（不是 png 路径）：直接写 `item.Icon = sprite`。`Item.Icon` 是 `[get/set] Sprite`（签名见 `docs/api/ItemStatsSystem.md`），游戏会读它。`AttachIcon` 只是「从 png 生成再设进去」的包壳。
+
 **取值**：商店档位**不写死**，游戏里实际有 12 个（`Merchant_Normal` 售货机 / `Merchant_Weapon` 老吴 /
 `Merchant_Equipment` 橘子 / `Merchant_Ming` 小明 / `Merchant_Mud` 泥巴 / `Merchant_Fo` 佛哥 /
 `Merchant_Myst`、`Merchant_Myst0`、`Merchant_MystIsland` 神秘商人 / `Merchant_Island`、`Merchant_IslandMobile` 岛），

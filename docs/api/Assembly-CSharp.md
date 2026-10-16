@@ -1,6 +1,7 @@
 # Assembly-CSharp.dll
 
 15 public types (game-owned; 182 third-party filtered)
+> game 2.3.30 · generated 2026-10-16
 
 ## Demo [class] : UnityEngine.MonoBehaviour
 

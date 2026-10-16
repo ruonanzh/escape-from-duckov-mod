@@ -167,12 +167,14 @@ def main():
 
     os.makedirs(api_dir, exist_ok=True)
 
+    # 先探测版本：API 快照的文件头要写版本戳（自证对应哪一版），所以探测放在生成之前
+    version = detect_game_version(game_dir)
+
     # 1. API 签名（dotnet）
-    run([dotnet, "run", "--project", "scripts/inspect_game", "--", managed_dir, api_dir])
+    run([dotnet, "run", "--project", "scripts/inspect_game", "--", managed_dir, api_dir, version or "unknown"])
 
     # 记录数据层对应的游戏版本（R2：游戏 patch 后 refresh 会更新 game.version）
     info("\n" + "=" * 60)
-    version = detect_game_version(game_dir)
     if version:
         if update_game_version(version):
             info(f"✅ 游戏版本已记录：{version}（mod-repo.json 的 game.version 已更新）")

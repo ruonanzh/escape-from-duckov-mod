@@ -1,6 +1,7 @@
 # TeamSoda.MiniLocalizor.dll
 
 3 public types (game-owned; 0 third-party filtered)
+> game 2.3.30 · generated 2026-10-16
 
 ## CSVFileLocalizor [class]
 

@@ -6,9 +6,10 @@ using System.Text;
 
 // Duckov API inspector — dump public API signatures of game-owned DLLs to docs/api/.
 //
-// Usage: dotnet run --project scripts/inspect_game -- <managedDir> <outDir>
-//   managedDir: Duckov.app/Contents/Resources/Data/Managed
-//   outDir:     docs/api
+// Usage: dotnet run --project scripts/inspect_game -- <managedDir> <outDir> [gameVersion]
+//   managedDir:  Duckov.app/Contents/Resources/Data/Managed
+//   outDir:      docs/api
+//   gameVersion: 游戏版本，写进文件头当版本戳（由 refresh.py 探测后传入；缺省 unknown）
 //
 // Scope: only game-owned DLLs (TeamSoda.*, ItemStatsSystem, Assembly-CSharp,
 //         SodaLocalization, TeamSoda.MiniLocalizor). Engine/third-party DLLs
@@ -19,6 +20,10 @@ using System.Text;
 var managedDir = args[0];
 var outDir = args[1];
 Directory.CreateDirectory(outDir);
+
+// 版本戳（B2）：快照必须能自证它对应哪一版游戏，否则读者无法核对。版本由 refresh.py 探测后传入。
+var gameVersion = args.Length > 2 && !string.IsNullOrWhiteSpace(args[2]) ? args[2] : "unknown";
+var stamp = $"> game {gameVersion} · generated {DateTime.Now:yyyy-MM-dd}";
 
 var dlls = new[]
 {
@@ -95,6 +100,7 @@ foreach (var dllName in dlls)
     sb.AppendLine();
     var kept = types.Where(t => !IsThirdParty(t.Namespace, thirdPartyNamespaces)).ToArray();
     sb.AppendLine($"{kept.Length} public types (game-owned; {types.Length - kept.Length} third-party filtered)");
+    sb.AppendLine(stamp);
     sb.AppendLine();
 
     foreach (var t in kept.OrderBy(t => FriendlyFullName(t)))
@@ -113,7 +119,7 @@ if (allProblems.Length > 0)
     Console.WriteLine(allProblems.ToString());
 }
 
-DumpUnityResources(managedDir, outDir, unityResourceTypes, allProblems);
+DumpUnityResources(managedDir, outDir, unityResourceTypes, allProblems, stamp);
 
 static bool IsThirdParty(string ns, string[] thirdPartyNamespaces)
 {
@@ -121,12 +127,13 @@ static bool IsThirdParty(string ns, string[] thirdPartyNamespaces)
     return thirdPartyNamespaces.Any(p => ns == p || ns.StartsWith(p + "."));
 }
 
-static void DumpUnityResources(string managedDir, string outDir, (string dll, string[] typeNames)[] spec, StringBuilder problems)
+static void DumpUnityResources(string managedDir, string outDir, (string dll, string[] typeNames)[] spec, StringBuilder problems, string stamp)
 {
     var sb = new StringBuilder();
     sb.AppendLine("# Unity Resource APIs");
     sb.AppendLine();
     sb.AppendLine("Unity engine + FMOD native APIs for asset mods — loading, replacing, and adding textures / audio / meshes / materials. These live in Unity engine DLLs (not game-owned DLLs).");
+    sb.AppendLine(stamp);
     sb.AppendLine();
 
     var count = 0;

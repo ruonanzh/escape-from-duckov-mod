@@ -1,6 +1,7 @@
 # TeamSoda.Duckov.Core.dll
 
 1199 public types (game-owned; 40 third-party filtered)
+> game 2.3.30 · generated 2026-10-16
 
 ## ADSAimMarker [class] : UnityEngine.MonoBehaviour
 

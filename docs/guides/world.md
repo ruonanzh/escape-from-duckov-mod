@@ -108,9 +108,9 @@ field=["merchantProfiles[].merchantID",
 
 > **要保留「哪个商人卖什么」的边界**，改用它（保留嵌套）：
 > `action=dump, class=StockShopDatabase, pathid=76730, depth=8`（每个 profile 一块：`merchantID` + `entries[]`）；
-> 或拿 `entries[].typeID` 的全量清单，再按 typeID 去 `items.md` 查名字。
+> 或拿 `entries[].typeID` 的全量清单，再按 typeID 去 `docs/guides/items.md` 查名字。
 
-> `typeID` 对应 `Item.typeID` —— 要名字就拿着 typeID 去 `items.md` 的本地化 join 里查。
+> `typeID` 对应 `Item.typeID` —— 要名字就拿着 typeID 去 `docs/guides/items.md` 的本地化 join 里查。
 
 ## 增益 / Buff — `Buff`（115）
 
@@ -143,7 +143,7 @@ field=["list[].id","list[].result.id","list[].result.amount","list[].cost.money"
 
 > 两个数组嵌套（`list` 与 `cost.items`）会**拍平**：`cost.items[].id` 是**所有配方材料连成一条**，看不出哪几样属于哪条配方。要看单条配方：
 > `action=dump, class=CraftingFormulaCollection, pathid=76575, depth=9`（保留嵌套），或用 `--offset` 一条条看。
-> `result.id` / `cost.items[].id` 都是 `Item.typeID` —— 去 `items.md` 查名字。
+> `result.id` / `cost.items[].id` 都是 `Item.typeID` —— 去 `docs/guides/items.md` 查名字。
 
 ## 掉落 / 战利品 Loot
 
@@ -167,7 +167,7 @@ field=["tags.entries[].value.#name","tags.entries[].weight","activeChance","inve
 ```
 
 > **「某敌人掉什么」的完整链路**：用 `nameKey` 与 `isBoss` 定位 `CharacterRandomPreset`，再找到 `lootBoxPrefab` 的 pathID，然后 `action=dump, class=LootBoxLoader, pathid=<那个 gameObject 上的 loader>`。或先用上面的 export 把**全部**掉落箱列出来对照。
-> 要「哪些物品属于某个 tag 池」时，用 `items.md` 的 `match="tags.list[].#name=<X>"`。
+> 要「哪些物品属于某个 tag 池」时，用 `docs/guides/items.md` 的 `match="tags.list[].#name=<X>"`。
 
 ## 跨类 join 速查（问题与对应命令）
 

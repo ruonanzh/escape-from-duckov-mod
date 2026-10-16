@@ -276,6 +276,8 @@ public static ItemGraphicInfo CreateAGraphic(Item item, Transform parent, bool s
 **这里只放任务与命令。** 路径语法、`match` 运算符、`--file`、`--limit`、`--offset` 那些机制
 见 `docs/guides/00-overview.md`（那是数据查询指南，概念与语法都在那里）。
 
+**资源（美术、音频）在哪**：贴图、精灵、网格、材质存在 Unity `Resources`（`.assets`）里，靠 `m_Name` 引用（不是 Addressables，也不是 AssetBundle）。签名见 `docs/api/unity-resources.md`（23 个类型）；音频见第 17 节。
+
 下表每一行都**实跑过**（2026-10-14）。
 
 | 我要查 | 命令 |
@@ -377,3 +379,24 @@ data-probe ... --action refs --class GameObject --pathid <GameObject> --by Trans
 # ② 再由那个 Transform 拿父物体；`m_Father` 那行是父，`data` 那行是父的 m_Children 数组
 data-probe ... --action refs --class Transform  --pathid <上一步的 Transform> --by Transform
 ```
+
+## 17. 音频（FMOD / `AudioSource`）
+
+游戏用 **FMOD**。mod 做音效**先考虑 `AudioSource` + `AudioClip`**（Unity 原生，不用碰 FMOD API）：
+
+```csharp
+var source = gameObject.AddComponent<AudioSource>();
+source.clip = myClip;   // 自己加载到的 AudioClip
+source.Play();
+```
+
+要走 FMOD 本身时：
+
+```csharp
+var ev = FMODUnity.RuntimeManager.CreateInstance("event:/MyEvent");
+ev.start();
+```
+
+- `FMODUnity.RuntimeManager.LoadBank(String bankName, Boolean loadSamples)` —— **两参**（签名见 `docs/api/unity-resources.md`）。
+- 游戏自己的 bank 在 `StreamingAssets/` 下：实测（撰写时，`mod-repo.json` 的 `game.version` = `2.3.30`）有 `Master.bank`、`Master.strings.bank` 与 `Music/`。事件名要用 FMOD 工具解析，本文不保证。
+- 音频资源的查找命令见第 13 节。

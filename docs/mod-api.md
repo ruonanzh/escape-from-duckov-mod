@@ -7,7 +7,7 @@
 ```csharp
 using ItemStatsSystem;
 
-// 生成物品（typeID 见 docs/items.md / 官方 wiki）
+// 生成物品（typeID 现查：见 docs/guides/items.md）
 Item item = ItemAssetsCollection.InstantiateAsync(254);
 Item itemSync = ItemAssetsCollection.InstantiateSync(254);
 

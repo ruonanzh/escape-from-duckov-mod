@@ -158,7 +158,7 @@ namespace MyMod
 ## 参考
 
 - 完整可编译样例：`reference/example_mod/`。
-- API：`docs/mod-api.md`。物品：`docs/items.md`。
+- API：`docs/mod-api.md`。物品：`docs/guides/items.md`。
 - **API 内省**：`docs/api/`（公开签名快照）是第一站。不够时（私有成员、实现行为、当前版本）用 **`inspect_game_api`** 读托管 DLL：`search`（找类型与成员）、`members`（全部成员含 private）、`decompile`（反编译 C#）、`il`、`strings`。只读，不执行游戏代码。
 - **游戏数据（数值与场景）**：物品数值、任务条件、敌人预设，以及**场景**（`levelN` 文件里的内置对象（GameObject、Transform、Camera）与挂在它们上的脚本）都在**游戏数据文件**里。用 **`inspect_game_data`** 读：`classes`、`search`、`list`、`dump`。`dump` 加 `follow` 跟随引用，看 `Item.stats` 的 `Damage`，以及场景对象的 `m_LocalPosition`。场景用 `--file levelN`。**先窄后宽**：不得 `list` 整个大类（尤其场景里的 `GameObject` 与 `Transform`；`list` 最多 500 条，且多为 `(no name)`）。要具体对象时用 `search --pattern` 或 `dump --class <C> --name/--pathid`。确实要枚举时用 `--offset` 翻页。要**一批**（例如全部武器的数值、全部任务的条件）时用 **`export`**：一类对象乘 `--match` 过滤乘 `--field` 路径，**一次调用一张表**（路径可以穿 PPtr、展开数组、用 `#class` 按解析后类名筛。见 `tools/data-probe/README.md`）。**结果大就落盘**：`out=<file>` 写文件、只回预览（数据不进上下文），再用 bash 处理。**它只读，只用来「查清楚现在是什么样」**（好让 mod 的 C# 在运行时找到或补丁它们）。**改数值与改行为一律是 mod 运行时 C# 的事**（先 `inspect_game_api` 找字段或 patch 点）。不得改数据文件，也不得编辑场景。
 

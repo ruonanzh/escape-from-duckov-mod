@@ -1,6 +1,7 @@
 # Unity Resource APIs
 
 Unity engine + FMOD native APIs for asset mods — loading, replacing, and adding textures / audio / meshes / materials. These live in Unity engine DLLs (not game-owned DLLs).
+> game 2.3.30 · generated 2026-10-16
 
 ## UnityEngine.Resources [class]
 
