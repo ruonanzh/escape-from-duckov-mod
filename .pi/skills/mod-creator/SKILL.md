@@ -70,7 +70,7 @@ description: Escape From Duckov 的 C# mod 制作与修改。覆盖目录结构�
 ## 使用方式与条件分支
 
 - **动手前：先确认需求再动手**。先跟玩家对齐「这个 mod 是什么」（改什么、覆盖范围、产物的形态）。给出**一份 mod 内容描述**。玩家确认后再开始写代码。
-- **咨询与可行性**：按目标检索 `docs/api/` 与 `docs/cookbook.md` 第 18 节，确认 API 与数据依据；游戏数据用 `inspect_game_data` 现查。
+- **咨询与可行性**：按目标检索 `docs/api/` 与 `docs/cookbook.md` 第 16 节，确认 API 与数据依据；游戏数据用 `inspect_game_data` 现查。
 - **实际制作与修改**：目录名与 mod 名是两个名字。目录名给 `create_mod_folder`，用小写 snake_case（小写字母、数字、下划线，字母开头）。mod 名写进 `info.ini` 的 `name`，是合法 C# 标识符，通常 PascalCase。写入仅限当前 session 绑定的目录。无绑定且准备写入时才调 `create_mod_folder`。有绑定就复用。目录缺失时先说明阻塞，不得另建第二个绑定。
 - **规范与实现**：`reference/example_mod/` 只作**骨架参考**（csproj、info.ini、ModBehaviour 的写法与命名）。保持 info.ini 的 mod 名、csproj 的 `AssemblyName`、`ModBehaviour.cs` 的 namespace 一致（validate_mod 校验）。
 - **产物落点**：编译产物放哪都行。`install_mod` 会自动找到 `<name>.dll`（mod 根**或 `bin/` 下**），并把它放到游戏 mod 目录**根**。游戏只从根加载 `<name>.dll`。所以用默认的 `bin/` 即可，不必手动整理。**不得**把 csproj 的 `OutputPath` 指到项目根。SDK 的默认排除会把项目根下的 `*.cs` 全排掉，产出**空壳 dll**（游戏里能看到，却勾不上）。确需如此时必须同时设 `EnableDefaultCompileItems=false`，并加显式 `Compile`。
@@ -158,7 +158,7 @@ namespace MyMod
 ## 参考
 
 - 完整可编译样例：`reference/example_mod/`。
-- API：`docs/cookbook.md` 第 18 节。物品：`docs/guides/items.md`。
+- API：`docs/cookbook.md` 第 16 节。物品：`docs/guides/items.md`。
 - **API 内省**：`docs/api/`（公开签名快照）是第一站。不够时（私有成员、实现行为、当前版本）用 **`inspect_game_api`** 读托管 DLL：`search`（找类型与成员）、`members`（全部成员含 private）、`decompile`（反编译 C#）、`il`、`strings`。只读，不执行游戏代码。
 - **游戏数据（数值与场景）**：物品数值、任务条件、敌人预设，以及**场景**（`levelN` 文件里的内置对象（GameObject、Transform、Camera）与挂在它们上的脚本）都在**游戏数据文件**里。用 **`inspect_game_data`** 读：`classes`、`search`、`list`、`dump`。`dump` 加 `follow` 跟随引用，看 `Item.stats` 的 `Damage`，以及场景对象的 `m_LocalPosition`。场景用 `--file levelN`。**先窄后宽**：不得 `list` 整个大类（尤其场景里的 `GameObject` 与 `Transform`；`list` 最多 500 条，且多为 `(no name)`）。要具体对象时用 `search --pattern` 或 `dump --class <C> --name/--pathid`。确实要枚举时用 `--offset` 翻页。要**一批**（例如全部武器的数值、全部任务的条件）时用 **`export`**：一类对象乘 `--match` 过滤乘 `--field` 路径，**一次调用一张表**（路径可以穿 PPtr、展开数组、用 `#class` 按解析后类名筛。见 `tools/data-probe/README.md`）。**结果大就落盘**：`out=<file>` 写文件、只回预览（数据不进上下文），再用 bash 处理。**它只读，只用来「查清楚现在是什么样」**（好让 mod 的 C# 在运行时找到或补丁它们）。**改数值与改行为一律是 mod 运行时 C# 的事**（先 `inspect_game_api` 找字段或 patch 点）。不得改数据文件，也不得编辑场景。
 

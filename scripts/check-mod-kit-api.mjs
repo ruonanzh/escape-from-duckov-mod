@@ -15,6 +15,15 @@
  *
  * 扫描范围：本仓会引用 mod-kit 接口的文档（台账、cookbook、AGENTS、技能、参考 mod 的 README）。
  *
+ * 已知边界（实测 2026-10-16；当前仓库收下 323 个成员、无污染，以下都是「可能漏」的方向）：
+ * - 只剥 `//` 行注释；C 风格块注释与字符串字面量原样保留。`declName` 取行内**最后一个**
+ *   标识符，所以同一行的块注释里写了标识符（例如 catch 后接一个块注释、注释里写 ignore）
+ *   会被记成成员。关键字本身（`catch` / `try` / `finally` …）在 NOT_A_NAME 里，不会被记。
+ * - 一行多个声明只记一个：`int a, b;` 记的是 `b`（枚举的多行写法 `a,` 才取行首）。
+ * - `Type.A.B` 只校验到 `Type.A`，第三段不查（正则只捕两段）。
+ * - 只认 `libs/mod-kit/` 里的类型：游戏侧接口（`ItemUtilities`、`Teams` …）不受本脚本保护，
+ *   手抄的游戏侧签名靠 docs/api 的版本戳与人工复核。
+ *
  * 用法：node scripts/check-mod-kit-api.mjs   （exit 1 = 有问题）
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";

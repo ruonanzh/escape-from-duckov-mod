@@ -276,7 +276,7 @@ public static ItemGraphicInfo CreateAGraphic(Item item, Transform parent, bool s
 **这里只放任务与命令。** 路径语法、`match` 运算符、`--file`、`--limit`、`--offset` 那些机制
 见 `docs/guides/00-overview.md`（那是数据查询指南，概念与语法都在那里）。
 
-**资源（美术、音频）在哪**：贴图、精灵、网格、材质存在 Unity `Resources`（`.assets`）里，靠 `m_Name` 引用（不是 Addressables，也不是 AssetBundle）。签名见 `docs/api/unity-resources.md`（23 个类型）；音频见第 17 节。
+**资源（美术、音频）在哪**：贴图、精灵、网格、材质存在 Unity `Resources`（`.assets`）里，靠 `m_Name` 引用（不是 Addressables，也不是 AssetBundle）。签名见 `docs/api/unity-resources.md`（23 个类型）；音频见第 15 节。
 
 下表每一行都**实跑过**（2026-10-14）。
 
@@ -331,7 +331,7 @@ Character_Ming,小明,#20250807035821,Characters
    已经害过几次「以为没有，其实有」）。要文案就读游戏自带那份，或先 `inspect_game_data` 现查。
 2. **不得把文案抄进代码**（会随版本变）。
 
-## 17. 音频（FMOD / `AudioSource`）
+## 15. 音频（FMOD / `AudioSource`）
 
 游戏用 **FMOD**。mod 做音效**先考虑 `AudioSource` + `AudioClip`**（Unity 原生，不用碰 FMOD API）：
 
@@ -352,10 +352,10 @@ ev.start();
 - 游戏自己的 bank 在 `StreamingAssets/` 下：实测（撰写时，`mod-repo.json` 的 `game.version` = `2.3.30`）有 `Master.bank`、`Master.strings.bank` 与 `Music/`。事件名要用 FMOD 工具解析，本文不保证。
 - 音频资源的查找命令见第 13 节。
 
-## 18. 游戏侧 API 固定套路（物品 / 角色 / 对话 / 日志）
+## 16. 游戏侧 API 固定套路（物品 / 角色 / 对话 / 日志）
 
-**签名不在这里抄，一律现查**：`docs/api/`（公开签名快照）是第一站，不够时用 `inspect_game_api`。
-这里只记「几行拼起来就能用」的套路，以及两个坑（静态方法、返回值是 `UniTask`）。
+**签名一律以 `docs/api/`（公开签名快照）为准**，不够时用 `inspect_game_api`。
+这里只记「几行拼起来就能用」的套路、易错参数**个数与顺序**，以及两个坑（静态方法、返回值是 `UniTask`）。
 
 **物品**
 
@@ -371,13 +371,14 @@ ItemUtilities.SendToPlayer(item, dontMerge: false, sendToStorage: true);
 ```
 
 - `IsInPlayerCharacter` / `IsInPlayerStorage` / `TryPlug` 都是 `ItemUtilities` 的**静态方法**，第一个参数是物品。
-  `TryPlug(Item main, Item part, Boolean emptyOnly, Inventory backupInventory, Int32 preferredFirstIndex)`。
+  `TryPlug` 是 **5 参**，最后一个是 `preferredFirstIndex` —— 用前按 `docs/api/TeamSoda.Duckov.Core.md` 现查。
 - `Item.Icon` 可直接赋值（`Sprite`）。
 
 **角色**
 
 ```csharp
 // CharacterMainControl 是角色核心；队伍是枚举，没有 TeamA
+// （常见值见下，权威见 docs/api/TeamSoda.Duckov.Core.md 的 ## Teams）
 character.SetTeam(Teams.player);
 // Teams：player=0 、scav=1 、usec=3 、bear=4 、middle=5 、lab=6 、all=7 、wolf=8
 ```

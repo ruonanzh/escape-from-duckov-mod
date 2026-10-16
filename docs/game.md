@@ -16,4 +16,4 @@ mod 产物：`<ModName>.dll` + `0Harmony.dll`（patch 用；只有用 `libs/mod-
 
 - 编译引用游戏目录的 `TeamSoda.*.dll`、`ItemStatsSystem.dll`、`Unity*.dll`（游戏 DLL，mod 作者本机提供，不进 repo）
 - `0Harmony.dll` 从 repo 的 `libs/` 引用，编译后随 mod 分发
-- 物品、角色与对话的 API 固定套路见 `docs/cookbook.md` 第 18 节
+- 物品、角色与对话的 API 固定套路见 `docs/cookbook.md` 第 16 节

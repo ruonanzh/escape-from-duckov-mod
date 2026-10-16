@@ -1,6 +1,6 @@
 # mod-kit API（写 mod 时会用到的那些）
 
-> 这是**我们自己的**运行时库（`libs/mod-kit/`）。游戏自身的 API 固定套路另见 `docs/cookbook.md` 第 18 节。
+> 这是**我们自己的**运行时库（`libs/mod-kit/`）。游戏自身的 API 固定套路另见 `docs/cookbook.md` 第 16 节。
 > 本文只写「**是什么与什么时候用**」，**不抄签名**。签名会变，抄了必过期。
 > 要签名就现查：`rg "public static" libs/mod-kit/<文件>.cs`（例如 `ItemModel.cs`）。
 
