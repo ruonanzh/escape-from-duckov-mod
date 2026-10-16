@@ -30,7 +30,7 @@ description: 玩家想**加一件新物品**时用（例如「给我加一件新
 
 选项是这五个，**可以多选**：商人买 / 制作台做 / 掉落 / 摆到展示台 / 黑市。
 
-- **选了「商人买」，默认卖到售货机**（`Merchant_Normal`）。玩家指定了别的店就听玩家的。游戏里有 **12 个商店档位**：
+- **选了「商人买」，店按这个规则定**：玩家指定了就听玩家的；玩家没指定或说「随便」时按类别——**武器给老吴（`Merchant_Weapon`）、装备给橘子（`Merchant_Equipment`）、其余给售货机（`Merchant_Normal`）**。游戏里有 **12 个商店档位**：
 
   | `merchantID` | 卖家 | 卖什么 |
   |---|---|---|
@@ -44,7 +44,6 @@ description: 玩家想**加一件新物品**时用（例如「给我加一件新
   | `Merchant_Island` | 岛的商店 | — |
   | `Merchant_IslandMobile` | 售货机（岛上的移动版）| — |
 
-  **玩家说「随便」时按类别定**：武器给老吴（`Merchant_Weapon`）、装备给橘子（`Merchant_Equipment`）、其余给售货机（`Merchant_Normal`）。
   `config.json` 里**必须显式写 `merchantID`**，不写会被 `validate_mod` 拦下。
 - **选了「摆到展示台」，物品必须带 `ShowCase` tag**（见第 2 节）。
 - **选了「掉落」，先看第 2 节的掉落检查**：不保证掉得出来。
@@ -219,7 +218,7 @@ generate_image(model="your_mods/<目录名>/<物品名>.glb",
 | `displayName` | 是 | 新物品的名字 |
 | `merchantID` | **上架时必填** | 卖到哪个店，写第 1 节表里的值。写 `"onSale": false` 就不用它 |
 | `description` | 否 | 简介 |
-| `model` | 否 | 本 mod 目录里的 glb（物品可以直接写 `fiber.glb`）。不写就沿用原型外形 |
+| `model` | 否 | GLB 文件名，**按物品起名**（例：`backpack.glb`，不得固定叫 `item.glb`）。相对 mod 目录，也可绝对路径。不写就沿用原型外形 |
 | `size` | 否 | 修改大小（可选）。不写就不改大小 |
 | `handheld` | 否 | **只针对非装备物品**：连**拿在手里**那条也换。**会改行为**（物品变成「可拿在手里」与「界面上可以选它」）。要开就先问玩家一句 |
 | `icon` | 否 | 卡片图标，默认 `icon.png` |
@@ -238,6 +237,7 @@ generate_image(model="your_mods/<目录名>/<物品名>.glb",
 
 **数值与 tag 的名字从哪来**：用 `inspect_game_data` 导出（命令见 `docs/guides/items.md`）。
 **不得手写猜的名字** —— 名字不存在时那一条不会生效，日志里会列出来。
+键名与 tag 名都写游戏里的原样（数值键是 `Damage`、`ReloadTime` 这种），导出里长什么样就照抄。
 
 **同一个文件可以放很多条**：一个 `new_item` 只造一件东西。要做一批就写多条（每条一个 `new_item`）。
 同一份 config 里也可以混装 `replace_item`，各写各的 `action`。
