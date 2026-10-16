@@ -15,6 +15,7 @@ node scripts/check-character-rig.mjs                                      # 角�
 node scripts/check-character-swap.mjs                                     # 角色替换的搬运算法与接线
 node scripts/measure-skeleton-gap.mjs                                      # 量模型骨架与游戏骨架的差距
 node scripts/check-doc-refs.mjs                                           # 文档引用（链接与仓库根路径）
+node scripts/check-mod-kit-api.mjs                                        # 台账里的 `类型.成员` 在代码里真的存在
 ```
 
 它们都导入 `.pi/lib/` 里的**同一份**函数，扩展也导入那份。于是判据只有一份，不会漂。

@@ -141,12 +141,14 @@ config 的 `action` 是 `replace_character`（字段：`model`、`scale`）。�
 
 | API | 什么时候用 |
 |---|---|
-| `CharacterSwap.Install()` | 挂 Harmony 钩子（`CharacterModel` 的几个方法）。`ModBehaviour` 里调一次 |
 | `CharacterSwap.Apply(character, skin)` | **主入口**：把 `GltfLoader.Loaded` 搬到这个角色的骨架上 |
 | `CharacterSwap.Tick(now, interval)` | 每帧调。开头 4 秒连着重新隐藏与重挂，之后按 `interval` 节流 |
 | `CharacterSwap.BindArmBones` | 默认 `false`。`true` 时把模型手臂绑到游戏手臂骨（实测动画一摆就脱开）|
 | `CharacterSwap.ExtraScale` | 在自动尺寸之上再乘的倍数，默认 `1` |
 | `CharacterSwap.Result` | `Applied`、`NoOp`、`Report`、`Body`、`MappedJoints`、`UnmappedJoints`、`UnweightedVertices`、`Reasserted`；方法 `Reassert(now, interval)` 与 `Restore()` |
+
+钩子是**第一次 `Apply` 时自己挂的**（`if (!_hooked)` 里调 `ItemHooks.Install()` 与 `ModelHooks.Install()`）。
+mod 侧不用调，也没有对外的 `Install`。
 
 骨骼映射表（`CharacterRig.cs`，名字对错由 `scripts/check-character-rig.mjs` 机器检查）：
 
@@ -155,5 +157,5 @@ config 的 `action` 是 `replace_character`（字段：`model`、`scale`）。�
 | `CharacterRig.TryMap(mixamoBoneName, out duckBone)` | Mixamo 关节名得到游戏骨骼名。映射不上返回 `false` |
 | `CharacterRig.StripPrefix(boneName)` | 去掉 `mixamorig:` 之类的前缀 |
 | `CharacterRig.DuckBones` / `CharacterRig.DuckSlotCount` | 游戏 26 个骨骼槽的真实名单，顺序即下标 |
-| `CharacterRig.ExtraDuckBones` | 额外认的别名（大小写不敏感）|
+| `CharacterRig.ExtraDuckBones` | **离线核对**用的名单：鸭子比 Mixamo 多出来的骨，以及它挂到哪一根。**区分大小写**；运行时用不到（整体换身体时这几根拿不到权重是无害的），只有 `Verify()` 读它 |
 | `CharacterRig.Verify()` | 自检：映射表里每个名字都在真实名单里 |
