@@ -60,7 +60,7 @@ description: Escape From Duckov 的 C# mod 制作与修改。覆盖目录结构�
 - 克隆：`Instantiate(ItemAssetsCollection.GetPrefab(源typeID).gameObject)`。必须调用 `DontDestroyOnLoad`。
   然后调用 `GetComponent<Item>()`。再调用 `SetTypeID(新typeID)`。
 - 名字：`LocalizationManager.SetOverrideText(key, 文本)` 与 `DisplayNameRaw = key`。
-  直接塞字面量会被显示成 `*字面量*`。
+  直接塞原文，游戏会把它当**翻译键**，显示成带星号的样子（`*超大纤维束*`）。
 - 注册：`ItemAssetsCollection.AddDynamicEntry(item)`。同一个 typeID 会覆盖原版并打警告。失败时必须销毁克隆体。
 - **模型**由模型侧提供：`ItemFactory.AttachModel(item, mesh, 贴图, size)`（内部**克隆图形**，不动原型）与 `ItemModel.WriteGraphic(item, graphic)`。
   `itemGraphic` 是数据层与模型层唯一的连接点。
