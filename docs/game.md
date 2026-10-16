@@ -8,12 +8,12 @@ Escape From Duckov 是 PVES 生存 RPG（鸭子世界）。玩家搜刮资源、
 
 ## mod 机制
 
-mod 是 **C# 类库编译出的 DLL**（netstandard2.1）。游戏扫描 `Duckov_Data/Mods/` 和 Steam Workshop 订阅，通过 `info.ini` 的 `name` 作命名空间，加载 `<name>.ModBehaviour` 类（继承 `Duckov.Modding.ModBehaviour`，即 MonoBehaviour）。
+mod 是 **C# 类库编译出的 DLL**（netstandard2.1）。游戏扫描 mod 目录（`mod-repo.json` 的 `modInstall`：Windows `Duckov_Data/Mods/`，macOS `Duckov.app/Contents/Mods`）和 Steam Workshop 订阅，通过 `info.ini` 的 `name` 作命名空间，加载 `<name>.ModBehaviour` 类（继承 `Duckov.Modding.ModBehaviour`，即 MonoBehaviour）。
 
-mod 产物：`<ModName>.dll` + `0Harmony.dll`（Harmony 2.4.1，patch 用）+ `info.ini` + `preview.png`（256×256）。
+mod 产物：`<ModName>.dll` + `0Harmony.dll`（patch 用；只有用 `libs/mod-kit` 的 hook 才需要）+ `info.ini` + `preview.png`（256×256）。
 
 ## 数据流
 
 - 编译引用游戏目录的 `TeamSoda.*.dll`、`ItemStatsSystem.dll`、`Unity*.dll`（游戏 DLL，mod 作者本机提供，不进 repo）
 - `0Harmony.dll` 从 repo 的 `libs/` 引用，编译后随 mod 分发
-- 物品、角色与对话的 API 见 `docs/mod-api.md`
+- 物品、角色与对话的 API 固定套路见 `docs/cookbook.md` 第 18 节

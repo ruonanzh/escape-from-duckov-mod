@@ -4,7 +4,7 @@
 
 ## 资料导航
 
-- `docs/game.md` 与 `docs/guides/items.md`：游戏机制与物品。`docs/mod-api.md`：mod API。资源（美术、音频）见 `docs/cookbook.md` 第 13 节与第 17 节。
+- `docs/game.md` 与 `docs/guides/items.md`：游戏机制与物品。游戏侧 API、资源（美术、音频）见 `docs/cookbook.md` 第 13、17、18 节。
 - `docs/api/`：生成的 API 签名快照。按问题检索，不得全量读入。快照不保证对应玩家最新游戏版本。
 - **游戏数据与文案一律现查**（`inspect_game_data`），**这个仓库不再保存数据或本地化快照**。
   按「我要查 X」的速查见 `docs/cookbook.md` 第 13 节；本地化读**游戏自带**的

@@ -7,7 +7,7 @@
 | 物品与全部子类（武器、装备、图腾、钥匙、药品、食物、材料、种子、工具）| `docs/guides/items.md` |
 | 任务、地图、生物、天赋、建筑、商店、增益 | `docs/guides/world.md` |
 
-> 这里写的是**怎么查**，不写死具体数值。数值会随版本变，要现查。
+> 这里写的是**怎么查**。文中出现的数字是**撰写时实测值，仅供对照**，会随版本变，精确值一律现查。
 
 ## 两条工具的分工
 
@@ -78,13 +78,13 @@ PY
 
 ## `inspect_game_data` 命令速查
 
+**本节只讲机制**（参数含义、路径语法、上限与落盘）。**「我要查 X 用哪条」的任务清单只有一份，在 `docs/cookbook.md` 第 13 节。**
+
 | 目的 | 调用 |
 |---|---|
-| 有哪些类 | `action=classes` |
 | 找对象 | `action=search`(`pattern`) 或 `action=list`(`class`) |
 | 看一个对象 | `action=dump`(`class` 加 `name`、`typeid` 或 `pathid`。`follow` 解引用。`depth` 深度) |
 | **批量表** | `action=export`(`class` 加 `match` 过滤加 `field` 列。**大结果用 `out` 落盘**) |
-| 它引用了谁 | `action=refs` |
 | **完整结果落盘** | 任何 action 都能加 `out=<file>` 来**流式写文件**（内存恒定，数据一条不少）。不给 `out` 则**显示**到 `limit` 行就停，并提示你落盘。落盘默认上限 **100 万行**（`dump --depth 7 --follow` 是指数展开，实测写出过 1.4 亿行与几 GB）。要更多用 `limit=<N>`。 |
 | **反查：谁用了这个对象** | `action=refs` 加 `by=<类名>`（例如 `by=MeshFilter`）。正向 `refs` 只有「我引用了谁」。跨文件时 `file` 要给**两个**（逗号分隔，例如 `file=sharedassets4.assets,level4`）|
 | **按 mesh 名一步拿尺寸** | `action=transform` 加 `mesh=<mesh 名>`（可以用 `exact` 严格相等，子串会撞名；用 `has=<组件>` 过滤）|
@@ -113,11 +113,11 @@ PY
 
 ## 文本从哪来：只认游戏自带的那份
 
-- 优先：`<Data>/StreamingAssets/Localization/` 下的 CSV（**实时、多语言、是超集**。含 10 个语言：`ChineseSimplified`、`ChineseTraditional`、`English`、`French`、`German`、`Japanese`、`Korean`、`Portuguese`、`Russian`、`Spanish`。表头 `key,value,version,sheet`，sheet 就是 `Items`、`Quests`、`Buffs`）。
-  - **同一个 key 可能在多个 sheet 里，且中文常常不在 `Items` 而在 `Default`**（实测：`Item_ButcherKnife` 在 `English.csv` 属 sheet=`Default`，在 `ChineseSimplified.csv` 属 sheet=`Items`）。所以**按 `key` 建索引就行**（上面的片段就是），不得「先去哪个 sheet 找」。
-  - **这个仓库不再保存快照。** 以前那份 `docs/data/*.csv` **条目少得多**（Items 只有 892 条，
-    而游戏自带的有 2944 条），已经害过几次「以为没有，其实有」。要文案就读游戏自带那份。
-  - 资产清单也一样：用 `classes` / `search` / `export --class X` **现查**（速查见 `cookbook.md` 第 13 节）。
+文案一律读游戏自带的 `<Data>/StreamingAssets/Localization/<语言>.csv`（实时、多语言、是超集）。
+
+**规则、sheet 归属的坑、两条「不得」只有一份，在 `docs/cookbook.md` 第 14 节。** 这里不复述。
+
+资产清单也一样：用 `classes` / `search` / `export --class X` **现查**（任务清单见 `docs/cookbook.md` 第 13 节）。
 
 ## 这份指南没写到怎么办（**不得停在这里**）
 

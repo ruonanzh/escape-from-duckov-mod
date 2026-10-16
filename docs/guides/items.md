@@ -1,10 +1,10 @@
 # 物品（Items）与子类
 
-游戏里所有物品都是 `Item`（`ItemStatsSystem`）—— **一次 export 就能拿全**（总数 **1581**）。
+游戏里所有物品都是 `Item`（`ItemStatsSystem`）—— **一次 export 就能拿全**（总数 **1581 个 `Item` 对象**，撰写时实测）。
 「武器、装备、药品、食物」不是不同的类，而是 **`Item.tags` 里的 Tag**。
 
 ```
-action=export, class=Item, file=resources.assets            # 全部 1581 件
+action=export, class=Item, file=resources.assets            # 全部 1581 个 Item 对象（撰写时实测）
 ```
 
 ## `Item` 的常用字段（实测）

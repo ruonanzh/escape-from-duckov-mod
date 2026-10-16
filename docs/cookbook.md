@@ -231,7 +231,7 @@ public static ItemGraphicInfo CreateAGraphic(Item item, Transform parent, bool s
 那个索引让你从图形找到它属于哪件物品，但它替代不了枚举。
 
 **代价提醒**：用 Harmony 需要 mod 在 csproj 里引用 `libs/0Harmony.dll`。
-仓库的两个样例 mod（`reference/weapon_model`、`reference/item_model`）都没有引。`reference/example_mod` 引了。
+仓库的三个模型样板（`reference/weapon_model`、`reference/item_model`、`reference/character_model`）都引了（`WeaponModelSwap.csproj:26-27` 等，并带 `CopyHarmonyToModRoot` 目标），因为 `libs/mod-kit/ItemHooks.cs`、`CharacterSwap.cs` 用它挂钩子；`reference/example_mod` 也引。
 玩家自己的 mod 可能已经引了（例如 `weapon_editor` 的产物里就带 `0Harmony.dll`）。
 加这个依赖意味着没引的 mod 都要重编。
 
@@ -292,7 +292,7 @@ public static ItemGraphicInfo CreateAGraphic(Item item, Transform parent, bool s
 | 一件物品的全部字段 | `action=dump, class=Item, pathid=108943, depth=7` |
 | 某对象的父链与坐标 | `action=transform, pathid=<Transform 的 pathID>` |
 | 商店档位（`merchantID`）| `action=export, class=StockShop, field=["merchantID","DisplayNameKey","sellFactor"]` |
-| 商店档案（保留嵌套，看每个店有哪些货）| `action=dump, class=StockShopDatabase, pathid=76730, depth=6` |
+| 商店档案（保留嵌套，看每个店有哪些货）| `action=dump, class=StockShopDatabase, pathid=76730, depth=8, out=<file>`（`depth=6` 看不到货；输出超过默认 2000 行上限，必须落盘）|
 | 掉落池（哪些 tag 会掉）| `action=export, class=LootBoxLoader, file=resources.assets, field=["tags.entries[].value.#name","tags.entries[].weight","activeChance"]` |
 | 插槽要求哪些 tag | `action=export, class=SlotCollection, field=["list[].key","list[].requireTags"]` |
 | 全部 tag 资产 | `action=export, class=Tag, file=resources.assets, field=["m_Name"]` |
@@ -327,58 +327,9 @@ Character_Ming,小明,#20250807035821,Characters
 **两条不得：**
 
 1. **不得说「某个表里没有 = 游戏里没有」。** 这个仓库**不再保存**本地化快照
-   （以前那份 `docs/data/*.csv` 条目少得多：Items 只有 892 条，而游戏自带的有 2944 条，
+   （以前那份 `docs/data/*.csv` 条目少得多：Items 只有 892 条本地化行，而游戏自带的有 2944 条，
    已经害过几次「以为没有，其实有」）。要文案就读游戏自带那份，或先 `inspect_game_data` 现查。
 2. **不得把文案抄进代码**（会随版本变）。
-
-
-## 15. 量骨架差距（角色替换前必做 · 维护者命令）
-
-角色替换是**刚性搬运**：整个模型乘一个矩阵，形状百分百保真，但手臂不跟着游戏手臂骨摆。
-要不要考虑更复杂的做法，先看两副骨架差多少。差多少**随模型变**，必须每个模型量一次。
-
-> **这两步都是维护者命令。** `scripts/` 与 `data-probe` 不在 agent 的可跑范围里（见 `AGENTS.md`）。
-> agent 侧取同一份数据的做法见 `.pi/skills/replace-character/SKILL.md` 第 2 节 ⑥。
-
-```bash
-# ① 游戏侧：把鸭子那副骨架的绑定姿势读出来（离线，不必进游戏）
-#    路径按平台走（macOS 是 Duckov.app/Contents/Resources/Data，Windows 不同），
-#    所以用 inspect_game_data 的 dump 最稳；维护者用 CLI 时自己解析那两段路径。
-data-probe --managed "<Managed>" --data "<Data>" \
-  --action dump --class Mesh --name DuckBody --exact --depth 4 --out /tmp/duckbody.txt
-
-# ② 量这个模型与游戏骨架的差距
-node scripts/measure-skeleton-gap.mjs <模型.glb> /tmp/duckbody.txt
-```
-
-输出两列，读法：
-
-- **位移**：模型那根骨与角色那根骨的绑定位置差（经过整体对齐，单位米）。位移越大，
-  「把每个部件搬到角色骨上」对形状的破坏越大。实测鸭猫中位 0.291、最大 0.588；
-  穿靴子的猫中位 0.252、最大 0.491。
-- **朝向偏差**：两副骨架的骨轴约定差多少度。实测两个模型都在平均 139 到 143 度。
-  这一列大而整齐，说明不能直接按「保留每根骨自己的坐标系位置」搬，必须先求骨轴对应关系。
-- **建议 scale**：脚本最后一行给出。它按「头骨高度占网格高度的比例」两侧对比来算，
-  用来补「高瘦对矮胖」的观感差。实测：鸭猫 1.20、穿靴子的猫 0.97、胖猫 0.97。
-  这个值**随模型变**，不得当成常数，每个模型量一次后写进 `config.json` 的 `scale`。
-
-当前实现的结论：**形状保真是首要目标**，所以默认刚性搬运；逐骨落位量化后不划算，已从代码移除。
-完整测量在设计仓 `docs/unity-3d-assets/10-character-replacement-research.md` 与
-`11-lessons-2026-10-15.md`。
-
-## 16. 反查父物体（离线查层级用 · 维护者命令）
-
-父物体引用的是子物体的 **Transform**，不是子 GameObject。指 GameObject 只会拿到它自己
-那个 Transform，看起来像「找不到父物体」。两步走：
-
-> 维护者命令；agent 侧用 `inspect_game_data` 的 `refs`（同样的两条）。
-
-```bash
-# ① 由 GameObject 拿到它自己的 Transform
-data-probe ... --action refs --class GameObject --pathid <GameObject> --by Transform
-# ② 再由那个 Transform 拿父物体；`m_Father` 那行是父，`data` 那行是父的 m_Children 数组
-data-probe ... --action refs --class Transform  --pathid <上一步的 Transform> --by Transform
-```
 
 ## 17. 音频（FMOD / `AudioSource`）
 
@@ -400,3 +351,51 @@ ev.start();
 - `FMODUnity.RuntimeManager.LoadBank(String bankName, Boolean loadSamples)` —— **两参**（签名见 `docs/api/unity-resources.md`）。
 - 游戏自己的 bank 在 `StreamingAssets/` 下：实测（撰写时，`mod-repo.json` 的 `game.version` = `2.3.30`）有 `Master.bank`、`Master.strings.bank` 与 `Music/`。事件名要用 FMOD 工具解析，本文不保证。
 - 音频资源的查找命令见第 13 节。
+
+## 18. 游戏侧 API 固定套路（物品 / 角色 / 对话 / 日志）
+
+**签名不在这里抄，一律现查**：`docs/api/`（公开签名快照）是第一站，不够时用 `inspect_game_api`。
+这里只记「几行拼起来就能用」的套路，以及两个坑（静态方法、返回值是 `UniTask`）。
+
+**物品**
+
+```csharp
+using ItemStatsSystem;
+
+// 生成物品（typeID 现查：见 docs/guides/items.md）
+Item item = await ItemAssetsCollection.InstantiateAsync(254);   // UniTask<Item>，必须 await
+Item itemSync = ItemAssetsCollection.InstantiateSync(254);      // 同步版
+
+// 发物品给玩家（三参是正解）
+ItemUtilities.SendToPlayer(item, dontMerge: false, sendToStorage: true);
+```
+
+- `IsInPlayerCharacter` / `IsInPlayerStorage` / `TryPlug` 都是 `ItemUtilities` 的**静态方法**，第一个参数是物品。
+  `TryPlug(Item main, Item part, Boolean emptyOnly, Inventory backupInventory, Int32 preferredFirstIndex)`。
+- `Item.Icon` 可直接赋值（`Sprite`）。
+
+**角色**
+
+```csharp
+// CharacterMainControl 是角色核心；队伍是枚举，没有 TeamA
+character.SetTeam(Teams.player);
+// Teams：player=0 、scav=1 、usec=3 、bear=4 、middle=5 、lab=6 、all=7 、wolf=8
+```
+
+**对话**
+
+```csharp
+using Dialogues;
+using Duckov.UI.DialogueBubbles;
+
+// 底部字幕：收的是 SubtitlesRequestInfo，不是字符串
+await DialogueUI.instance.DoSubtitle(info);
+
+// 对话气泡：七参（text, target, yOffset, needInteraction, skippable, speed, duration）
+DialogueBubblesManager.Show("Hello world!", target, 0f, false, true, 30f, 3f);
+```
+
+**日志**
+
+- macOS：`~/Library/Logs/TeamSoda/Duckov/Player.log`
+- Windows：`%USERPROFILE%\AppData\LocalLow\TeamSoda\Duckov\Player.log`

@@ -113,7 +113,7 @@ generate_model action=rig       taskId=<上一步的 taskId> rigType=biped spec=
 action=dump, class=Mesh, name="DuckBody", depth=4
 ```
 
-维护者那一侧的命令与读法在 `docs/cookbook.md` 第 15 节。脚本会打出两列：
+脚本会打出两列：
 
 | 列 | 读法 |
 |---|---|

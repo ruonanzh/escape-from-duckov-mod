@@ -128,7 +128,7 @@ field=["id","displayName","maxLayers","exclusiveTag","totalLifeTime","hide"]
 | 概念 | 类 | 实测 |
 |---|---|---|
 | 成就 | `AchievementDatabase`(1) / `AchievementManager`(1) | |
-| 对话 | key 形如 `Dialogue*`；**文本读游戏自带的本地化**（见 `cookbook.md` 第 14 节）| |
+| 对话 | key 形如 `Dialogue*`；**文本读游戏自带的本地化**（见 `docs/cookbook.md` 第 14 节）| |
 | 本地化 | `LocalizationDatabase`(1) | |
 
 ## 制作 / 配方 Crafting — `CraftingFormulaCollection`（1 个资产，`list[]`）—— **269 条配方**
