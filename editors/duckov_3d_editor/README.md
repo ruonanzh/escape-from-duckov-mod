@@ -1,7 +1,7 @@
 # Duckov 3D 编辑器（`editors/duckov_3d_editor/`）
 
 **玩家 UI**：在文件栏点任意 `.glb`，右侧栏用 **Unity 坐标系**（+Y 上 · +Z 前）打开它。
-契约见 [`docs/mod-repo-guide.md`](../../docs/mod-repo-guide.md) §10。
+契约见设计仓 [`docs/mod-repo-guide.md`](https://github.com/ruonanzh/desktop-gamer-agent-pi/blob/main/docs/mod-repo-guide.md) §10。
 
 **两个编辑器分工**（契约 v1 只允许读写「打开的那个文件」）：
 

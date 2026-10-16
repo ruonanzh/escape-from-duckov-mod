@@ -19,3 +19,7 @@ pre-commit:
       # 中文提示词的规范（情态词、箭头、术语）写在设计仓的 prompt-standard.md 里。
       # 只写在那里就一定会被重新写坏（已经发生过几轮）。能机器判的三条放这里。
       run: node scripts/check-prompt-standard-zh.mjs
+    doc-refs:
+      # 文档里的链接与路径。踩过：4 份 SKILL 写 `../../docs/mod-kit-api.md`（少一级，指到 .pi/docs/ 去了），
+      # 两份 editor README 指向设计仓的文件。机器查一次就不会再漏。
+      run: node scripts/check-doc-refs.mjs

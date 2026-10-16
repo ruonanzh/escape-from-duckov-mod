@@ -1,7 +1,7 @@
 # Duckov 配置编辑器（`editors/duckov_config_editor/`）
 
 **玩家 UI**：在文件栏点任意 `config.json`，右侧栏打开**表单**，改完 **Ctrl+S** 保存。
-契约见 [`docs/mod-repo-guide.md`](../../docs/mod-repo-guide.md) §10（在**设计仓** `desktop-gamer-agent-pi`）。
+契约见设计仓 [`docs/mod-repo-guide.md`](https://github.com/ruonanzh/desktop-gamer-agent-pi/blob/main/docs/mod-repo-guide.md) §10（`desktop-gamer-agent-pi`）。
 
 ## 为什么单独做一个编辑器（不塞进 3D 编辑器）
 

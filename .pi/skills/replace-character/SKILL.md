@@ -99,19 +99,21 @@ generate_model action=rig       taskId=<上一步的 taskId> rigType=biped spec=
 判据：工具回报里列出关节名，必须能看到 `mixamorig:` 前缀，数量在 20 个上下。
 看到 `tripo::` 名字说明绑的不是人形骨架，本次作废，回第 ③ 步重做。
 
-### ⑥ 量骨架差距与尺寸（免费）
+### ⑥ 量骨架差距与尺寸（这一步请维护者做）
 
 这一步有**两个用处**：给第 3 节的 `scale` 定值；告诉你这个模型的骨架与游戏骨架差多少
 （差得多说明这个模型的体型离游戏角色远）。
 
-```bash
-data-probe --managed "<游戏>/Duckov.app/Contents/Resources/Data/Managed" \
-  --data "<游戏>/Duckov.app/Contents/Resources/Data" \
-  --action dump --class Mesh --name DuckBody --exact --depth 4 --out /tmp/duckbody.txt
-node scripts/measure-skeleton-gap.mjs <角色名>_rigged.glb /tmp/duckbody.txt
+量骨架用的是 `scripts/measure-skeleton-gap.mjs`，而 `scripts/` 是**维护者的工具，agent 不得运行**
+（见 `AGENTS.md`）。**在回复里请维护者量一次**，他把建议的 `scale` 给回来，你写进 `config.json`。
+
+游戏侧那副骨架的绑定姿势你可以自己用 `inspect_game_data` 现查（它自己处理平台路径）：
+
+```
+action=dump, class=Mesh, name="DuckBody", depth=4
 ```
 
-脚本会打出两列：
+维护者那一侧的命令与读法在 `docs/cookbook.md` 第 15 节。脚本会打出两列：
 
 | 列 | 读法 |
 |---|---|
@@ -186,8 +188,8 @@ node scripts/measure-skeleton-gap.mjs <角色名>_rigged.glb /tmp/duckbody.txt
 
 ## 已知限制：这是**参考 mod 与框架**的当前限制
 
-下面几条是**现在这套实现**的限制，不是不能解决的问题。**你若有更好的办法，可以自己去改框架**
-（`libs/mod-kit/CharacterSwap.cs`）并把结果写回本 SKILL。
+下面几条是**现在这套实现**的限制，不是不能解决的问题。**你若有更好的办法，写进回复**：
+说清要改哪一段、为什么这样改。`libs/` 由维护者管理，agent 不得直接改。
 
 1. **手臂不摆。** 模型是刚性放置的，游戏手臂骨的转轴不在模型的手臂里，绑上去动画一摆就脱开。
    所以手臂与手的权重并到躯干。形状保真是首要目标，这个代价是主动选的。

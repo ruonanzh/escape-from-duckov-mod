@@ -167,7 +167,7 @@ generate_image(model="your_mods/<目录名>/<武器名>.glb",
 - **csproj 加一行通配**：`<Compile Include="../../libs/mod-kit/*.cs" />`（照 `reference/weapon_model/` 就行。以后 kit 加文件也不用再改 csproj）
 - 或把这些文件**拷进你的 mod 目录**（自包含，路径最省事）
 
-**接口**（完整清单见 [`docs/mod-kit-api.md`](../../docs/mod-kit-api.md)。签名用 `rg "public static" libs/mod-kit/` 现查）：
+**接口**（完整清单见 [`docs/mod-kit-api.md`](../../../docs/mod-kit-api.md)。签名用 `rg "public static" libs/mod-kit/` 现查）：
 
 | 调用 | 作用 |
 |---|---|

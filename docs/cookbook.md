@@ -330,19 +330,23 @@ Character_Ming,小明,#20250807035821,Characters
 2. **不得把文案抄进代码**（会随版本变）。
 
 
-## 15. 量骨架差距（角色替换前必做）
+## 15. 量骨架差距（角色替换前必做 · 维护者命令）
 
 角色替换是**刚性搬运**：整个模型乘一个矩阵，形状百分百保真，但手臂不跟着游戏手臂骨摆。
 要不要考虑更复杂的做法，先看两副骨架差多少。差多少**随模型变**，必须每个模型量一次。
 
+> **这两步都是维护者命令。** `scripts/` 与 `data-probe` 不在 agent 的可跑范围里（见 `AGENTS.md`）。
+> agent 侧取同一份数据的做法见 `.pi/skills/replace-character/SKILL.md` 第 2 节 ⑥。
+
 ```bash
-# ① 把游戏鸭子那副骨架的绑定姿势读出来（离线，不必进游戏）
-data-probe --managed "<游戏>/Duckov.app/Contents/Resources/Data/Managed" \
-  --data "<游戏>/Duckov.app/Contents/Resources/Data" \
+# ① 游戏侧：把鸭子那副骨架的绑定姿势读出来（离线，不必进游戏）
+#    路径按平台走（macOS 是 Duckov.app/Contents/Resources/Data，Windows 不同），
+#    所以用 inspect_game_data 的 dump 最稳；维护者用 CLI 时自己解析那两段路径。
+data-probe --managed "<Managed>" --data "<Data>" \
   --action dump --class Mesh --name DuckBody --exact --depth 4 --out /tmp/duckbody.txt
 
 # ② 量这个模型与游戏骨架的差距
-node scripts/measure-skeleton-gap.mjs /path/to/model.glb /tmp/duckbody.txt
+node scripts/measure-skeleton-gap.mjs <模型.glb> /tmp/duckbody.txt
 ```
 
 输出两列，读法：
@@ -360,10 +364,12 @@ node scripts/measure-skeleton-gap.mjs /path/to/model.glb /tmp/duckbody.txt
 完整测量在设计仓 `docs/unity-3d-assets/10-character-replacement-research.md` 与
 `11-lessons-2026-10-15.md`。
 
-## 16. 反查父物体（离线查层级用）
+## 16. 反查父物体（离线查层级用 · 维护者命令）
 
 父物体引用的是子物体的 **Transform**，不是子 GameObject。指 GameObject 只会拿到它自己
 那个 Transform，看起来像「找不到父物体」。两步走：
+
+> 维护者命令；agent 侧用 `inspect_game_data` 的 `refs`（同样的两条）。
 
 ```bash
 # ① 由 GameObject 拿到它自己的 Transform

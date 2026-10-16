@@ -197,7 +197,7 @@ generate_image(model="your_mods/<目录名>/<武器名>.glb",
 
 ## 接口一览
 
-完整清单见 [`docs/mod-kit-api.md`](../../docs/mod-kit-api.md)。
+完整清单见 [`docs/mod-kit-api.md`](../../../docs/mod-kit-api.md)。
 签名用 `rg "public static" libs/mod-kit/ItemFactory.cs` 现查。
 
 | 调用 | 干什么 |

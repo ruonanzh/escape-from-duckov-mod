@@ -133,3 +133,27 @@
 发给玩家走 `GameApi.GiveItemToPlayer`（内部先调官方的 `ItemUtilities.SendToPlayer`，反射兜底；**必须在进关卡之后**）。
 
 两条机制的细节见 [`cookbook.md`](cookbook.md) 第 6 节与第 7 节。
+
+## 11. 角色替换
+
+把玩家角色换成自己的模型。完整做法与已知限制见 `.pi/skills/replace-character/SKILL.md`，
+config 的 `action` 是 `replace_character`（字段：`model`、`scale`）。这里只列接口。
+
+| API | 什么时候用 |
+|---|---|
+| `CharacterSwap.Install()` | 挂 Harmony 钩子（`CharacterModel` 的几个方法）。`ModBehaviour` 里调一次 |
+| `CharacterSwap.Apply(character, skin)` | **主入口**：把 `GltfLoader.Loaded` 搬到这个角色的骨架上 |
+| `CharacterSwap.Tick(now, interval)` | 每帧调。开头 4 秒连着重新隐藏与重挂，之后按 `interval` 节流 |
+| `CharacterSwap.BindArmBones` | 默认 `false`。`true` 时把模型手臂绑到游戏手臂骨（实测动画一摆就脱开）|
+| `CharacterSwap.ExtraScale` | 在自动尺寸之上再乘的倍数，默认 `1` |
+| `CharacterSwap.Result` | `Applied`、`NoOp`、`Report`、`Body`、`MappedJoints`、`UnmappedJoints`、`UnweightedVertices`、`Reasserted`；方法 `Reassert(now, interval)` 与 `Restore()` |
+
+骨骼映射表（`CharacterRig.cs`，名字对错由 `scripts/check-character-rig.mjs` 机器检查）：
+
+| API | 什么时候用 |
+|---|---|
+| `CharacterRig.TryMap(mixamoBoneName, out duckBone)` | Mixamo 关节名得到游戏骨骼名。映射不上返回 `false` |
+| `CharacterRig.StripPrefix(boneName)` | 去掉 `mixamorig:` 之类的前缀 |
+| `CharacterRig.DuckBones` / `CharacterRig.DuckSlotCount` | 游戏 26 个骨骼槽的真实名单，顺序即下标 |
+| `CharacterRig.ExtraDuckBones` | 额外认的别名（大小写不敏感）|
+| `CharacterRig.Verify()` | 自检：映射表里每个名字都在真实名单里 |

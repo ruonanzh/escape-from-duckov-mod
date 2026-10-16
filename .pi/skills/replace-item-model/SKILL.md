@@ -127,7 +127,7 @@ field=["typeID","displayName"]`，例 `Item_BackpackLV1`）。**中文名**去�
 **这个能力要引的 mod-kit 文件（4 个都要）**：
 `Json.cs`、`GltfLoader.cs`、`GameApi.cs`、`ItemModel.cs`
 
-**接口**（完整清单见 [`docs/mod-kit-api.md`](../../docs/mod-kit-api.md)。签名用 `rg "public static" libs/mod-kit/ItemModel.cs` 现查）：
+**接口**（完整清单见 [`docs/mod-kit-api.md`](../../../docs/mod-kit-api.md)。签名用 `rg "public static" libs/mod-kit/ItemModel.cs` 现查）：
 
 ```csharp
 var loaded = ModelKit.GltfLoader.LoadFile(路径, "auto");     // 返回 Mesh 与 MainTexture
@@ -165,7 +165,7 @@ var res = ModelKit.ItemModel.Apply(item, loaded.Mesh, loaded.MainTexture, handhe
 | **手里还是那张 2D 图** | 这件物品本来没有「拿着」的模型，而 `handheld` **默认是关的** | 加 `"handheld": true`。会改行为，先问玩家。|
 | 模型**巨大或极小** | Tripo 会把**最长边归一到 ≈1 m**，不等于游戏内尺寸 | 先用 config 的 **`size`**（米。武器不写就自动按游戏内尺寸，物品不写则不缩放）；不够再重生成 |
 
-### 接口一览（完整清单见 [`docs/mod-kit-api.md`](../../docs/mod-kit-api.md)。签名用 `rg "public static" libs/mod-kit/ItemModel.cs` 现查）
+### 接口一览（完整清单见 [`docs/mod-kit-api.md`](../../../docs/mod-kit-api.md)。签名用 `rg "public static" libs/mod-kit/ItemModel.cs` 现查）
 
 | 调用 | 干什么、什么时候用 |
 |---|---|
