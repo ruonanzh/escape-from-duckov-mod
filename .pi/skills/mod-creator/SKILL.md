@@ -64,7 +64,8 @@ description: Escape From Duckov 的 C# mod 制作与修改。覆盖目录结构�
 - 注册：`ItemAssetsCollection.AddDynamicEntry(item)`。同一个 typeID 会覆盖原版并打警告。失败时必须销毁克隆体。
 - **模型**由模型侧提供：`ItemFactory.AttachModel(item, mesh, 贴图, size)`（内部**克隆图形**，不动原型）与 `ItemModel.WriteGraphic(item, graphic)`。
   `itemGraphic` 是数据层与模型层唯一的连接点。
-- **运行时造的对象必须 `DontDestroyOnLoad`**（图形克隆、新物品模板、手持实体）。否则换场景时（菜单到关卡）这些对象被销毁。`itemGraphic` 变成「已销毁引用」（Unity 的 `== null` 判 true），物品回退成图标。
+- **运行时造的对象必须 `DontDestroyOnLoad`**（克隆出来的**物品模板**、手持实体、agent 模板）。否则换场景时（菜单到关卡）这些对象被销毁。`itemGraphic` 变成「已销毁引用」（Unity 的 `== null` 判 true），物品回退成图标。
+- **例外：不得把「克隆出来的图形」DDOL 再写回 `item.ItemGraphic`**。游戏的 `ItemGraphicInfo.CreateAGraphic` 就是 `Instantiate(item.ItemGraphic)` + `SetParent(parent)`，它自己**从不** DDOL —— 模板在 DDOL 场景里，副本就都生在 DDOL 场景，**整件物品连原外观一起消失**（`reference/item_model/README.md:96`、`libs/mod-kit/ItemModel.cs:14-18`）。替换已有物品的外观时**改场上实例，不写回共享模板**。
 - 注意：注册通常发生在**进关卡之前**（那时没有玩家），发放或掉落到地上必须等进关卡后再做。新物品还需要**获得途径**（工作台配方、掉落或发放）。
 
 ## 使用方式与条件分支

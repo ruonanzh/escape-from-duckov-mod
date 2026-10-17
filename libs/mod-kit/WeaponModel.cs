@@ -84,6 +84,22 @@ namespace ModelKit
             return map;
         }
 
+        /// <summary>关掉的旧零件名字（验收用：拿 `Pfb_WPN_*` 的枪看它是否在清单里）</summary>
+        static string HiddenNames(List<Renderer> rs, int max)
+        {
+            var sb = new System.Text.StringBuilder();
+            int shown = 0;
+            foreach (var r in rs)
+            {
+                if (r == null) continue;
+                if (shown >= max) { sb.Append(" … +").Append(rs.Count - shown); return sb.ToString(); }
+                if (shown > 0) sb.Append(", ");
+                sb.Append(r.gameObject.name);
+                shown++;
+            }
+            return sb.ToString();
+        }
+
         /// <summary>把手持武器的模型换成给进来的 Mesh+贴图。root 一般是 `itemGraphic.gameObject` 或手持实体的 GameObject。</summary>
         /// <param name="slots">可选：config.json 的槽位（键如 Muzzle/Stock/Scope/Tec/Grip，以及可选的 pivot）；
         /// 每个值 [x,y,z] 单位是**米**，相对**模型自身原点**：
@@ -123,7 +139,7 @@ namespace ModelKit
             {
                 var n = r.gameObject.name;
                 if (n.StartsWith("ShowIf_") || n.StartsWith("MuzzleFlash") || n.StartsWith("Particle")) { kept++; continue; }
-                if (n.StartsWith("WPN_") || n.StartsWith("HideIf_")) { if (r.enabled) { r.enabled = false; hidden++; res.Hidden.Add(r); } continue; }
+                if (n.IndexOf("WPN_", StringComparison.OrdinalIgnoreCase) >= 0 || n.StartsWith("HideIf_")) { if (r.enabled) { r.enabled = false; hidden++; res.Hidden.Add(r); } continue; }
                 kept++;
             }
 
@@ -212,7 +228,7 @@ namespace ModelKit
             }
 
             res.Applied = true; res.MarkedOn = root.gameObject; res.Instance = go;
-            res.Report = $"model swapped: hid {hidden} old parts (kept {kept}: attachments or effects); anchor={(anchor != null ? anchor.name : "root")}; "
+            res.Report = $"model swapped: hid {hidden} old parts (kept {kept}: attachments or effects); hidden=[{HiddenNames(res.Hidden, 8)}]; anchor={(anchor != null ? anchor.name : "root")}; "
                        + $"material={(one != null ? one.name + "/" + (one.shader != null ? one.shader.name : "?") : "none")}; "
                        + $"align={res.AlignSource}; "
                        + (moved > 0 ? $"moved {moved} sockets; " : "")
