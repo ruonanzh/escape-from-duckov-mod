@@ -87,7 +87,7 @@ PY
 | 找对象 | `action=search`(`pattern`) 或 `action=list`(`class`) |
 | 看一个对象 | `action=dump`(`class` 加 `name`、`typeid` 或 `pathid`。`follow` 解引用。`depth` 深度) |
 | **批量表** | `action=export`(`class` 加 `match` 过滤加 `field` 列。**大结果用 `out` 落盘**) |
-| **完整结果落盘** | 任何 action 都能加 `out=<file>` 来**流式写文件**（内存恒定，数据一条不少）。不给 `out` 则**显示**到 `limit` 行就停，并提示你落盘。落盘默认上限 **100 万行**（`dump --depth 7 --follow` 是指数展开，实测写出过 1.4 亿行与几 GB）。要更多用 `limit=<N>`。 |
+| **完整结果落盘** | 任何 action 都能加 `out=<file>` 来**流式写文件**（内存恒定，数据一条不少）。不给 `out` 则**显示**到 `limit` 行就停，并提示你落盘。落盘默认上限 **100 万行**（`dump --depth 7 --follow` 是指数展开，实测写出过 1.4 亿行与几 GB）。要控制行数：`export` 用 `rows=<N>`（带 `out` 时 `limit` 会被忽略）；其它 action 用 `limit=<N>`。 |
 | **反查：谁用了这个对象** | `action=refs` 加 `by=<类名>`（例如 `by=MeshFilter`）。正向 `refs` 只有「我引用了谁」。跨文件时 `file` 要给**两个**（逗号分隔，例如 `file=sharedassets4.assets,level4`）|
 | **按 mesh 名一步拿尺寸** | `action=transform` 加 `mesh=<mesh 名>`（可以用 `exact` 严格相等，子串会撞名；用 `has=<组件>` 过滤）|
 | **模型真实尺寸与挂点位置** | `action=transform`(`name` 或 `pathid` 加 `depth`。**必须加 `file=levelN`**，场景与 prefab 在那里)。Unity 的 Transform **每级都是 local**，所以尺寸与挂点只能**沿父链累计**才拿得到。挂了 `MeshFilter` 时顺带给出 `mesh AABB × 累计缩放`，也就是**游戏内真实尺寸（米）**（例如 `Rifle02` 得到 **0.998 m**）|

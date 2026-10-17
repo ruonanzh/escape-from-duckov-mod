@@ -4,7 +4,7 @@
 // 这里把"每次都必须做对的事"集中在一处（都是实机踩过才定下来的）：
 //
 // ① 关掉**旧枪的全部外观**（不限名字：`WPN_*` / `Pfb_*` / `WPM_*` / `Arrow` / 纯数字 都算）
-// —— 只留三类：我们自己的（`ModelKit_*`）、灯/特效（MuzzleFlash/Particle/Light…）、
+// —— 只留三类：我们自己的（`ModelKit_*`；旧版实例名 `WeaponModel` 也认）、灯/特效（MuzzleFlash/Particle/Light…）、
 // **槽位子树**（`Scope`/`Muzzle`/… 下面挂的是游戏现造的配件实例，见 `ItemGraphicInfo.OnSlotContentChanged`）
 // `ShowIf_*` / `HideIf_*` 是原枪 prefab 自带的“装了/没装”两块外观（`showIfPluged` / `hideIfPluged`），
 // 替换时**一起关**；否则会叠在我们的模型上。
