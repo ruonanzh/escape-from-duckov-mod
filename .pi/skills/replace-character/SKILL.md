@@ -12,6 +12,8 @@ description: 把玩家角色的模型换成自己做的一个。触发：玩家�
 
 与另外四个 SKILL 一样，本 SKILL 不重写工具说明里已经写过的朝向、面数、积分与不得连发那些话。
 
+> **先看目标角色自己的骨架与子外观**：库对「骨架层级、子外观、挂点」的判断是**最大可能性**。玩家、NPC、宠物的层级与命名各不相同，动手前用 `inspect_game_data action=dump --class CharacterModel` 与 `action=dump --class CharacterSubVisuals` 看清实际结构；冲突时**以 prefab 为准**。
+
 ## 1. 需要的输入（只有下面两项，问清这两项即可）
 
 | 输入 | 说明 |
