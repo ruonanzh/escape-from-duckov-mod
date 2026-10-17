@@ -134,14 +134,26 @@ export default function (pi: ExtensionAPI) {
       try {
         out = (await runAsync(dotnet, args)).stdout;
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const e = error as { stdout?: string; stderr?: string; message?: string };
+        const detail = [e.stderr, e.stdout, e.message].filter((s) => s && String(s).trim()).join("\n").trim().slice(0, 800);
         return {
-          content: [{ type: "text", text: `FAIL: api-probe failed: ${message.slice(0, 600)}` }],
+          content: [
+            {
+              type: "text",
+              text: `FAIL: api-probe failed (${params.action}): ${detail}\nNEXT: if the message names a DLL, add --dll <name> (or --dll '*'); if it says the target is missing, use a shorter type-name substring.`,
+            },
+          ],
           details: { ok: false, reason: "PROBE_FAILED", action: params.action },
         };
       }
+      const outText = out.trim();
       return {
-        content: [{ type: "text", text: (buildWarning + (out.trim() || "(no output)")).trim() }],
+        content: [
+          {
+            type: "text",
+            text: (buildWarning + (outText || "# 0 row(s) (no output)")).trim(),
+          },
+        ],
         details: {
           ok: true,
           action: params.action,

@@ -26,6 +26,9 @@ sealed class Out : IDisposable
     int written;
 
     public bool Truncated { get; private set; }
+
+    /// 是否在落盘模式（`--out`）。给调用方判「0 行也写了文件」这类情况用。
+    public bool ToFile => file != null;
     public int LineCount => file != null ? written : mem.Count;
 
     public Out(string path, int limit, int preview = 40)

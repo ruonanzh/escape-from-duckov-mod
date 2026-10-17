@@ -39,11 +39,26 @@ static class ApiProbe
         // Windows：.NET 默认按控制台代码页（GBK/CP437）写 stdout，而调用方按 UTF-8 解码 → 非 ASCII 会乱码。
         try { Console.OutputEncoding = System.Text.Encoding.UTF8; } catch { }
         var opt = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var missing = new List<string>();
+        // 有值的 flag（其余视为开关：目前没有）；与 S6 一致：末尾缺值不再默默当 "true"。
         for (int i = 0; i < args.Length; i++)
         {
             if (!args[i].StartsWith("--")) continue;
             var key = args[i].Substring(2);
-            opt[key] = (i + 1 < args.Length && !args[i + 1].StartsWith("--")) ? args[++i] : "true";
+            if (i + 1 < args.Length && !args[i + 1].StartsWith("--")) { opt[key] = args[++i]; continue; }
+            opt[key] = "true";
+            missing.Add(key);
+        }
+        var known = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            { "managed", "action", "dll", "target", "member", "limit", "offset" };
+        var unknown = opt.Keys.Where(k => !known.Contains(k)).OrderBy(k => k, StringComparer.Ordinal).ToList();
+        if (unknown.Count > 0 || missing.Count > 0)
+        {
+            foreach (var k in unknown)
+                Console.Error.WriteLine($"api-probe: unknown option --{k} (known: {string.Join(" ", known.OrderBy(x => x, StringComparer.Ordinal))})");
+            foreach (var k in missing)
+                Console.Error.WriteLine($"api-probe: option --{k} needs a value");
+            return 2;
         }
         var managed = Get(opt, "managed");
         var action = Get(opt, "action");
@@ -57,10 +72,22 @@ static class ApiProbe
             Console.Error.WriteLine("usage: api-probe --managed <dir> --action <search|members|decompile|il|strings> [--dll <name[,name]|*>] [--target <t>] [--member <m>] [--limit N] [--offset N]");
             return 2;
         }
+        if (action is not ("search" or "members" or "decompile" or "il" or "strings"))
+        {
+            Console.Error.WriteLine($"api-probe: unknown action '{action}' (known: search members decompile il strings)");
+            return 2;
+        }
+        // A2：需要类型名的 action 没给 --target → 这是调用方式错，不是「没找到」。
+        if (action is "members" or "decompile" or "il" && string.IsNullOrWhiteSpace(target))
+        {
+            Console.Error.WriteLine($"api-probe: action '{action}' needs --target <TypeName>");
+            return 2;
+        }
         var dlls = ResolveDlls(managed, dllArg);
         if (dlls.Count == 0) { Console.Error.WriteLine($"api-probe: no DLL matched '{dllArg}' under {managed}"); return 1; }
 
         var outLines = new List<string>();
+        int failedDlls = 0;                                  // A4：单个 DLL 解析异常不能当成正常内容
         foreach (var dll in dlls)
         {
             try
@@ -68,17 +95,77 @@ static class ApiProbe
                 var lines = RunOne(dll, managed, action, target, member, offset);
                 outLines.AddRange(lines);
             }
-            catch (Exception ex) { outLines.Add($"## {Path.GetFileName(dll)}\n// ERROR: {ex.Message}"); }
+            catch (Exception ex)
+            {
+                failedDlls++;
+                outLines.Add($"## {Path.GetFileName(dll)}\n# ERROR: {ex.Message}");
+            }
         }
         if (outLines.Count == 0)
-            outLines.Add($"# {action}: no result for target='{target}' member='{member}' in {dlls.Count} DLL(s)");
+        {
+            // A1/A3：不再只是一句 "no result" —— 告诉它搜过哪些 DLL、类型可能在哪、能不能换个 --dll。
+            outLines.Add($"# ERROR: no result for target='{target}' member='{member}' in {dlls.Count} DLL(s)");
+            outLines.Add($"#   searched: {string.Join(", ", dlls.Select(Path.GetFileName))}");
+            var owned = ResolveDlls(managed, "*");
+            outLines.Add(owned.Count > dlls.Count
+                ? $"#   the type may live in another DLL - pass --dll <name> or --dll '*' (game DLLs: {string.Join(", ", GameOwnedDlls)})"
+                : "#   --dll '*' already scanned every game DLL; check the type name (search with a shorter substring)");
+            var sug = SuggestTypes(dlls, managed, target);
+            if (sug.Count > 0) outLines.Add($"#   did you mean: {string.Join(", ", sug)}?");
+        }
 
         var text = string.Join("\n", outLines);
         var lines2 = text.Split('\n');
         if (lines2.Length > limit) text = string.Join("\n", lines2.Take(limit)) + $"\n... ({lines2.Length - limit} more lines truncated)";
         Console.Write(text);
         if (!text.EndsWith("\n")) Console.WriteLine();
-        return 0;
+        // exit 1 = 参数合法但目标不存在 / 有 DLL 解析失败；0 = 成功（含「合法空结果」，那也有 # WARNING）
+        if (failedDlls > 0) return 1;
+        return outLines.Count > 0 && outLines[0].StartsWith("# ERROR:") ? 1 : 0;
+    }
+
+    /// 只在「什么都没找到」时算一次：给出拼写最接近的类型名（避免 agent 以为游戏里没有）
+    static List<string> SuggestTypes(List<string> dlls, string managed, string target, int max = 3)
+    {
+        var w = (target ?? "").Trim();
+        var res = new List<string>();
+        if (w.Length == 0) return res;
+        foreach (var dll in dlls)
+        {
+            if (res.Count >= max) break;
+            try
+            {
+                var pe = new PEFile(dll);
+                var resolver = new UniversalAssemblyResolver(dll, false, pe.Metadata.DetectTargetFrameworkId());
+                resolver.AddSearchDirectory(managed);
+                var dc = new CSharpDecompiler(pe, resolver, new DecompilerSettings());
+                foreach (var t in dc.TypeSystem.MainModule.TypeDefinitions)
+                {
+                    if (res.Count >= max) break;
+                    var n = t.Name;
+                    if (n.Equals(w, StringComparison.Ordinal)) continue;
+                    if (n.IndexOf(w, StringComparison.OrdinalIgnoreCase) >= 0 || w.IndexOf(n, StringComparison.OrdinalIgnoreCase) >= 0
+                        || Levenshtein(n.ToLowerInvariant(), w.ToLowerInvariant()) <= 2)
+                        res.Add(t.FullName);
+                }
+            }
+            catch { }
+        }
+        return res;
+    }
+
+    static int Levenshtein(string a, string b)
+    {
+        var d = new int[a.Length + 1, b.Length + 1];
+        for (int i = 0; i <= a.Length; i++) d[i, 0] = i;
+        for (int j = 0; j <= b.Length; j++) d[0, j] = j;
+        for (int i = 1; i <= a.Length; i++)
+            for (int j = 1; j <= b.Length; j++)
+            {
+                var cost = a[i - 1] == b[j - 1] ? 0 : 1;
+                d[i, j] = Math.Min(Math.Min(d[i - 1, j] + 1, d[i, j - 1] + 1), d[i - 1, j - 1] + cost);
+            }
+        return d[a.Length, b.Length];
     }
 
     static string Get(Dictionary<string, string> o, string k) => o.TryGetValue(k, out var v) ? v : null;

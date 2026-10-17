@@ -201,7 +201,7 @@ export default function (pi: ExtensionAPI) {
         };
       }
       return {
-        content: [{ type: "text", text: (buildWarning + (out.trim() || "(no output)")).trim() }],
+        content: [{ type: "text", text: (buildWarning + (out.trim() || "# 0 row(s) (no output)")).trim() }],
         details: { ok: true, action: params.action, dataDir: data },
       };
     },

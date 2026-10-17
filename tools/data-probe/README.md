@@ -93,6 +93,28 @@ dotnet run --project tools/data-probe -- \
   这一行为和 `--depth` 无关 ✓（`--depth 20` 也一样 ✓）。
   要取数组里的对象 ⇒ 用 `search` / `refs` ✓，或拿到 `pathID` 直接 `dump` ✓。
 
+## 出口码与静默边界（2026-10-17）
+
+**不要只看「有没有输出」，要看退出码。**
+
+| 出口码 | 含义 | 你会看到 |
+|---|---|---|
+| 0 | 成功（含**合法空结果**）| 正常内容；0 命中时带 `# WARNING: …` |
+| 1 | 参数合法但**目标不存在**（类名/名字/pathID 查不到）| `# ERROR: …` + 建议 |
+| 2 | **调用方式错**（未知 flag、flag 缺值、缺必填参数）| stderr 一行 + usage |
+
+具体边界：
+
+- `--class` 写错 → **exit 1**（不是「0 行」），并给近邻类名。
+- `--match` 把行全滤掉 → exit 0 + `# WARNING: the --match filter matched no rows`。
+- 所有 `--field` 都解不出值 → `# ERROR` + **exit 1**。
+- `dump` / `refs` 目标不存在 → `# ERROR` + exit 1，并提示 `file=levelN`（**pathID 是按文件编的**）。
+- `transform --pathid` 不带 `--file` → 可能命中**另一个文件里的同号对象**：会给 `# note: resolved in <file>` 或 `# WARNING: pathID N exists in M files`，标题里也带 `[file]`。
+- 未知 flag、flag 末尾缺值 → **exit 2**（以前被静默忽略）。
+- `--limit` 与 `--rows`：`export` 用 `--rows`（给 `--limit` 会当 alias 并告警）；其余 action 用 `--limit`。
+- 与 action 无关的 flag（例如 `export --depth`）→ `# WARNING: --depth has no effect on 'export'`。
+- `--out` 落盘但 0 数据行 → `# WARNING: wrote only the header (0 rows)`。
+
 ## `export` 的路径语法（`--field` / `--match` 共用）
 
 一段一段用 `.` 分隔，**PPtr 自动跟随**：

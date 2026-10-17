@@ -26,6 +26,18 @@ dotnet run --project tools/api-probe -- \
 - `--member`：方法/字段名（配合 `decompile`/`il`）。
 - `--offset`：跳过前 N 条，给 `search`/`strings` 翻页用（截断行会提示下一页的 `--offset`）。
 
+## 出口码与静默边界（2026-10-17）
+
+| 出口码 | 含义 |
+|---|---|
+| 0 | 成功（含合法空结果）|
+| 1 | 目标不存在（类型/成员查不到）或某个 DLL 解析失败 |
+| 2 | 调用方式错（未知 flag、flag 缺值、`members`/`decompile`/`il` 没给 `--target`）|
+
+- 找不到时不再只说 `no result`：会列出**搜过哪些 DLL**、提示换 `--dll <name>` / `--dll '*'`，并给 3 个近邻类型名。
+- 默认 `--dll` 是 `TeamSoda.Duckov.Core`；查 `ItemStatsSystem` 的类型要 `--dll ItemStatsSystem`。
+- 单个 DLL 解析异常 → 输出里 `# ERROR: …` 且 **exit 1**（以前混在正文里、exit 0）。
+
 ## 依赖（vendored，免联网）
 
 `lib/` 下随附 ILSpy 的 `ICSharpCode.Decompiler`（MIT, v11.1.0.9782）及其两个 BCL 依赖

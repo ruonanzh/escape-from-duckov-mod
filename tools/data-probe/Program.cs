@@ -27,7 +27,7 @@ static partial class DataProbe
         // Windows：.NET 默认按控制台代码页（GBK/CP437）写 stdout，而调用方按 UTF-8 解码 → 资产里的非 ASCII 字段会乱码。
         // 统一成 UTF-8（无 console 时 setter 可能抛，忽略）。
         try { Console.OutputEncoding = System.Text.Encoding.UTF8; } catch { }
-        var o = ParseArgs(args);
+        var o = ParseArgs(args, out var missing);
         var managed = Opt(o, "managed");
         var data = Opt(o, "data");
         var action = Opt(o, "action");
@@ -36,6 +36,20 @@ static partial class DataProbe
         int depth = int.TryParse(Opt(o, "depth"), out var dp) ? dp : 3;
         int offset = int.TryParse(Opt(o, "offset"), out var ofs) ? Math.Max(0, ofs) : 0;
         int rows = int.TryParse(Opt(o, "rows"), out var rw) ? Math.Max(1, rw) : 500;
+
+        // ── 参数体检（S5/S6）：未知 flag 与「有 flag 没值」一律 exit 2；
+        //    给错 action 的 flag（例如 export 上的 --depth）只告警，不改变语义。
+        var known = KnownFor(action);
+        var unknown = o.Keys.Where(k => !AllKnown.Contains(k)).OrderBy(k => k, StringComparer.Ordinal).ToList();
+        var irrelevant = o.Keys.Where(k => AllKnown.Contains(k) && !known.Contains(k)).ToList();
+        if (unknown.Count > 0 || missing.Count > 0)
+        {
+            foreach (var k in unknown)
+                Console.Error.WriteLine($"data-probe: unknown option --{k} (known for '{action}': {string.Join(" ", known.OrderBy(x => x, StringComparer.Ordinal))})");
+            foreach (var k in missing)
+                Console.Error.WriteLine($"data-probe: option --{k} needs a value");
+            return 2;
+        }
 
         var classData = FindClassData();
         if (classData == null) { Console.Error.WriteLine("data-probe: classdata.tpk not found next to the tool (lib/classdata.tpk)."); return 1; }
@@ -75,19 +89,25 @@ static partial class DataProbe
 
         var outPath = Opt(o, "out");
         using var outLines = new Out(outPath, limit);
+        foreach (var k in irrelevant)
+            outLines.Note($"# WARNING: --{k} has no effect on '{action}' (use it with: {string.Join(", ", ActionsUsing(k))})");
         var rc = 0;
         switch (action)
         {
-            case "classes": Classes(am, insts, outLines); break;
-            case "list": List(am, insts, Opt(o, "class"), offset, outLines); break;
-            case "search": Search(am, insts, Opt(o, "pattern"), Opt(o, "class"), offset, outLines); break;
-            case "dump": DumpAsset(am, insts, o, depth, outLines); break;
-            case "refs": Refs(am, insts, o, outLines); break;
-            case "transform": Transform(am, insts, o, depth, outLines); break;
+            case "classes": rc = Classes(am, insts, outLines); break;
+            case "list": rc = List(am, insts, Opt(o, "class"), offset, outLines); break;
+            case "search": rc = Search(am, insts, Opt(o, "pattern"), Opt(o, "class"), offset, outLines); break;
+            case "dump": rc = DumpAsset(am, insts, o, depth, outLines); break;
+            case "refs": rc = Refs(am, insts, o, outLines); break;
+            case "transform": rc = Transform(am, insts, o, depth, outLines); break;
             case "export":
             {
                 // 写文件时默认不再限制行数（落盘不进模型上下文，不存在刷屏问题 ✓）
-                var rowCap = Opt(o, "rows") != null || outPath == null ? rows : 1000000;
+                // S8：export 的限行参数是 --rows；给了 --limit 也当 alias 用（不静默忽略）。
+                var rowsOpt = Opt(o, "rows") ?? Opt(o, "limit");
+                if (rowsOpt != null && Opt(o, "rows") == null)
+                    outLines.Note("# WARNING: export uses --rows; --limit was read as --rows (both do the same thing)");
+                var rowCap = rowsOpt != null || outPath == null ? rows : 1000000;
                 rc = Export(am, insts, Opt(o, "class"), AllOpts(args, "match"), AllOpts(args, "field"), rowCap, offset, outLines);
                 break;
             }
@@ -101,14 +121,53 @@ static partial class DataProbe
     }
 
     // ── arg parsing ────────────────────────────────────────────────────────────
-    static Dictionary<string, string> ParseArgs(string[] args)
+    /// 有值的 flag（其余视为开关：`--follow` / `--exact`）。对应 S6：末尾缺值不再当成 `"true"`。
+    static readonly HashSet<string> BoolFlags = new(StringComparer.OrdinalIgnoreCase) { "follow", "exact" };
+
+    /// 所有认识的选项（并集）。不在这个集合里 = 拼错 → exit 2（S5）。
+    static readonly HashSet<string> AllKnown = new(StringComparer.OrdinalIgnoreCase)
     {
+        "managed", "data", "action", "file", "limit", "offset", "out",
+        "class", "pattern", "name", "typeid", "pathid", "depth", "mesh", "has", "by",
+        "match", "field", "rows",
+    };
+
+    static HashSet<string> KnownFor(string action)
+    {
+        var common = new[] { "managed", "data", "action", "file", "limit", "offset", "out" };
+        string[] extra = action switch
+        {
+            "list" => new[] { "class" },
+            "search" => new[] { "pattern", "class" },
+            "dump" => new[] { "class", "name", "typeid", "pathid", "depth", "follow" },
+            "refs" => new[] { "class", "name", "typeid", "pathid", "by" },
+            "transform" => new[] { "name", "pattern", "pathid", "mesh", "exact", "has", "depth" },
+            "export" => new[] { "class", "match", "field", "rows" },
+            _ => Array.Empty<string>(),
+        };
+        var set = new HashSet<string>(common, StringComparer.OrdinalIgnoreCase);
+        foreach (var e in extra) set.Add(e);
+        return set;
+    }
+
+    /// 某个 flag 属于哪些 action（给 S9 的告警用）
+    static readonly string[] AllActions = { "classes", "list", "search", "dump", "refs", "export", "transform" };
+    static List<string> ActionsUsing(string opt)
+        => AllActions.Where(a => KnownFor(a).Contains(opt)).ToList();
+
+    static Dictionary<string, string> ParseArgs(string[] args, out List<string> missing)
+    {
+        missing = new List<string>();
         var o = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         for (int i = 0; i < args.Length; i++)
         {
             if (!args[i].StartsWith("--")) continue;
             var k = args[i].Substring(2);
-            o[k] = (i + 1 < args.Length && !args[i + 1].StartsWith("--")) ? args[++i] : "true";
+            var hasValue = i + 1 < args.Length && !args[i + 1].StartsWith("--");
+            if (hasValue) { o[k] = args[++i]; continue; }
+            if (BoolFlags.Contains(k)) { o[k] = "true"; continue; }
+            o[k] = "true";
+            missing.Add(k);                 // S6：值缺失（不再默默当 true）
         }
         return o;
     }
@@ -263,7 +322,60 @@ static partial class DataProbe
     }
 
     // ── actions ────────────────────────────────────────────────────────────────
-    static void Classes(AssetsManager am, List<AssetsFileInstance> insts, Out outp)
+    // ── 静默边界（S1–S11）：类名写错 / 0 命中 / offset 越界 都要说出来 ────────────
+    static List<string> _classPool;
+
+    /// 当前已加载文件里真实存在的类名（只在“需要建近邻建议”时算一次）。
+    static List<string> ClassPool(AssetsManager am, List<AssetsFileInstance> insts)
+    {
+        if (_classPool != null) return _classPool;
+        var set = new SortedSet<string>(StringComparer.Ordinal);
+        foreach (var (inst, info) in AllInfos(insts))
+        {
+            var n = ClassNameOf(am, inst, info);
+            if (!string.IsNullOrEmpty(n)) set.Add(n);
+        }
+        _classPool = set.ToList();
+        return _classPool;
+    }
+
+    /// 类名差一两个字符时给建议（实测最常见的错：大小写、少个 s、用了邻近的类）
+    static List<string> Suggest(string want, IEnumerable<string> pool, int max = 3)
+    {
+        var w = (want ?? "").Trim();
+        var res = new List<string>();
+        if (w.Length == 0) return res;
+        foreach (var cand in pool)
+        {
+            if (res.Count >= max) break;
+            if (cand.Equals(w, StringComparison.Ordinal)) continue;
+            if (cand.Equals(w, StringComparison.OrdinalIgnoreCase)
+                || cand.IndexOf(w, StringComparison.OrdinalIgnoreCase) >= 0
+                || w.IndexOf(cand, StringComparison.OrdinalIgnoreCase) >= 0
+                || Levenshtein(w.ToLowerInvariant(), cand.ToLowerInvariant()) <= 2)
+                res.Add(cand);
+        }
+        return res;
+    }
+
+    static int Levenshtein(string a, string b)
+    {
+        var d = new int[a.Length + 1, b.Length + 1];
+        for (int i = 0; i <= a.Length; i++) d[i, 0] = i;
+        for (int j = 0; j <= b.Length; j++) d[0, j] = j;
+        for (int i = 1; i <= a.Length; i++)
+            for (int j = 1; j <= b.Length; j++)
+            {
+                var cost = a[i - 1] == b[j - 1] ? 0 : 1;
+                d[i, j] = Math.Min(Math.Min(d[i - 1, j] + 1, d[i, j - 1] + 1), d[i - 1, j - 1] + cost);
+            }
+        return d[a.Length, b.Length];
+    }
+
+    /// 0 命中时的一句话（合法空结果：exit 0 + WARNING）
+    static void WarnEmpty(Out outp, string what) => outp.Add($"# WARNING: {what} — this is a legal empty result; if you expected rows, check the name/path spelling");
+
+    static int Classes(AssetsManager am, List<AssetsFileInstance> insts, Out outp)
     {
         var counts = new Dictionary<string, int>();
         int total = 0;
@@ -276,11 +388,12 @@ static partial class DataProbe
         outp.Add($"{counts.Count} asset classes, {total} objects");
         foreach (var kv in counts.OrderBy(k => k.Key, StringComparer.OrdinalIgnoreCase))
             outp.Add($"  {kv.Value,6}  {kv.Key}");
+        return 0;
     }
 
-    static void List(AssetsManager am, List<AssetsFileInstance> insts, string cls, int offset, Out outp)
+    static int List(AssetsManager am, List<AssetsFileInstance> insts, string cls, int offset, Out outp)
     {
-        if (cls == null) { outp.Add("# list: --class required"); return; }
+        if (cls == null) { Console.Error.WriteLine("data-probe: list needs --class <C>"); return 2; }
         const int cap = 500;
         var lines = new List<string>();
         int total = 0, named = 0, shown = 0;
@@ -301,15 +414,26 @@ static partial class DataProbe
         outp.Add($"{cls}: {total} asset(s)");
         outp.AddRange(lines);
         int last = offset + shown;
-        if (last < total)
+        if (total == 0)
+        {
+            outp.Add($"# ERROR: no asset of class '{cls}' in the loaded file(s)");
+            var sug = Suggest(cls, ClassPool(am, insts));
+            outp.Add(sug.Count > 0
+                ? $"#   did you mean: {string.Join(", ", sug)}?  (all class names: --action classes)"
+                : "#   class names are case-sensitive; list them with --action classes");
+            return 1;
+        }
+        if (offset >= total) outp.Add($"... (offset {offset} is past the {total} asset(s); use --offset 0)");
+        else if (last < total)
             outp.Add($"... (showing {offset + 1}-{last} of {total}; narrow with --name/--pathid or search --pattern, or use --offset {last} for the next page)");
         if (lines.Count > 0 && named == 0)
             outp.Add($"... (the {cls} objects shown have no name; locate one with dump --class {cls} --pathid <pathID>)");
+        return 0;
     }
 
-    static void Search(AssetsManager am, List<AssetsFileInstance> insts, string pattern, string cls, int offset, Out outp)
+    static int Search(AssetsManager am, List<AssetsFileInstance> insts, string pattern, string cls, int offset, Out outp)
     {
-        if (pattern == null) { outp.Add("# search: --pattern required"); return; }
+        if (pattern == null) { Console.Error.WriteLine("data-probe: search needs --pattern <p>"); return 2; }
         const int cap = 500;
         var lines = new List<string>();
         int total = 0, shown = 0;
@@ -332,18 +456,21 @@ static partial class DataProbe
         outp.Add($"search '{pattern}': {total} match(es)");
         outp.AddRange(lines);
         int last = offset + shown;
-        if (last < total)
+        if (total == 0) WarnEmpty(outp, $"search '{pattern}' matched nothing");
+        else if (offset >= total) outp.Add($"... (offset {offset} is past the {total} match(es); use --offset 0)");
+        else if (last < total)
             outp.Add($"... (showing {offset + 1}-{last} of {total}; refine the pattern, or use --offset {last} for the next page)");
+        return 0;
     }
 
-    static void DumpAsset(AssetsManager am, List<AssetsFileInstance> insts, Dictionary<string, string> o, int maxDepth, Out outp)
+    static int DumpAsset(AssetsManager am, List<AssetsFileInstance> insts, Dictionary<string, string> o, int maxDepth, Out outp)
     {
         var cls = Opt(o, "class");
         var name = Opt(o, "name");
         var typeId = Opt(o, "typeid");
         var pathId = Opt(o, "pathid");
         var follow = o.ContainsKey("follow");
-        if (cls == null && pathId == null) { outp.Add("# dump: need --class (with --name/--typeid) or --pathid"); return; }
+        if (cls == null && pathId == null) { Console.Error.WriteLine("data-probe: dump needs --class (with --name/--typeid) or --pathid"); return 2; }
 
         foreach (var (inst, info) in AllInfos(insts))
         {
@@ -358,9 +485,17 @@ static partial class DataProbe
             var tid = TypeId(bf);
             outp.Add($"=== {className} {AssetName(bf)} ({(tid >= 0 ? $"typeID {tid}, " : "")}classID {info.TypeId}, pathID {info.PathId}) ===");
             DumpField(am, inst, bf, 0, maxDepth, follow ? Math.Max(1, maxDepth) : 0, outp);
-            return;
+            return 0;
         }
-        outp.Add($"# no asset matched (class={cls} name={name} typeid={typeId} pathid={pathId})");
+        outp.Add($"# ERROR: no asset matched (class={cls} name={name} typeid={typeId} pathid={pathId})");
+        if (Opt(o, "file") == null)
+            outp.Add("#   pathID is per-file: scene and prefab objects live in levelN — pass --file levelN (see docs/guides/00-overview.md)");
+        if (cls != null && !ClassPool(am, insts).Contains(cls, StringComparer.Ordinal))
+        {
+            var sugCls = Suggest(cls, ClassPool(am, insts));
+            if (sugCls.Count > 0) outp.Add($"#   did you mean class: {string.Join(", ", sugCls)}?");
+        }
+        return 1;
     }
 
     static void DumpField(AssetsManager am, AssetsFileInstance inst, AssetTypeValueField f, int depth, int maxDepth, int followLeft, Out outp)
@@ -418,13 +553,14 @@ static partial class DataProbe
     static int Export(AssetsManager am, List<AssetsFileInstance> insts, string cls, List<string> matches,
         List<string> fields, int rows, int offset, Out outp)
     {
-        if (cls == null) { outp.Add("# export: --class required"); return 2; }
+        if (cls == null) { Console.Error.WriteLine("data-probe: export needs --class <C>"); return 2; }
         var body = new List<string>();
         var hits = new int[fields.Count];   // 每个 field 路径在多少行里真解出了值
-        int total = 0, shown = 0;
+        int total = 0, shown = 0, scanned = 0;
         foreach (var (inst, info) in AllInfos(insts))
         {
             if (!string.Equals(ClassNameOf(am, inst, info), cls, StringComparison.Ordinal)) continue;
+            scanned++;
             AssetTypeValueField bf;
             try { bf = am.GetBaseField(inst, info); } catch { continue; }
             if (bf == null) continue;
@@ -444,20 +580,39 @@ static partial class DataProbe
             shown++;
         }
         var header = string.Join("\t", new List<string> { "name", "typeID", "pathID" }.Concat(fields));
-        var next = $"... (showing {offset + 1}-{offset + shown} of {total}; narrow with --match, or use --offset {offset + shown} for the next page)";
+        var next = offset < total
+            ? $"... (showing {offset + 1}-{offset + shown} of {total}; narrow with --match, or use --offset {offset + shown} for the next page)"
+            : $"... (offset {offset} is past the {total} row(s); use --offset 0)";
         // ⭐ 表头也**进数据**（落盘时它是文件第一行 ✓）—— 不然文件里是一堆没有列名的数字 ✗
         outp.Add("# " + header);
         outp.AddRange(body);
         outp.Note($"# {cls}: {total} row(s), {fields.Count} field(s), wrote {body.Count} line(s)");
 
+        // ⭐ 类名写错 / --match 全滤掉：以前都只是「0 行」，读的人会以为数据里没有。现在分开说。
+        if (scanned == 0)
+        {
+            outp.Note($"# ERROR: no asset of class '{cls}' in the loaded file(s)");
+            var sug = Suggest(cls, ClassPool(am, insts));
+            outp.Note(sug.Count > 0
+                ? $"#   did you mean: {string.Join(", ", sug)}?  (all class names: --action classes)"
+                : "#   class names are case-sensitive; list them with --action classes");
+            return 1;
+        }
+        if (total == 0 && matches.Count > 0)
+            outp.Note($"# WARNING: the --match filter matched no rows (scanned {scanned} '{cls}' object(s)) - check the match path/value; this is a legal empty result");
+        else if (total == 0)
+            outp.Note($"# WARNING: 0 row(s) — the class exists but nothing was loaded from these files");
+        if (outp.ToFile && body.Count == 0)
+            outp.Note("# WARNING: wrote only the header (0 rows) - the file has no data; check the class / --match");
+
         // ⭐ field 路径写错时，以前是**静默空列**（读表的人会以为「数据本来就是空的」）。现在说出来。
         //    只对「一行都没解出值」的路径报 —— 可选字段（例如 displayNameKey）很多行本来就空，不算错。
         var dead = new List<string>();
         for (int i = 0; i < fields.Count; i++)
-            if (total > 0 && hits[i] == 0) dead.Add(fields[i]);
+            if (shown > 0 && hits[i] == 0) dead.Add(fields[i]);
         foreach (var d in dead)
-            outp.Note($"# WARNING: field '{d}' matched nothing in {total} row(s) - check the path syntax ('a.b', 'a[]', 'a[0]', '#name', '#class'); see tools/data-probe/README.md");
-        if (offset + shown < total) outp.Note(next);
+            outp.Note($"# WARNING: field '{d}' matched nothing in {shown} row(s) - check the path syntax ('a.b', 'a[]', 'a[0]', '#name', '#class'); see tools/data-probe/README.md");
+        if (offset >= total || offset + shown < total) outp.Note(next);
         if (fields.Count > 0 && dead.Count == fields.Count)
         {
             outp.Note("# ERROR: every requested field path matched nothing, so the table above has no data - fix the --field path(s) and rerun (do not report an empty column as 'no data')");
@@ -608,13 +763,23 @@ static partial class DataProbe
         return null;
     }
 
-    static void Refs(AssetsManager am, List<AssetsFileInstance> insts, Dictionary<string, string> o, Out outp)
+    static int Refs(AssetsManager am, List<AssetsFileInstance> insts, Dictionary<string, string> o, Out outp)
     {
         var by = Opt(o, "by");                 // ⭐ 反查模式：只扫这个类的对象 ✓
         var cls = Opt(o, "class");
         var name = Opt(o, "name");
         var typeId = Opt(o, "typeid");
         var pathId = Opt(o, "pathid");
+        if (cls == null && pathId == null) { Console.Error.WriteLine("data-probe: refs needs --class (with --name/--typeid) or --pathid"); return 2; }
+        if (by != null && !ClassPool(am, insts).Contains(by, StringComparer.Ordinal))
+        {
+            outp.Add($"# ERROR: no asset class named '{by}' — --by must be a class that actually exists");
+            var sug = Suggest(by, ClassPool(am, insts));
+            outp.Add(sug.Count > 0
+                ? $"#   did you mean: {string.Join(", ", sug)}?  (all class names: --action classes)"
+                : "#   list them with --action classes");
+            return 1;
+        }
         foreach (var (inst, info) in AllInfos(insts))
         {
             if (pathId != null && info.PathId.ToString() != pathId) continue;
@@ -644,13 +809,17 @@ static partial class DataProbe
                     n++;
                 }
                 outp.Add($"  ({n} object(s) of class {by} reference it)");
-                return;
+                if (n == 0) WarnEmpty(outp, $"no object of class {by} references it");
+                return 0;
             }
             outp.Add($"=== {className} {AssetName(bf)} references ===");
             CollectPtrs(am, inst, bf, "", outp, 0);
-            return;
+            return 0;
         }
-        outp.Add("# no asset matched");
+        outp.Add($"# ERROR: no asset matched (class={cls} name={name} typeid={typeId} pathid={pathId})");
+        if (Opt(o, "file") == null)
+            outp.Add("#   pathID is per-file: scene and prefab objects live in levelN — pass --file levelN");
+        return 1;
     }
 
     /// <summary>反查用：这个对象的字段里**有没有引用**（文件,name + pathID）指向的目标 ✓</summary>

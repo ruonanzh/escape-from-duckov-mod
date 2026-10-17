@@ -22,18 +22,19 @@ using AssetsTools.NET.Extra;
 
 static partial class DataProbe
 {
-    public static void Transform(AssetsManager am, List<AssetsFileInstance> insts, Dictionary<string, string> o, int depth, Out outp)
+    public static int Transform(AssetsManager am, List<AssetsFileInstance> insts, Dictionary<string, string> o, int depth, Out outp)
     {
         var name = Opt(o, "name") ?? Opt(o, "pattern");
         var pathId = Opt(o, "pathid");
         var meshWant = Opt(o, "mesh");
         var has = Opt(o, "has");
+        var fileOpt = Opt(o, "file");
         bool exact = o.ContainsKey("exact");
         if (name == null && pathId == null && meshWant == null)
         {
-            outp.Add("# transform: need one of --name/--pattern, --pathid, --mesh <mesh name>");
-            outp.Add("#   optional: --exact (strict name), --has <ComponentName> (only objects carrying it), --depth");
-            return;
+            Console.Error.WriteLine("data-probe: transform needs one of --name/--pattern, --pathid, --mesh <mesh name>");
+            Console.Error.WriteLine("  optional: --exact (strict name), --has <ComponentName> (only objects carrying it), --depth, --file levelN");
+            return 2;
         }
         if (depth <= 0) depth = 2;
 
@@ -75,8 +76,20 @@ static partial class DataProbe
         }
         if (hits.Count == 0)
         {
-            outp.Add($"# transform: no Transform matched (name={name} pathid={pathId} mesh={meshWant} has={has})");
-            return;
+            outp.Add($"# ERROR: no Transform matched (name={name} pathid={pathId} mesh={meshWant} has={has})");
+            if (fileOpt == null)
+                outp.Add("#   without --file only *.assets files are loaded: scene and prefab Transforms live in levelN - pass --file levelN");
+            return 1;
+        }
+        // S4：pathID 是**按文件**编的 —— 不带 --file 时同号对象可能属于另一个文件（实测 1013）。
+        if (fileOpt == null && pathId != null)
+        {
+            var files = new List<string>();
+            foreach (var h in hits) if (!files.Contains(h.inst.name)) files.Add(h.inst.name);
+            if (files.Count > 1)
+                outp.Add($"# WARNING: pathID {pathId} exists in {files.Count} files ({string.Join(", ", files)}) - pass --file <name> to pick one; using {hits[0].inst.name}");
+            else
+                outp.Add($"# note: resolved in {hits[0].inst.name} — pathID is per-file; pass --file <name> to pin it");
         }
         if (hits.Count > 1) outp.Add($"# matched {hits.Count} object(s) - expanding the first one (narrow with --exact / --has)");
         Node hit = hits[0];
@@ -85,7 +98,7 @@ static partial class DataProbe
         var chain = new List<Node>();
         for (var cur = hit; cur != null; cur = Ext(am, cur.inst, cur.bf, "m_Father")) chain.Add(cur);
         var goName = GoName(am, hit.inst, hit.bf) ?? "(no name)";
-        outp.Add($"=== Transform {goName} (pathID {hit.info.PathId}, {chain.Count} level(s) to root) ===");
+        outp.Add($"=== Transform {goName} (pathID {hit.info.PathId}, {chain.Count} level(s) to root) [{hit.inst.name}] ===");
 
         // ③ local TRS（从根 → 目标 读起来顺）
         outp.Add("## local TRS (root -> target)");
@@ -134,6 +147,7 @@ static partial class DataProbe
         // ⑥ 子节点树（找 Sockets/… 用）
         outp.Add($"## children (depth {depth})");
         Walk(am, hit, depth, 1, outp);
+        return 0;
     }
 
     // ── helpers ────────────────────────────────────────────────────────────────
