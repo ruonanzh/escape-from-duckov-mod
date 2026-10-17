@@ -26,4 +26,7 @@ node_modules/
 # 收窄到这两个位置：写成 **/0Harmony.dll 会连已跟踪的 libs/0Harmony.dll 一起匹配，
 # 那会让「删掉再 git add」被挡住。
 reference/**/0Harmony.dll
+# your_mods/ 是**本地草稿区**（模板 mod 的源码 + 编译产物），不入版本管理。
+# 只把整个目录忽略；里面的 0Harmony.dll 也随之忽略（下面那条是历史写法，保留无害）。
+your_mods/
 your_mods/**/0Harmony.dll
