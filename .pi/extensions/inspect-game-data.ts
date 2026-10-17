@@ -183,11 +183,18 @@ export default function (pi: ExtensionAPI) {
       } catch (error) {
         const e = error as { stdout?: string; stderr?: string; message?: string };
         const detail = [e.stderr, e.stdout, e.message].filter((s) => s && String(s).trim()).join("\n").trim().slice(0, 600);
+        // NEXT 按真实原因分：探针启动不了（dotnet 不在 PATH）不是 field 写错，别把人带偏。
+        // 实测：不把 ~/.dotnet 放进 PATH 时，dotnet 没记录 runtime.dotnet 就会 `spawn dotnet ENOENT`。
+        const next = /matched nothing|field path/i.test(detail)
+          ? "fix the --field path (syntax: a.b, a[], a[0], #name, #class), then retry"
+          : /ENOENT|not found|dotnet|SDK/i.test(detail)
+            ? "the .NET runtime is not usable here: run check_runtime (or install_runtime), then retry"
+            : "narrow with a simpler action (classes / list), or read the message, then retry";
         return {
           content: [
             {
               type: "text",
-              text: `FAIL: data-probe failed (${params.action}): ${detail}\nNEXT: if the message names a field path, fix the --field path (syntax: a.b, a[], a[0], #name, #class); otherwise narrow with a simpler action (classes / list) and retry.`,
+              text: `FAIL: data-probe failed (${params.action}): ${detail}\nNEXT: ${next}.`,
             },
           ],
           details: { ok: false, reason: "PROBE_FAILED", action: params.action },
