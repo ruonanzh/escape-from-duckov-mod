@@ -50,7 +50,7 @@
 | ③ **2D 图标** | 背包格子、使用时那张图 | **游戏自带**，从不删，可替换 |
 
 **依据**：`libs/mod-kit/ModConfig.cs:311-312`（`World = j.GetBool("world", true)` / `Handheld = j.GetBool("handheld", false)`）。
-**只有物品这条路读它们**：武器替换走 `WeaponModel`，只改手里那把活枪与场上实例；枪的掉落/展示图形保持原样，是**已知限制**（见 `reference/weapon_model/ModBehaviour.cs`）。
+**只有物品这条路读它们**：武器替换走 `WeaponModel`，只改手里那把活枪与场上实例；枪的掉落/展示图形由 `SweepGraphicClones()` 走 `ItemModel.ApplyToGraphicClone` 补挂（只跳过带 `ItemAgent_Gun` 的手里那把）。关旧件的判据两条路共用 `HidePolicy`，所以掉落的枪**保留配件与枪口火焰**（不再是限制；2026-10-08 那次坏是因为当时的 `HideOld` 全关）。
 **新增那条只看一半**：`new_item` / `new_weapon` 规则总要挂模型，`world: false` 只打一条 warning 然后照样挂；`handheld` 则真的生效，但只对 `new_item`（`reference/item_model/ModBehaviour.cs:191-196`、`reference/weapon_model/ModBehaviour.cs:270-273`）。
 第 ③ 层是 `Duckov.UI.UsageUtilitiesDisplay`；物品**没有** 3D 图形时（糖果那类）才给它造一份。新建一把枪的手持实体见第 10 节。
 

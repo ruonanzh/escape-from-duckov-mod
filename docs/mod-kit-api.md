@@ -38,6 +38,20 @@
 | `PatchRegistry.Mark(layer)` / `Unmark(layer)` | 别的能力（例如武器侧）挂完也要登记，自己 `Restore()` 时注销 |
 | `PatchRegistry.HasOurMeshUnder(t)` | 这一层（含子树）里有没有我们的 mesh。它给「不得重复挂」用。 |
 
+## 3.1 关旧外观的判据（两条路共用）
+
+替换模型时「哪些 Renderer 要关」只有一份实现：`libs/mod-kit/HidePolicy.cs`。`WeaponModel`（换枪）与 `ItemModel`（换物品 / 新增物品 / 掉落的枪）都调它，所以判据不会两边写反。
+
+| API | 什么时候用 |
+|---|---|
+| `HidePolicy.Hide(root, hiddenOut, out underSocket, out effect)` | **唯一的关旧外观入口**。关掉 root 下除「我们自己的 / 灯与特效 / 槽位子树」以外的渲染器，把关掉的追加进 `hiddenOut`（调用方拿它 `Restore()`）。两个 out 参数是保留计数（日志与验收用） |
+| `HidePolicy.IsOurs(name)` | 判「这是我们挂的」：`ModelKit_*`（含旧版武器实例的固定名 `WeaponModel`） |
+| `HidePolicy.IsEffectLike(name)` | 判灯/特效：`MuzzleFlash` / `Particle` / `Light` / `Glow` / `Point` / `Fx` / `VFX` / `Flash` / `Trail` |
+| `HidePolicy.Sockets(root)` | 找槽位点（`Sockets/<槽位>`，没有容器时退化成名字正好等于槽位名）。槽位**子树不关**：配件的模型是游戏 `ItemGraphicInfo.OnSlotContentChanged` 里 `CreateAGraphic(content, socketPoint)` 现造的 |
+
+> `ShowIf_*` / `HideIf_*` 是 prefab 自带的 `showIfPluged` / `hideIfPluged` 两块「装了 / 没装」的外观，属旧外观，**一并关**。
+> 判据**不看枪身名字**：实测 91 把枪里有 13 把一个 `WPN_` 都没有（`Pfb_WPM_Glock_02`、`Arrow`、`pCylinder6`…）。
+
 ## 4. 换物品外观
 
 | API | 什么时候用 |
