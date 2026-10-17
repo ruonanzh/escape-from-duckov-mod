@@ -115,7 +115,7 @@ generate_image(model="your_mods/<目录名>/<武器名>.glb",
       "maxStock": 1,
       "priceFactor": 1,
       "stats": { "Damage": 13.0, "Capacity": 25 },
-      "quality": 9,
+      "quality": 6,
       "crafting": { "money": 0, "materials": { "662": 5 } }
     }
   ]

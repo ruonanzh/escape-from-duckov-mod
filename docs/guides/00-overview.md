@@ -60,6 +60,8 @@ action=export, class=Item, match=["tags.list[].#name=Key"]
 join 示例（bash 与 python，可直接改）：
 
 ```bash
+# 先导出（第 4 列 = displayName；不给 field= 就只有 3 列，下面的 c[3] 会越界）
+# inspect_game_data: action=export, class=Item, file=resources.assets, field=["displayName"], out="/tmp/items.tsv"
 python3 - <<'PY'
 import csv
 LOC = "<gameDir>/Duckov.app/Contents/Resources/Data/StreamingAssets/Localization/ChineseSimplified.csv"  # macOS

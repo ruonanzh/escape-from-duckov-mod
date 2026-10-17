@@ -14,7 +14,7 @@ action=export, class=Item, file=resources.assets            # 全部 1581 个 It
 | `typeID` | 物品 ID（`ItemAssetsCollection.InstantiateAsync(typeID)` 用它生成实例）|
 | `displayName` | **本地化 key**（不是中文！见 `00-overview.md` 的 join 段）|
 | `value` | 单价（**单位价值**。见下方）|
-| `quality` | 品质（0–5）|
+| `quality` | 品质（**0–8**，共 9 档；枚举名 `None`…`Q8` 见 `docs/api/ItemStatsSystem.md` 的 `DisplayQuality`）|
 | `weight` | 重量 |
 | `maxStackCount` | 堆叠上限 |
 | `variables` | 指向 `entries[]`（`key`、`dataType`、`data`、`display`）。**`data` 是原始字节** |
@@ -92,7 +92,7 @@ action=export, class=Item, match=["tags.list[].#name=Weapon"], field=["displayNa
 > | `Gun` | 124 | **枪械** | **100% 属于 `Weapon`**；与 `MeleeWeapon` **零重叠** |
 > | `MeleeWeapon` | 48 | **能当近战用的**（含非武器）| = 正经近战 34（⊂`Weapon`）+ **14 件工具/日用**（**不在 `Weapon` 里**）|
 >
-> 那 14 件是：`Item_HammerL`(大锤) / `Item_HammerS` / `Item_Hammer_Tagilla`(Superfors DB) / `Item_Wrench`(扳手) / `Item_Wrench02` / `Item_Wrench03` / `Item_Shovel`(铁铲) / `Item_GolfClub`(高尔夫杆) / `Item_GoldDumbbell`(金哑铃) / `Item_SaltedFish`(咸鱼) / `Item_GiantSwordFish`(大剑鱼) —— 仓库里算工具/日用，但能当近战用。
+> 那 14 件是（**14 个对象、12 个名字**：`Item_Hammer_Tagilla` 与 `Item_Hammer_Tagilla_B` 各有 2 个对象）：`Item_HammerL`(大锤) / `Item_HammerS` / `Item_Hammer_Tagilla`(Superfors DB) / `Item_Hammer_Tagilla_B` / `Item_Wrench`(扳手) / `Item_Wrench02` / `Item_Wrench03` / `Item_Shovel`(铁铲) / `Item_GolfClub`(高尔夫杆) / `Item_GoldDumbbell`(金哑铃) / `Item_SaltedFish`(咸鱼) / `Item_GiantSwordFish`(大剑鱼) —— 仓库里算工具/日用，但能当近战用。
 >
 > **常用选法**：
 > - 「**全部武器**（172）= `Weapon` ∪ `MeleeWeapon`」 —— **没有单命令**（`match` 只有 AND），两次调用再按 `typeID` 去重：

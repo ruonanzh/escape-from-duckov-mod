@@ -31,8 +31,8 @@
 - 第 ③ 层那张图是游戏自带的（`Duckov.UI.UsageUtilitiesDisplay`）。我们**不删**。
 - 物品**自己没有 3D 图形**时（糖果那类），我们**给它造一份图形**，也就是换掉第 ③ 层显示的东西。
 
-**上表的 `world` 与 `handheld` 只有物品那条路读**（`reference/item_model/ModBehaviour.cs`，
-源码里就是 `GetBool("world", true)` 与 `GetBool("handheld", false)`）。
+**上表的 `world` 与 `handheld` 只有物品那条路读**（`libs/mod-kit/ModConfig.cs:311-312`，
+源码里就是 `World = j.GetBool("world", true)` 与 `Handheld = j.GetBool("handheld", false)`）。
 **武器那条路不读它们**：武器替换走 `WeaponModel`，它只改手里那把活枪与场上的实例。
 枪的**掉落与展示**图形保持游戏原样，这是**已知限制**（实测两次都会弄坏配件，
 记录在 `reference/weapon_model/ModBehaviour.cs` 里）。
