@@ -3,8 +3,11 @@
 // 调用方（mod）只需要：找到玩家手里那把枪 + 给出 Mesh/贴图，于是 调 Apply()。
 // 这里把"每次都必须做对的事"集中在一处（都是实机踩过才定下来的）：
 //
-// ① 只换**旧模型零件**：`WPN_*`（枪身）与 `HideIf_*`（原枪自带的默认件）
-// —— `ShowIf_*`（配件本身的模型）与特效（MuzzleFlash/Particle）**不得动** 归游戏管
+// ① 关掉**旧枪的全部外观**（不限名字：`WPN_*` / `Pfb_*` / `WPM_*` / `Arrow` / 纯数字 都算）
+// —— 只留三类：我们自己的（`ModelKit_*`）、灯/特效（MuzzleFlash/Particle/Light…）、
+// **槽位子树**（`Scope`/`Muzzle`/… 下面挂的是游戏现造的配件实例，见 `ItemGraphicInfo.OnSlotContentChanged`）
+// `ShowIf_*` / `HideIf_*` 是原枪 prefab 自带的“装了/没装”两块外观（`showIfPluged` / `hideIfPluged`），
+// 替换时**一起关**；否则会叠在我们的模型上。
 // ② 挂到**原枪身零件**的变换帧下（不是根节点）：同原点/同朝向
 // 并且把缩放补回世界尺度 1（prefab 内部有缩放链 —— 直接挂会缩到看不见 踩过）
 // ③ **对齐**：以游戏那把枪自己的局部包围盒为基准（"原点的归一化位置"对齐）
@@ -84,6 +87,13 @@ namespace ModelKit
             return map;
         }
 
+        /// <summary>`t` 自己或它的某个祖先在 `roots` 里（用来判定“这是挂在槽位下的配件实例”）</summary>
+        static bool IsUnderAny(Transform t, HashSet<Transform> roots)
+        {
+            for (var c = t; c != null; c = c.parent) if (roots.Contains(c)) return true;
+            return false;
+        }
+
         /// <summary>关掉的旧零件名字（验收用：拿 `Pfb_WPN_*` 的枪看它是否在清单里）</summary>
         static string HiddenNames(List<Renderer> rs, int max)
         {
@@ -133,14 +143,35 @@ namespace ModelKit
             }
             var parent = anchor != null ? anchor.transform : root;
 
-            // ② 关掉旧模型零件（保留配件与特效）
-            int hidden = 0, kept = 0;
+            // ② 关掉**旧枪的全部外观**（不减：枪身叫什么名字不影响）
+            // 反编译实证（`ItemGraphicInfo.OnSlotContentChanged`）：配件**自己**的模型是
+            // `CreateAGraphic(content, socketPoint)` 现造并挂到 `socketPoint` 上；
+            // `ShowIf_<槽位>` / `HideIf_<槽位>` 只是旧枪 prefab 里自带的“装了/没装”两块外观
+            // （`showIfPluged` / `hideIfPluged`，游戏用 SetActive 切）。替换时必须一起关，
+            // 否则旧枪的默认件/挂载件会叠在我们的模型上。
+            // 只保留：我们自己的（`ModelKit_*`）与**灯/特效**（它们不属于枪身，是运行时挂的）。
+            int hidden = 0, kept = 0, keptUnderSocket = 0;
+            // 配件（`Scope`/`Muzzle`/… 的子树）是游戏 `CreateAGraphic(content, socketPoint)` **现造**的实例，
+            // 它们不是旧枪本体：必须留。否则「刚拿起来配件不见、换一次配件又全出来」
+            // （换配件会重建这些实例，于是绕过了我们的 disable）。
+            var socketRoots = new HashSet<Transform>();
+            foreach (var kv in FindSockets(root)) if (kv.Value != null) socketRoots.Add(kv.Value);
             foreach (var r in root.GetComponentsInChildren<Renderer>(true))
             {
-                var n = r.gameObject.name;
-                if (n.StartsWith("ShowIf_") || n.StartsWith("MuzzleFlash") || n.StartsWith("Particle")) { kept++; continue; }
-                if (n.IndexOf("WPN_", StringComparison.OrdinalIgnoreCase) >= 0 || n.StartsWith("HideIf_")) { if (r.enabled) { r.enabled = false; hidden++; res.Hidden.Add(r); } continue; }
-                kept++;
+                if (r == null) continue;
+                var n = r.gameObject.name ?? "";
+                if (n.StartsWith("ModelKit_", StringComparison.OrdinalIgnoreCase)) { kept++; continue; }
+                if (socketRoots.Count > 0 && IsUnderAny(r.transform, socketRoots)) { keptUnderSocket++; continue; }
+                if (n.IndexOf("MuzzleFlash", StringComparison.OrdinalIgnoreCase) >= 0
+                 || n.IndexOf("Particle", StringComparison.OrdinalIgnoreCase) >= 0
+                 || n.IndexOf("Light", StringComparison.OrdinalIgnoreCase) >= 0
+                 || n.IndexOf("Glow", StringComparison.OrdinalIgnoreCase) >= 0
+                 || n.IndexOf("Point", StringComparison.OrdinalIgnoreCase) >= 0
+                 || n.IndexOf("Fx", StringComparison.OrdinalIgnoreCase) >= 0
+                 || n.IndexOf("VFX", StringComparison.OrdinalIgnoreCase) >= 0
+                 || n.IndexOf("Flash", StringComparison.OrdinalIgnoreCase) >= 0
+                 || n.IndexOf("Trail", StringComparison.OrdinalIgnoreCase) >= 0) { kept++; continue; }
+                if (r.enabled) { r.enabled = false; hidden++; res.Hidden.Add(r); }
             }
 
             // ③ 我们的实例挂在"枪身零件"的变换帧下（同原点/朝向），缩放补回世界尺度 1
@@ -228,7 +259,20 @@ namespace ModelKit
             }
 
             res.Applied = true; res.MarkedOn = root.gameObject; res.Instance = go;
-            res.Report = $"model swapped: hid {hidden} old parts (kept {kept}: attachments or effects); hidden=[{HiddenNames(res.Hidden, 8)}]; anchor={(anchor != null ? anchor.name : "root")}; "
+            // 诊断（用户报「枪不显示」时用）：我们的实例在世界里到底有没有、多大、挂在哪
+            string diag;
+            try
+            {
+                var wb = mr.bounds;                       // 世界包围盒（含父级缩放）
+                diag = $"ours: enabled={mr.enabled} activeInHierarchy={go.activeInHierarchy} "
+                     + $"worldBounds={wb.size.ToString("F3")} center={wb.center.ToString("F2")} "
+                     + $"localScale={go.transform.localScale.ToString("F3")} localPos={go.transform.localPosition.ToString("F3")} "
+                     + $"mountActive={(parent != null ? parent.gameObject.activeInHierarchy.ToString() : "null")} "
+                     + $"anchorLocalBounds={(anchor != null ? anchor.localBounds.size.ToString("F3") : "null")}";
+            }
+            catch (Exception ex) { diag = "diag failed: " + ex.Message; }
+
+            res.Report = $"model swapped: hid {hidden} old parts (kept {kept}: effects; kept {keptUnderSocket}: parts under sockets); hidden=[{HiddenNames(res.Hidden, 8)}]; anchor={(anchor != null ? anchor.name : "root")}; {diag}; "
                        + $"material={(one != null ? one.name + "/" + (one.shader != null ? one.shader.name : "?") : "none")}; "
                        + $"align={res.AlignSource}; "
                        + (moved > 0 ? $"moved {moved} sockets; " : "")

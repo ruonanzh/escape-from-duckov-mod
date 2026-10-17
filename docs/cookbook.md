@@ -61,11 +61,14 @@
 **做**（找「该换的那个 mesh」，按顺序）：
 1. 优先游戏自己声明的集合 `CharacterSubVisuals.renderers` —— 但 `SetRenderers()` 会**重扫所有子渲染器**，灯与特效可能混进来（实测：头盔被 `SodaPointLight` 骗走过）。
 2. 只认 `MeshRenderer` / `SkinnedMeshRenderer`（Sprite、灯、粒子一律排除）。
-3. 武器：排 `ShowIf_*` / `HideIf_*`，并优先名字**含 `WPN_`**（**子串**，不是前缀 —— 很多枪叫 `Pfb_WPN_TOZ66_S_1`）。
+3. 武器：优先名字**含 `WPN_`** 的（子串，不是前缀）。这只是**挑锚点的提示**，关旧件不靠它 —— 见下面「关哪些」。
 4. 还有多个时取**包围盒最大**（库里有 `< 5f` 的尺寸上限，超过就当没找到）。
 5. 集合为空或没有该组件时，才回退到「遍历、排灯与特效、比大小」。
 
-**依据**：`WeaponModel.cs:97-127`、`ItemModel.cs:181-236`。层一律不动，见第 4 节。
+**关哪些（武器替换）**：**全关**，只留三类 —— 我们自己的（`ModelKit_*`）、灯/特效（`MuzzleFlash` / `Particle` / `Light` / `Glow` / `Point` / `Fx` / `VFX` / `Flash` / `Trail`）、**槽位子树**（`Scope` / `Muzzle` / `Tec` / `Stock` / `Grip` 下面挂的渲染器）。
+判据不认枪身名字：实测 91 把枪、297 个渲染器，其中 13 把**一个 `WPN_` 都没有**（`Pfb_WPM_Glock_02`、`Arrow`、`MachineGun01`、`pCylinder6`…），按名字关必然漏。反编译实证：配件模型是 `ItemGraphicInfo.OnSlotContentChanged` 里 `CreateAGraphic(content, socketPoint)` **现造**并挂到 socket 下的，所以 socket 子树**不得关**；`ShowIf_*` / `HideIf_*` 是原枪 prefab 自带的“装了/没装”两块外观（`showIfPluged` / `hideIfPluged`），替换时**要一起关**。
+
+**依据**：`WeaponModel.cs`（Apply 的 ② 段）、`ItemModel.cs:181-236`、`ItemGraphicInfo.OnSlotContentChanged`（反编译）。层一律不动，见第 4 节。
 
 ## 4. 模型发白 / 渲染在最前 / 干脆看不见
 
