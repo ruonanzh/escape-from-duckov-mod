@@ -107,7 +107,7 @@ field=["merchantProfiles[].merchantID",
 ```
 
 > **要保留「哪个商人卖什么」的边界**，改用它（保留嵌套）：
-> `action=dump, class=StockShopDatabase, pathid=76730, depth=8, out=<file>`（每个 profile 一块：`merchantID` + `entries[]`；输出约 2000 行，会被默认上限截断，未落盘就只看到前半截）；
+> `action=dump, class=StockShopDatabase, pathid=76730, depth=8, out="/tmp/shopdb.txt"`（每个 profile 一块：`merchantID` + `entries[]`；不给 `out` 只回 2000 行预览，全量是 5075 行。落盘**只写 `/tmp`**：`out` 由工具直接写盘、不校验路径。同一条也记在 `docs/cookbook.md` 第 13 节）；
 > 或拿 `entries[].typeID` 的全量清单，再按 typeID 去 `docs/guides/items.md` 查名字。
 
 > `typeID` 对应 `Item.typeID` —— 要名字就拿着 typeID 去 `docs/guides/items.md` 的本地化 join 里查。

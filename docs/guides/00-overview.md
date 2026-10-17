@@ -54,7 +54,7 @@ action=export, class=Item, match=["tags.list[].#name=Key"]
 
 `Item.displayName`、`Quest.displayName`、`Buff.displayName`、`Level_*` 这几类多是 **key**（例如 `Item_ButcherKnife`、`Buff_Pain`），不是玩家看到的文字。
 
-- 文件：`<Data>/StreamingAssets/Localization/ChineseSimplified.csv`（表头 `key,value,version,sheet`。另有 `English`、`ChineseTraditional`、`Japanese`）
+- 文件：`<Data>/StreamingAssets/Localization/ChineseSimplified.csv`（表头 `key,value,version,sheet`）。共 10 个语言，名单与规则只在 `docs/cookbook.md` 第 14 节
 - 实测：`Item_AnimalWeapon,空手`
 
 join 示例（bash 与 python，可直接改）：
@@ -112,6 +112,7 @@ PY
 - 结构体字段要写全路径（`a.b.x`）。写 `a` 会得到空列。
 - **嵌套数组会拍平**：`a[].b[].c` 输出的是**一条**平行数组，**不保留 `a` 的分组边界**（例如 `StockShopDatabase` 的 merchant 与 entries）。要保留嵌套就用 `dump`（带 `depth`）。
 - **不得把查到的数值抄进代码**（会随版本变）。用这里的命令现查。
+- **空结果不等于「没有」**：看退出码。`0` = 成功（合法空结果会带 `# WARNING: … matched nothing`）、`1` = 目标不存在（类名/名字/pathID 查不到，会带 `# ERROR` 与近邻建议）、`2` = 调用方式错（未知 flag、flag 缺值）。判据见 `tools/data-probe/README.md` 与 `tools/api-probe/README.md` 的「出口码与静默边界」。
 
 ## 文本从哪来：只认游戏自带的那份
 

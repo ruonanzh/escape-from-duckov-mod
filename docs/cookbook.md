@@ -6,72 +6,82 @@
 >
 > 写到游戏行为时，先问一句「这条有依据吗」。没有就先查，再写。
 
-## 1. 克隆游戏里的 prefab，当「新物体自己的 prefab」
+## 先查这里：按现象找节号
 
-（出处：物品没有 `itemGraphic` 时，我们克隆它自己的物品 prefab 来当新的 prefab。）
+| 现象 | 去哪节 |
+|---|---|
+| 模型跟着物品跑 / 改了影响别的物品 | §1、§8 |
+| 拿在手里没挂点、配件挂不上 | §10 |
+| 货架上没货 / 配方一直是锁的 | §6、§7 |
+| 模型发白 / 渲染在最前 / 看不见 | §4 |
+| 越玩越卡 | §11 |
+| 我要查某个游戏数据 | §13 |
 
-- 克隆出来的那份 **要放在很远的地方**：`transform.position = (0, -5000, 0)`。
-  它是**模板**，不该在世界里露出来。游戏**实例化副本**时会自己摆正
-  （把副本 `SetParent` 到显示点，再把位置、旋转、缩放归零）。
-  **前提是调用方传了 `parent`**：传 `null` 时那段代码整块不执行（反编译原文：归零在 `if (parent != null)` 里面）。
-     于是副本会**保留模板的变换**，停在 `-5000`，看不见。
-- 并且要 **`DontDestroyOnLoad`**。否则**换场景时被销毁**。
-  届时游戏手上的 `itemGraphic` 变成「已销毁引用」，**退回 2D 图标**。
-- 但是**不得把它挂成物品的子物体**。那样模型会**跟着那件物品渲染**
-  （「一把枪跟着玩家跑」或「跟着物品掉地上」）。要独立放置（`SetParent(null)`）。
+## 1. 新物品的模型跟着物品跑 / 换场景变成 2D 图标
 
-## 2. 一个「外观」是三层
+**症状**：模型「跟着玩家跑」或「跟着物品掉在地上」；换个场景，物品退回 2D 图标。
 
-| | 是什么 | 谁决定 |
+**做**：
+1. 克隆**物品的 prefab** 当模板（只在物品没有 `itemGraphic`、需要给它造一份时）。
+2. 模板 `SetParent(null)` 独立放置，`transform.position = (0, -5000, 0)`。
+3. 对**物品 prefab 模板**调 `DontDestroyOnLoad`。
+4. **不得**把它挂成物品的子物体。
+
+**依据**：`ItemModel.cs:270-273`、`:595-615`、`ItemFactory.cs:274-280`。归零写在 `if (parent != null)` 里（反编译原文）—— 调用方传 `null` 时副本会停在 `-5000`；不 DDOL 则换场景被销毁，`itemGraphic` 变成已销毁引用，于是退回 2D 图标。
+**只对模板**：从零 `new` 出来的图形**不** DDOL（`ItemModel.MakeGraphicForItem`，靠每秒复查再造）；`reference/item_model/README.md:96` 记过「把**克隆出来的图形** DDOL 再写回」，结果是整件物品连原外观一起消失。
+
+## 2. 换了外观却「拿不起来」/ 2D 图标被删了
+
+**症状**：想让它能拿在手里（或相反，不想改行为）；或者背包里的 2D 图标没了。
+
+**做**：一个「外观」是三层，**按层改，别一起改**：
+
+| 层 | 是什么 | 开关 |
 |---|---|---|
-| ① **世界模型** | 地上、展示、**穿戴**的样子 | config `world`（**默认开**）。纯外观，不改行为 |
-| ② **拿在手里** | 手里、装备的样子 | config `handheld`（**默认关**）。会**改行为**（变成可拿，界面上可以选它）|
-| ③ **2D 图标** | 背包格子、「使用时」那张图 | **游戏自带**。我们**从不删**，但**可以替换** |
+| ① **世界模型** | 地上、展示、**穿戴**的样子；纯外观 | `world`，**默认开** |
+| ② **拿在手里** | 手里/装备的样子；**会改行为**（变成可拿、界面可选）| `handheld`，**默认关** |
+| ③ **2D 图标** | 背包格子、使用时那张图 | **游戏自带**，从不删，可替换 |
 
-- 第 ③ 层那张图是游戏自带的（`Duckov.UI.UsageUtilitiesDisplay`）。我们**不删**。
-- 物品**自己没有 3D 图形**时（糖果那类），我们**给它造一份图形**，也就是换掉第 ③ 层显示的东西。
+**依据**：`libs/mod-kit/ModConfig.cs:311-312`（`World = j.GetBool("world", true)` / `Handheld = j.GetBool("handheld", false)`）。
+**只有物品这条路读它们**：武器替换走 `WeaponModel`，只改手里那把活枪与场上实例；枪的掉落/展示图形保持原样，是**已知限制**（见 `reference/weapon_model/ModBehaviour.cs`）。
+**新增那条不读它们**：`new_item` / `new_weapon` 规则总要挂模型（`world: false` 只打一条 warning 然后照样挂），`handheld` 只对 `new_item` 生效（`reference/item_model/ModBehaviour.cs:191-196`、`reference/weapon_model/ModBehaviour.cs:270-273`）。
+第 ③ 层是 `Duckov.UI.UsageUtilitiesDisplay`；物品**没有** 3D 图形时（糖果那类）才给它造一份。新建一把枪的手持实体见第 10 节。
 
-**上表的 `world` 与 `handheld` 只有物品那条路读**（`libs/mod-kit/ModConfig.cs:311-312`，
-源码里就是 `World = j.GetBool("world", true)` 与 `Handheld = j.GetBool("handheld", false)`）。
-**武器那条路不读它们**：武器替换走 `WeaponModel`，它只改手里那把活枪与场上的实例。
-枪的**掉落与展示**图形保持游戏原样，这是**已知限制**（实测两次都会弄坏配件，
-记录在 `reference/weapon_model/ModBehaviour.cs` 里）。
+## 3. 换上去的模型位置不对 / 旧零件没被关掉
 
-新建一把枪的手持实体另有一条规矩，见第 10 节。
+**症状**：新模型挂在奇怪的位置；或新旧两个模型同显（枪最常见）。
 
-## 3. 怎么找到「该换的那个 mesh」
+**做**（找「该换的那个 mesh」，按顺序）：
+1. 优先游戏自己声明的集合 `CharacterSubVisuals.renderers` —— 但 `SetRenderers()` 会**重扫所有子渲染器**，灯与特效可能混进来（实测：头盔被 `SodaPointLight` 骗走过）。
+2. 只认 `MeshRenderer` / `SkinnedMeshRenderer`（Sprite、灯、粒子一律排除）。
+3. 武器：排 `ShowIf_*` / `HideIf_*`，并优先名字**含 `WPN_`**（**子串**，不是前缀 —— 很多枪叫 `Pfb_WPN_TOZ66_S_1`）。
+4. 还有多个时取**包围盒最大**（库里有 `< 5f` 的尺寸上限，超过就当没找到）。
+5. 集合为空或没有该组件时，才回退到「遍历、排灯与特效、比大小」。
 
-1. **游戏自己声明的集合**：图形根上的 `CharacterSubVisuals.renderers`，也就是「这套外观用哪些渲染器」。
-   但 `CharacterSubVisuals.SetRenderers()` 会**重扫所有子渲染器**（反编译）。
-     所以运行时挂的**灯与特效也可能被收进这个集合**（实测：头盔被 `SodaPointLight` 骗走过）。
-     因此**第 2 条的「排灯与特效」不得省**。
-2. 只认 `MeshRenderer` 与 `SkinnedMeshRenderer`（Sprite、灯、粒子一律排除）。
-3. **武器**再加一条：排除 `ShowIf_*` 与 `HideIf_*`，并优先名字**含** `WPN_`
-   （**子串**，不是前缀。很多枪叫 `Pfb_WPN_TOZ66_S_1`）。
-4. 还有多个时，取**包围盒最大**的。
-5. 集合为空或没有那个组件时，才回退到「遍历、排灯与特效、比大小」。
+**依据**：`WeaponModel.cs:97-127`、`ItemModel.cs:181-236`。层一律不动，见第 4 节。
 
-- **层一律不动**：游戏掉落物的图形就是 `0` 层。
-  我们**试过**动层，那期间出现过两种坏现象（模型**发白并渲染在最前**，或**看不见**）。
-  所以做法就一句：**不得动它**（上面这些是「试过什么」，不是因果结论）。
+## 4. 模型发白 / 渲染在最前 / 干脆看不见
 
-## 4. 层（layer）—— **一律不动**
+**症状**：换上去的模型发白、渲染在所有东西前面，或者看不见。
+
+**做**：**不得动 `layer`**，保持 `Default(0)`。
 
 | 层 | 号 | 谁在用 |
 |---|---|---|
-| **Default** | 0 | 游戏**世界里**的掉落与展示物品（实测：掉落物 prefab 就是 0 层，而且看得见）。**我们也保持 0** |
-| **Character** | 9 | 游戏给「**穿在身上或拿在手里**」的视觉（`CharacterSubVisuals.showLayer`）|
-| **SpecialCamera** | 31 | 游戏用来「**隐藏**」的层（`hiddenLayer`。只有特写相机看得见，常规视角下等于隐身）|
-| **SodaLight** | 15 | 游戏自定义：**灯效** |
-| **UI** | 5（Unity 内置）| 界面用（背包格子、弹窗）。它**不是**给世界模型用的（物品的 GameObject 实测就在 `0` 层）|
+| **Default** | 0 | 世界里掉落与展示（我们的模型保持这里）|
+| **Character** | 9 | 穿在身上 / 拿在手里（游戏自己切）|
+| **SpecialCamera** | 31 | 隐藏（只有特写相机看得见，常规视角等于隐身）|
+| **SodaLight** | 15 | 灯效 |
+| **UI** | 5 | 界面（**不是**给世界模型用的；实测 `UI(5)` 会发白）|
 
-- 游戏用**层**来开关视觉（不是 `SetActive`）：显示用 `Character`，隐藏用 `SpecialCamera`。
-- **两条路不一样**：**掉落与展示 = `0` 层**，**穿在身上与拿在手里 = `Character`**。
-- 所以我们**自己不挑层**：就保持 **`0`**。走「就地改」时，我们的 mesh 会**继承锚点的层**（游戏已经设好的）。
+**依据**：游戏用**层**开关视觉（不是 `SetActive`）：显示切 `Character`、隐藏切 `SpecialCamera`。我们**试过**动层，那期间出现过「发白并渲染在最前」与「看不见」两种现象（这是「试过什么」，不是因果结论）。
+我们**不挑层**：保持 `0`；就地改时**只有锚点在 `Character(9)` 时继承层**，其余（含 `UI(5)`）一律压回 `0`（`ItemModel.cs:270-276`）。游戏原有渲染器的显隐由游戏自己那套层负责（`GameApi.HideCharacterSkin`），**不是**我们违规改层。
 
-## 5. 运行时挂点表
+## 5. 挂点对不上 / 配件挂不上
 
-下表是运行时实测的玩家挂点。游戏数据不是权威来源。
+**症状**：配件挂错位置或挂不上；头盔与耳机不重合。
+
+**做**：按**运行时实测**的路径挂（下表）。游戏数据不是权威来源。
 
 | 挂点字段 | 运行时的路径 | 实测时已装备 |
 |---|---|---|
@@ -83,49 +93,40 @@
 | `meleeWeaponSocket` | `.../Hand.R/.../MeleeWeaponSocketFixed` | 无 |
 | `lefthandSocket` | `.../Hand.L/Hand.Soket.L/LeftHandSocket` | 无 |
 
-耳机使用 `helmatSocket`。实测中，帽子 `IG_Helmat_Hat(Clone)` 和耳机 `IG_Headset_LV1V2(Clone)` 是 `HelmatSocket` 下的兄弟节点，世界坐标相同。
+耳机用 `helmatSocket`；实测中帽子 `IG_Helmat_Hat(Clone)` 与耳机 `IG_Headset_LV1V2(Clone)` 是 `HelmatSocket` 下的兄弟节点，世界坐标相同。
+运行时玩家模型是 `0_CharacterModel_Custom_Template(Clone)`，它的挂点偏移与鸭子 prefab 不同，所以 3D editor 的挂点标记必须按运行时数值校准。
 
-运行时的玩家模型是 `0_CharacterModel_Custom_Template(Clone)`。它的挂点偏移与鸭子 prefab 不同，因此 3D editor 的挂点标记必须按运行时数值校准。
+**依据**：运行时实测。数据侧的字段名见 `docs/api/TeamSoda.Duckov.Core.md:713-725`（`FaceMaskSocket` 等；本表的 `faceSocket` 是数据字段名）。`editors/duckov_3d_editor/editor.js:257-263` 记的是 **prefab 侧**的父链（`Spine.003`），与运行时（`Spine.004`）不同，以运行时为准。
 
-## 6. 上架到商人（往货架加一件东西）
+## 6. 货架上没有新东西
 
-> 本章与第 7、9、10 节都属于「新增一件东西」。只换外观的活看第 1 到第 5 节。
+**症状**：装好、启用了、进了关卡，商人货架上没有你要的东西。
 
-**商品清单在 `StockShopDatabase` 里**，一个商人档案对应一个条目列表。
-商人的 `Awake` 跑到 `InitializeEntries()` 时会把条目**抄**进商店自己的列表。于是：
+**做**：
+1. **在进关卡之前**往 `StockShopDatabase` 的商人档案追加条目。商人 `Awake` 跑 `InitializeEntries()` 时会把条目**抄**进商店自己的列表，抄完再改就晚了。
+2. 条目类型是 `StockShopDatabase.ItemEntry`，字段 `typeID`、`maxStock`、`forceUnlock`、`priceFactor`、`possibility`、`lockInDemo`，有无参构造。
+3. **`possibility` 写 1**。`DoRefreshStock()` 只对 `0 < possibility < 1` 的条目掷骰子，掷不中就隐藏并清零。
+4. 新物品必须**先注册**（商人会调 `GetMetaData(typeID)`）。
 
-**必须在进关卡之前往档案里追加条目**，商人的 `Awake` 才抄得到它，货架上才有货。
+**验收**：`validate_mod` 通过；启动游戏后 `grep "\[NewItem\]\|\[NewWeapon\]" "$HOME/Library/Logs/TeamSoda/Duckov/Player.log"` 里能看到 `put typeID=… on 'Merchant_…' (maxStock=…, priceFactor=…, possibility=1)`；再进关卡看货架。症状表见 `.pi/skills/add-item/SKILL.md` 第 5 节。
 
-判据收在 `ItemFactory.PutOnSale`。自己写时的要点：
+**依据**：`libs/mod-kit/ItemFactory.cs:596-635`（`PutOnSale`）。存档只按 typeID 存存货数量（`GenerateSaveData` / `SetupSaveData`），新 typeID 在旧存档里整体跳过。商人是场景组件，`data-probe` 读不到实例，所以只能改数据库。
 
-- 条目类型是 `StockShopDatabase.ItemEntry`，字段有 `typeID`、`maxStock`、`forceUnlock`、`priceFactor`、`possibility`、`lockInDemo`，有无参构造。
-- **`possibility` 写 1**。`DoRefreshStock()` 只对 `0 < possibility < 1` 的条目掷骰子，掷不中就隐藏并清零；等于 1 时每次刷新补满货。
-- **存档扛得住**：`GenerateSaveData` 只按 typeID 存存货数量；`SetupSaveData` 只给**已经在列表里**的条目配对存货。新 typeID 在旧存档里没有记录，那一段整体跳过。
-- **`GetMetaData(typeID)` 会被调用**。于是新物品必须**先注册**，商人的 `Awake` 再跑。
-- 商人是场景里的组件，`data-probe` 读不到实例。于是只能改数据库。
+## 7. 配方一直是锁的
 
-## 7. 加一条制作台配方
+**症状**：工作台上能看到配方，但一直锁着。
 
-配方清单在 `CraftingFormulaCollection.Instance.list`，元素类型是 `CraftingFormula`。
+**做**：清单在 `CraftingFormulaCollection` 的**私有** `list` 里（公开面只有只读 `Entries`，追加要反射）。**不得自己反射**，直接调 `ItemFactory.AddRecipe(id, typeID, amount, money, materials, tags)`。自己写时：`unlockByDefault` 必须写 `false`，再调 `CraftingManager.UnlockFormula(id)`。
 
-一条配方有：`id`、`result`（`{id, amount}`）、`tags`、`cost`（`{money, items[]}`）、`unlockByDefault`、`lockInDemo`、`requirePerk`、`hideInIndex`。
+**验收**：同第 6 节（`[NewItem]` 的 Report 里带 `the recipe '…'`），然后进关卡看工作台。
 
-**`unlockByDefault` 必须写 false，然后调 `CraftingManager.UnlockFormula(id)`。**
+**依据**：`libs/mod-kit/ItemFactory.cs:502-507,660-690`。`IsFormulaUnlocked` 只看 `unlockedFormulaIDs`；那个列表只在 `CraftingManager.Awake()` 到 `Load()` 之间按 `unlockByDefault` 填，而我们追加配方**晚于**它；`UnlockFormula` 遇到 `unlockByDefault == true` 会**直接报错返回**，于是配方永远是锁的。`CraftingManager.Save()` 存 `unlockedFormulaIDs`，所以存档后重进仍解锁。
 
-原因（反编译实证）：
+## 8. 改一件物品，别的物品跟着变
 
-- `IsFormulaUnlocked` 只看 `unlockedFormulaIDs`，**不看** `unlockByDefault`。
-- 那个列表只在 `CraftingManager.Awake()` 到 `Load()` 这段里靠 `unlockByDefault` 填，而我们追加配方**晚于**它。
-- `UnlockFormula` 碰到 `unlockByDefault == true` 会**直接报错返回**，不加 id。
+**症状**：改一件物品的外观，同型号其它物品也跟着变；或者改完完全没生效。
 
-于是按直觉写 `true` 的后果是**配方一直是锁的**。
-
-`unlockedFormulaIDs` 由 `CraftingManager.Save()` 存盘。于是**存档后重进仍是解锁的**。
-
-## 8. 哪些东西是「每件一份」，哪些是「共享的」
-
-要改一件物品身上的东西之前，先问一句：**它是不是这件物品自己 GameObject 上的组件。**
-是，克隆各有一份，改了只影响这一件。不是，它就是共享资产，改了会**连累所有人**。
+**做**：先问一句「它是不是这件物品自己 GameObject 上的组件」。是，每件各有一份；不是，就是共享资产。
 
 | 东西 | 是什么 | 改它会不会影响别人 |
 |---|---|---|
@@ -134,111 +135,56 @@
 | 手持实体表 `agents` | `ItemAgentUtilities` 每件一个（`private ItemAgentUtilities agentUtilities = new ItemAgentUtilities();`），`agents` 是 `[SerializeField]` | **不会** |
 | **世界图形 `itemGraphic`** | 指向**一个共享资产**（枪的 prefab 里就是 `itemGraphic -> pathID …`）| **会。** 同型号那把枪共用同一个 |
 
-于是规矩只有一条：**要改图形，先把图形 `Instantiate` 一份，改克隆，再把克隆写回物品。**
-不克隆就直接改 = 把原型枪（以及所有同型号的枪）一起改掉。
+再看你在走哪条路：
+- **新建**（新 typeID / 动态条目）：克隆图形、改克隆、写回物品（`ItemFactory.AttachModel`）。
+- **替换已有物品**：**不得**写回共享 prefab。只改场上实例并登记（`ItemModel.Apply`），prefab 原封不动。
 
-**标记键不得自己设。** 像 `IsGun`、`IsBullet` 这种，是物品上那个 `ItemSetting_*` 组件
-在**自己的 `Awake`** 里打的（`ItemSettingBase.Awake()` 调 `SetMarkerParam(Item)`，
-枪那份是 `SetBool("IsGun", true)`）。Unity 语义：`Instantiate` 出来的对象是激活的，
-于是 `Awake` **当场就跑**，标记也就打好了。自己再设一遍是多余。
+**依据**：`libs/mod-kit/ItemModel.cs:12-20`（绝不把克隆出来的模板写回 `item.ItemGraphic`：模板被塞进 `DontDestroyOnLoad`，之后每个实例都生在 DDOL 场景，整件物品连原外观一起消失）与 `ItemModel.cs:703-711`（只改实例 + 扫描，共享 prefab 原封不动）；克隆写回只出现在 `ItemFactory.cs:270-291`（新建 typeID）与 `ItemModel.cs:530-640`（无图形物品 + 动态条目）。
+**标记键不得自己设**：`IsGun`、`IsBullet` 这种是物品上 `ItemSetting_*` 组件在**自己的 `Awake`** 里打的（`ItemSettingBase.Awake()` 调 `SetMarkerParam(Item)`，枪那份是 `SetBool("IsGun", true)`）；`Instantiate` 出来的对象是激活的，`Awake` 当场就跑，自己再设一遍是多余。
 
-## 9. 动态条目（新增一个 typeID）到底做了什么
+## 9. 同一个号被撞 / 存档里的东西认不回来
 
-`AddDynamicEntry(prefab)` 只做一件事：`dynamicDic[typeID] = { typeID, prefab }`。
-**它不碰 `entries`（主游戏那张表），也不碰 `nextTypeID`。** 三条结论都由这一句推出来：
+**症状**：一个 config 里两条「自动给号」的规则撞号；或者重进游戏后，存档里那把枪不认得。
 
-- **`NextTypeID` 不会推进。** 它的 getter 是 `entries.Max(e => e.typeID)` 起的缓存值，
-  而 `entries` 里只有主游戏的物品。于是**同一个会话里它会一直返回同一个号**。
-  一个 config 里两条都写「你自己给号」的规则，第二条必然撞号。
-  要自动分配，就得**自己在本地去重**（撞游戏、也撞自己分过的号，都往后挪）。
-- **元数据是从 prefab 现算的。** `DynamicEntry.MetaData` 是懒算：没值就 `new ItemMetaData(prefab)`。
-  于是注册之后 `GetMetaData(号)` 立刻可用（商店刷新与载入存档都会读它，不用怕它空）。
-- **存档按 typeID 走。** `ItemTreeData.DataEntry` 的字段是 `instanceID`、`typeID`、`variables`、
-  `slotContents`、`inventory`。于是**每次进游戏要用同一个号重新注册**，存档里那把枪才认得回来。
+**做**：`AddDynamicEntry(prefab)` 只写 `dynamicDic[typeID] = { typeID, prefab }`，**不碰** `entries`，也不推进 `NextTypeID`。所以：
+1. 自己分号时必须**本地去重**（撞游戏、也撞自己分过的号，都往后挪）。
+2. 注册要在**进关卡之前**（商品表在商人 `Awake` 里抄走，见第 6 节；图形与标记键在 `Instantiate` 那一刻定下，见第 8 节）。
+3. 每次进游戏要用**同一个号**重新注册，存档才认。
 
-**时机：注册要在进关卡之前**（mod 被激活的菜单阶段就做完）。两个原因都在这份 cookbook 里：
-商品表是商人在它自己的 `Awake` 里抄走的（第 6 节）；图形与标记键是在 `Instantiate` 那一刻定下的（第 8 节）。
+**依据**：`ItemFactory.cs:80-97`（`AllocateTypeID` 跳过 `IsTypeIDTaken` 与本地 `_assigned`）；`NextTypeID` 是 `entries.Max(...)` 起算的缓存值，而 `entries` 里只有主游戏物品，所以同一会话它一直返回同一个号；`ItemTreeData.DataEntry` 按 `typeID` 存档；`DynamicEntry.MetaData` 是懒算，注册后 `GetMetaData(号)` 立即可用。
 
-## 10. 手持实体：**交给游戏建**，不得自己造
+## 10. 手里没挂点 / 手里显示的是别的东西
 
-症状：新枪拿在手里**没有挂点**（配件挂不上去），或者手里显示的干脆是别的东西。
+**症状**：新枪拿在手里没有挂点（配件挂不上），或者手里显示的是别的东西。
 
-游戏的做法（反编译）。`ItemExtensions.CreateHandheldAgent(item)` 里，枪走
-`ItemAgent_Gun.BuildAgent(item.ItemGraphic.gameObject)`，它做四件事：
+**做**：**不得预造手持实体**，交给游戏在第一次被拿时建：`ItemExtensions.CreateHandheldAgent(item)` 里枪走 `ItemAgent_Gun.BuildAgent(item.ItemGraphic.gameObject)`，它 `Instantiate` **我们那份图形**、补 `Sockets`/`Muzzle`/`Tec`、设 `handheldSocket = normalHandheld` 与 `handAnimationType = gun`。自己走「克隆通用模板 + 清空子物体 + 挂网格」那条路，手里就只剩一个网格，`Sockets` 没了。
 
-1. `Instantiate(图形)`。用的是**我们那份图形**，于是带着图形里的 `Sockets`。
-2. 没有 `Sockets` 就补一个，并保证 `Muzzle` 与 `Tec` 在，然后 `AddSocket`。
-3. 设 `handheldSocket = normalHandheld`。
-4. 设 `handAnimationType = gun`。
+**例外**：本来没有图形的物品才需要预造（那条走通用模板）。
 
-所以**枪不得预造手持实体**。交给游戏在第一次被拿时建，它用的是我们那份已经换过网格的图形，
-于是手里就是我们的模型，而且挂点结构齐全。
+**依据**：`libs/mod-kit/ItemFactory.cs:235-245`、`libs/mod-kit/ItemModel.cs:655`。物品 prefab 的 `agents` 为空是正常的；`HasHandHeldAgent` 在没拿出来之前是假，不是错。
 
-反过来，如果自己走「克隆通用模板，清空它的子物体，再挂上我们的网格」那条路，
-手里就**只剩一个网格**，`Sockets` 没了，配件没地方挂。
+## 11. 越玩越卡 / 只能全场景扫描
 
-- 物品 prefab 的数据里 `agents` 是**空的**，这是正常的。`HasHandHeldAgent` 在没拿出来之前是假，不是错。
-- 只有「本来没有图形」的物品才需要预造（那条才走通用模板）。
+**症状**：帧率随游玩时间下降；或者想拿某个对象时只能全场扫。
 
-## 11. 不得用 `FindObjectsOfType*` 找东西：先看有没有现成入口
+**做**：`FindObjectsOfType` 与 `Resources.FindObjectsOfTypeAll` 都是**整场景枚举**，不得放进每帧或高频循环。三个高频需求都有现成入口：
 
-`FindObjectsOfType` 和 `Resources.FindObjectsOfTypeAll` 都是**整场景枚举**。
-它们不得放进每帧或高频循环。
+**① 找玩家**：首选 `LevelManager.Instance.MainCharacter`（getter 就是读缓存字段）；同类 `ControllingCharacter` / `PetCharacter`；事件 `LevelManager.OnControllingCharacterChanged`（静态 `Action<CharacterMainControl>`）；等关卡用静态 `LevelInited` / `AfterInit`。菜单阶段 `MainCharacter` 是空，这时才退回扫描。
 
-我们踩过：物品模板的 `ApplyAll` 原本每帧调一次。症状是「越玩越卡」。
-记录在 `reference/item_model/ModBehaviour.cs` 的注释里，节流是 `58f3bef` 加的。
+**② 等时机**：需要「进关卡之后做一次」时用静态标志 `LevelInited` / `AfterInit` / `LevelInitializing`，不得每帧问。
 
-三个高频需求都有现成接口。先查这里，再考虑扫描。
+**③ 枚举物品实例**：游戏**没有**「全部物品实例」的注册表，只能按来源枚举——某个背包用 `Inventory.Content`（`List<Item>`）或 `Inventory.GetEnumerator()`，战利品箱用静态 `LevelManager.LootBoxInventories`。按来源枚举会漏，漏掉的物品保持旧外观。
 
-**① 找玩家**
+**④ 图形创建：挂钩子，不得轮询**：`libs/mod-kit/ItemHooks` patch 的是 **`ItemGraphicInfo.Setup(Item)`**（世界图形）与 **`ItemAgent.Initialize(Item, ItemAgent.AgentTypes)`**（手持那条）。只挂上 Setup 时手持那条仍走 ≤0.5 秒的扫描，安装日志会打 `partial`。自己在别处另挂 patch 是额外依赖，不是必需。
 
-| 做法 | 接口 |
-|---|---|
-| **首选** | `LevelManager.Instance.MainCharacter`。反编译实证：getter 就是 `=> mainCharacter`，读一个缓存字段 |
-| 同类 | `ControllingCharacter`（当前操作的角色）、`PetCharacter`（宠物） |
-| 事件 | `LevelManager.OnControllingCharacterChanged`。它是静态 `Action<CharacterMainControl>` |
-| 等关卡 | `LevelManager.LevelInited` 与 `AfterInit`。两个都是静态 |
-| 兜底 | 菜单阶段还没有关卡，`MainCharacter` 是空。这时才退回扫描 |
+**依据**：`libs/mod-kit/ItemHooks.cs:55-78`、`libs/mod-kit/GameApi.cs:26-45`、`docs/api/TeamSoda.Duckov.Core.md:5385-5411`。`reference/item_model/ModBehaviour.cs` 的注释记了「每帧 `ApplyAll` 导致越玩越卡」，节流是 `58f3bef` 加的。`ItemGraphicInfo.Setup` 会写反向索引 `ItemRefrence`（从图形找回物品），但它替代不了枚举。
+**代价**：`ItemHooks` 需要 `libs/0Harmony.dll`；三个模型样板都引了并带 `CopyHarmonyToModRoot` 目标，没引这个依赖的 mod 要重编。
 
-**② 等时机，不得轮询**
+## 12. 新增武器和新增物品差在哪
 
-需要「进关卡之后做一次」时，先找这种静态标志，不得每帧问一次。
-`LevelManager.LevelInited`、`AfterInit`、`LevelInitializing` 都是静态的。
+**症状**：照物品的做法做枪（或反过来），某些字段或步骤对不上。
 
-**③ 枚举物品实例**
-
-游戏**没有**「全部物品实例」的注册表。只能按来源枚举。
-
-| 来源 | 接口 |
-|---|---|
-| 某个背包 | `Inventory.Content`（`List<Item>`）或 `Inventory.GetEnumerator()` |
-| 战利品箱 | `LevelManager.LootBoxInventories`（静态字典） |
-
-按来源枚举会漏。漏掉的物品保持旧外观。所以它只有在拿不到事件时才是好选择。
-
-**④ 图形创建：挂钩子，不得轮询**
-
-游戏每次造世界图形都会走 `ItemGraphicInfo.CreateAGraphic`：
-
-```csharp
-public static ItemGraphicInfo CreateAGraphic(Item item, Transform parent, bool snapGround, bool useSpriteIfNoGraphic)
-```
-
-它是**公开静态**方法。要「图形一造出来就换成我们的」，就在它上面挂 Harmony 的 postfix。
-这样一次扫描都不用。轮询只在拿不到这个依赖时才用。
-
-`ItemGraphicInfo.Setup(item)` 会写反向索引 `ItemRefrence`。
-那个索引让你从图形找到它属于哪件物品，但它替代不了枚举。
-
-**代价提醒**：用 Harmony 需要 mod 在 csproj 里引用 `libs/0Harmony.dll`。
-仓库的三个模型样板（`reference/weapon_model`、`reference/item_model`、`reference/character_model`）都引了（`WeaponModelSwap.csproj:26-27` 等，并带 `CopyHarmonyToModRoot` 目标），因为 `libs/mod-kit/ItemHooks.cs`、`CharacterSwap.cs` 用它挂钩子；`reference/example_mod` 也引。
-玩家自己的 mod 可能已经引了（例如 `weapon_editor` 的产物里就带 `0Harmony.dll`）。
-加这个依赖意味着没引的 mod 都要重编。
-
-## 12. 新增物品与新增武器的差别
-
-**数据层是同一套**（`ItemFactory`）：克隆、typeID、名字、注册、上架、配方都不分武器与物品。
-差别在**调用方多给几样东西**。做一件新物品的完整流程见 `.pi/skills/add-item/SKILL.md`。
+**做**：数据层是**同一套**（`ItemFactory`），克隆、typeID、名字、注册、上架、配方都不分武器与物品，差别在调用方多给几样。完整流程见 `.pi/skills/add-item/SKILL.md`。
 
 | | 新增武器 | 新增物品 |
 |---|---|---|
@@ -247,93 +193,77 @@ public static ItemGraphicInfo CreateAGraphic(Item item, Transform parent, bool s
 | 图标 | `icon.png` 设成 `item.Icon` | 同一套 |
 | 额外几样 | 插槽偏移 `slots` | `tags`、`maxStackCount`、`value`、`weight` |
 
-### 图标与 `useSpriteForPickup` 不是一回事
+**图标不等于 `useSpriteForPickup`**：`item.Icon`（`Sprite`）是**背包卡片**上的图，任何物品都能设；`useSpriteForPickup` 决定**世界里**用不用那张 2D 图，我们换模型时会把它设成假。所以「换了模型但卡片还是游戏原本的图标」缺的是 `Item.Icon`。
 
-- `item.Icon`（一个 `Sprite`）是**背包卡片**上的图。`WeaponIcon.Apply` 就是把 png 抠成透明再设它，
-  任何物品都能用（名字带 Weapon 是历史原因）。
-- `useSpriteForPickup` 决定**世界里**用不用那张 2D 图代替模型。我们把模型换上去时会把它设成假。
-- 所以「换了模型但卡片还是游戏原本的图标」时，缺的是 `Item.Icon`，不是 `useSpriteForPickup`。
+**重量要反射写**：`Item.weight` 只有**私有字段**（`SelfWeight` / `UnitSelfWeight` 是只读属性）。`ItemFactory.ApplyItemNumbers` 会反射写它，并额外清一次 `_cachedTotalWeight` 作保险（`TotalWeight` 的 getter 自己也会比对失效）。不得自己再写一遍。
 
-### 重量要反射写
+**Tag 决定分类、功能与掉落**：品类 tag 从原型继承（克隆是完整拷贝），config 里的 `tags` 是**追加不是替换**。功能随 tag 走（`Item.Repairable` / `Sticky` / `CanBeSold` 都是 `Tags.Contains("…")`；插槽准入是 `Slot.CanPlug(item)`，内部判 `Tags.Check(requireTags, excludeTags)`），所以品类 tag 选错不是分类难看，而是**功能会错**。掉落也按物品自己的 tag 从 `LootBoxLoader.tags.entries[]` 的池子里抽；要上展示台得有 `ShowCase`（12 个槽都要求它，且物品要自带 3D 图形）。`Collection` / `Luxury` / `Daily` 截至编写时没查到读取点；`NotForSell` **没有代码读**（代码读的是 `NotSellable`）。
 
-`Item` 上 `weight` 只有**私有字段**，公开的 `SelfWeight` / `UnitSelfWeight` 都是只读属性。
-`ItemFactory.ApplyItemNumbers` 内部反射写它。**写完不用手动清缓存**：
-`TotalWeight` 的 getter 自己会比较 `_cachedWeight != SelfWeight`，不等就重算（反编译实证）。
+**依据**：`libs/mod-kit/ItemFactory.cs:428-431,462-463`；`docs/api/ItemStatsSystem.md:137,314`。
 
-### Tag 决定分类、功能与掉落
+## 13. 我要查 X 用哪条（`inspect_game_data` 速查）
 
-- **品类 tag 从原型继承**（克隆是完整拷贝）。config 里的 `tags` 是**额外标记，追加不是替换**。
-- **功能随 tag 走**：`Item.Repairable` / `Sticky` / `CanBeSold` 都是 `Tags.Contains("…")`；
-  插槽准入是 `Slot.CheckAbleToPlug` 判 `item.Tags.Check(requireTags, excludeTags)`。
-  所以品类 tag 选错不是分类难看，而是**功能会错**。
-- **掉落也随 tag 走**：掉落箱的 `LootBoxLoader.tags.entries[]` 是 tag 池，按物品自己的 tag 抽。
-  想上展示台就要 `ShowCase`（展示台的 12 个槽全都要求它）。
-- `Collection` / `Luxury` / `Daily` 截至编写时**没查到任何读取点**，写它们不会改变行为。
-- 反例提醒：代码读的是 `NotSellable`（`Item.CanBeSold`），而 `NotForSell` **没有代码读**。
+**症状**：手上有个「我要查 XX」的问题，不知道用哪个 action、哪个参数。
 
-## 13. `inspect_game_data` 速查（「我要查 X」该用哪条）
+**做**：下表每行都实跑过（2026-10-17 复核）。机制、路径语法、`match` 运算符、`--file` / `--limit` / `--offset`，以及「不得把查到的数值抄进代码」，只在 `docs/guides/00-overview.md`。
 
-**这里只放任务与命令。** 路径语法、`match` 运算符、`--file`、`--limit`、`--offset` 那些机制
-见 `docs/guides/00-overview.md`（那是数据查询指南，概念与语法都在那里）。
-
-**资源（美术、音频）在哪**：贴图、精灵、网格、材质存在 Unity `Resources`（`.assets`）里，靠 `m_Name` 引用（不是 Addressables，也不是 AssetBundle）。签名见 `docs/api/unity-resources.md`（23 个类型）；音频见第 15 节。
-
-下表每一行都**实跑过**（2026-10-14）。
+两条比表格更重要：
+- **`export` 不给 `out` 只回 500 行，`dump` 不给 `out` 只回 2000 行**（都是预览）。要全量就落盘 `out="/tmp/<name>"`（落盘上限 100 万行）。落盘**只写 `/tmp`**：`out` 由工具直接写盘、**不校验路径**，写错位置会污染仓库。
+- **`pathID` 是文件内编号，跨文件会撞号**（实测 `pathID 1013` 在 `level0` 与 `sharedassets34.assets` 里是两个不同对象）。查之前先确认 `file=`；下表里的 pathID 是**撰写时实测值，会变**，可用 `action=export, class=<C>, field=["pathID"]` 现查。
 
 | 我要查 | 命令 |
 |---|---|
 | 游戏里有哪些类（含资产类）| `action=classes`（实测：`Material` 2870 · `Mesh` 3162 · `Texture2D` 4366 · `Sprite` 1371 · `Shader` 320）|
 | 按名字找一个资产（美术、脚本、预制体都行）| `action=search, pattern=T_Showcase`，返回类名与 `pathID` |
-| 某一类资产的名字清单 | `action=export, class=Texture2D, field=["m_Name"]` |
-| 物品的 typeID 与名字键 | `action=export, class=Item, file=resources.assets, field=["typeID","displayName"]` |
+| 某一类资产的名字清单 | `action=export, class=Texture2D, field=["m_Name"], out="/tmp/textures.tsv"` |
+| 物品的 typeID 与名字键 | `action=export, class=Item, file=resources.assets, field=["typeID","displayName"], out="/tmp/items.tsv"` |
 | 按 tag 筛物品 | 上面那条加 `match=["tags.list[].#name=Food"]` |
 | 某个 tag 挂在多少件物品上 | `action=refs, class=Tag, name=ShowCase, by=Item` |
-| 谁引用了它（反向查）| `action=refs, class=Tag, pathid=76674, by=Item` |
-| 一件物品的全部字段 | `action=dump, class=Item, pathid=108943, depth=7` |
-| 某对象的父链与坐标 | `action=transform, pathid=<Transform 的 pathID>` |
+| 谁引用了它（反向查）| `action=refs, class=Tag, pathid=76674, by=Item`（76674 = `ShowCase`，撰写时实测）|
+| 一件物品的全部字段 | `action=dump, class=Item, pathid=108943, depth=7`（108943 = 撰写时实测）|
+| 某对象的父链与坐标 | `action=transform, pathid=<Transform 的 pathID>, file=levelN`（场景与 prefab 在 `levelN` 里，`file=` 不得省：不给 `file` 只会扫 `*.assets`，可能命中另一个文件的同号对象）|
 | 商店档位（`merchantID`）| `action=export, class=StockShop, field=["merchantID","DisplayNameKey","sellFactor"]` |
-| 商店档案（保留嵌套，看每个店有哪些货）| `action=dump, class=StockShopDatabase, pathid=76730, depth=8, out=<file>`（`depth=6` 看不到货；输出超过默认 2000 行上限，必须落盘）|
+| 商店档案（保留嵌套，看每个店有哪些货）| `action=dump, class=StockShopDatabase, pathid=76730, depth=8, out="/tmp/shopdb.txt"`（`depth=6` 看不到货，全量 5075 行；同一条也记在 `docs/guides/world.md`）|
 | 掉落池（哪些 tag 会掉）| `action=export, class=LootBoxLoader, file=resources.assets, field=["tags.entries[].value.#name","tags.entries[].weight","activeChance"]` |
-| 插槽要求哪些 tag | `action=export, class=SlotCollection, field=["list[].key","list[].requireTags"]` |
+| 插槽要求哪些 tag | `action=export, class=SlotCollection, field=["list[].key","list[].requireTags"]`（`requireTags` 是引用，默认只回 `pathID N`；先 `dump` 一件确认形状，再加 `.#name`）|
 | 全部 tag 资产 | `action=export, class=Tag, file=resources.assets, field=["m_Name"]` |
 | **中文名 / 文案** | **不在这里**：读游戏自带的 `StreamingAssets/Localization/ChineseSimplified.csv`（见第 14 节）|
 
-> **不得把查到的数值抄进代码**（会随版本变）。用的时候现查。
+**依据**：`docs/guides/00-overview.md`（机制与坑的唯一副本）、`tools/data-probe/README.md`（出口码与静默边界）。失败时看退出码：`0` 成功（含合法空结果，会带 `# WARNING`）、`1` 目标不存在、`2` 调用方式错。
 
-## 14. 本地化：只认游戏自带的那份
+## 14. 中文名查不到 / 以为游戏里没有
 
-**唯一权威**是游戏自己的本地化文件：
+**症状**：查不到某件物品的中文名，或者「表里没有」被当成「游戏里没有」。
+
+**做**：**唯一权威**是游戏自带的本地化文件：
 
 ```
 macOS   <游戏>/Duckov.app/Contents/Resources/Data/StreamingAssets/Localization/<语言>.csv
 Windows <游戏>/Duckov_Data/StreamingAssets/Localization/<语言>.csv
 ```
 
-10 个语言：`ChineseSimplified`（简体中文）`ChineseTraditional` `English` `French` `German`
-`Japanese` `Korean` `Portuguese` `Russian` `Spanish`。
-
-表头是 `key,value,version,sheet`。例：
+共 10 个语言：`ChineseSimplified`（简体中文）、`ChineseTraditional`、`English`、`French`、`German`、`Japanese`、`Korean`、`Portuguese`、`Russian`、`Spanish`。表头是 `key,value,version,sheet`：
 
 ```
 Item_Candy,棒棒糖,#20250911092425,Items
 Character_Ming,小明,#20250807035821,Characters
 ```
 
-- **按 `key` 建索引就行**：同一个 key 可能出现在多个 sheet 里，中文也不一定在 `Items`
-  （实测：`Item_ButcherKnife` 在英文包里属 `Default`，在中文包里属 `Items`）。
+- **按 `key` 建索引**：同一个 key 可能出现在多个 sheet 里，中文也不一定在 `Items`（实测：`Item_ButcherKnife` 在英文包里属 `Default`，在中文包里属 `Items`）。
 - 固定命令：`grep -F "Character_Ming," "<那个目录>/ChineseSimplified.csv"`。
 - key 从哪来：数据里的 `displayName` / `nameKey` / `displayNameKey` / `xxxKey` 字段就是它。
 
-**两条不得：**
-
-1. **不得说「某个表里没有 = 游戏里没有」。** 这个仓库**不再保存**本地化快照
-   （以前那份 `docs/data/*.csv` 条目少得多：Items 只有 892 条本地化行，而游戏自带的有 2944 条，
-   已经害过几次「以为没有，其实有」）。要文案就读游戏自带那份，或先 `inspect_game_data` 现查。
+**两条不得**：
+1. **不得说「某个表里没有 = 游戏里没有」**。这个仓库**不再保存**本地化快照（旧那份 `docs/data/*.csv` 的 Items 只有 892 条本地化行，游戏自带的有 2944 条，已经害过几次「以为没有，其实有」）。要文案就读游戏自带那份，或先 `inspect_game_data` 现查。
 2. **不得把文案抄进代码**（会随版本变）。
 
-## 15. 音频（FMOD / `AudioSource`）
+**依据**：游戏目录实读（10 个 csv、表头与两行示例逐字核对过）。
 
-游戏用 **FMOD**。mod 做音效**先考虑 `AudioSource` + `AudioClip`**（Unity 原生，不用碰 FMOD API）：
+## 15. 音效放不出来 / FMOD 事件找不到
+
+**症状**：mod 里加的音效没响，或者不知道怎么触发游戏自己的 FMOD 事件。
+
+**做**：游戏用 **FMOD**。**先考虑 `AudioSource` + `AudioClip`**（Unity 原生，不用碰 FMOD API）：
 
 ```csharp
 var source = gameObject.AddComponent<AudioSource>();
@@ -348,16 +278,17 @@ var ev = FMODUnity.RuntimeManager.CreateInstance("event:/MyEvent");
 ev.start();
 ```
 
-- `FMODUnity.RuntimeManager.LoadBank(String bankName, Boolean loadSamples)` —— **两参**（签名见 `docs/api/unity-resources.md`）。
-- 游戏自己的 bank 在 `StreamingAssets/` 下：实测（撰写时，`mod-repo.json` 的 `game.version` = `2.3.30`）有 `Master.bank`、`Master.strings.bank` 与 `Music/`。事件名要用 FMOD 工具解析，本文不保证。
+- `LoadBank` 是**两参**：`LoadBank(String bankName, Boolean loadSamples)`（签名见 `docs/api/unity-resources.md`）。
+- 游戏自己的 bank 在 `StreamingAssets/` 下：撰写时（`game.version` = `2.3.30`）有 `Master.bank`、`Master.strings.bank` 与 `Music/`。事件名要用 FMOD 工具解析，本文不保证。
 - 音频资源的查找命令见第 13 节。
 
-## 16. 游戏侧 API 固定套路（物品 / 角色 / 对话 / 日志）
+**依据**：`docs/api/unity-resources.md` 的 FMOD 段；游戏目录实读。
 
-**签名一律以 `docs/api/`（公开签名快照）为准**，不够时用 `inspect_game_api`。
-这里只记「几行拼起来就能用」的套路、易错参数**个数与顺序**，以及两个坑（静态方法、返回值是 `UniTask`）。
+## 16. 游戏侧 API 怎么拼（物品 / 角色 / 对话 / 日志）
 
-**物品**
+**症状**：知道要调哪个类，但签名、参数个数或返回值对不上。
+
+**做**：**签名一律以 `docs/api/` 为准**，不够时用 `inspect_game_api`。这里只记「几行拼起来就能用」的套路与易错点（静态方法、返回值是 `UniTask`）。
 
 ```csharp
 using ItemStatsSystem;
@@ -370,22 +301,14 @@ Item itemSync = ItemAssetsCollection.InstantiateSync(254);      // 同步版
 ItemUtilities.SendToPlayer(item, dontMerge: false, sendToStorage: true);
 ```
 
-- `IsInPlayerCharacter` / `IsInPlayerStorage` / `TryPlug` 都是 `ItemUtilities` 的**静态方法**，第一个参数是物品。
-  `TryPlug` 是 **5 参**，最后一个是 `preferredFirstIndex` —— 用前按 `docs/api/TeamSoda.Duckov.Core.md` 现查。
+- `IsInPlayerCharacter` / `IsInPlayerStorage` / `TryPlug` 都是 `ItemUtilities` 的**静态方法**，第一个参数是物品；`TryPlug` 是 **5 参**，最后一个是 `preferredFirstIndex`。
 - `Item.Icon` 可直接赋值（`Sprite`）。
 
-**角色**
-
 ```csharp
-// CharacterMainControl 是角色核心；队伍是枚举，没有 TeamA
-// （常见值见下，权威见 docs/api/TeamSoda.Duckov.Core.md 的 ## Teams）
+// 队伍是枚举，没有 TeamA（权威见 docs/api/TeamSoda.Duckov.Core.md 的 ## Teams）
 character.SetTeam(Teams.player);
 // Teams：player=0 、scav=1 、usec=3 、bear=4 、middle=5 、lab=6 、all=7 、wolf=8
-```
 
-**对话**
-
-```csharp
 using Dialogues;
 using Duckov.UI.DialogueBubbles;
 
@@ -396,7 +319,6 @@ await DialogueUI.instance.DoSubtitle(info);
 DialogueBubblesManager.Show("Hello world!", target, 0f, false, true, 30f, 3f);
 ```
 
-**日志**
+- 日志：macOS `~/Library/Logs/TeamSoda/Duckov/Player.log`；Windows `%USERPROFILE%\AppData\LocalLow\TeamSoda\Duckov\Player.log`。
 
-- macOS：`~/Library/Logs/TeamSoda/Duckov/Player.log`
-- Windows：`%USERPROFILE%\AppData\LocalLow\TeamSoda\Duckov\Player.log`
+**依据**：`docs/api/TeamSoda.Duckov.Core.md:5333,5337,3629,6239-6246`、`docs/api/ItemStatsSystem.md:137,254`。
