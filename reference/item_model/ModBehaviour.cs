@@ -184,6 +184,21 @@ namespace ItemModelSwap
                     if (!r.Created) { Debug.LogError("[NewItem] " + r.Report); continue; }
                     _created[typeId] = r;
 
+                    // ⚠ 顺序要紧：**先把数值/品质/Tag 写进这件新物品，再挂模型**。
+                    // 挂模型那一步在「原型本来没有世界图形」时会**克隆这件物品并重新注册动态条目**
+                    // （`RegisterDynamicOverride`），后注册的那份才是 `GetPrefab(typeID)` 返回的东西。
+                    // 反过来的话，注册出去的那份仍带**原型**的数值（实测：value 10 上架后仍显示 201680）。
+                    // 数值、品质、Tag、物品数字（只改 config 里写了的）
+                    var missing = new List<string>();
+                    int nStats = ItemFactory.ApplyStats(r.Item, e.Stats, missing);
+                    ItemFactory.ApplyQuality(r.Item, e.Quality, e.DisplayQuality);
+                    // Tag 是**追加**：品类从原型继承，这里加的是额外标记（ShowCase 之类）
+                    int nTags = ItemFactory.ApplyTags(r.Item, e.Tags, null, missing);
+                    int nNums = ItemFactory.ApplyItemNumbers(r.Item, e.MaxStackCount, e.Value, e.Weight);
+                    if (missing.Count > 0)
+                        Debug.LogError("[NewItem] these names do not exist in the game, so they were NOT applied: "
+                                       + string.Join(", ", missing) + " (copy the names from inspect_game_data)");
+
                     // 模型（不写 model 就沿用原型外形）
                     var cm = GetModel(e);
                     if (cm != null && cm.Mesh != null)
@@ -212,17 +227,6 @@ namespace ItemModelSwap
                                   + " that has a 3D graphic (for example 1259)."
                                 : " It still shows in the world as the 2D sprite."));
                     }
-
-                    // 数值、品质、Tag、物品数字（只改 config 里写了的）
-                    var missing = new List<string>();
-                    int nStats = ItemFactory.ApplyStats(r.Item, e.Stats, missing);
-                    ItemFactory.ApplyQuality(r.Item, e.Quality, e.DisplayQuality);
-                    // Tag 是**追加**：品类从原型继承，这里加的是额外标记（ShowCase 之类）
-                    int nTags = ItemFactory.ApplyTags(r.Item, e.Tags, null, missing);
-                    int nNums = ItemFactory.ApplyItemNumbers(r.Item, e.MaxStackCount, e.Value, e.Weight);
-                    if (missing.Count > 0)
-                        Debug.LogError("[NewItem] these names do not exist in the game, so they were NOT applied: "
-                                       + string.Join(", ", missing) + " (copy the names from inspect_game_data)");
 
                     Debug.Log($"[NewItem] created typeID={typeId} (name key '{r.NameKey}') from prototype {e.CloneFromItemId}"
                               + $" | name='{e.DisplayName}'"

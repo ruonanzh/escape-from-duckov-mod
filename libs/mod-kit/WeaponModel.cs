@@ -27,6 +27,8 @@ namespace ModelKit
         public sealed class Result
         {
             public bool Applied;
+            /// <summary>这一层已经挂过（幂等跳过）</summary>
+            public bool NoOp;
             public GameObject Instance;
         /// <summary> 我们挂在哪一层 （登记/注销共用表用 否则扫描会重复挂）</summary>
         public GameObject MarkedOn;
@@ -87,13 +89,6 @@ namespace ModelKit
             return map;
         }
 
-        /// <summary>`t` 自己或它的某个祖先在 `roots` 里（用来判定“这是挂在槽位下的配件实例”）</summary>
-        static bool IsUnderAny(Transform t, HashSet<Transform> roots)
-        {
-            for (var c = t; c != null; c = c.parent) if (roots.Contains(c)) return true;
-            return false;
-        }
-
         /// <summary>关掉的旧零件名字（验收用：拿 `Pfb_WPN_*` 的枪看它是否在清单里）</summary>
         static string HiddenNames(List<Renderer> rs, int max)
         {
@@ -119,6 +114,10 @@ namespace ModelKit
         {
             var res = new Result();
             if (root == null || mesh == null) { res.Report = "missing root or mesh"; return res; }
+            // 幂等：判据是 `PatchRegistry.IsPatched`（`docs/mod-kit-api.md` 的唯一判据）。
+            // 不得靠调用方的字典挡：第二次 Apply 会先把自己上一份 mesh 当旧外观关掉，再挂一份。
+            if (PatchRegistry.IsPatched(root.gameObject))
+            { res.Applied = false; res.NoOp = true; res.Report = "this layer is already swapped"; return res; }
 
             // ① 选"枪身"锚点 —— 顺序：**游戏声明的清单**，于是 只认网格，于是 排配件/默认件，于是 名字**含** WPN_，于是 最大
             // 实测（124 把武器）：单靠"以 WPN_ 开头"只覆盖 44% —— 很多枪身叫 `Pfb_WPN_TOZ66_S_1`
@@ -149,33 +148,12 @@ namespace ModelKit
             // `ShowIf_<槽位>` / `HideIf_<槽位>` 只是旧枪 prefab 里自带的“装了/没装”两块外观
             // （`showIfPluged` / `hideIfPluged`，游戏用 SetActive 切）。替换时必须一起关，
             // 否则旧枪的默认件/挂载件会叠在我们的模型上。
-            // 只保留：我们自己的（`ModelKit_*`）与**灯/特效**（它们不属于枪身，是运行时挂的）。
-            int hidden = 0, kept = 0, keptUnderSocket = 0;
-            // 配件（`Scope`/`Muzzle`/… 的子树）是游戏 `CreateAGraphic(content, socketPoint)` **现造**的实例，
-            // 它们不是旧枪本体：必须留。否则「刚拿起来配件不见、换一次配件又全出来」
-            // （换配件会重建这些实例，于是绕过了我们的 disable）。
-            var socketRoots = new HashSet<Transform>();
-            foreach (var kv in FindSockets(root)) if (kv.Value != null) socketRoots.Add(kv.Value);
-            foreach (var r in root.GetComponentsInChildren<Renderer>(true))
-            {
-                if (r == null) continue;
-                var n = r.gameObject.name ?? "";
-                if (n.StartsWith("ModelKit_", StringComparison.OrdinalIgnoreCase)) { kept++; continue; }
-                if (socketRoots.Count > 0 && IsUnderAny(r.transform, socketRoots)) { keptUnderSocket++; continue; }
-                if (n.IndexOf("MuzzleFlash", StringComparison.OrdinalIgnoreCase) >= 0
-                 || n.IndexOf("Particle", StringComparison.OrdinalIgnoreCase) >= 0
-                 || n.IndexOf("Light", StringComparison.OrdinalIgnoreCase) >= 0
-                 || n.IndexOf("Glow", StringComparison.OrdinalIgnoreCase) >= 0
-                 || n.IndexOf("Point", StringComparison.OrdinalIgnoreCase) >= 0
-                 || n.IndexOf("Fx", StringComparison.OrdinalIgnoreCase) >= 0
-                 || n.IndexOf("VFX", StringComparison.OrdinalIgnoreCase) >= 0
-                 || n.IndexOf("Flash", StringComparison.OrdinalIgnoreCase) >= 0
-                 || n.IndexOf("Trail", StringComparison.OrdinalIgnoreCase) >= 0) { kept++; continue; }
-                if (r.enabled) { r.enabled = false; hidden++; res.Hidden.Add(r); }
-            }
-
+            // 保留三类：我们自己的（`ModelKit_*`）、灯/特效、**槽位子树**。判据在 `HidePolicy`（与物品共用）。
+            int keptUnderSocket, keptEffect;
+            int hidden = HidePolicy.Hide(root, res.Hidden, out keptUnderSocket, out keptEffect);
+            int kept = keptEffect;      // 兼容旧报告字段（“kept N: effects”）
             // ③ 我们的实例挂在"枪身零件"的变换帧下（同原点/朝向），缩放补回世界尺度 1
-            var go = new GameObject("WeaponModel");
+            var go = new GameObject("ModelKit_WeaponModel");
             go.layer = anchor != null ? anchor.gameObject.layer : root.gameObject.layer;
             go.transform.SetParent(parent, false);
             var lossy = parent.lossyScale;

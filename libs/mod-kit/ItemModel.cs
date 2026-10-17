@@ -246,12 +246,11 @@ namespace ModelKit
         /// <summary>关掉 root 下**所有**旧外观（不限渲染器类型 精灵也要关），记进 res 可还原 </summary>
         static void HideOld(Transform root, Result res)
         {
-            foreach (var r in root.GetComponentsInChildren<Renderer>(true))
-            {
-                if (r == null) continue;
-                if (r.gameObject.name.StartsWith("ModelKit_")) continue;       // 我们自己的不动
-                if (r.enabled) { r.enabled = false; res.Hidden.Add(r); }
-            }
+            // 判据统一在 `HidePolicy`（武器与物品共用）：留 我们自己的 / 灯与特效 / **槽位子树**。
+            // 槽位子树必须留：配件的模型是游戏 `CreateAGraphic(content, socketPoint)` 现造挂在
+            // socket 下的；灯/特效也得留，否则新枪没有枪口火焰（实测）。
+            int underSocket, effect;
+            HidePolicy.Hide(root, res.Hidden, out underSocket, out effect);
         }
 
         /// <summary>把我们的 mesh 挂上去（挂在挂点上 没有挂点就挂根）

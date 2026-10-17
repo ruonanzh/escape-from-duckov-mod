@@ -143,11 +143,10 @@ namespace WeaponModelSwap
             {
                 _applied[id] = r;
                 Debug.Log("[WeaponModel] " + r.Report);
-                // ⛔ **不得**用物品那条路来挂枪的掉落/展示图形 （2026-10-08 两次实测都坏）
-                // `ItemModel.Apply` 会关掉枪身一批零件 **而配件（挂在 Sockets 下的子物体）会跟着一起看不见**
-                // （游戏源码：`AccessoryBase.Init`，于是 `transform.SetParent(socket)`，于是 配件是挂点的子物体）
-                // ⇒ 无论结果是否纳入恢复清单，**视觉上都会坏**，于是 一律不用
-                // ⇒ 枪的**掉落/展示**图形保持游戏原样 = **已知限制** （要做得单独设计 只换 mesh 不碰零件）
+                // 掉落/展示图形由 `SweepGraphicClones()` 补挂（那里走 `ItemModel.ApplyToGraphicClone`）。
+                // 2026-10-08 那次坏是因为当时的 `ItemModel.HideOld` **全关**，把挂在 `Sockets/<槽位>`
+                // 下的配件（`AccessoryBase.Init` 把配件 SetParent 到挂点）也关了。
+                // 现在两边共用 `HidePolicy`：保留 我们自己的 / 灯特效 / **槽位子树**，于是配件与枪口火焰都在。
                 // 图标：卡片上那个 Sprite 也换成我们的
                 if (entry.IconPath != null) Debug.Log("[WeaponModel] " + ModelKit.WeaponIcon.Apply(item, entry.IconPath));
             }
