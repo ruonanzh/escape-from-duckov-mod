@@ -181,9 +181,15 @@ export default function (pi: ExtensionAPI) {
       try {
         out = (await runAsync(dotnet, args)).stdout;
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const e = error as { stdout?: string; stderr?: string; message?: string };
+        const detail = [e.stderr, e.stdout, e.message].filter((s) => s && String(s).trim()).join("\n").trim().slice(0, 600);
         return {
-          content: [{ type: "text", text: `FAIL: data-probe failed: ${message.slice(0, 600)}` }],
+          content: [
+            {
+              type: "text",
+              text: `FAIL: data-probe failed (${params.action}): ${detail}\nNEXT: if the message names a field path, fix the --field path (syntax: a.b, a[], a[0], #name, #class); otherwise narrow with a simpler action (classes / list) and retry.`,
+            },
+          ],
           details: { ok: false, reason: "PROBE_FAILED", action: params.action },
         };
       }

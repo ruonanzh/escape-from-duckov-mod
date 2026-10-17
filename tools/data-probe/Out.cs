@@ -64,6 +64,9 @@ sealed class Out : IDisposable
     /// <summary>stdout-only note (merged into the preview, never written to the data file).</summary>
     public void Note(string line)
     {
+        // 落盘模式：注释进预览头（预览只取前 preview 行）；否则留在 mem —— 不然无 --out 时
+        // 这类告警根本没地方渲（Render() 只 join mem），等于静默丢掉 ✓
+        if (file == null) { mem.Add(line); return; }
         if (head.Count < preview) head.Add(line);
         else mem.Add(line);              // 无文件时也保留（数量少 不影响上限判断）
     }

@@ -30,21 +30,23 @@ description: 玩家想**加一件新物品**时用（例如「给我加一件新
 
 选项是这五个，**可以多选**：商人买 / 制作台做 / 掉落 / 摆到展示台 / 黑市。
 
-- **选了「商人买」，店按这个规则定**：玩家指定了就听玩家的；玩家没指定或说「随便」时按类别——**武器给老吴（`Merchant_Weapon`）、装备给橘子（`Merchant_Equipment`）、其余给售货机（`Merchant_Normal`）**。数据层里有 **11 个 `merchantID`**（`StockShop` 有 12 个对象，`Merchant_Weapon` 占两个）：
+- **选了「商人买」，店按这个规则定**：玩家指定了就听玩家的；玩家没指定或说「随便」时按类别——**武器给老吴（`Merchant_Weapon`）、装备给橘子（`Merchant_Equipment`）、其余给售货机（`Merchant_Normal`）**。可用档位以游戏的 `StockShopDatabase.merchantProfiles` 为准，**共 12 个**（`PutOnSale` 就是按它查的：`libs/mod-kit/ItemFactory.cs:598-603`，查不到会报 `no merchant profile named ...`）：
 
   | `merchantID` | 卖家 | 卖什么 |
   |---|---|---|
   | `Merchant_Normal` | 售货机 | 杂货与药品；也是「卖东西换钱」的地方 |
-  | `Merchant_Weapon` | 老吴 | 武器与弹药 |
+  | `Merchant_Weapon` | 老吴 | 武器与弹药（数据里有 **2 个** `StockShop` 对象）|
   | `Merchant_Equipment` | 橘子 | 头盔与护甲 |
   | `Merchant_Ming` | 小明 | — |
   | `Merchant_Mud` | 泥巴 | — |
   | `Merchant_Fo` | 佛哥 | — |
+  | `Merchant_Blue` | — | 在 `merchantProfiles` 里，文档未写它对应哪个摊 |
   | `Merchant_Myst` / `Merchant_Myst0` / `Merchant_MystIsland` | 神秘商人 | — |
+  | `Merchant_Island` | 岛 | — |
   | `Merchant_IslandMobile` | 岛上的移动版售货机 | — |
-  | `Merchant_Test` | 测试档位 | 游戏自己留着调试用，不得上架 |
 
-  `Merchant_Island` 这个名字在数据里有，但**不挂在任何 `StockShop` 上**，不得当档位用。
+  **不得当档位用**：`Merchant_Test` —— 它只以 `StockShop` 对象存在，`merchantProfiles` 里没有它，`PutOnSale` 必失败。
+  现查：`action=export, class=StockShopDatabase, field=["merchantProfiles[].merchantID"]`（返回 12 个，分号连接）。
 
   `config.json` 里**必须显式写 `merchantID`**，不写会被 `validate_mod` 拦下。
 - **选了「摆到展示台」，物品必须带 `ShowCase` tag**（见第 2 节）。

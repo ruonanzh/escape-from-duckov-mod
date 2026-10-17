@@ -123,12 +123,11 @@
 
 **手上已经有 `Sprite` 时**（不是 png 路径）：直接写 `item.Icon = sprite`。`Item.Icon` 是 `[get/set] Sprite`（签名见 `docs/api/ItemStatsSystem.md`），游戏会读它。`AttachIcon` 只是「从 png 生成再设进去」的包壳。
 
-**取值**：商店档位**不写死**，游戏里实际有 12 个（`Merchant_Normal` 售货机 / `Merchant_Weapon` 老吴 /
-`Merchant_Equipment` 橘子 / `Merchant_Ming` 小明 / `Merchant_Mud` 泥巴 / `Merchant_Fo` 佛哥 /
-`Merchant_Myst`、`Merchant_Myst0`、`Merchant_MystIsland` 神秘商人 / `Merchant_Island`、`Merchant_IslandMobile` 岛），
+**取值**：商店档位**不写死**，以游戏的 `StockShopDatabase.merchantProfiles` 为准（**12 个**）。
+名单只有一份，在 `.pi/skills/add-item/SKILL.md` 第 1 节；`Merchant_Test` 只以 `StockShop` 对象存在、`merchantProfiles` 里没有它，**不得上架**（`PutOnSale` 会报 `no merchant profile named ...`）。
 另有一套独立**黑市**（按 tag 选货，不是 `merchantID`）。
 **物品必须显式写 `merchantID`**（校验会拦）；武器不写仍默认 `Merchant_Weapon`（老约定）。
-现查：`inspect_game_data` 的 `class=StockShop, field=merchantID`。
+现查：`action=export, class=StockShopDatabase, field=["merchantProfiles[].merchantID"]`（返回 12 个，分号连接）。
 品质枚举是 `None`、`White`、`Green`、`Blue`、`Purple`、`Orange`、`Red`、`Q7`、`Q8`。
 
 **已有的能力不得重写**：手持那条走 `GameApi.EnsureHandheldAgent`（`AttachModel` 内部已经调了）；

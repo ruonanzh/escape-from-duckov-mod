@@ -75,6 +75,7 @@ static partial class DataProbe
 
         var outPath = Opt(o, "out");
         using var outLines = new Out(outPath, limit);
+        var rc = 0;
         switch (action)
         {
             case "classes": Classes(am, insts, outLines); break;
@@ -87,7 +88,7 @@ static partial class DataProbe
             {
                 // 写文件时默认不再限制行数（落盘不进模型上下文，不存在刷屏问题 ✓）
                 var rowCap = Opt(o, "rows") != null || outPath == null ? rows : 1000000;
-                Export(am, insts, Opt(o, "class"), AllOpts(args, "match"), AllOpts(args, "field"), rowCap, offset, outLines);
+                rc = Export(am, insts, Opt(o, "class"), AllOpts(args, "match"), AllOpts(args, "field"), rowCap, offset, outLines);
                 break;
             }
             default: Console.Error.WriteLine($"data-probe: unknown action '{action}'"); return 2;
@@ -96,7 +97,7 @@ static partial class DataProbe
         var text = outLines.Render();
         Console.Write(text);
         if (!text.EndsWith("\n")) Console.WriteLine();
-        return 0;
+        return rc;
     }
 
     // ── arg parsing ────────────────────────────────────────────────────────────
@@ -413,11 +414,13 @@ static partial class DataProbe
     }
 
     // ── export（批量表：一类对象 × 过滤 × 字段路径）───────────────────────────
-    static void Export(AssetsManager am, List<AssetsFileInstance> insts, string cls, List<string> matches,
+    /// <returns>0 = 正常；1 = 每个请求的 field 路径都没解析出任何值（表是空壳，不应当成数据用它）</returns>
+    static int Export(AssetsManager am, List<AssetsFileInstance> insts, string cls, List<string> matches,
         List<string> fields, int rows, int offset, Out outp)
     {
-        if (cls == null) { outp.Add("# export: --class required"); return; }
+        if (cls == null) { outp.Add("# export: --class required"); return 2; }
         var body = new List<string>();
+        var hits = new int[fields.Count];   // 每个 field 路径在多少行里真解出了值
         int total = 0, shown = 0;
         foreach (var (inst, info) in AllInfos(insts))
         {
@@ -431,7 +434,12 @@ static partial class DataProbe
             total++;
             if (total <= offset || shown >= rows) continue;
             var cells = new List<string> { AssetName(bf) ?? "", TypeId(bf).ToString(), info.PathId.ToString() };
-            foreach (var f in fields) cells.Add(string.Join(";", EvalPath(am, inst, bf, f)));
+            for (int i = 0; i < fields.Count; i++)
+            {
+                var v = string.Join(";", EvalPath(am, inst, bf, fields[i]));
+                if (v.Trim().Length > 0) hits[i]++;
+                cells.Add(v);
+            }
             body.Add(string.Join("\t", cells));
             shown++;
         }
@@ -441,7 +449,21 @@ static partial class DataProbe
         outp.Add("# " + header);
         outp.AddRange(body);
         outp.Note($"# {cls}: {total} row(s), {fields.Count} field(s), wrote {body.Count} line(s)");
+
+        // ⭐ field 路径写错时，以前是**静默空列**（读表的人会以为「数据本来就是空的」）。现在说出来。
+        //    只对「一行都没解出值」的路径报 —— 可选字段（例如 displayNameKey）很多行本来就空，不算错。
+        var dead = new List<string>();
+        for (int i = 0; i < fields.Count; i++)
+            if (total > 0 && hits[i] == 0) dead.Add(fields[i]);
+        foreach (var d in dead)
+            outp.Note($"# WARNING: field '{d}' matched nothing in {total} row(s) - check the path syntax ('a.b', 'a[]', 'a[0]', '#name', '#class'); see tools/data-probe/README.md");
         if (offset + shown < total) outp.Note(next);
+        if (fields.Count > 0 && dead.Count == fields.Count)
+        {
+            outp.Note("# ERROR: every requested field path matched nothing, so the table above has no data - fix the --field path(s) and rerun (do not report an empty column as 'no data')");
+            return 1;
+        }
+        return 0;
     }
 
     /// --match <path><op><value>，op ∈ = != ~ > >= < <=（~ = 子串，忽略大小写）
