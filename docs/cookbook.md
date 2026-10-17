@@ -11,10 +11,17 @@
 | 现象 | 去哪节 |
 |---|---|
 | 模型跟着物品跑 / 改了影响别的物品 | §1、§8 |
-| 拿在手里没挂点、配件挂不上 | §10 |
+| 换的模型位置不对 / 旧零件没关掉 | §3 |
+| 配件挂不上（不知道挂点叫什么）| §5 |
+| 拿在手里没挂点 / 手里东西不对 | §10 |
 | 货架上没货 / 配方一直是锁的 | §6、§7 |
 | 模型发白 / 渲染在最前 / 看不见 | §4 |
+| 同一个号被撞 / 存档认不回来 | §9 |
+| 新增武器与新增物品差在哪 | §12 |
 | 越玩越卡 | §11 |
+| 中文名查不到 | §14 |
+| 音效放不出来 | §15 |
+| 要调游戏侧 API | §16 |
 | 我要查某个游戏数据 | §13 |
 
 ## 1. 新物品的模型跟着物品跑 / 换场景变成 2D 图标
@@ -27,7 +34,7 @@
 3. 对**物品 prefab 模板**调 `DontDestroyOnLoad`。
 4. **不得**把它挂成物品的子物体。
 
-**依据**：`ItemModel.cs:270-273`、`:595-615`、`ItemFactory.cs:274-280`。归零写在 `if (parent != null)` 里（反编译原文）—— 调用方传 `null` 时副本会停在 `-5000`；不 DDOL 则换场景被销毁，`itemGraphic` 变成已销毁引用，于是退回 2D 图标。
+**依据**：反编译 `ItemGraphicInfo.CreateAGraphic`（签名见 `docs/api/ItemStatsSystem.md:10`）、`ItemModel.cs:595-615`、`ItemFactory.cs:274-280`。归零写在 `if (parent != null)` 里（反编译原文）—— 调用方传 `null` 时副本会停在 `-5000`；不 DDOL 则换场景被销毁，`itemGraphic` 变成已销毁引用，于是退回 2D 图标。
 **只对模板**：从零 `new` 出来的图形**不** DDOL（`ItemModel.MakeGraphicForItem`，靠每秒复查再造）；`reference/item_model/README.md:96` 记过「把**克隆出来的图形** DDOL 再写回」，结果是整件物品连原外观一起消失。
 
 ## 2. 换了外观却「拿不起来」/ 2D 图标被删了
@@ -44,7 +51,7 @@
 
 **依据**：`libs/mod-kit/ModConfig.cs:311-312`（`World = j.GetBool("world", true)` / `Handheld = j.GetBool("handheld", false)`）。
 **只有物品这条路读它们**：武器替换走 `WeaponModel`，只改手里那把活枪与场上实例；枪的掉落/展示图形保持原样，是**已知限制**（见 `reference/weapon_model/ModBehaviour.cs`）。
-**新增那条不读它们**：`new_item` / `new_weapon` 规则总要挂模型（`world: false` 只打一条 warning 然后照样挂），`handheld` 只对 `new_item` 生效（`reference/item_model/ModBehaviour.cs:191-196`、`reference/weapon_model/ModBehaviour.cs:270-273`）。
+**新增那条只看一半**：`new_item` / `new_weapon` 规则总要挂模型，`world: false` 只打一条 warning 然后照样挂；`handheld` 则真的生效，但只对 `new_item`（`reference/item_model/ModBehaviour.cs:191-196`、`reference/weapon_model/ModBehaviour.cs:270-273`）。
 第 ③ 层是 `Duckov.UI.UsageUtilitiesDisplay`；物品**没有** 3D 图形时（糖果那类）才给它造一份。新建一把枪的手持实体见第 10 节。
 
 ## 3. 换上去的模型位置不对 / 旧零件没被关掉
@@ -108,9 +115,9 @@
 3. **`possibility` 写 1**。`DoRefreshStock()` 只对 `0 < possibility < 1` 的条目掷骰子，掷不中就隐藏并清零。
 4. 新物品必须**先注册**（商人会调 `GetMetaData(typeID)`）。
 
-**验收**：`validate_mod` 通过；启动游戏后 `grep "\[NewItem\]\|\[NewWeapon\]" "$HOME/Library/Logs/TeamSoda/Duckov/Player.log"` 里能看到 `put typeID=… on 'Merchant_…' (maxStock=…, priceFactor=…, possibility=1)`；再进关卡看货架。症状表见 `.pi/skills/add-item/SKILL.md` 第 5 节。
+**验收**：`validate_mod` 通过；启动游戏后 `grep "\[NewItem\]\|\[NewWeapon\]" "$HOME/Library/Logs/TeamSoda/Duckov/Player.log"` 里能看到 `put typeID=… on 'Merchant_…' (maxStock=…, priceFactor=…, possibility=1)`；再进关卡看货架。症状表见 `.pi/skills/add-item/SKILL.md` 第 6 节。
 
-**依据**：`libs/mod-kit/ItemFactory.cs:596-635`（`PutOnSale`）。存档只按 typeID 存存货数量（`GenerateSaveData` / `SetupSaveData`），新 typeID 在旧存档里整体跳过。商人是场景组件，`data-probe` 读不到实例，所以只能改数据库。
+**依据**：`libs/mod-kit/ItemFactory.cs:596-635`（`PutOnSale`）。存档只按 typeID 存存货数量（`GenerateSaveData` / `SetupSaveData`），新 typeID 在旧存档里整体跳过。商家资产是能读的（`list --class StockShop` 有 12 个，`dump` 能拿到 `merchantID`），但那是**数据**；条目在 `Awake` 里已经被抄进运行时商店，所以只能改数据库。
 
 ## 7. 配方一直是锁的
 
@@ -118,7 +125,7 @@
 
 **做**：清单在 `CraftingFormulaCollection` 的**私有** `list` 里（公开面只有只读 `Entries`，追加要反射）。**不得自己反射**，直接调 `ItemFactory.AddRecipe(id, typeID, amount, money, materials, tags)`。自己写时：`unlockByDefault` 必须写 `false`，再调 `CraftingManager.UnlockFormula(id)`。
 
-**验收**：同第 6 节（`[NewItem]` 的 Report 里带 `the recipe '…'`），然后进关卡看工作台。
+**验收**：同第 6 节。成功时 `[NewItem]` 的 Report 是 `added recipe '{id}' -> typeID=… x…`；`the recipe '…' is already there` 是**幂等/没加**那条，别拿它当成功。
 
 **依据**：`libs/mod-kit/ItemFactory.cs:502-507,660-690`。`IsFormulaUnlocked` 只看 `unlockedFormulaIDs`；那个列表只在 `CraftingManager.Awake()` 到 `Load()` 之间按 `unlockByDefault` 填，而我们追加配方**晚于**它；`UnlockFormula` 遇到 `unlockByDefault == true` 会**直接报错返回**，于是配方永远是锁的。`CraftingManager.Save()` 存 `unlockedFormulaIDs`，所以存档后重进仍解锁。
 
@@ -139,7 +146,7 @@
 - **新建**（新 typeID / 动态条目）：克隆图形、改克隆、写回物品（`ItemFactory.AttachModel`）。
 - **替换已有物品**：**不得**写回共享 prefab。只改场上实例并登记（`ItemModel.Apply`），prefab 原封不动。
 
-**依据**：`libs/mod-kit/ItemModel.cs:12-20`（绝不把克隆出来的模板写回 `item.ItemGraphic`：模板被塞进 `DontDestroyOnLoad`，之后每个实例都生在 DDOL 场景，整件物品连原外观一起消失）与 `ItemModel.cs:703-711`（只改实例 + 扫描，共享 prefab 原封不动）；克隆写回只出现在 `ItemFactory.cs:270-291`（新建 typeID）与 `ItemModel.cs:530-640`（无图形物品 + 动态条目）。
+**依据**：`libs/mod-kit/ItemModel.cs:703-711`（当前做法：只改实例 + 扫描，共享 prefab 原封不动）；`ItemModel.cs:14-18` 记的是**为什么不能克隆写回**（模板被塞进 `DontDestroyOnLoad`，之后每个实例都生在 DDOL 场景，整件物品连原外观一起消失）。注意同文件 `:18` 那句「直接改游戏自己的 prefab」是更早的写法，已被 `:703-711` 取代；克隆写回只出现在 `ItemFactory.cs:270-291`（新建 typeID）与 `ItemModel.cs:530-640`（无图形物品 + 动态条目）。
 **标记键不得自己设**：`IsGun`、`IsBullet` 这种是物品上 `ItemSetting_*` 组件在**自己的 `Awake`** 里打的（`ItemSettingBase.Awake()` 调 `SetMarkerParam(Item)`，枪那份是 `SetBool("IsGun", true)`）；`Instantiate` 出来的对象是激活的，`Awake` 当场就跑，自己再设一遍是多余。
 
 ## 9. 同一个号被撞 / 存档里的东西认不回来
@@ -175,7 +182,7 @@
 
 **③ 枚举物品实例**：游戏**没有**「全部物品实例」的注册表，只能按来源枚举——某个背包用 `Inventory.Content`（`List<Item>`）或 `Inventory.GetEnumerator()`，战利品箱用静态 `LevelManager.LootBoxInventories`。按来源枚举会漏，漏掉的物品保持旧外观。
 
-**④ 图形创建：挂钩子，不得轮询**：`libs/mod-kit/ItemHooks` patch 的是 **`ItemGraphicInfo.Setup(Item)`**（世界图形）与 **`ItemAgent.Initialize(Item, ItemAgent.AgentTypes)`**（手持那条）。只挂上 Setup 时手持那条仍走 ≤0.5 秒的扫描，安装日志会打 `partial`。自己在别处另挂 patch 是额外依赖，不是必需。
+**④ 图形创建：挂钩子，不得轮询**：`libs/mod-kit/ItemHooks` patch 的是 **`ItemGraphicInfo.Setup(Item)`**（世界图形）与 **`ItemAgent.Initialize(Item, ItemAgent.AgentTypes)`**（手持那条）。只挂上 Setup 时手持那条仍走兜底扫描（`_nextHeldSweep` = +1s、`_nextCloneSweep` / `_nextApply` = +5s），安装日志会打 `partial`。自己在别处另挂 patch 是额外依赖，不是必需。
 
 **依据**：`libs/mod-kit/ItemHooks.cs:55-78`、`libs/mod-kit/GameApi.cs:26-45`、`docs/api/TeamSoda.Duckov.Core.md:5385-5411`。`reference/item_model/ModBehaviour.cs` 的注释记了「每帧 `ApplyAll` 导致越玩越卡」，节流是 `58f3bef` 加的。`ItemGraphicInfo.Setup` 会写反向索引 `ItemRefrence`（从图形找回物品），但它替代不了枚举。
 **代价**：`ItemHooks` 需要 `libs/0Harmony.dll`；三个模型样板都引了并带 `CopyHarmonyToModRoot` 目标，没引这个依赖的 mod 要重编。
@@ -197,7 +204,7 @@
 
 **重量要反射写**：`Item.weight` 只有**私有字段**（`SelfWeight` / `UnitSelfWeight` 是只读属性）。`ItemFactory.ApplyItemNumbers` 会反射写它，并额外清一次 `_cachedTotalWeight` 作保险（`TotalWeight` 的 getter 自己也会比对失效）。不得自己再写一遍。
 
-**Tag 决定分类、功能与掉落**：品类 tag 从原型继承（克隆是完整拷贝），config 里的 `tags` 是**追加不是替换**。功能随 tag 走（`Item.Repairable` / `Sticky` / `CanBeSold` 都是 `Tags.Contains("…")`；插槽准入是 `Slot.CanPlug(item)`，内部判 `Tags.Check(requireTags, excludeTags)`），所以品类 tag 选错不是分类难看，而是**功能会错**。掉落也按物品自己的 tag 从 `LootBoxLoader.tags.entries[]` 的池子里抽；要上展示台得有 `ShowCase`（12 个槽都要求它，且物品要自带 3D 图形）。`Collection` / `Luxury` / `Daily` 截至编写时没查到读取点；`NotForSell` **没有代码读**（代码读的是 `NotSellable`）。
+**Tag 决定分类、功能与掉落**：品类 tag 从原型继承（克隆是完整拷贝），config 里的 `tags` 是**追加不是替换**。功能随 tag 走（`Item.Repairable` / `Sticky` / `CanBeSold` 都是 `Tags.Contains("…")`；插槽准入是 `Slot.CanPlug(item)`，内部判 `Tags.Check(requireTags, excludeTags)`），所以品类 tag 选错不是分类难看，而是**功能会错**。掉落也按物品自己的 tag 从 `LootBoxLoader.tags.entries[]` 的池子里抽；要上展示台得有 `ShowCase`（12 个槽都要求它，且物品要自带 3D 图形）。`Collection` / `Luxury` / `Daily` 在公开签名与 strings 里查不到读取点（不等于一定没有，只是没证据）；`NotForSell` 在公开签名里查不到（代码读的是 `NotSellable`）。
 
 **依据**：`libs/mod-kit/ItemFactory.cs:428-431,462-463`；`docs/api/ItemStatsSystem.md:137,314`。
 
@@ -219,7 +226,7 @@
 | 物品的 typeID 与名字键 | `action=export, class=Item, file=resources.assets, field=["typeID","displayName"], out="/tmp/items.tsv"` |
 | 按 tag 筛物品 | 上面那条加 `match=["tags.list[].#name=Food"]` |
 | 某个 tag 挂在多少件物品上 | `action=refs, class=Tag, name=ShowCase, by=Item` |
-| 谁引用了它（反向查）| `action=refs, class=Tag, pathid=76674, by=Item`（76674 = `ShowCase`，撰写时实测）|
+| 谁引用了它（反向查）| `action=refs, class=Tag, pathid=76698, by=Item`（76698 = `ShowCase`，撰写时实测；pathID 按文件编，传错**不报错**，会静默查另一个资产）|
 | 一件物品的全部字段 | `action=dump, class=Item, pathid=108943, depth=7`（108943 = 撰写时实测）|
 | 某对象的父链与坐标 | `action=transform, pathid=<Transform 的 pathID>, file=levelN`（场景与 prefab 在 `levelN` 里，`file=` 不得省：不给 `file` 只会扫 `*.assets`，可能命中另一个文件的同号对象）|
 | 商店档位（`merchantID`）| `action=export, class=StockShop, field=["merchantID","DisplayNameKey","sellFactor"]` |
@@ -249,12 +256,12 @@ Item_Candy,棒棒糖,#20250911092425,Items
 Character_Ming,小明,#20250807035821,Characters
 ```
 
-- **按 `key` 建索引**：同一个 key 可能出现在多个 sheet 里，中文也不一定在 `Items`（实测：`Item_ButcherKnife` 在英文包里属 `Default`，在中文包里属 `Items`）。
+- **按 `key` 建索引**：同一个 key 在**不同语言包**里可能属不同 sheet（实测 10 个 CSV 共 58394 行，**没有重复 key**；`Item_ButcherKnife` 在英文包里属 `Default`，在中文包里属 `Items`）。
 - 固定命令：`grep -F "Character_Ming," "<那个目录>/ChineseSimplified.csv"`。
 - key 从哪来：数据里的 `displayName` / `nameKey` / `displayNameKey` / `xxxKey` 字段就是它。
 
 **两条不得**：
-1. **不得说「某个表里没有 = 游戏里没有」**。这个仓库**不再保存**本地化快照（旧那份 `docs/data/*.csv` 的 Items 只有 892 条本地化行，游戏自带的有 2944 条，已经害过几次「以为没有，其实有」）。要文案就读游戏自带那份，或先 `inspect_game_data` 现查。
+1. **不得说「某个表里没有 = 游戏里没有」**。这个仓库**不再保存**本地化快照（旧那份 `docs/data/*.csv` 的 Items 只有 892 条本地化行，游戏自带的有 2942 条，已经害过几次「以为没有，其实有」）。要文案就读游戏自带那份，或先 `inspect_game_data` 现查。
 2. **不得把文案抄进代码**（会随版本变）。
 
 **依据**：游戏目录实读（10 个 csv、表头与两行示例逐字核对过）。

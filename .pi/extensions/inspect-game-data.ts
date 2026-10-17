@@ -182,14 +182,18 @@ export default function (pi: ExtensionAPI) {
         out = (await runAsync(dotnet, args)).stdout;
       } catch (error) {
         const e = error as { stdout?: string; stderr?: string; message?: string };
-        const detail = [e.stderr, e.stdout, e.message].filter((s) => s && String(s).trim()).join("\n").trim().slice(0, 600);
+        // `Command failed: dotnet …` 是 execFile 的错误尾巴，对 agent 没信息量（还会让 /dotnet/ 误命中）
+        const raw = [e.stderr, e.stdout, e.message].filter((s) => s && String(s).trim()).join("\n").trim();
+        const detail = raw.split("\n").filter((l) => !/^Command failed:/.test(l.trim())).join("\n").trim().slice(0, 600);
         // NEXT 按真实原因分：探针启动不了（dotnet 不在 PATH）不是 field 写错，别把人带偏。
         // 实测：不把 ~/.dotnet 放进 PATH 时，dotnet 没记录 runtime.dotnet 就会 `spawn dotnet ENOENT`。
         const next = /matched nothing|field path/i.test(detail)
           ? "fix the --field path (syntax: a.b, a[], a[0], #name, #class), then retry"
-          : /ENOENT|not found|dotnet|SDK/i.test(detail)
+          // 只认「起不来」的具体证据：旧写法里的 /dotnet|SDK/ 会命中命令行本身（含 dotnet 路径），
+          // 于是 `# ERROR: unknown class 'X'` 也被说成运行时问题。
+          : /\bENOENT\b|is not recognized as an internal or external command|command not found/i.test(detail)
             ? "the .NET runtime is not usable here: run check_runtime (or install_runtime), then retry"
-            : "narrow with a simpler action (classes / list), or read the message, then retry";
+            : "read the # ERROR line above: it names the flag or class to fix (for a scene, pass file=levelN), then retry";
         return {
           content: [
             {

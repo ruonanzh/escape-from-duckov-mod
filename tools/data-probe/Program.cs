@@ -88,6 +88,19 @@ static partial class DataProbe
         }
 
         var outPath = Opt(o, "out");
+        if (!string.IsNullOrEmpty(outPath))
+        {
+            var outDir = Path.GetDirectoryName(Path.GetFullPath(outPath));
+            if (outDir != null && !Directory.Exists(outDir))
+            { Console.Error.WriteLine($"data-probe: --out directory does not exist: {outDir}"); return 2; }
+        }
+        // P2：数字型 flag 写错不再默默回默认值
+        foreach (var k in new[] { "limit", "offset", "depth", "rows" })
+        {
+            var v = Opt(o, k);
+            if (v != null && !int.TryParse(v, out _))
+            { Console.Error.WriteLine($"data-probe: --{k} needs an integer, got '{v}'"); return 2; }
+        }
         using var outLines = new Out(outPath, limit);
         foreach (var k in irrelevant)
             outLines.Note($"# WARNING: --{k} has no effect on '{action}' (use it with: {string.Join(", ", ActionsUsing(k))})");
@@ -104,10 +117,29 @@ static partial class DataProbe
             {
                 // 写文件时默认不再限制行数（落盘不进模型上下文，不存在刷屏问题 ✓）
                 // S8：export 的限行参数是 --rows；给了 --limit 也当 alias 用（不静默忽略）。
-                var rowsOpt = Opt(o, "rows") ?? Opt(o, "limit");
-                if (rowsOpt != null && Opt(o, "rows") == null)
-                    outLines.Note("# WARNING: export uses --rows; --limit was read as --rows (both do the same thing)");
-                var rowCap = rowsOpt != null || outPath == null ? rows : 1000000;
+                // 行数上限：--rows 是唯一权威。--limit 只在「没有 --out」时当预览行数 alias ——
+                // 有 --out 时绝不能用它：扩展 inspect_game_data 每次都传 --limit 2000，照用会把落盘截在 2000 行。
+                var rowsArg = Opt(o, "rows");
+                var limitArg = Opt(o, "limit");
+                int rowCap;
+                if (rowsArg != null)
+                {
+                    if (!int.TryParse(rowsArg, out var rv) || rv <= 0)
+                    { Console.Error.WriteLine($"data-probe: --rows needs a positive integer, got '{rowsArg}'"); return 2; }
+                    rowCap = rv;
+                }
+                else if (outPath != null)
+                {
+                    rowCap = 1000000;
+                    if (limitArg != null)
+                        outLines.Note("# note: --limit is ignored for export when --out is set (the file gets the full table, cap 1,000,000); use --rows N to cap it");
+                }
+                else
+                {
+                    if (limitArg != null && (!int.TryParse(limitArg, out var lv2) || lv2 <= 0))
+                    { Console.Error.WriteLine($"data-probe: --limit needs a positive integer, got '{limitArg}'"); return 2; }
+                    rowCap = limitArg != null ? int.Parse(limitArg) : rows;
+                }
                 rc = Export(am, insts, Opt(o, "class"), AllOpts(args, "match"), AllOpts(args, "field"), rowCap, offset, outLines);
                 break;
             }
@@ -129,7 +161,7 @@ static partial class DataProbe
     {
         "managed", "data", "action", "file", "limit", "offset", "out",
         "class", "pattern", "name", "typeid", "pathid", "depth", "mesh", "has", "by",
-        "match", "field", "rows",
+        "match", "field", "rows", "follow", "exact",
     };
 
     static HashSet<string> KnownFor(string action)
@@ -230,7 +262,9 @@ static partial class DataProbe
             }
             if (outList.Count > 0) return outList;
         }
-        var assets = Directory.GetFiles(data, "*.assets").OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList();
+        List<string> assets;
+        try { assets = Directory.GetFiles(data, "*.assets").OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList(); }
+        catch (Exception e) { Console.Error.WriteLine($"data-probe: cannot list '*.assets' under '{data}': {e.Message}"); return new List<string>(); }
         if (assets.Count > 0) return assets;
         // 没有 .assets 时，把目录里看起来像 AssetBundle 的文件也接上（例如 mod 的包目录）
         return Directory.GetFiles(data).Where(LooksLikeBundle).OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToList();
@@ -607,13 +641,18 @@ static partial class DataProbe
 
         // ⭐ field 路径写错时，以前是**静默空列**（读表的人会以为「数据本来就是空的」）。现在说出来。
         //    只对「一行都没解出值」的路径报 —— 可选字段（例如 displayNameKey）很多行本来就空，不算错。
+        // 只在「这一页盖住了全部行」时才判死字段 —— 否则 --rows/--offset 会把合法路径误判（实测 DisplayNameKey + --rows 1）。
         var dead = new List<string>();
+        bool sawAll = offset == 0 && shown == total;
         for (int i = 0; i < fields.Count; i++)
             if (shown > 0 && hits[i] == 0) dead.Add(fields[i]);
-        foreach (var d in dead)
-            outp.Note($"# WARNING: field '{d}' matched nothing in {shown} row(s) - check the path syntax ('a.b', 'a[]', 'a[0]', '#name', '#class'); see tools/data-probe/README.md");
+        if (sawAll)
+            foreach (var d in dead)
+                outp.Note($"# WARNING: field '{d}' matched nothing in {shown} row(s) - check the path syntax ('a.b', 'a[]', 'a[0]', '#name', '#class'); see tools/data-probe/README.md");
+        else if (dead.Count > 0)
+            outp.Note($"# note: field coverage was checked on {shown} of {total} row(s) only; drop --offset/--rows to verify '{string.Join(", ", dead)}'");
         if (offset >= total || offset + shown < total) outp.Note(next);
-        if (fields.Count > 0 && dead.Count == fields.Count)
+        if (fields.Count > 0 && sawAll && dead.Count == fields.Count)
         {
             outp.Note("# ERROR: every requested field path matched nothing, so the table above has no data - fix the --field path(s) and rerun (do not report an empty column as 'no data')");
             return 1;
@@ -770,7 +809,7 @@ static partial class DataProbe
         var name = Opt(o, "name");
         var typeId = Opt(o, "typeid");
         var pathId = Opt(o, "pathid");
-        if (cls == null && pathId == null) { Console.Error.WriteLine("data-probe: refs needs --class (with --name/--typeid) or --pathid"); return 2; }
+        if (cls == null && pathId == null && name == null) { Console.Error.WriteLine("data-probe: refs needs --class / --name / --pathid"); return 2; }
         if (by != null && !ClassPool(am, insts).Contains(by, StringComparer.Ordinal))
         {
             outp.Add($"# ERROR: no asset class named '{by}' — --by must be a class that actually exists");

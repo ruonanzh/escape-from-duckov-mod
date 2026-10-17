@@ -83,8 +83,23 @@ static class ApiProbe
             Console.Error.WriteLine($"api-probe: action '{action}' needs --target <TypeName>");
             return 2;
         }
+        foreach (var k in new[] { "limit", "offset" })
+        {
+            var v = Get(opt, k);
+            if (v != null && !int.TryParse(v, out _))
+            { Console.Error.WriteLine($"api-probe: --{k} needs an integer, got '{v}'"); return 2; }
+        }
         var dlls = ResolveDlls(managed, dllArg);
         if (dlls.Count == 0) { Console.Error.WriteLine($"api-probe: no DLL matched '{dllArg}' under {managed}"); return 1; }
+        if (dllArg != "*")
+        {
+            // 注意：DLL 名里带点（TeamSoda.Duckov.Core），不能直接用 GetFileNameWithoutExtension
+            var got = new HashSet<string>(dlls.Select(DllStem), StringComparer.OrdinalIgnoreCase);
+            var absent = dllArg.Split(',').Select(x => x.Trim()).Where(x => x.Length > 0)
+                .Where(w => !got.Contains(DllStem(w))).ToList();
+            if (absent.Count > 0)
+                Console.Error.WriteLine($"api-probe: --dll matched nothing for: {string.Join(", ", absent)} (searched under {managed})");
+        }
 
         var outLines = new List<string>();
         int failedDlls = 0;                                  // A4：单个 DLL 解析异常不能当成正常内容
@@ -100,6 +115,12 @@ static class ApiProbe
                 failedDlls++;
                 outLines.Add($"## {Path.GetFileName(dll)}\n# ERROR: {ex.Message}");
             }
+        }
+        bool legalEmpty = false;
+        if (outLines.Count == 0 && action is "search" or "strings")
+        {
+            legalEmpty = true;
+            outLines.Add($"# {action}: 0 match(es) for '{target}' in {dlls.Count} DLL(s) — this is a legal empty result");
         }
         if (outLines.Count == 0)
         {
@@ -121,6 +142,7 @@ static class ApiProbe
         if (!text.EndsWith("\n")) Console.WriteLine();
         // exit 1 = 参数合法但目标不存在 / 有 DLL 解析失败；0 = 成功（含「合法空结果」，那也有 # WARNING）
         if (failedDlls > 0) return 1;
+        if (legalEmpty) return 0;
         return outLines.Count > 0 && outLines[0].StartsWith("# ERROR:") ? 1 : 0;
     }
 
@@ -170,6 +192,13 @@ static class ApiProbe
 
     static string Get(Dictionary<string, string> o, string k) => o.TryGetValue(k, out var v) ? v : null;
 
+    /// 去掉末尾的 `.dll`（**不要**用 GetFileNameWithoutExtension：它会吃掉 `TeamSoda.Duckov.Core` 里的 `.Core`）
+    static string DllStem(string x)
+    {
+        var n = Path.GetFileName(x);
+        return n.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) ? n.Substring(0, n.Length - 4) : n;
+    }
+
     static List<string> ResolveDlls(string managed, string dllArg)
     {
         if (dllArg == "*")
@@ -179,10 +208,18 @@ static class ApiProbe
                 .Where(File.Exists)
                 .ToList();
             if (owned.Count > 0) return owned;
-            return Directory.GetFiles(managed, "*.dll")
-                .Where(p => !IsFrameworkDll(p))
-                .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
-                .ToList();
+            try
+            {
+                return Directory.GetFiles(managed, "*.dll")
+                    .Where(p => !IsFrameworkDll(p))
+                    .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+            }
+            catch (Exception e)
+            {
+                Console.Error.WriteLine($"api-probe: cannot list '*.dll' under '{managed}': {e.Message}");
+                return new List<string>();
+            }
         }
         var list = new List<string>();
         foreach (var raw in dllArg.Split(','))

@@ -111,7 +111,8 @@ dotnet run --project tools/data-probe -- \
 - `dump` / `refs` 目标不存在 → `# ERROR` + exit 1，并提示 `file=levelN`（**pathID 是按文件编的**）。
 - `transform --pathid` 不带 `--file` → 可能命中**另一个文件里的同号对象**：会给 `# note: resolved in <file>` 或 `# WARNING: pathID N exists in M files`，标题里也带 `[file]`。
 - 未知 flag、flag 末尾缺值 → **exit 2**（以前被静默忽略）。
-- `--limit` 与 `--rows`：`export` 用 `--rows`（给 `--limit` 会当 alias 并告警）；其余 action 用 `--limit`。
+- `--limit` 与 `--rows`：`export` 只认 `--rows`（默认 500；带 `--out` 时不限）。给 `export --limit` 会被**忽略**并打 `# note:`（旧版把它当 rows 的别名，于是带 `--out` 也永远只写 500 行）。其余 action 用 `--limit`。
+- `--out` 的目录不存在 → **exit 2**（以前抛未捕获异常，exit 134）。
 - 与 action 无关的 flag（例如 `export --depth`）→ `# WARNING: --depth has no effect on 'export'`。
 - `--out` 落盘但 0 数据行 → `# WARNING: wrote only the header (0 rows)`。
 

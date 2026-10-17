@@ -82,6 +82,8 @@ sealed class Out : IDisposable
             file.Flush();
             var sb = new System.Text.StringBuilder();
             foreach (var l in head) sb.Append(l).Append('\n');
+            // Note 超过 preview 行数时进了 mem —— 落盘模式也必须打出来，否则 # WARNING / # ERROR 被吞掉
+            foreach (var l in mem) sb.Append(l).Append('\n');
             var rest = written - head.Count;
             if (rest > 0) sb.Append($"... (+{rest} more lines in the file)\n");
             sb.Append($"# wrote {written} line(s) to {path} - read/grep that file for the full result");

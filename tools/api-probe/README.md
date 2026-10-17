@@ -37,6 +37,8 @@ dotnet run --project tools/api-probe -- \
 - 找不到时不再只说 `no result`：会列出**搜过哪些 DLL**、提示换 `--dll <name>` / `--dll '*'`，并给 3 个近邻类型名。
 - 默认 `--dll` 是 `TeamSoda.Duckov.Core`；查 `ItemStatsSystem` 的类型要 `--dll ItemStatsSystem`。
 - 单个 DLL 解析异常 → 输出里 `# ERROR: …` 且 **exit 1**（以前混在正文里、exit 0）。
+- `search` / `strings` 没有命中 → **exit 0** + `# search: 0 match(es) … this is a legal empty result`（空结果是合法结果；`members`/`decompile`/`il` 无输出仍是 exit 1）。
+- `--dll` 写了不存在的名字 → 解析出的 DLL 列表不含它时打 `# WARNING: --dll not found: …`（不再静默当成「没找到类型」）。名字里带点的（`TeamSoda.Duckov.Core`）按完整名比对，不会被当成扩展名切掉。
 
 ## 依赖（vendored，免联网）
 

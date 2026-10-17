@@ -106,7 +106,7 @@ PY
 ## 常见坑
 
 - `dump` 的 `follow` **只下钻一层**。想要深层值就用 `export` 的路径（例如 `stats.list[].key`）。
-- `list` 与 `search` 每次最多 **500** 条（用 `offset` 翻页）。`export` 默认 500 行，**给了 `out` 则不限**。
+- `list` 与 `search` 每次最多 **500** 条（用 `offset` 翻页）。`export` 不给 `out` 只回 500 行；给了 `out` 落盘，上限 **100 万行**（`tools/data-probe/Program.cs` 的 `Out` 构造函数）。
 - 大结果**不得直接进上下文**：用 `out=<file>`，工具只回预览。再用 bash 或 python 处理那个文件。
 - 场景（`levelN`）只有显式 `file=levelN` 才读。默认不扫。
 - 结构体字段要写全路径（`a.b.x`）。写 `a` 会得到空列。
