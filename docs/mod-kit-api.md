@@ -23,7 +23,7 @@
 
 | API | 什么时候用 |
 |---|---|
-| `WeaponModel.Apply(root, mesh, tex, offset, slots, scale)` | **主入口**：把模型换到手持武器上（先选锚点，再关旧外观，然后对齐、搬挂点、换贴图）。关旧外观只留三类：我们自己的、灯与特效、**槽位子树**（判据在 `HidePolicy`）。已挂过的层直接 `NoOp`（判据 `PatchRegistry.IsPatched`）。`slots` 的值 `[x,y,z]` 单位是**米**，在**我们模型的局部空间**里。枪的这个空间经过**握把归零**（`zeroGrip` 默认 `true`，参照 mod 不传它），零点在**握把点**。`x` 沿 X（左右）· `y` 沿 Y（上下）· `z` 沿 Z（枪口方向） |
+| `WeaponModel.Apply(root, mesh, tex, offset, slots, scale)` | **主入口**：把模型换到手持武器上（先选锚点，再关旧外观，然后对齐、搬挂点、换贴图）。关旧外观只留三类：我们自己的、灯与特效、**槽位子树**（判据在 `HidePolicy`）。已挂过的层直接 `NoOp`（判据 `PatchRegistry.IsPatched`）。`slots` 的值 `[x,y,z]` 单位是**米**，在**我们模型的局部空间**里。枪的这个空间经过**握把归零**（`zeroGrip` 默认 `true`，参照 mod 不传它），零点在**握把点**。`x` 沿 X（左右）· `y` 沿 Y（上下）· `z` 沿 Z（枪口方向）。**`pivot` 点落在枪根（=手挂点）的坐标系里**，与锚点（枪身零件）自己的偏移无关 |
 
 | `WeaponIcon.Apply(item, "icon.png")` | 换卡片图标（有图标才调。幂等，内部自己归一化尺寸）|
 | `WeaponIcon.ApplyToAllMatching(names, typeIds, pngPath)` | 一次给一批武器换同一个图标。`names` 与 `typeIds` 任一命中即可 |
@@ -52,6 +52,11 @@
 而可换枪托覆盖 −0.373 … −0.028，两者本来就错开。不得追求逐件贴合。
 
 > 待办：等有了 agent 可调用的 editor CLI，让它按这张表自动核对（现在只能人眼看、手调）。
+
+**pivot 落在哪（2026-10-18 修）**：以前 `go.transform.localPosition = extraOffset - target`，而 `go` 的父级是**枪身零件（锚点）**，
+于是 pivot 点落到**锚点原点**。锚点在枪根里各有偏移（实测 84 把枪：z 中位 +0.171，最大 +0.728，M14 与 Mosin 都在 +0.71 以上），
+同一套 pivot 在不同枪上偏的量都不一样；编辑器把 pivot 点摆在**手挂点**（=枪根），两边必然对不上。
+现在改成世界坐标赋值（`go.transform.position = root.TransformPoint(extraOffset - target)`），pivot 点精确落在枪根加 `extraOffset`。
 
 ## 3. 共用登记表（枪和物品两条路共用）
 

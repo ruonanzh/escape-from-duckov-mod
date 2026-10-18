@@ -217,7 +217,13 @@ namespace ModelKit
                 else if (res.SlotPoints.TryGetValue("Muzzle", out var mz) && res.SlotPoints.TryGetValue("Stock", out var st))
                 { target = (mz + st) * 0.5f; res.AlignSource = "slots.Muzzle+Stock midpoint"; }
             }
-            go.transform.localPosition = extraOffset - target;
+            // **落在枪根空间，不是锚点空间。**
+            // 以前是 `localPosition = extraOffset - target`，而 `go` 的父级是**枪身零件**（锚点），
+            // 于是 pivot 点落到了锚点的原点。锚点在枪根里各有偏移（实测 84 把枪：z 中位 +0.171，
+            // 最大 +0.728；见 docs/mod-kit-api.md），于是同一套 pivot 在不同枪上偏的量都不一样。
+            // 编辑器把 pivot 点摆在**手挂点**（=枪根），所以两边必然对不上。
+            // 用世界坐标赋值 ⇒ 与父级（锚点）的偏移/旋转无关，pivot 点精确落在枪根 + extraOffset。
+            go.transform.position = root.TransformPoint(extraOffset - target);
 
             // ⑤ slots，于是 把**游戏自己的挂点**（`Sockets/<槽位>`）搬到我模型上的对应位置
             // 游戏随后会把配件 instance 挂到那个 socket 上，于是 配件就落在**我们模型的形状**上
