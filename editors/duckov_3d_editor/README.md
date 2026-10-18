@@ -58,6 +58,12 @@
 - **原点白十字（±3.5cm）** = 枪的 0 点要对齐的地方
 - **玩家鸭**：常驻参照物，站在地面。类型 = 枪 时，模型会被移到它拿枪的
   `Hand.R/MeleeWeaponSocket` 上（游戏里的挂接关系）
+  - 内嵌的是 **`assets/duck_player_split_pose.glb`**（`Body` / `Arm.R` / `Arm.L`，手臂与躯干分开，各带 `Hand` 子节点；无骨骼无蒙皮），
+    由 `assets/duck_player.js` 以 base64 内嵌（CSP 是 `connect-src 'none'`，运行时不能 fetch）。
+  - 尺寸归一化在 `editor.js` 顶部两个常量：`REF_SCALE`（按身高对齐游戏角色 1.124 m）与 `REF_Y_OFFSET`（把脚底抬回 `y = 0`）。
+    实测：新模型 1.520 m 高、脚底 `-0.404` ⇒ `REF_SCALE = 0.7395`、`REF_Y_OFFSET = 0.2988`。**换参照模型只改这两个数**。
+  - 重新内嵌：`python3 -c "import base64;print(base64.b64encode(open('assets/duck_player_split_pose.glb','rb').read()).decode())"`
+    生成的内容替换 `assets/duck_player.js` 里的 `window.DUCK_REF_B64`（保留文件头注释）。
 
 ## 挂点
 

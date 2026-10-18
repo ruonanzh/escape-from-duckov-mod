@@ -498,6 +498,14 @@
     if (needBuild && state.model) build();   // 模型还没加载时跳过（加载完自己会 build）
     setCfg(lines.length ? lines.join("\n") : "（没有可显示的字段）");
   }
+  // 参照鸭子的归一化：新模型（duck_player_split）比游戏角色高，且脚底不在 y=0。
+  // 实测默认值：游戏角色 1.124 m 高、脚底 ≈ 0；新模型 1.520 m 高、脚底 ≈ -0.404。
+  //   REF_SCALE    = 1.124 / 1.520 ≈ 0.7395   （按高度对齐）
+  //   REF_Y_OFFSET = 0.404 * REF_SCALE ≈ 0.2988（把脚底抬回 y = 0）
+  // 换模型时**只改这两个数**，不要改下面的加载逻辑。
+  var REF_SCALE = 0.7395;
+  var REF_Y_OFFSET = 0.2988;
+
   var refDuck = null;
   var refSocketMarks = [];
 
@@ -509,6 +517,8 @@
       var g = new THREE.Group();
       g.name = "refDuck";
       // 这里**不加** X 镜像，理由见上面那段实测（前视图：右臂在画面左侧 = 对）
+      gltf.scene.scale.setScalar(REF_SCALE);
+      gltf.scene.position.y = REF_Y_OFFSET;
       var mir = new THREE.Group();
       mir.add(gltf.scene);
       g.add(mir);
