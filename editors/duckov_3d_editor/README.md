@@ -148,7 +148,7 @@
 ## 技术要点（改之前先看这几条）
 
 - **离线**：宿主 CSP 是 `connect-src 'none'`，**不得走 CDN**。
-  `three.bundle.js` 是 vendored 的（esbuild 打包）。
+  `three.bundle.js` 是 vendored 的（esbuild 打包，three.js r169，MIT，见 `THIRD_PARTY_LICENSES.md`）；顶部必须保留 `/*! … */` 许可 banner。
 - **`delete window.createImageBitmap`**：three 默认用 `ImageBitmapLoader`
   （`fetch` 读 `blob:`），会被 CSP 挡，于是贴图全丢、看着像「模型没材质」。
   删掉它，three 退回 `<img src=blob:>`（走 `img-src`）。

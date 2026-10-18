@@ -1,3 +1,12 @@
+/*!
+ * three.js r169 — https://threejs.org
+ * Copyright 2010-2024 three.js authors
+ * SPDX-License-Identifier: MIT
+ *
+ * Vendored, esbuild-bundled copy (IIFE). Do not edit by hand; rebuild from the
+ * upstream package when upgrading. Full license text: see THIRD_PARTY_LICENSES.md
+ * in this directory.
+ */
 (() => {
   var __defProp = Object.defineProperty;
   var __export = (target, all) => {
