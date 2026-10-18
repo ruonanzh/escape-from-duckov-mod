@@ -172,3 +172,28 @@ node --experimental-strip-types scripts/check-mod-config-data.mjs   # 0 = 符合
 **已踩的坑**（写在这里免得再犯）：拿游戏 typeID 清单时用 `data-probe --action list`，一页是 500 个**资产**，
 而里面有些行不是物品（`typeID=-1`）。于是「这一页少于 500 个命中」**不能**当末页判据，
 否则第一页就停、后面的号全看不到（662 就这样被误报成不存在）。
+
+## 两个探针（`tools/data-probe`、`tools/api-probe`）
+
+它们不在这里，是 `tools/` 下的 C# 命令行探针：**agent 通过 `inspect_game_data` / `inspect_game_api` 调**，
+维护者也可以直接跑（输出格式与扩展返回一致）。
+
+```bash
+dotnet build tools/data-probe -c Release && dotnet build tools/api-probe -c Release
+
+dotnet tools/data-probe/bin/Release/net8.0/data-probe.dll \
+  --managed "<游戏>/.../Managed" --data "<游戏>/.../Data" --action classes
+
+dotnet tools/api-probe/bin/Release/net8.0/api-probe.dll \
+  --managed "<游戏>/.../Managed" --dll '<程序集>.*' --action search --target <类型名>
+```
+
+两条要点：
+
+- **`--managed` 是程序集解析根**，不只是「去哪找 dll」。目标程序集不在该目录时（例如来自 NuGet 缓存），
+  让 `--managed` 继续指游戏目录，把绝对路径给 `--dll`；否则基类链会被**静默截断**，看起来像「类型没有基类」。
+- **`--dll` 必填**（探针不得知道任何具体游戏的程序集名）。可用通配 `MyGame.*`；`*` 是「非框架全扫」，
+  会把 Managed 下的第三方插件一起算进去。
+
+出口码 0 / 1 / 2 的判据见两个 README 的「出口码与静默边界」。
+

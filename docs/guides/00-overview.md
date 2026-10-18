@@ -112,7 +112,7 @@ PY
 - 结构体字段要写全路径（`a.b.x`）。写 `a` 会得到空列。
 - **嵌套数组会拍平**：`a[].b[].c` 输出的是**一条**平行数组，**不保留 `a` 的分组边界**（例如 `StockShopDatabase` 的 merchant 与 entries）。要保留嵌套就用 `dump`（带 `depth`）。
 - **不得把查到的数值抄进代码**（会随版本变）。用这里的命令现查。
-- **空结果不等于「没有」**：看退出码。`0` = 成功（合法空结果会带 `# WARNING: … matched nothing`）、`1` = 目标不存在（类名/名字/pathID 查不到，会带 `# ERROR` 与近邻建议）、`2` = 调用方式错（未知 flag、flag 缺值）。判据见 `tools/data-probe/README.md` 与 `tools/api-probe/README.md` 的「出口码与静默边界」。
+- **空结果不等于「没有」**：看退出码。`0` = 成功（合法空结果会带 `# WARNING: … matched nothing`）、`1` = 目标不存在（类名/名字/pathID 查不到，会带 `# ERROR` 与近邻建议）、`2` = 调用方式错（未知 flag、flag 缺值、`inspect_game_api` 没给 `--dll`）。判据见 `tools/data-probe/README.md` 与 `tools/api-probe/README.md` 的「出口码与静默边界」。
 
 ## 文本从哪来：只认游戏自带的那份
 
@@ -129,6 +129,7 @@ PY
 1. **不知道类名**时，用 `action=classes`（960 个类）grep 关键词，或用 `action=search, pattern=关键词`（名、类或 typeID 子串）。
 2. **知道类名、不知道字段**时，先拿一个对象 `action=export, class=<C>, rows=1`（看首行的 `pathID`），再 `action=dump, class=<C>, pathid=<pid>, depth=1` 看它的字段名。然后用 `export` 按路径取。
 3. **要看实现、字段含义或怎么改**时，用 `inspect_game_api`（`search`，再 `members`，再 `decompile`）。公开签名快照在 `docs/api/`。
+   类型可能住在多个 DLL 里：`search` 查不到时换 `--dll`（例如 `MyGame.*` 通配或 `*`），别急着下结论说「没有这个类型」。
 4. **要文案**时，读游戏自带的本地化 CSV（上节）。
 5. **场景里的对象与坐标**时，用 `file=levelN` 与 `class=GameObject`（见 `world.md` 的 Maps 段）。
 
