@@ -616,6 +616,15 @@
   var SLOT_KEYS = ["scope", "muzzle", "stock", "grip", "tec"];
   var SLOT_LABEL = { scope: "瞄具", muzzle: "枪口", stock: "枪托", grip: "握把", tec: "科技件" };
   var SLOT_SHAPE = { scope: "scope", muzzle: "muzzle", stock: "stock", grip: "grip", tec: "tec" };
+  /** 占位件相对挂点的**朝外**偏移（米，游戏局部空间）。值 = 占位件自身半长/半高，
+   *  这样占位件的**一端**贴住挂点、另一端朝外 —— 和游戏里配件从安装面长出去一致。 */
+  var SLOT_OUT = {
+    muzzle: [0, 0, 0.05],    // 圆柱长 0.10，沿 +Z
+    stock:  [0, 0, -0.06],   // 盒子深 0.12，沿 −Z
+    scope:  [0, 0.03, 0],    // 圆柱半径 0.03，朝上
+    grip:   [0, -0.04, 0],   // 圆柱长 0.08，朝下
+    tec:    [0.015, 0, 0]    // 盒子厚 0.03，朝外
+  };
 
   /** glb 空间里的**握把点** —— 就是 `GltfLoader` 在**顶点上**减掉的那个量。
    *
@@ -649,15 +658,53 @@
     var gp = gripGlb();
     var gv = new THREE.Vector3(gp[0], gp[1], gp[2]);
     b.min.sub(gv); b.max.sub(gv);
-    var lo = b.min, hi = b.max, c = b.getCenter(new THREE.Vector3());
+    var lo = b.min, hi = b.max;
     var span = hi.z - lo.z;
-    var g = {                                    // 先按 glb 坐标算
-      muzzle: [c.x, c.y, hi.z],                  // +Z 端（枪口那头）
-      stock:  [c.x, c.y, lo.z],                  // −Z 端（枪托那头）
-      scope:  [c.x, hi.y, c.z],                  // 顶部
-      grip:   [c.x, lo.y, c.z + span * 0.15],    // 下方，z 略往前
-      tec:    [hi.x, c.y, c.z]                   // 侧面
-    };
+    // 取点用**几何切片**，不用包围盒角点：
+    //   枪口要在**管轴**上（角点会偏到枪管上沿/下沿，实测差 8 cm），枪托同理取尾部截面的中心。
+    //   代价：`samplePoints` 取的是**原始顶点坐标、不含节点变换** —— 我们的枪都是单网格无变换，
+    //   一旦遇到带节点变换的模型，退回角点（下方 fallback）。
+    var pts = [];
+    try { pts = samplePoints(state.model); } catch (e) { pts = []; }
+    var g;
+    if (pts.length > 20) {
+      var mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
+      for (var i = 0; i < pts.length; i++) for (var a = 0; a < 3; a++) {
+        if (pts[i][a] < mn[a]) mn[a] = pts[i][a];
+        if (pts[i][a] > mx[a]) mx[a] = pts[i][a];
+      }
+      var zl = Math.max(0.02, (mx[2] - mn[2]) * 0.06);
+      var yl = Math.max(0.01, (mx[1] - mn[1]) * 0.04);
+      var xl = Math.max(0.01, (mx[0] - mn[0]) * 0.10);
+      var pick = function (f) { var o = []; for (var i = 0; i < pts.length; i++) if (f(pts[i])) o.push(pts[i]); return o; };
+      var mean = function (L) {
+        var s = [0, 0, 0], n = L.length || 1;
+        for (var i = 0; i < L.length; i++) { s[0] += L[i][0]; s[1] += L[i][1]; s[2] += L[i][2]; }
+        return [s[0] / n, s[1] / n, s[2] / n];
+      };
+      var tip = mean(pick(function (p) { return p[2] > mx[2] - zl; }));   // 枪口那一端
+      var butt = mean(pick(function (p) { return p[2] < mn[2] + zl; }));  // 枪托那一端
+      var topv = mean(pick(function (p) { return p[1] > mx[1] - yl; }));  // 顶部（导轨）
+      var side = mean(pick(function (p) { return Math.abs(p[0]) > mx[0] - xl; }));
+      g = {
+        muzzle: [tip[0], tip[1], mx[2]],
+        stock: [butt[0], butt[1], mn[2]],
+        scope: [topv[0], mx[1], topv[2]],
+        grip: [0, mn[1], mn[2] + (mx[2] - mn[2]) * 0.45],   // 枪管下方约 45% 处
+        tec: [mx[0], side[1], side[2]]
+      };
+    } else {
+      var c = b.getCenter(new THREE.Vector3());
+      g = {
+        muzzle: [c.x, c.y, hi.z], stock: [c.x, c.y, lo.z],
+        scope: [c.x, hi.y, c.z], grip: [c.x, lo.y, c.z + span * 0.15], tec: [hi.x, c.y, c.z]
+      };
+    }
+    // 几何点还在 **glb 空间**（上面 bbox 已经减过 grip，切片点没有）⇒ 先减握把，再 X 取反
+    for (var q in g) {
+      if (!Object.prototype.hasOwnProperty.call(g, q)) continue;
+      g[q] = [g[q][0] - gv.x, g[q][1] - gv.y, g[q][2] - gv.z];
+    }
     var out = {};
     for (var i = 0; i < SLOT_KEYS.length; i++) {
       var k = SLOT_KEYS[i], v = g[k];
@@ -723,6 +770,12 @@
   // 尺寸固定、**不随模型的缩放变** —— 游戏里挂点只改世界位置，不改配件的 scale。
   var slotGroup = null, slotMeshes = {};
 
+  /** 点一下按当前模型几何重算 5 个挂点（会覆盖面板上的值）。*/
+  function bindSlotToolsOnce() {
+    var rc = document.getElementById("recalcSlots");
+    if (rc && !rc.__bound) { rc.__bound = true; rc.addEventListener("click", recalcSlots); }
+  }
+
   /** 一种配件一个简易形状（用户 2026-10-13 定）*/
   function makeSlotMesh(k) {
     var geo, col;
@@ -763,12 +816,28 @@
     for (var i = 0; i < SLOT_KEYS.length; i++) {
       var k = SLOT_KEYS[i], v = opts.slots[k] || [0, 0, 0];
       var m = slotMeshes[k];
+      // 占位件**从挂点朝外长**：游戏里配件预制体的原点在**安装面**，本体朝外伸
+      // （实测 `IG_Acc_Muzzle_PST_SIL_1` 的网格在 z=−0.0045、`IG_Acc_Stock_ALL_REC_2` 在 z=+0.0195）。
+      // 若按"中心"摆，占位件会向里缩半个身长 ⇒ 面板上必须把值往外推才"看着对"，游戏里就浮空了（已踩）。
+      var o = SLOT_OUT[k] || [0, 0, 0];
+      var vv = [v[0] + o[0], v[1] + o[1], v[2] + o[2]];
       // 游戏局部点 v → glb 点：先 X 取反（GltfLoader 的手性转换），再加握把
       m.position.copy(state.model.localToWorld(
-        new THREE.Vector3(-v[0] + gp[0], v[1] + gp[1], v[2] + gp[2])));
+        new THREE.Vector3(-vv[0] + gp[0], vv[1] + gp[1], vv[2] + gp[2])));
       m.scale.setScalar(1);            // 不继承模型的缩放
       m.updateMatrixWorld(true);
     }
+  }
+
+  /** 按当前模型几何把 5 个挂点重算一遍，写进输入框与 config。
+   *  面板上的值**不会自动重算**（会冲掉手调结果），只能点按钮。 */
+  function recalcSlots() {
+    var h = heuristicSlots();
+    if (!h) return;
+    opts.slots = h;
+    for (var i = 0; i < SLOT_KEYS.length; i++)
+      for (var a = 0; a < 3; a++) setSlotInput(SLOT_KEYS[i], a, h[SLOT_KEYS[i]][a]);
+    applySlots();
   }
 
   /** 配件挂点只算一次：`opts.slots` 为空时按包围盒填上 */
@@ -803,7 +872,9 @@
     var pivotRow = document.getElementById("pivotRow");
     if (pivotRow) pivotRow.hidden = attach || !(isGun || opts.kind === "melee");
     var slotRows = document.getElementById("slotRows");
-    if (slotRows) slotRows.hidden = !attach;
+    if (slotRows) { slotRows.hidden = !attach; if (attach) bindSlotToolsOnce(); }
+    var slotTools = document.getElementById("slotTools");
+    if (slotTools) slotTools.hidden = !attach;
     var sizeSection = document.getElementById("sizeSection");
     if (sizeSection) sizeSection.hidden = attach;
     var kindSel = document.getElementById("kind");
@@ -843,11 +914,13 @@
     //    ⚠️ 游戏把 grip 减在**顶点**上，编辑器只是加了一个**变换组** ⇒ 两侧的"局部零点"差一个 grip。
     //    因此这里把算出的 grip 存下来，`applySlots` / `heuristicSlots` 要用（见 `gripGlb`）。
     state.gripGlb = null;
-    if (opts.kind === "gun") {
+    // **必须等模型真的在场景里**再算：早期 build() 时 `state.mirror` 还是空的，
+    // 算出来是 (0,0,0)，一旦缓存就会让之后所有挂点/占位件整体偏一个握把向量（已踩）。
+    if (opts.kind === "gun" && state.model) {
       state.mirror.updateMatrixWorld(true);
       var g = guessGrip(samplePoints(state.mirror));
       state.grip.position.set(-g[0], -g[1], -g[2]);
-      state.gripGlb = [g[0], g[1], g[2]];
+      if (g[0] !== 0 || g[1] !== 0 || g[2] !== 0) state.gripGlb = [g[0], g[1], g[2]];
     }
 
     // ⑤ 落到该类型对应的挂点，再减掉 pivot（**模型动** 不是拖把手）
