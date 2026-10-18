@@ -60,8 +60,11 @@
   `Hand.R/MeleeWeaponSocket` 上（游戏里的挂接关系）
   - 内嵌的是 **`assets/duck_player_split_pose.glb`**（`Body` / `Arm.R` / `Arm.L`，手臂与躯干分开，各带 `Hand` 子节点；无骨骼无蒙皮），
     由 `assets/duck_player.js` 以 base64 内嵌（CSP 是 `connect-src 'none'`，运行时不能 fetch）。
-  - 尺寸归一化在 `editor.js` 顶部两个常量：`REF_SCALE`（按身高对齐游戏角色 1.124 m）与 `REF_Y_OFFSET`（把脚底抬回 `y = 0`）。
-    实测：新模型 1.520 m 高、脚底 `-0.404` ⇒ `REF_SCALE = 0.7395`、`REF_Y_OFFSET = 0.2988`。**换参照模型只改这两个数**。
+  - 尺寸归一化在 `editor.js` 顶部两个常量：`REF_SCALE`（按身高对齐游戏角色 1.124 m）与 `REF_Y_OFFSET`（把脚底抬到 `y = 0`）。
+    当前模型实测（**对加载后的 `Box3.setFromObject(scene)` 量，含节点变换**）：`0.718 × 1.124 × 0.864`、`y ∈ [-0.008, 1.116]`；
+    游戏角色是 `0.817 × 1.124 × 0.918`、`y` 范围相同 ⇒ **本来就等高同脚**，所以 `REF_SCALE = 1`、`REF_Y_OFFSET = 0`。
+    换模型只改这两个数。**别直接读 glb 里 accessor 的 min/max**：手/脚是独立网格，局部坐标没过节点变换，
+    会量成 1.52 m 高、脚底 -0.404（我们错过一次）。
   - 重新内嵌：`python3 -c "import base64;print(base64.b64encode(open('assets/duck_player_split_pose.glb','rb').read()).decode())"`
     生成的内容替换 `assets/duck_player.js` 里的 `window.DUCK_REF_B64`（保留文件头注释）。
 

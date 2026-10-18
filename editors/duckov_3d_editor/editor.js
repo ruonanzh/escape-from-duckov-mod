@@ -498,13 +498,17 @@
     if (needBuild && state.model) build();   // 模型还没加载时跳过（加载完自己会 build）
     setCfg(lines.length ? lines.join("\n") : "（没有可显示的字段）");
   }
-  // 参照鸭子的归一化：新模型（duck_player_split）比游戏角色高，且脚底不在 y=0。
-  // 实测默认值：游戏角色 1.124 m 高、脚底 ≈ 0；新模型 1.520 m 高、脚底 ≈ -0.404。
-  //   REF_SCALE    = 1.124 / 1.520 ≈ 0.7395   （按高度对齐）
-  //   REF_Y_OFFSET = 0.404 * REF_SCALE ≈ 0.2988（把脚底抬回 y = 0）
-  // 换模型时**只改这两个数**，不要改下面的加载逻辑。
-  var REF_SCALE = 0.7395;
-  var REF_Y_OFFSET = 0.2988;
+  // 参照鸭子的归一化：换模型时**只改这两个数**，不要改下面的加载逻辑。
+  // 量法：对**加载后的 scene** 取 `new THREE.Box3().setFromObject(scene)` —— 必须含节点变换。
+  //   直接读 glb 里 accessor 的 min/max 是错的：手、脚是**独立网格**，它们的局部坐标
+  //   没有经过节点旋转/平移，会把整只鸭子量成 1.52 m 高、脚底 -0.404（曾经就这么错过一次）。
+  // 当前模型（`duck_player_split_pose.glb`）：0.718 × 1.124 × 0.864，y ∈ [-0.008, 1.116]
+  //   游戏角色（旧参照）：          0.817 × 1.124 × 0.918，y ∈ [-0.008, 1.116]
+  //   ⇒ 身高与脚底**本来就一致**，不需要缩放也不用抬：
+  //     REF_SCALE = 1（按身高对齐游戏角色 1.124 m）
+  //     REF_Y_OFFSET = 0（脚底已在 y ≈ 0）
+  var REF_SCALE = 1;
+  var REF_Y_OFFSET = 0;
 
   var refDuck = null;
   var refSocketMarks = [];
