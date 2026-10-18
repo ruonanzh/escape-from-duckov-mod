@@ -24,6 +24,8 @@
 | API | 什么时候用 |
 |---|---|
 | `WeaponModel.Apply(root, mesh, tex, offset, slots, scale)` | **主入口**：把模型换到手持武器上（先选锚点，再关旧外观，然后对齐、搬挂点、换贴图）。关旧外观只留三类：我们自己的、灯与特效、**槽位子树**（判据在 `HidePolicy`）。已挂过的层直接 `NoOp`（判据 `PatchRegistry.IsPatched`）。`slots` 的值 `[x,y,z]` 单位是**米**，在**我们模型的局部空间**里。枪的这个空间经过**握把归零**（`zeroGrip` 默认 `true`，参照 mod 不传它），零点在**握把点**。`x` 沿 X（左右）· `y` 沿 Y（上下）· `z` 沿 Z（枪口方向） |
+
+**不写 `slots` 时**：没有 `pivot` 就按「游戏原枪包围盒的比例映射」对齐，**挂点一个都不动**，配件停在游戏原枪的 `Muzzle/Stock/Scope/…` 上。形状不同的模型通常不贴合（实测 ak103：枪口浮空 3 cm、枪托陷进枪身 26 cm）。要么写 `slots`，要么明确接受这个结果。
 | `WeaponIcon.Apply(item, "icon.png")` | 换卡片图标（有图标才调。幂等，内部自己归一化尺寸）|
 | `WeaponIcon.ApplyToAllMatching(names, typeIds, pngPath)` | 一次给一批武器换同一个图标。`names` 与 `typeIds` 任一命中即可 |
 
