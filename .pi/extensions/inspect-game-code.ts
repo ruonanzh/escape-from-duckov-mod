@@ -2,7 +2,6 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import { serialize } from "../lib/proc";
 import {
-  asciiSafe,
   buildDump,
   checkFreshness,
   dumpDir,
@@ -79,7 +78,7 @@ export default function (pi: ExtensionAPI) {
         let stage = "Rebuilding the dump";
         const report = (text: string) => {
           stage = text;
-          onUpdate?.({ content: [{ type: "text", text: asciiSafe(text) }], details: {} });
+          onUpdate?.({ content: [{ type: "text", text }], details: {} });
         };
         const beat = setInterval(() => report(`${stage} (${Math.round((Date.now() - started) / 1000)}s)`), 10_000);
         try {
@@ -90,11 +89,11 @@ export default function (pi: ExtensionAPI) {
       };
 
       const wrap = (text: string, details: Record<string, unknown> = {}) => ({
-        content: [{ type: "text", text: asciiSafe(text) }],
+        content: [{ type: "text", text }],
         details: { ok: true, ...details },
       });
       const failed = (text: string, details: Record<string, unknown> = {}) => ({
-        content: [{ type: "text", text: asciiSafe(text) }],
+        content: [{ type: "text", text }],
         details: { ok: false, ...details },
       });
 
