@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "runtime": "mono",
+  "dump": {
+    "assemblies": ["TeamSoda.*", "ItemStatsSystem"],
+    "skipNestedTypes": true,
+    "skipCompilerGenerated": true,
+    "budgetBytes": 25000000
+  }
+}

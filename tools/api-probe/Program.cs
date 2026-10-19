@@ -41,7 +41,7 @@ static class ApiProbe
             missing.Add(key);
         }
         var known = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            { "managed", "action", "dll", "target", "member", "limit", "offset" };
+            { "managed", "action", "dll", "target", "member", "limit", "offset", "out", "budget" };
         var unknown = opt.Keys.Where(k => !known.Contains(k)).OrderBy(k => k, StringComparer.Ordinal).ToList();
         if (unknown.Count > 0 || missing.Count > 0)
         {
@@ -65,12 +65,25 @@ static class ApiProbe
         int offset = int.TryParse(Get(opt, "offset"), out var ofs) ? Math.Max(0, ofs) : 0;
         if (managed == null || action == null)
         {
-            Console.Error.WriteLine("usage: api-probe --managed <dir> --dll <name[,name]|path|*> --action <search|members|decompile|il|strings> [--target <t>] [--member <m>] [--limit N] [--offset N]");
+            Console.Error.WriteLine("usage: api-probe --managed <dir> --dll <name[,name]|path|*> --action <search|members|decompile|il|strings|dump> [--target <t>] [--member <m>] [--limit N] [--offset N] [--out <dir> --budget <bytes>]");
             return 2;
         }
-        if (action is not ("search" or "members" or "decompile" or "il" or "strings"))
+        if (action is not ("search" or "members" or "decompile" or "il" or "strings" or "dump"))
         {
-            Console.Error.WriteLine($"api-probe: unknown action '{action}' (known: search members decompile il strings)");
+            Console.Error.WriteLine($"api-probe: unknown action '{action}' (known: search members decompile il strings dump)");
+            return 2;
+        }
+        // `dump` writes a tree instead of answering about one type.
+        var outDir = Get(opt, "out");
+        long budget = long.TryParse(Get(opt, "budget"), out var bg) ? bg : 0;
+        if (action == "dump")
+        {
+            if (string.IsNullOrWhiteSpace(outDir))
+            { Console.Error.WriteLine("api-probe: action 'dump' needs --out <dir>"); return 2; }
+        }
+        else if (outDir != null)
+        {
+            Console.Error.WriteLine($"api-probe: --out is only used by action 'dump' (action is '{action}')");
             return 2;
         }
         // A2：需要类型名的 action 没给 --target → 这是调用方式错，不是「没找到」。
@@ -101,6 +114,8 @@ static class ApiProbe
 
         var outLines = new List<string>();
         int failedDlls = 0;                                  // A4：单个 DLL 解析异常不能当成正常内容
+        if (action == "dump")
+            return DumpAll(dlls, managed, outDir!, budget);
         foreach (var dll in dlls)
         {
             try
@@ -243,6 +258,80 @@ static class ApiProbe
             if (File.Exists(p)) list.Add(p);
         }
         return list.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    /// `dump`：每个 DLL 一份可 grep 的树，一个顶层类型一个文件。
+    /// 与 sts2 那份独立转储脚本相同的两条取舍：跳过嵌套类型（单独反编译会输出父类型整份副本）
+    /// 与名字含 `<>` 的编译器生成类型（lambda 已内联在父类型里）。
+    static int DumpAll(List<string> dlls, string managed, string outRoot, long budget)
+    {
+        long totalBytes = 0;
+        int totalFiles = 0;
+        var summaries = new List<string>();
+        foreach (var dll in dlls)
+        {
+            var asm = DllStem(dll);
+            var asmOut = Path.Combine(outRoot, asm);
+            int ok = 0, skipped = 0, failed = 0;
+            long bytes = 0;
+            try
+            {
+                var pe = new PEFile(dll);
+                var resolver = new UniversalAssemblyResolver(dll, false, pe.Metadata.DetectTargetFrameworkId());
+                resolver.AddSearchDirectory(managed);
+                var settings = new DecompilerSettings { ThrowOnAssemblyResolveErrors = false };
+                var dc = new CSharpDecompiler(pe, resolver, settings);
+                foreach (var t in dc.TypeSystem.MainModule.TypeDefinitions)
+                {
+                    var full = t.FullName;
+                    if (full.Contains("<>") || full.StartsWith("<")) { skipped++; continue; }
+                    if (t.DeclaringType != null) { skipped++; continue; }
+                    var safe = System.Text.RegularExpressions.Regex.Replace(full, @"[^A-Za-z0-9_.\-]", "_");
+                    var parts = safe.Split('.');
+                    var file = parts.Length > 1
+                        ? Path.Combine(asmOut, Path.Combine(parts[..^1]), parts[^1] + ".cs")
+                        : Path.Combine(asmOut, safe + ".cs");
+                    try
+                    {
+                        var code = dc.DecompileTypeAsString(t.FullTypeName);
+                        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+                        File.WriteAllText(file, code);
+                        ok++;
+                        bytes += System.Text.Encoding.UTF8.GetByteCount(code);
+                    }
+                    catch (Exception e)
+                    {
+                        failed++;
+                        if (failed <= 5) Console.WriteLine($"# FAIL {full}: {e.GetType().Name}: {e.Message}");
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Console.Error.WriteLine($"api-probe: cannot read {dll}: {e.Message}");
+                return 1;
+            }
+            totalFiles += ok;
+            totalBytes += bytes;
+            Console.WriteLine($"# {asm}: {ok} files, {bytes / 1024} KB, skipped {skipped}, failed {failed}");
+            summaries.Add(
+                $"{{\"assembly\":\"{asm}\",\"files\":{ok},\"bytes\":{bytes},\"skipped\":{skipped},\"failed\":{failed},\"sha256\":\"{Sha256File(dll)}\"}}");
+            if (budget > 0 && totalBytes > budget)
+            {
+                Console.Error.WriteLine($"api-probe: dump is already {totalBytes} bytes and --budget is {budget}");
+                return 1;
+            }
+        }
+        Console.WriteLine($"# summary {string.Join(" ", summaries)}");
+        Console.WriteLine($"# total {totalFiles} files, {totalBytes / 1048576} MB");
+        return 0;
+    }
+
+    static string Sha256File(string path)
+    {
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        using var fs = File.OpenRead(path);
+        return Convert.ToHexString(sha.ComputeHash(fs)).ToLowerInvariant();
     }
 
     static List<string> RunOne(string dll, string managed, string action, string target, string member, int offset)

@@ -9,7 +9,7 @@
 
 ```bash
 dotnet run --project tools/api-probe -- \
-  --managed "<game>/.../Managed" --dll "<name[,name]|path|*>" --action <search|members|decompile|il|strings> \
+  --managed "<game>/.../Managed" --dll "<name[,name]|path|*>" --action <search|members|decompile|il|strings|dump> \
   [--target <type-or-substring>] [--member <method>] [--limit N] [--offset N]
 ```
 
@@ -20,6 +20,7 @@ dotnet run --project tools/api-probe -- \
 | `decompile` | 反编译**类型**（或 `--member` 指定方法/字段）为 **C#** |
 | `il` | 反编译类型/方法的 **IL** |
 | `strings` | 扫程序集里的**字符串字面量**（每次最多 500 条，`--offset` 翻页）|
+| `dump` | 把整个程序集写成**可 grep 的树**：一个顶层类型一个 `.cs`，目录按命名空间展开。需要 `--out <dir>`，可选 `--budget <bytes>`。跳过嵌套类型（单独反编译会输出父类型整份副本）与名字含 `<>` 的生成类型（lambda 已内联在父类型里）。输出末尾一行 `# summary` 带每个程序集的文件数、字节数、sha256，供调用方写 MANIFEST。|
 
 - `--dll`：**必填**。给 DLL 名（不带 `.dll`）、逗号分隔多个、**通配**（`TeamSoda.*`、`Unity*.dll`）、绝对路径，
   或 `*`（`--managed` 下所有**非框架** DLL）。
