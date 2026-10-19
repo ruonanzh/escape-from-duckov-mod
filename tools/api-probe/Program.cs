@@ -508,6 +508,39 @@ static class ApiProbe
             else flush();
         }
         flush();
+
+        // 第二遍：UTF-16LE。
+        // 第一遍只认 ASCII，于是**用户字符串堆（#US）里的字面量一个也搜不到** ——
+        // C# 的字符串字面量以 UTF-16 存，ASCII 扫描会把它们看成「字符 + 0x00」交替，长度不足被丢掉。
+        // 症状是 `--action strings --target DUPLICATE_ID` 返回空，而这个名字明明在 dll 里。
+        // 元数据名字（get_PortraitPath、has_pck）是 UTF-8，第一遍能搜到 —— 所以那个空结果
+        // 看起来像「这个字面量不存在」，实际是编码没覆盖。
+        cur.Clear();
+        var seen = new HashSet<string>(hits, StringComparer.Ordinal);
+        for (var i = 0; i + 1 < bytes.Length; i += 2)
+        {
+            var lo = bytes[i];
+            var hi = bytes[i + 1];
+            if (hi == 0 && lo >= 32 && lo < 127) cur.Append((char)lo);
+            else
+            {
+                if (cur.Length >= 4)
+                {
+                    var s = cur.ToString();
+                    if ((target == null || s.IndexOf(target, StringComparison.OrdinalIgnoreCase) >= 0) && seen.Add(s))
+                        hits.Add(s);
+                }
+                cur.Clear();
+                i--; // 这一步没对上，从下一个字节重新找对齐
+            }
+        }
+        if (cur.Length >= 4)
+        {
+            var tail = cur.ToString();
+            if ((target == null || tail.IndexOf(target, StringComparison.OrdinalIgnoreCase) >= 0) && seen.Add(tail))
+                hits.Add(tail);
+        }
+
         if (hits.Count == 0) return new List<string>();
         const int cap = 500;
         var page = hits.Skip(offset).Take(cap).ToList();
