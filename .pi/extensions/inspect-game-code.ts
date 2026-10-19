@@ -31,7 +31,7 @@ export default function (pi: ExtensionAPI) {
     promptSnippet: "Read game code from the local dump (whole-tree search, one type, one member)",
     promptGuidelines: [
       "Use inspect_game_code to search the dumped tree, read one type, or read one member. Use inspect_game_api for IL, string literals, or a type the dump does not cover.",
-      "inspect_game_code search lists files and lines; type returns a whole file; body returns one member with its braces balanced. Prefer search when you do not know the file, and type when you do.",
+      "inspect_game_code search lists files and lines. type returns a whole file. body returns one member with its braces balanced. Prefer search when you do not know the file, and type when you do.",
       "inspect_game_code rebuilds the dump by itself when the game's DLLs or decompile.json changed, and says in the result when it ran and how long it took. Do not rebuild the dump some other way.",
       "inspect_game_code dump writes the assemblies in decompile.json. Pass assemblies= to add one for this dump; a wider set costs disk and time.",
     ],
