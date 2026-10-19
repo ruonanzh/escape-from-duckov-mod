@@ -300,6 +300,10 @@ export interface BuildResult {
 
 const today = (): string => new Date().toISOString().slice(0, 10);
 
+/** A budget of 1000 bytes is 0 MB; say KB below one megabyte. */
+const size = (bytes: number): string =>
+  bytes >= 1048576 ? `${Math.round(bytes / 1048576)} MB` : `${Math.round(bytes / 1024)} KB`;
+
 interface DumpSummary {
   assembly: string;
   files: number;
@@ -375,7 +379,18 @@ export async function buildDump(
       join(tmp, "cs"),
     ];
     if (budget > 0) args.push("--budget", String(budget));
-    const run = await runAsync(dotnet.path as string, args, { timeoutMs: 900_000 });
+    const run = await runAsync(dotnet.path as string, args, { timeoutMs: 900_000 }).catch(
+      (error: { stderr?: string; stdout?: string; message?: string }) => {
+        const detail = [error.stderr, error.stdout].filter((s) => s && s.trim()).join("\n").trim();
+        const over = detail.match(/dump is already (\d+) bytes and --budget is (\d+)/);
+        if (over) {
+          throw new Error(
+            `DUMP_OVER_BUDGET: the dump reached ${size(Number(over[1]))} and decompile.json allows ${size(Number(over[2]))}. The previous dump is untouched.\nNEXT: raise dump.budgetBytes, or narrow dump.assemblies.`,
+          );
+        }
+        throw new Error(`PROBE_DUMP_FAILED: ${detail.split("\n").slice(-3).join(" | ").slice(0, 400) || error.message || "no output"}`);
+      },
+    );
     const summaries = parseSummaries(run.stdout);
     const tree = join(tmp, "cs");
     if (!existsSync(tree)) throw new Error(`PROBE_DUMP_FAILED: ${tree} was not produced.\n${run.stderr.slice(-400)}`);
@@ -397,7 +412,7 @@ export async function buildDump(
     const bytes = dirBytes(tmp);
     if (budget > 0 && bytes > budget) {
       throw new Error(
-        `DUMP_OVER_BUDGET: this dump is ${Math.round(bytes / 1048576)} MB and the config allows ${Math.round(budget / 1048576)} MB. Narrow dump.assemblies.`,
+        `DUMP_OVER_BUDGET: this dump is ${size(bytes)} and the config allows ${size(budget)}. Narrow dump.assemblies.`,
       );
     }
     mkdirSync(join(tmp, "logs"), { recursive: true });
@@ -415,7 +430,13 @@ export async function buildDump(
         })(),
         createdAt: new Date().toISOString(),
       },
-      tools: { dumper: { path: relative(cwd, probe.dll), sha256: sha256File(probe.dll), version: "" } },
+      tools: {
+        dumper: {
+          path: relative(cwd, probe.dll),
+          sha256: sha256File(probe.dll),
+          version: (/^# tool (.+)$/m.exec(run.stdout) ?? [])[1] ?? "",
+        },
+      },
       config: { signature: configSignature(cfg), assemblies: [...cfg.dump.assemblies] },
       assemblies: records,
       contents: { typeFiles: countFiles(tree, ".cs"), totalBytes: bytes },

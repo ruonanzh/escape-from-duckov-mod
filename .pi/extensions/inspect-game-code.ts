@@ -20,7 +20,8 @@ import {
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const MB = (bytes: number): string => `${Math.round(bytes / 1048576)} MB`;
+const MB = (bytes: number): string =>
+  bytes >= 1048576 ? `${Math.round(bytes / 1048576)} MB` : `${Math.round(bytes / 1024)} KB`;
 
 export default function (pi: ExtensionAPI) {
   pi.registerTool({

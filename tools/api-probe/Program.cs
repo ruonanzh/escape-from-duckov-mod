@@ -268,6 +268,10 @@ static class ApiProbe
         long totalBytes = 0;
         int totalFiles = 0;
         var summaries = new List<string>();
+        // What produced this tree. The caller records it in its MANIFEST; an
+        // empty version field would look like a defect rather than "unknown".
+        var decompiler = typeof(CSharpDecompiler).Assembly.GetName();
+        Console.WriteLine($"# tool {decompiler.Name} {decompiler.Version}");
         foreach (var dll in dlls)
         {
             var asm = DllStem(dll);

@@ -1,5 +1,5 @@
 /**
- * 探针构建的共享 helper（`inspect_game_api` / `inspect_game_data` 共用）。
+ * 探针构建的共享 helper（`inspect_game_api` / `inspect_game_data` / `inspect_game_code` 共用）。
  *
  * 两个工具都是"薄封装一个 vendored 的 C# 探针"：真正读 DLL / 读数据的是 `tools/*` 里的探针。
  * 这里只负责一件事：**判断要不要重新构建探针**（增量构建虽快，但每次 `dotnet build` 仍有
