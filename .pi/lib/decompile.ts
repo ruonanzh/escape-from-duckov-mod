@@ -385,7 +385,7 @@ export async function buildDump(
         const over = detail.match(/dump is already (\d+) bytes and --budget is (\d+)/);
         if (over) {
           throw new Error(
-            `DUMP_OVER_BUDGET: the dump reached ${size(Number(over[1]))} and decompile.json allows ${size(Number(over[2]))}. The previous dump is untouched.\nNEXT: raise dump.budgetBytes, or narrow dump.assemblies.`,
+            `DUMP_OVER_BUDGET: the dump reached ${size(Number(over[1]))} and .pi/decompile.json allows ${size(Number(over[2]))}. The previous dump is untouched.\nNEXT: raise dump.budgetBytes, or narrow dump.assemblies.`,
           );
         }
         throw new Error(`PROBE_DUMP_FAILED: ${detail.split("\n").slice(-3).join(" | ").slice(0, 400) || error.message || "no output"}`);
@@ -412,7 +412,7 @@ export async function buildDump(
     const bytes = dirBytes(tmp);
     if (budget > 0 && bytes > budget) {
       throw new Error(
-        `DUMP_OVER_BUDGET: this dump is ${size(bytes)} and the config allows ${size(budget)}. Narrow dump.assemblies.`,
+        `DUMP_OVER_BUDGET: this dump is ${size(bytes)} and the config allows ${size(budget)}. The previous dump is untouched.\nNEXT: raise dump.budgetBytes, or narrow dump.assemblies.`,
       );
     }
     mkdirSync(join(tmp, "logs"), { recursive: true });
