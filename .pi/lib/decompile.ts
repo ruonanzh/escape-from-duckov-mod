@@ -43,7 +43,7 @@ export interface DecompileConfig {
   dump: DumpConfig;
 }
 
-export const configPath = (cwd: string): string => join(cwd, ".pi/decompile.json");
+export const configPath = (cwd: string): string => join(cwd, ".pi/lib/decompile.json");
 
 export function loadConfig(cwd: string): DecompileConfig {
   const file = configPath(cwd);
@@ -55,7 +55,7 @@ export function loadConfig(cwd: string): DecompileConfig {
     throw new Error(`DECOMPILE_CONFIG_INVALID: runtime "${String(raw?.runtime)}" is not what this repository dumps.`);
   }
   if (!Array.isArray(raw?.dump?.assemblies) || raw.dump.assemblies.length === 0) {
-    throw new Error("DECOMPILE_CONFIG_INVALID: .pi/decompile.json needs a non-empty dump.assemblies array.");
+    throw new Error("DECOMPILE_CONFIG_INVALID: .pi/lib/decompile.json needs a non-empty dump.assemblies array.");
   }
   return raw;
 }
@@ -385,7 +385,7 @@ export async function buildDump(
         const over = detail.match(/dump is already (\d+) bytes and --budget is (\d+)/);
         if (over) {
           throw new Error(
-            `DUMP_OVER_BUDGET: the dump reached ${size(Number(over[1]))} and .pi/decompile.json allows ${size(Number(over[2]))}. The previous dump is untouched.\nNEXT: raise dump.budgetBytes, or narrow dump.assemblies.`,
+            `DUMP_OVER_BUDGET: the dump reached ${size(Number(over[1]))} and .pi/lib/decompile.json allows ${size(Number(over[2]))}. The previous dump is untouched.\nNEXT: raise dump.budgetBytes, or narrow dump.assemblies.`,
           );
         }
         throw new Error(`PROBE_DUMP_FAILED: ${detail.split("\n").slice(-3).join(" | ").slice(0, 400) || error.message || "no output"}`);
