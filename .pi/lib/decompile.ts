@@ -43,7 +43,7 @@ export interface DecompileConfig {
   dump: DumpConfig;
 }
 
-export const configPath = (cwd: string): string => join(cwd, "decompile.json");
+export const configPath = (cwd: string): string => join(cwd, ".pi/decompile.json");
 
 export function loadConfig(cwd: string): DecompileConfig {
   const file = configPath(cwd);
@@ -55,7 +55,7 @@ export function loadConfig(cwd: string): DecompileConfig {
     throw new Error(`DECOMPILE_CONFIG_INVALID: runtime "${String(raw?.runtime)}" is not what this repository dumps.`);
   }
   if (!Array.isArray(raw?.dump?.assemblies) || raw.dump.assemblies.length === 0) {
-    throw new Error("DECOMPILE_CONFIG_INVALID: decompile.json needs a non-empty dump.assemblies array.");
+    throw new Error("DECOMPILE_CONFIG_INVALID: .pi/decompile.json needs a non-empty dump.assemblies array.");
   }
   return raw;
 }
