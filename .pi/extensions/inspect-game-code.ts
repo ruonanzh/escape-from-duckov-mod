@@ -198,11 +198,13 @@ export default function (pi: ExtensionAPI) {
           const fresh = freshness.state === "fresh";
           const head = !fresh && problem
             ? `FAIL: the dump cannot be used yet. Expected ${dir}.`
-            : !fresh
-              ? "PARTIAL: the dump is stale."
-              : problem
-                ? `PARTIAL: the dump is current, but a rebuild would stop at ${problem.name}.`
-                : `PASS: the dump is current. ${dir}`;
+            : freshness.state === "missing"
+              ? `FAIL: no dump for this repository. Expected ${dir}.`
+              : !fresh
+                ? "PARTIAL: the dump is stale."
+                : problem
+                  ? `PARTIAL: the dump is current, but a rebuild would stop at ${problem.name}.`
+                  : `PASS: the dump is current. ${dir}`;
           const next = problem
             ? problemText(problem)
             : fresh
