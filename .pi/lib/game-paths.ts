@@ -77,9 +77,17 @@ export function readModRepoConfig(cwd: string): ModRepoConfig {
   ) as ModRepoConfig;
 }
 
+/** Path fields are stored absolute; `~` is only for display. Expand it here so every reader gets a real path. */
+const STATE_PATH_KEYS = ["gameDir", "managedDir", "workshopDir", "modInstallDir"] as const;
+
 export function readState(cwd: string): RuntimeState {
   try {
-    return JSON.parse(readFileSync(statePath(cwd), "utf8")) as RuntimeState;
+    const state = JSON.parse(readFileSync(statePath(cwd), "utf8")) as RuntimeState;
+    for (const key of STATE_PATH_KEYS) {
+      const value = state[key];
+      if (typeof value === "string" && value.trim()) state[key] = expandHome(value);
+    }
+    return state;
   } catch {
     return {};
   }
