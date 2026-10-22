@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
+import { probeDotnet } from "../lib/dotnet";
 import { serialize } from "../lib/proc";
 import {
   buildDump,
@@ -63,17 +64,88 @@ export default function (pi: ExtensionAPI) {
       // Where the DLLs are. Its absence is a business result, not an exception:
       // another tool (try_set_game_dir) can put it right.
       let managedDir: string | null = null;
-      let managedProblem: string | null = null;
       try {
         managedDir = requireManagedDir(cwd).managedDir;
-      } catch (error) {
-        managedProblem = (error as Error).message;
+      } catch {
+        managedDir = null;
       }
 
       const dir = dumpDir(cwd);
       const freshness = checkFreshness(cwd, cfg, managedDir);
 
+      // The order a rebuild fails in: runtime, then the dumper, then the game, then the dump.
+      // Only actions that need the dump consult it: a current dump is read without these probes.
+      interface Rung {
+        name: string;
+        state: "ok" | "missing" | "unknown";
+        detail: string;
+        message?: string;
+        next?: string;
+      }
+      let ladder: Rung[] | null = null;
+      const rungs = (): Rung[] => {
+        if (ladder) return ladder;
+        const items: Rung[] = [];
+        const add = (rung: Rung): void => {
+          const blocked = items.some((r) => r.state === "missing");
+          items.push(blocked ? { name: rung.name, state: "unknown", detail: "not checked until the step above is ready" } : rung);
+        };
+        const dotnet = probeDotnet();
+        if (!dotnet.found || (dotnet.major ?? 0) < 8) {
+          add(
+            dotnet.found
+              ? {
+                  name: "dotnet",
+                  state: "missing",
+                  detail: `dotnet ${dotnet.version} (need >= 8)`,
+                  message: `DOTNET_TOO_OLD: dotnet ${dotnet.version} cannot build the dumper (need >= 8).`,
+                  next: "NEXT: run install_runtime, then check_runtime.",
+                }
+              : {
+                  name: "dotnet",
+                  state: "missing",
+                  detail: "not found",
+                  message: "DOTNET_MISSING: the dumper needs the .NET SDK.",
+                  next: "NEXT: run check_runtime, then install_runtime.",
+                },
+          );
+        } else {
+          add({ name: "dotnet", state: "ok", detail: `dotnet ${dotnet.version}` });
+        }
+        const project = join(cwd, "tools/api-probe");
+        if (!existsSync(join(project, "api-probe.csproj"))) {
+          add({
+            name: "tools",
+            state: "missing",
+            detail: `${project} has no api-probe.csproj`,
+            message: `PROBE_MISSING: ${project} does not exist. This repository has no dumper.`,
+            next: "NEXT: restore tools/api-probe (it is part of the repository), or run setup-workspace.",
+          });
+        } else {
+          add({ name: "tools", state: "ok", detail: "tools/api-probe (built on demand)" });
+        }
+        try {
+          add({ name: "game", state: "ok", detail: requireManagedDir(cwd).managedDir });
+        } catch (error) {
+          const text = (error as Error).message;
+          const cut = text.indexOf("\nNEXT:");
+          add({
+            name: "game",
+            state: "missing",
+            detail: "no usable game directory",
+            message: cut === -1 ? text : text.slice(0, cut),
+            next: cut === -1 ? "" : text.slice(cut + 1),
+          });
+        }
+        ladder = items;
+        return items;
+      };
+      const firstProblem = (): Rung | undefined => rungs().find((r) => r.state === "missing");
+      const problemText = (r: Rung): string => [r.message, r.next].filter(Boolean).join("\n");
+
       const rebuild = async (extra: string[]) => {
+        const problem = firstProblem();
+        if (problem) throw new Error(problemText(problem));
         const started = Date.now();
         let stage = "Rebuilding the dump";
         const report = (text: string) => {
@@ -99,54 +171,47 @@ export default function (pi: ExtensionAPI) {
 
       const refreshNote = async (): Promise<string> => {
         if (freshness.state === "fresh") return "";
-        if (!managedDir) return `# the dump is not current (${freshness.reasons.join("; ")}), and it cannot be rebuilt: ${managedProblem}\n`;
         const built = await rebuild([]);
         return `# refreshed the dump in ${built.seconds.toFixed(1)}s (${freshness.reasons.join("; ")})\n`;
       };
 
       try {
         if (params.action === "status") {
-          if (managedProblem && freshness.state !== "missing") {
-            // The dump exists but the DLLs cannot be seen: say so, do not fail the dump.
-            return failed(`PARTIAL: ${managedProblem}\n  dump: ${dir} (${MB(folderBytes(dir))})`, { dir });
-          }
           const manifest = readManifest(dir);
-          if (freshness.state === "missing") {
-            const paths = managedDir
-              ? [`  managed: ${managedDir}`, `  dumper: tools/api-probe (built on demand)`]
-              : ["  managed: unknown - run try_set_game_dir"];
-            return failed(
-              [`FAIL: no dump for this repository. Expected ${dir}.`, ...paths, "NEXT: call action=dump."].join("\n"),
-              { reason: "MISSING", dir },
-            );
-          }
+          const problem = firstProblem();
+          const dumpRung: Rung =
+            freshness.state === "fresh"
+              ? {
+                  name: "dump",
+                  state: "ok",
+                  detail: `current (${MB(folderBytes(dir))}, ${manifest?.contents?.typeFiles ?? "?"} type files)`,
+                }
+              : freshness.state === "stale"
+                ? { name: "dump", state: "missing", detail: `stale: ${freshness.reasons.join("; ")}` }
+                : { name: "dump", state: "missing", detail: `absent (expected ${dir})` };
+          const table = [...rungs(), dumpRung].map((r) => {
+            const mark = r.state === "ok" ? "ok  " : r.state === "missing" ? "MISS" : "?   ";
+            return `  ${r.name.padEnd(7)} ${mark} ${r.detail}`;
+          });
           const coverage = (manifest?.assemblies ?? []).map((a) => `${a.name} (${a.files} files)`).join(", ");
-          const head =
-            freshness.state === "fresh"
-              ? `PASS: the dump is current. ${dir} (${MB(folderBytes(dir))}, ${manifest?.contents?.typeFiles ?? "?"} type files)`
-              : `PARTIAL: the dump is stale.\n  - ${freshness.reasons.join("\n  - ")}`;
-          const resolved =
-            freshness.state === "fresh"
-              ? []
-              : [
-                  `  managed: ${managedDir ?? "unknown"}`,
-                  `  dumper: tools/api-probe/bin/Release/net8.0/api-probe.dll`,
-                ];
-          return freshness.state === "fresh"
-            ? wrap([head, `  build: ${manifest?.build?.label ?? "unknown"}`, `  coverage: ${coverage}`].join("\n"), {
-                dir,
-                freshness: "fresh",
-              })
-            : failed(
-                [
-                  head,
-                  `  build: ${manifest?.build?.label ?? "unknown"}`,
-                  `  coverage: ${coverage}`,
-                  ...resolved,
-                  "NEXT: action=search/type/body rebuild it by themselves; action=dump rebuilds now.",
-                ].join("\n"),
-                { dir, freshness: "stale" },
-              );
+          const facts = manifest ? [`  build: ${manifest.build?.label ?? "unknown"}`, `  coverage: ${coverage}`] : [];
+          const fresh = freshness.state === "fresh";
+          const head = !fresh && problem
+            ? `FAIL: the dump cannot be used yet. Expected ${dir}.`
+            : !fresh
+              ? "PARTIAL: the dump is stale."
+              : problem
+                ? `PARTIAL: the dump is current, but a rebuild would stop at ${problem.name}.`
+                : `PASS: the dump is current. ${dir}`;
+          const next = problem
+            ? problemText(problem)
+            : fresh
+              ? ""
+              : "NEXT: action=search/type/body rebuild it by themselves; action=dump rebuilds now.";
+          const text = [head, ...table, ...facts, next].filter(Boolean).join("\n");
+          return fresh && !problem
+            ? wrap(text, { dir, freshness: "fresh" })
+            : failed(text, { dir, freshness: freshness.state, reason: problem?.name ?? "DUMP" });
         }
 
         if (params.action === "dump") {

@@ -139,7 +139,7 @@ export async function ensureProbe(cwd: string, onProgress: (m: string) => void =
   const projectDir = probeProject(cwd);
   const dll = probeDll(cwd);
   if (!existsSync(join(projectDir, "api-probe.csproj"))) {
-    throw new Error(`PROBE_MISSING: ${projectDir} does not exist. This repository has no dumper.`);
+    throw new Error(`PROBE_MISSING: ${projectDir} does not exist. This repository has no dumper.\nNEXT: restore tools/api-probe (it is part of the repository), or run setup-workspace.`);
   }
   if (probeUpToDate(projectDir, dll)) return { projectDir, dll };
   const dotnet = probeDotnet();
