@@ -15,7 +15,7 @@ import { join, relative, resolve, sep } from "node:path";
 import { createHash } from "node:crypto";
 import os from "node:os";
 import { runAsync } from "./proc";
-import { managedDirFor, platformKey, readModRepoConfig, readState, expandHome } from "./game-paths";
+import { checkGameDir, managedDirFor, platformKey, readModRepoConfig, readState, expandHome } from "./game-paths";
 import { probeUpToDate } from "./probe";
 import { probeDotnet } from "./dotnet";
 
@@ -158,20 +158,21 @@ export async function ensureProbe(cwd: string, onProgress: (m: string) => void =
 
 export function requireManagedDir(cwd: string): { gameDir: string; managedDir: string } {
   const cfg = readModRepoConfig(cwd);
-  const state = readState(cwd);
-  const gameDir = state.gameDir ? expandHome(state.gameDir) : null;
-  if (!gameDir) {
+  // One verdict: the same check that `check_game_paths` prints decides whether the game is usable.
+  const verdict = checkGameDir(readState(cwd).gameDir, cfg, platformKey());
+  if (!verdict.ok || !verdict.path) {
+    const code = verdict.path ? "MANAGED_DIR_MISSING" : "GAME_DIRECTORY_UNKNOWN";
     throw new Error(
-      "GAME_DIRECTORY_UNKNOWN: no game directory is recorded, so the game's DLLs cannot be found.\nNEXT: run try_set_game_dir (it discovers and records the game), or check_game_paths to verify a path.",
+      `${code}: ${verdict.reason ?? "the game directory is not usable"}\nNEXT: ${verdict.next ?? "run try_set_game_dir."}`,
     );
   }
-  const managed = managedDirFor(gameDir, cfg, platformKey());
-  if (!managed || !existsSync(managed)) {
+  const managed = managedDirFor(verdict.path, cfg, platformKey());
+  if (!managed) {
     throw new Error(
-      `MANAGED_DIR_MISSING: expected the game's DLLs at ${managed ?? `${gameDir} (mod-repo.json has no compile.managedDir for ${platformKey()})`}.\nNEXT: run check_game_paths, then try_set_game_dir.`,
+      `MANAGED_DIR_MISSING: mod-repo.json has no compile.managedDir for ${platformKey()}.\nNEXT: reopen or update this game workspace.`,
     );
   }
-  return { gameDir, managedDir: managed };
+  return { gameDir: verdict.path, managedDir: managed };
 }
 
 export interface ResolvedAssembly {
