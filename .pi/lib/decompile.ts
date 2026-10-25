@@ -505,6 +505,38 @@ export function searchTree(dir: string, query: string, limit = 50): TreeHit[] {
   return hits;
 }
 
+/**
+ * Ask a search for one hit more than you show. A list that ended and a list that
+ * was cut then differ, and the header can say which one it is.
+ */
+export function takeCapped<T>(hits: T[], limit: number): { hits: T[]; capped: boolean } {
+  return { hits: hits.slice(0, limit), capped: hits.length > limit };
+}
+
+/** First line of a tree search. Only files seen before the cap are counted. */
+export function searchHeader(target: string, matches: number, files: number, capped: boolean, limit = 50): string {
+  const cut = capped ? ` - capped at ${limit} hits, so more may match` : "";
+  return `# search "${target}": ${matches} match(es) in ${files} file(s)${cut}`;
+}
+
+/** First line of one member's bodies. */
+export function bodyHeader(
+  rel: string,
+  member: string | undefined,
+  blocks: number,
+  capped: boolean,
+  limit = 20,
+): string {
+  const cut = capped ? ` - capped at ${limit} blocks, so more overloads may match` : "";
+  return `# ${rel}${member ? ` :: ${member}` : ""}: ${blocks} block(s)${cut}`;
+}
+
+/** Heading of the member list a failed body lookup returns. */
+export function memberListHeader(members: number, capped: boolean, limit = 60): string {
+  const cut = capped ? ` - capped at ${limit} members; search for the member instead` : "";
+  return `# members in this file: ${members} listed${cut}`;
+}
+
 /** A type's file, by short name, `Namespace.Type`, or a path suffix. */
 export function findTypeFile(dir: string, typeName: string): string | null {
   const wanted = typeName.trim().replace(/\./g, "/").toLowerCase();

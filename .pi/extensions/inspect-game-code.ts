@@ -3,17 +3,21 @@ import { Type } from "typebox";
 import { probeDotnet } from "../lib/dotnet";
 import { serialize } from "../lib/proc";
 import {
+  bodyHeader,
   buildDump,
   checkFreshness,
   dumpDir,
   extractMethod,
   findTypeFile,
+  memberListHeader,
   listMembers,
   folderBytes,
   loadConfig,
   readManifest,
   requireManagedDir,
+  searchHeader,
   searchTree,
+  takeCapped,
   truncate,
   treeDir,
 } from "../lib/decompile";
@@ -244,12 +248,15 @@ export default function (pi: ExtensionAPI) {
         const tree = treeDir(cwd);
 
         if (params.action === "search") {
-          const hits = searchTree(tree, params.target, 50);
-          const body = hits.length
-            ? hits.map((h) => (h.line ? `${h.file}:${h.line}  ${h.text}` : `${h.file}`)).join("\n")
+          const part = takeCapped(searchTree(tree, params.target, 51), 50);
+          const files = new Set(part.hits.map((h) => h.file)).size;
+          const body = part.hits.length
+            ? part.hits.map((h) => (h.line ? `${h.file}:${h.line}  ${h.text}` : `${h.file}`)).join("\n")
             : "0 matches. Try a shorter substring.";
-          return wrap(`${note}# search "${params.target}": ${hits.length} match(es) in ${dir}\n${truncate(body)}`, {
-            matches: hits.length,
+          return wrap(`${note}${searchHeader(params.target, part.hits.length, files, part.capped)}\n${truncate(body)}`, {
+            matches: part.hits.length,
+            files,
+            capped: part.capped,
           });
         }
 
@@ -266,19 +273,23 @@ export default function (pi: ExtensionAPI) {
           return wrap(`${note}# ${rel}\n\n${truncate(source)}`, { file: rel });
         }
 
-        const blocks = params.member ? extractMethod(source, params.member, 20) : [];
-        if (blocks.length === 0) {
-          const names = listMembers(source);
+        const found = params.member ? extractMethod(source, params.member, 21) : [];
+        const part = takeCapped(found, 20);
+        if (part.hits.length === 0) {
+          const listed = takeCapped(listMembers(source, 61), 60);
           return failed(
-            `FAIL: no member matches "${params.member ?? ""}" in ${rel}.\n# members in this file:\n${truncate(names.join("\n"), 60)}`,
-            { reason: "METHOD_NOT_FOUND" },
+            `FAIL: no member matches "${params.member ?? ""}" in ${rel}.\n${memberListHeader(
+              listed.hits.length,
+              listed.capped,
+            )}\n${truncate(listed.hits.join("\n"), 60)}`,
+            { reason: "METHOD_NOT_FOUND", capped: listed.capped },
           );
         }
         return wrap(
-          `${note}# ${rel}${params.member ? ` :: ${params.member}` : ""}: ${blocks.length} block(s)\n\n${truncate(
-            blocks.map((b) => b.text).join("\n\n"),
+          `${note}${bodyHeader(rel, params.member, part.hits.length, part.capped)}\n\n${truncate(
+            part.hits.map((b) => b.text).join("\n\n"),
           )}`,
-          { methods: blocks.length },
+          { methods: part.hits.length, capped: part.capped },
         );
       } catch (error) {
         const message = (error as Error).message;
