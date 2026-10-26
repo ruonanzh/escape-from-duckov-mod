@@ -2,12 +2,11 @@
 #
 # 注意：mod 校验逻辑已迁到 .pi/extensions/mod-lint.ts（validate_mod 工具，agent 用）。
 # 维护者校验 reference/example_mod 的方式：在 pi agent 里调 validate_mod 工具。
-# 如需恢复自动 pre-commit 校验，后续设计维护者脚本（复用校验核心，避免两套逻辑）。
 #
 # ---- pre-commit（只校验环境自身，不碰 your_mods/）----
 # 需要本机装了 lefthook 才生效（brew install lefthook / npm i -D lefthook + lefthook install）
-# 没装也能随时手跑：node scripts/check-probe-tool-parity.mjs
-#                   node scripts/check-prompt-standard-zh.mjs
+# 手跑完整门禁：lefthook run pre-commit --all-files
+# 单项命令与运行时要求见 scripts/README.md。
 pre-commit:
   parallel: true
   commands:
@@ -27,15 +26,15 @@ pre-commit:
       # 台账里写了不存在的接口。踩过：`CharacterSwap.Install()`（其实是嵌套私有类的，且不需人调）。
       run: node scripts/check-mod-kit-api.mjs
     asset-manifest:
-      run: node scripts/check-asset-manifest.mjs
+      run: node --experimental-strip-types scripts/check-asset-manifest.mjs
     mod-install-staleness:
-      run: node scripts/check-mod-install-staleness.mjs
+      run: node --experimental-strip-types scripts/check-mod-install-staleness.mjs
     mod-config-data:
-      run: node scripts/check-mod-config-data.mjs
+      run: node --experimental-strip-types scripts/check-mod-config-data.mjs
     character-rig:
       run: node scripts/check-character-rig.mjs
     character-swap:
       run: node scripts/check-character-swap.mjs
     decompile-lib:
       # 测试使用 bun:test，不能用 Node 运行。
-      run: cd .pi/lib && bun test decompile.test.mjs
+      run: bun test --cwd .pi/lib decompile.test.mjs

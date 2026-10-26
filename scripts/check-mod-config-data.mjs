@@ -54,7 +54,7 @@ const warns = (cfg, ids = null, names = null) => validateDataLayer(cfg, ids, nam
 /** 游戏里已有的号（模拟 data-probe 读到的集合） */
 const GAME = new Set([36, 655, 662, 743, 1629]);   // 743 = Item_fiber（材料，new_item 用例的原型）
 
-/** 游戏里已有的 tag 名与商店档位（模拟 data-probe 现查的结果；**12 个档位，不是 3 个**） */
+/** 游戏里已有的 tag 名与商店档位（模拟 data-probe 现查的结果；**11 个档位，不是 3 个**） */
 const NAMES = {
   tags: new Set(["ShowCase", "Collection", "Luxury", "Daily", "Material", "Food", "Armor", "Backpack", "Helmat", "NotSellable"]),
   merchants: new Set([
@@ -212,7 +212,7 @@ check(
 check("写了 onSale: false 就不必写 merchantID", [], errs(item({ merchantID: undefined, onSale: false })));
 check("merchantID 是游戏里没有的档位", 1, errs(item({ merchantID: "Merchant_Nope" }), null, NAMES).length);
 check(
-  "12 个商店档位都认得（不是只认三个）",
+  "11 个商店档位都认得（不是只认三个）",
   [],
   errs(item({ merchantID: "Merchant_IslandMobile" }), null, NAMES),
 );

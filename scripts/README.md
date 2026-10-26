@@ -5,17 +5,20 @@
 ## 自检脚本（判据的机器检查）
 
 这些跑起来不花积分，也不装任何东西。改判据或改文档前后各跑一次。
+完整门禁使用 `lefthook run pre-commit --all-files`。decompile 测试需要 Bun。
+未安装 Bun 时，decompile 检查失败，不得记为通过。
 
 ```bash
+node --experimental-strip-types scripts/check-asset-manifest.mjs          # 素材清单判据
 node --experimental-strip-types scripts/check-mod-install-staleness.mjs   # 产物过期判据
 node --experimental-strip-types scripts/check-mod-config-data.mjs         # config 数据层判据
 node scripts/check-probe-tool-parity.mjs                                  # 工具面一致性
 node scripts/check-prompt-standard-zh.mjs                                 # 中文提示词规范（情态词、箭头、术语）
 node scripts/check-character-rig.mjs                                      # 角色替换的骨骼映射表
 node scripts/check-character-swap.mjs                                     # 角色替换的搬运算法与接线
-node scripts/measure-skeleton-gap.mjs                                      # 量模型骨架与游戏骨架的差距
 node scripts/check-doc-refs.mjs                                           # 文档引用（链接与仓库根路径）
 node scripts/check-mod-kit-api.mjs                                        # 台账里的 `类型.成员` 在代码里真的存在
+bun test --cwd .pi/lib decompile.test.mjs                                 # dump 读取判据
 ```
 
 它们都导入 `.pi/lib/` 里的**同一份**函数，扩展也导入那份。于是判据只有一份，不会漂。

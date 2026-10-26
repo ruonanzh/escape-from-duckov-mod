@@ -1,7 +1,7 @@
 /**
  * Tests for the dump reader shared by the three Mono repositories.
  *
- *   cd .pi/lib && bun test
+ *   bun test --cwd .pi/lib decompile.test.mjs
  *
  * The cases are pure: a temporary tree for the search, and a synthetic source
  * for the member split. Each cap is checked twice, once at the limit and once
