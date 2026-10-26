@@ -2,7 +2,8 @@ import { existsSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { probeDotnet } from "../.pi/lib/dotnet.ts";
-import { discoverGameDir, managedDirFor, platformKey, readModRepoConfig } from "../.pi/lib/game-paths.ts";
+import { discoverGameDir, managedDirFor, platformKey, readModRepoConfig, readState } from "../.pi/lib/game-paths.ts";
+import { readInfoFields } from "../.pi/lib/mod-identity.ts";
 import { runAsync } from "../.pi/lib/proc.ts";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -13,12 +14,15 @@ if (!dotnet.found || !dotnet.path || (dotnet.major ?? 0) < 8) {
 }
 const config = readModRepoConfig(repoRoot);
 const platform = platformKey();
-const gameDir = discoverGameDir(config, {}, platform).gameDir;
+const gameDir = discoverGameDir(config, readState(repoRoot), platform).gameDir;
 const managedDir = gameDir ? managedDirFor(gameDir, config, platform) : null;
 if (!gameDir || !managedDir || !existsSync(join(managedDir, "TeamSoda.Duckov.Core.dll"))) {
   console.log("SKIP: game DLLs are unavailable; reference build checks did not run");
   process.exit(0);
 }
+
+const gameVersion = readInfoFields(join(gameDir, "Info.ini")).version ?? "unknown";
+console.log(`Environment: dotnet ${dotnet.version}; game ${gameVersion}; managed ${managedDir}`);
 
 const references = [
   ["example_mod", "ExampleMod"],
