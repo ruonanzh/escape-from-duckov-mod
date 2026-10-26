@@ -19,6 +19,7 @@ node scripts/check-character-swap.mjs                                     # 角�
 node scripts/check-doc-refs.mjs                                           # 文档引用（链接与仓库根路径）
 node scripts/check-mod-kit-api.mjs                                        # 台账里的 `类型.成员` 在代码里真的存在
 bun test --cwd .pi/lib decompile.test.mjs                                 # dump 读取判据
+bun scripts/test-inspect-code-incomplete.mjs                               # 不完整 dump 的 5 个 action
 ```
 
 它们都导入 `.pi/lib/` 里的**同一份**函数，扩展也导入那份。于是判据只有一份，不会漂。

@@ -38,3 +38,6 @@ pre-commit:
     decompile-lib:
       # 测试使用 bun:test，不能用 Node 运行。
       run: bun test --cwd .pi/lib decompile.test.mjs
+    inspect-code-incomplete:
+      # 游戏缺失时脚本明确输出 SKIP，不把未执行写成 PASS。
+      run: bun scripts/test-inspect-code-incomplete.mjs

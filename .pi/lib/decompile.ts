@@ -18,6 +18,7 @@ import { runAsync } from "./proc";
 import { checkGameDir, managedDirFor, platformKey, readModRepoConfig, readState, expandHome } from "./game-paths";
 import { probeUpToDate } from "./probe";
 import { probeDotnet } from "./dotnet";
+import { readInfoFields } from "./mod-identity";
 
 // ── configuration ───────────────────────────────────────────────────────────
 
@@ -262,6 +263,10 @@ export interface Freshness {
   state: FreshState;
   dir: string;
   reasons: string[];
+  /** Configured assemblies that are unavailable or absent from the dump. */
+  missing: string[];
+  /** Missing entries that the current environment cannot rebuild. */
+  unavailable: string[];
   manifest: Manifest | null;
 }
 
@@ -274,20 +279,80 @@ export function checkFreshness(cwd: string, cfg: DecompileConfig, managedDir: st
   const dir = dumpDir(cwd);
   const manifest = readManifest(dir);
   if (!manifest) {
-    return { state: "missing", dir, reasons: ["no MANIFEST.json in the dump folder"], manifest: null };
+    return {
+      state: "missing",
+      dir,
+      reasons: ["no MANIFEST.json in the dump folder"],
+      missing: [],
+      unavailable: [],
+      manifest: null,
+    };
   }
   const reasons: string[] = [];
   if (!manifest.config?.signature) reasons.push("the dump does not record the decompile.json it was built from");
   else if (manifest.config.signature !== configSignature(cfg)) reasons.push("decompile.json changed");
   if (!manifest.assemblies?.length) reasons.push("the dump records no assemblies");
+  const missing: string[] = [];
+  const unavailable: string[] = [];
   if (managedDir) {
+    const coverage = resolveAssemblies(cwd, cfg, managedDir);
+    for (const name of coverage.missing) {
+      reasons.push(`configured assembly is unavailable: ${name}`);
+      missing.push(name);
+      unavailable.push(name);
+    }
+    const recorded = new Set((manifest.assemblies ?? []).map((a) => a.name.toLowerCase()));
+    for (const assembly of coverage.resolved) {
+      if (recorded.has(assembly.name.toLowerCase())) continue;
+      reasons.push(`dump lacks configured assembly: ${assembly.name}`);
+      missing.push(assembly.name);
+    }
     const changed = (manifest.assemblies ?? []).filter((a) => {
       if (!existsSync(a.dllPath)) return false;
       return sha256File(a.dllPath) !== a.sha256;
     });
     for (const a of changed) reasons.push(`${a.name}.dll changed since this dump`);
+  } else {
+    const recorded = new Set((manifest.assemblies ?? []).map((a) => a.request));
+    for (const request of cfg.dump.assemblies) {
+      if (recorded.has(request)) continue;
+      reasons.push(`dump has no record for configured assembly: ${request}`);
+      missing.push(request);
+      unavailable.push(request);
+    }
   }
-  return { state: reasons.length ? "stale" : "fresh", dir, reasons, manifest };
+  return { state: reasons.length ? "stale" : "fresh", dir, reasons, missing, unavailable, manifest };
+}
+
+/** Read the installed game's advisory version without making it a path requirement. */
+export function readGameVersion(gameDir: string): string | null {
+  return readInfoFields(join(gameDir, "Info.ini")).version?.trim() || null;
+}
+
+/** Compare the installed version with repository declarations and generated API snapshots. */
+export function versionWarnings(cwd: string, gameDir: string): string[] {
+  const installed = readGameVersion(gameDir);
+  if (!installed) return [];
+  const warnings: string[] = [];
+  const configured = readModRepoConfig(cwd).game?.version?.trim();
+  if (configured && configured !== installed) {
+    warnings.push(`WARN: installed game version ${installed} differs from mod-repo.json version ${configured}.`);
+  }
+  const snapshots = new Map<string, number>();
+  const apiDir = join(cwd, "docs", "api");
+  if (existsSync(apiDir)) {
+    for (const entry of readdirSync(apiDir, { withFileTypes: true })) {
+      if (!entry.isFile() || !entry.name.endsWith(".md")) continue;
+      const source = readFileSync(join(apiDir, entry.name), "utf8");
+      const version = /^> game (\S+)/m.exec(source)?.[1];
+      if (version) snapshots.set(version, (snapshots.get(version) ?? 0) + 1);
+    }
+  }
+  for (const [snapshot, count] of [...snapshots.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    if (snapshot === installed) continue;
+    warnings.push(`WARN: installed game version ${installed} differs from docs/api snapshot version ${snapshot} (${count} files).`);
+  }
+  return warnings;
 }
 
 // ── building the dump ───────────────────────────────────────────────────────
@@ -355,7 +420,9 @@ export async function buildDump(
   requested.push(...resolved);
   missing.push(...absent);
   if (requested.length === 0) {
-    throw new Error(`NO_ASSEMBLIES_FOUND: none of [${withExtras.dump.assemblies.join(", ")}] exist under ${managedDir}.`);
+    throw new Error(
+      `NO_ASSEMBLIES_FOUND: none of [${withExtras.dump.assemblies.join(", ")}] exist under ${managedDir}.\nNEXT: correct dump.assemblies or dump.paths in .pi/lib/decompile.json, or restore the game's DLLs.`,
+    );
   }
 
   const dir = dumpDir(cwd);

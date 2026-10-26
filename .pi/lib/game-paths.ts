@@ -24,6 +24,7 @@ export interface ModRepoConfig {
   game?: {
     name?: string;
     steamAppId?: string | number;
+    version?: string;
     installDirHint?: Record<string, string>;
   };
   compile?: { managedDir?: Record<string, string> };

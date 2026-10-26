@@ -17,6 +17,17 @@ export interface ModIdentity {
   version: string;
 }
 
+/** 读取一份 INI 文件的简单键值字段。文件不存在时返回空对象。 */
+export function readInfoFields(path: string): Record<string, string> {
+  if (!existsSync(path)) return {};
+  const fields: Record<string, string> = {};
+  for (const line of readFileSync(path, "utf8").split(/\r?\n/)) {
+    const m = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(line);
+    if (m) fields[m[1]] = m[2].trim();
+  }
+  return fields;
+}
+
 /**
  * 读 `info.ini` 的 name/version。
  * 返回 null 的条件：文件不存在、或没有可用的 `name`（空/缺失）。
@@ -24,13 +35,7 @@ export interface ModIdentity {
  * 都应当在同一处用它，才能保证"validate 说能装、install 就真能装"。
  */
 export function readModIdentity(modDir: string): ModIdentity | null {
-  const iniPath = join(modDir, "info.ini");
-  if (!existsSync(iniPath)) return null;
-  const fields: Record<string, string> = {};
-  for (const line of readFileSync(iniPath, "utf8").split(/\r?\n/)) {
-    const m = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(line);
-    if (m) fields[m[1]] = m[2].trim();
-  }
+  const fields = readInfoFields(join(modDir, "info.ini"));
   const name = fields.name?.trim();
   return name ? { name, version: fields.version?.trim() ?? "" } : null;
 }

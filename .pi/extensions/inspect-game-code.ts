@@ -20,12 +20,21 @@ import {
   takeCapped,
   truncate,
   treeDir,
+  versionWarnings,
+  type Manifest,
 } from "../lib/decompile";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const MB = (bytes: number): string =>
   bytes >= 1048576 ? `${Math.round(bytes / 1048576)} MB` : `${Math.round(bytes / 1024)} KB`;
+
+const coverageText = (manifest: Manifest | null): string => {
+  const coverage = (manifest?.assemblies ?? [])
+    .map((a) => `${a.name} (${a.files} files, ${a.failed} failed)`)
+    .join(", ");
+  return `  coverage: ${coverage || "none"}`;
+};
 
 export default function (pi: ExtensionAPI) {
   pi.registerTool({
@@ -68,8 +77,11 @@ export default function (pi: ExtensionAPI) {
       // Where the DLLs are. Its absence is a business result, not an exception:
       // another tool (try_set_game_dir) can put it right.
       let managedDir: string | null = null;
+      let gameDir: string | null = null;
       try {
-        managedDir = requireManagedDir(cwd).managedDir;
+        const required = requireManagedDir(cwd);
+        managedDir = required.managedDir;
+        gameDir = required.gameDir;
       } catch {
         managedDir = null;
       }
@@ -173,10 +185,22 @@ export default function (pi: ExtensionAPI) {
         details: { ok: false, ...details },
       });
 
-      const refreshNote = async (): Promise<string> => {
-        if (freshness.state === "fresh") return "";
+      const refreshNote = async (): Promise<{ text: string; missing: string[] }> => {
+        if (freshness.state === "fresh") return { text: "", missing: [] };
+        if (freshness.unavailable.length) {
+          return {
+            text: `PARTIAL: the dump is incomplete (INCOMPLETE_DUMP).\n${coverageText(freshness.manifest)}\n`,
+            missing: freshness.missing,
+          };
+        }
         const built = await rebuild([]);
-        return `# refreshed the dump in ${built.seconds.toFixed(1)}s (${freshness.reasons.join("; ")})\n`;
+        if (built.missing.length) {
+          return {
+            text: `PARTIAL: refreshed the dump in ${built.seconds.toFixed(1)}s, but configured assemblies are missing: ${built.missing.join(", ")}.\n${coverageText(built.manifest)}\n`,
+            missing: built.missing,
+          };
+        }
+        return { text: `# refreshed the dump in ${built.seconds.toFixed(1)}s (${freshness.reasons.join("; ")})\n`, missing: [] };
       };
 
       try {
@@ -197,27 +221,37 @@ export default function (pi: ExtensionAPI) {
             const mark = r.state === "ok" ? "ok  " : r.state === "missing" ? "MISS" : "?   ";
             return `  ${r.name.padEnd(7)} ${mark} ${r.detail}`;
           });
-          const coverage = (manifest?.assemblies ?? []).map((a) => `${a.name} (${a.files} files)`).join(", ");
-          const facts = manifest ? [`  build: ${manifest.build?.label ?? "unknown"}`, `  coverage: ${coverage}`] : [];
+          const facts = manifest ? [`  build: ${manifest.build?.label ?? "unknown"}`, coverageText(manifest)] : [];
+          const versions = gameDir ? versionWarnings(cwd, gameDir) : [];
           const fresh = freshness.state === "fresh";
-          const head = !fresh && problem
-            ? `FAIL: the dump cannot be used yet. Expected ${dir}.`
-            : freshness.state === "missing"
-              ? `FAIL: no dump for this repository. Expected ${dir}.`
-              : !fresh
-                ? "PARTIAL: the dump is stale."
-                : problem
-                  ? `PARTIAL: the dump is current, but a rebuild would stop at ${problem.name}.`
-                  : `PASS: the dump is current. ${dir}`;
-          const next = problem
-            ? problemText(problem)
-            : fresh
-              ? ""
-              : "NEXT: action=search/type/body rebuild it by themselves; action=dump rebuilds now.";
-          const text = [head, ...table, ...facts, next].filter(Boolean).join("\n");
+          const incomplete = freshness.missing.length > 0;
+          const head = incomplete
+            ? "PARTIAL: the dump is incomplete (INCOMPLETE_DUMP)."
+            : !fresh && problem
+              ? `FAIL: the dump cannot be used yet. Expected ${dir}.`
+              : freshness.state === "missing"
+                ? `FAIL: no dump for this repository. Expected ${dir}.`
+                : !fresh
+                  ? "PARTIAL: the dump is stale."
+                  : problem
+                    ? `PARTIAL: the dump is current, but a rebuild would stop at ${problem.name}.`
+                    : `PASS: the dump is current. ${dir}`;
+          const next = incomplete
+            ? "NEXT: action=dump rebuilds after the missing configured assemblies are restored."
+            : problem
+              ? problemText(problem)
+              : fresh
+                ? ""
+                : "NEXT: action=search/type/body rebuild it by themselves; action=dump rebuilds now.";
+          const text = [head, ...table, ...facts, ...versions, next].filter(Boolean).join("\n");
           return fresh && !problem
             ? wrap(text, { dir, freshness: "fresh" })
-            : failed(text, { dir, freshness: freshness.state, reason: problem?.name ?? "DUMP" });
+            : failed(text, {
+                dir,
+                freshness: freshness.state,
+                reason: incomplete ? "INCOMPLETE_DUMP" : (problem?.name ?? "DUMP"),
+                missing: freshness.missing,
+              });
         }
 
         if (params.action === "dump") {
@@ -229,22 +263,38 @@ export default function (pi: ExtensionAPI) {
             return wrap(`SKIP: the dump is already current (${dir}). Pass force=true to rebuild it anyway.`);
           }
           const built = await rebuild(extra);
-          const added = built.missing.length ? `\n  not found under the game's DLLs: ${built.missing.join(", ")}` : "";
-          return wrap(
-            [
-              `PASS: rebuilt the dump in ${built.seconds.toFixed(1)}s.`,
-              `  ${dir} (${MB(folderBytes(dir))}, ${built.manifest.contents?.typeFiles ?? "?"} type files)`,
-              `  coverage: ${(built.manifest.assemblies ?? []).map((a) => a.name).join(", ")}${added}`,
-            ].join("\n"),
-            { dir, seconds: built.seconds },
-          );
+          const facts = [
+            `  ${dir} (${MB(folderBytes(dir))}, ${built.manifest.contents?.typeFiles ?? "?"} type files)`,
+            coverageText(built.manifest),
+          ];
+          if (built.missing.length) {
+            return failed(
+              [
+                `PARTIAL: rebuilt the dump in ${built.seconds.toFixed(1)}s, but ${built.missing.length} requested assembly(s) are missing: ${built.missing.join(", ")}.`,
+                ...facts,
+                "NEXT: correct the missing assembly names or restore the DLLs, then run inspect_game_code action=dump again.",
+              ].join("\n"),
+              { dir, seconds: built.seconds, reason: "INCOMPLETE_DUMP", missing: built.missing },
+            );
+          }
+          return wrap([`PASS: rebuilt the dump in ${built.seconds.toFixed(1)}s.`, ...facts].join("\n"), {
+            dir,
+            seconds: built.seconds,
+          });
         }
 
         if (!params.target) {
           return failed(`FAIL: action=${params.action} needs target=<name>.`, { reason: "TARGET_MISSING" });
         }
 
-        const note = await refreshNote();
+        const refresh = await refreshNote();
+        if (refresh.missing.length) {
+          return failed(`${refresh.text}NEXT: restore the missing configured assemblies, then run inspect_game_code action=dump again.`, {
+            reason: "INCOMPLETE_DUMP",
+            missing: refresh.missing,
+          });
+        }
+        const respond = (text: string, details: Record<string, unknown>) => wrap(`${refresh.text}${text}`, details);
         const tree = treeDir(cwd);
 
         if (params.action === "search") {
@@ -252,8 +302,8 @@ export default function (pi: ExtensionAPI) {
           const files = new Set(part.hits.map((h) => h.file)).size;
           const body = part.hits.length
             ? part.hits.map((h) => (h.line ? `${h.file}:${h.line}  ${h.text}` : `${h.file}`)).join("\n")
-            : "0 matches. Try a shorter substring.";
-          return wrap(`${note}${searchHeader(params.target, part.hits.length, files, part.capped)}\n${truncate(body)}`, {
+            : `0 matches in the recorded coverage. Try a shorter substring.\n${coverageText(readManifest(dir))}`;
+          return respond(`${searchHeader(params.target, part.hits.length, files, part.capped)}\n${truncate(body)}`, {
             matches: part.hits.length,
             files,
             capped: part.capped,
@@ -270,7 +320,7 @@ export default function (pi: ExtensionAPI) {
         const source = readFileSync(join(tree, rel), "utf8");
 
         if (params.action === "type") {
-          return wrap(`${note}# ${rel}\n\n${truncate(source)}`, { file: rel });
+          return respond(`# ${rel}\n\n${truncate(source)}`, { file: rel });
         }
 
         const found = params.member ? extractMethod(source, params.member, 21) : [];
@@ -285,8 +335,8 @@ export default function (pi: ExtensionAPI) {
             { reason: "METHOD_NOT_FOUND", capped: listed.capped },
           );
         }
-        return wrap(
-          `${note}${bodyHeader(rel, params.member, part.hits.length, part.capped)}\n\n${truncate(
+        return respond(
+          `${bodyHeader(rel, params.member, part.hits.length, part.capped)}\n\n${truncate(
             part.hits.map((b) => b.text).join("\n\n"),
           )}`,
           { methods: part.hits.length, capped: part.capped },
