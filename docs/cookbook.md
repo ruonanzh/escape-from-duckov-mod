@@ -314,7 +314,7 @@ ev.start();
 
 **症状**：知道要调哪个类，但签名、参数个数或返回值对不上。
 
-**做**：**签名一律以 `docs/api/` 为准**，不够时用 `inspect_game_api`。这里只记「几行拼起来就能用」的套路与易错点（静态方法、返回值是 `UniTask`）。
+**做**：这里只记「几行拼起来就能用」的套路与易错点。`inspect_game_api` 与 `inspect_game_code` 的速查统一放在 [`docs/guides/code.md`](guides/code.md)。
 
 ```csharp
 using ItemStatsSystem;

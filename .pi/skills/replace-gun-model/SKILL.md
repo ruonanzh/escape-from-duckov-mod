@@ -22,7 +22,7 @@ description: 玩家想换某把**枪械**的模型或外观时用（例如「把
 
 ### ② 先把 mod 骨架建好（免费，编译几秒）
 
-- 以 **`reference/weapon_model/`** 为实现起点建自己的 mod 目录。它的验收记录见 `docs/reference-acceptance.md`，不能代替本次验收。
+- 以 **`reference/weapon_model/`** 为实现起点建自己的 mod 目录。参考实现不能代替本次验收。
 - 三个名字必须一致：`info.ini` 的 mod 名、csproj 的 `AssemblyName`、`ModBehaviour.cs` 的 namespace。不一致的症状是 mod 静默不加载。明细见 §5。
 - 建完**先跑一次 `validate_mod`** 确认能编译。它会替你检查 mod 名与 namespace 一致。
 - **先建骨架，不得等模型**。模型工具落盘时会自建目录，不得让它抢在你前面把目录建出来。

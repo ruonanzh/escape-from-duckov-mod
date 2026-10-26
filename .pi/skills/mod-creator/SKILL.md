@@ -27,7 +27,7 @@ description: Escape From Duckov 的 C# mod 制作与修改。覆盖目录结构�
 ## 获取游戏数据：用 `inspect_game_data`，不得运行游戏
 
 - 查游戏里的**是什么与是多少**（武器数值、任务条件、商店库存、场景对象）时，用 **`inspect_game_data`** 读游戏数据文件。常用命令见 `docs/guides/`。
-- 查**代码、类型与实现**（该改哪个字段、patch 哪个方法）时，用 `inspect_game_api`。
+- 查**代码、类型与实现**时，先读 `docs/guides/code.md`，再按问题选择 `inspect_game_api` 或 `inspect_game_code`。
 - 这些都在**会话里离线完成**，**不需要玩家启动游戏**。所以需要数据或清单的 mod 可以在这里导出，再随 mod 一起交给玩家。mod 不必在运行时生成数据。
 
 ## 配置文件：优先 INI，必须能直接看懂
@@ -162,9 +162,8 @@ namespace MyMod
 ## 参考
 
 - 完整可编译样例：`reference/example_mod/`。
-- API：`docs/cookbook.md` 第 16 节。物品：`docs/guides/items.md`。
-- **API 内省**：`docs/api/`（公开签名快照）是第一站。不够时（私有成员、实现行为、当前版本）用 **`inspect_game_api`** 读托管 DLL：`search`（找类型与成员）、`members`（全部成员含 private）、`decompile`（反编译 C#）、`il`、`strings`。只读，不执行游戏代码。
-- **全库 grep**：`inspect_game_api` 一次只答一个类型；要问「谁调用了它」，用 **`inspect_game_code`**。`action=search target=ItemSetting_Gun` 给 `文件:行号`；`action=type` 给整份文件；`action=body member=SetTargetBulletType` 只给那个成员，重载全给；它只认声明行，其它成员调用它的地方不进结果。产物在 `~/.gamer-agent-pi/decompiled/escape-from-duckov-mod/`，覆盖 `TeamSoda.*` 与 `ItemStatsSystem`；要别的 DLL，就在某一次 dump 里加 `assemblies=<DLL 名>`（多个用逗号分开）；加进去的会留在这份 dump 里，直到下一次不带它的重建（`force=true`、修改配置、或游戏 DLL 变了）。要长期覆盖，改 `.pi/lib/decompile.json` 的 `dump.assemblies`。**嵌套类型没有单独文件**（在父类型文件里），**名字含 `<>` 的生成类型不导出**，不得用它们去 grep。
+- API 套路与易错点：`docs/cookbook.md` 第 16 节。物品：`docs/guides/items.md`。
+- **游戏 API 与实现查询**：写或修改 mod 前，必须先读 `docs/guides/code.md`。它统一说明 `inspect_game_api` 与 `inspect_game_code` 的分工、全部 action、dump 覆盖与零命中边界。
 - **游戏数据（数值与场景）**：物品数值、任务条件、敌人预设，以及**场景**（`levelN` 文件里的内置对象（GameObject、Transform、Camera）与挂在它们上的脚本）都在**游戏数据文件**里。用 **`inspect_game_data`** 读：`classes`、`search`、`list`、`dump`。`dump` 加 `follow` 跟随引用，看 `Item.stats` 的 `Damage`，以及场景对象的 `m_LocalPosition`。场景用 `--file levelN`。**先窄后宽**：不得 `list` 整个大类（尤其场景里的 `GameObject` 与 `Transform`；`list` 最多 500 条，且多为 `(no name)`）。要具体对象时用 `search --pattern` 或 `dump --class <C> --name/--pathid`。确实要枚举时用 `--offset` 翻页。要**一批**（例如全部武器的数值、全部任务的条件）时用 **`export`**：一类对象乘 `--match` 过滤乘 `--field` 路径，**一次调用一张表**（路径可以穿 PPtr、展开数组、用 `#class` 按解析后类名筛。见 `tools/data-probe/README.md`）。**结果大就落盘**：`out=<file>` 写文件、只回预览（数据不进上下文），再用 bash 处理。**它只读，只用来「查清楚现在是什么样」**（好让 mod 的 C# 在运行时找到或补丁它们）。**改数值与改行为一律是 mod 运行时 C# 的事**（先 `inspect_game_api` 找字段或 patch 点）。不得改数据文件，也不得编辑场景。
 
 ## 相关技能

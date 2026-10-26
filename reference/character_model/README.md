@@ -1,6 +1,6 @@
 # 角色替换（参考 mod：`CharacterModelSwap`）
 
-验收记录见 [`docs/reference-acceptance.md`](../../docs/reference-acceptance.md)。本 reference 是研究起点，不代替本次加载、行为与边界验收。
+验收记录见 [`scripts/reference-acceptance.md`](../../scripts/reference-acceptance.md)。本 reference 是研究起点，不代替本次加载、行为与边界验收。
 
 把玩家角色的身体换成你自己的 GLB 模型。模型必须先绑好骨（Tripo 的 `rig` 动作，人形 23 关节）。
 

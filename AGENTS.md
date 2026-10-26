@@ -4,16 +4,16 @@
 
 ## 资料导航
 
-- `docs/game.md` 与 `docs/guides/items.md`：游戏机制与物品。游戏侧 API、资源（美术、音频）见 `docs/cookbook.md` 第 13、15、16 节。
+- `docs/game.md` 与 `docs/guides/items.md`：游戏机制与物品。游戏 API 与实现先读 `docs/guides/code.md`；资源与 API 套路见 `docs/cookbook.md` 第 13、15、16 节。
 - `docs/api/`：生成的 API 签名快照（每份第 4 行有 `> game <版本> · generated <日期>` 版本戳）。按问题检索，不得全量读入。快照不保证对应玩家最新游戏版本。
 - **游戏数据与文案一律现查**（`inspect_game_data`），**这个仓库不再保存数据或本地化快照**。
   按「我要查 X」的速查见 `docs/cookbook.md` 第 13 节；本地化读**游戏自带**的
   `StreamingAssets/Localization/<语言>.csv`（见第 14 节）。
-- `docs/guides/`：**游戏数据查询指南**。它覆盖物品、武器、图腾、任务、地图、生物、天赋、建筑、商店、增益，说明数据在哪，并给出可复制命令。**查游戏数据时，必须先读这里，不得靠试**。入口是 `docs/guides/00-overview.md`。
+- `docs/guides/`：**游戏数据查询指南**。它覆盖物品、武器、图腾、任务、地图、生物、天赋、建筑、商店、增益，说明数据在哪，并给出可复制命令。**查游戏数据时，必须先读这里，不得靠试**。入口是 `docs/guides/00-overview.md`。实现查询见 `code.md`。
 - `reference/example_mod/`、`reference/weapon_model/`、`reference/item_model/`、`reference/character_model/`：可编译样例。后三份是「替换枪械模型」「替换物品模型」与「替换玩家角色模型」的完整答案。`libs/mod-kit/`：**模型运行时库**。它读 GLB，产出 Mesh 与贴图，把模型换到手持武器上，把模型换到物品上，把模型搬到玩家角色的骨架上，换图标，找玩家与手持物，读 config 的 JSON。`libs/`：编译与分发依赖，含 `0Harmony.dll`。产物规范见 `.pi/skills/mod-creator/SKILL.md`。接口台账见 `docs/mod-kit-api.md`，签名也可以用 `rg "public static" libs/mod-kit/` 现查。
 - `mod-repo.json`：平台路径与依赖声明。`game.version` 记录数据层快照对应的版本。`workshop.supported` 声明本游戏是否有创意工坊。`workshopDir` 只是只读参考，不参与安装。判定规则见 `.pi/skills/setup-workspace/SKILL.md`。
 - `.pi/skills/`：按职责分开的技能：`setup-workspace`、`mod-creator`、`mod-installer`、`replace-gun-model`、`replace-item-model`、`replace-character`、`add-weapon`、`add-item`、`how-to-speak`。每个技能的用途写在它自己的 description 里。Pi 会把 description 常驻上下文，任务命中时读对应那份。本工作区的步骤指导都在这些技能里，不在产品提示词里。
-- `.pi/extensions/`：工具。运行时与 SDK 检查：`check_runtime`、`install_runtime`。游戏路径：`check_game_paths`、`set_game_dir`、`try_set_game_dir`。游戏数据与 API 探针：`inspect_game_data`、`inspect_game_api`。mod 校验与装机：`validate_mod`、`install_mod`。模型与图标生成：`generate_model`、`generate_image`（走 Tripo）。一切以实际返回的执行状态为准。
+- `.pi/extensions/`：工具。运行时与 SDK 检查：`check_runtime`、`install_runtime`。游戏路径：`check_game_paths`、`set_game_dir`、`try_set_game_dir`。游戏数据与 API 探针：`inspect_game_data`、`inspect_game_api`。全库实现搜索与 dump：`inspect_game_code`，写或修改 mod 前必须先读 `docs/guides/code.md`。mod 校验与装机：`validate_mod`、`install_mod`。模型与图标生成：`generate_model`、`generate_image`（走 Tripo）。一切以实际返回的执行状态为准。
 - `scripts/`：维护者刷新数据层的工具。玩家与 agent 不得运行。运行时准备与数据层维护是两件事。
 
 ## 运行时状态文件
