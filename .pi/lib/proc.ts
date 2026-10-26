@@ -23,6 +23,8 @@ export interface RunOptions {
   timeoutMs?: number;
   /** 输出上限，默认 64MB。 */
   maxBuffer?: number;
+  /** 调用方取消时终止子进程。 */
+  signal?: AbortSignal;
 }
 
 export function runAsync(file: string, args: string[], options: RunOptions = {}): Promise<RunResult> {
@@ -36,6 +38,7 @@ export function runAsync(file: string, args: string[], options: RunOptions = {})
         encoding: "utf8",
         timeout: options.timeoutMs ?? 300_000,
         maxBuffer: options.maxBuffer ?? 64 * 1024 * 1024,
+        signal: options.signal,
       },
       (error, stdout, stderr) => {
         if (error) {

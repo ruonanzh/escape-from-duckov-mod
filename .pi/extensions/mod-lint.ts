@@ -4,10 +4,9 @@ import { readPngSize } from "../lib/mod-products";
 import { Type } from "typebox";
 import { readFileSync, existsSync, statSync, readdirSync } from "node:fs";
 import { join, basename, resolve, dirname } from "node:path";
-import { execFileSync } from "node:child_process";
-import { runAsync } from "../lib/proc";
+import { runAsync, serialize } from "../lib/proc";
+import { probeDotnet } from "../lib/dotnet";
 import { NEW_ACTIONS, stripJsonComments, validateDataLayer, type GameNames } from "../lib/mod-config-data";
-import os from "node:os";
 
 /** 截断长输出，避免爆 LLM 上下文（pi 标准 50KB/2000 行，这里取保守的 200 行）。 */
 function truncateLines(text: string, maxLines = 200): string {
@@ -142,7 +141,7 @@ export default function (pi: ExtensionAPI) {
           "Existing mod directory. It may be absolute or relative to the workspace root, for example your_mods/MyMod. It is not relative to the skill.",
       }),
     }),
-    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const repoRoot = ctx.cwd;
       if (!params.modDir?.trim())
         throw new Error(
@@ -248,13 +247,21 @@ export default function (pi: ExtensionAPI) {
       const state = loadState(repoRoot);
       // check_runtime writes runtime.dotnet; accept the historical flat field too.
       const cachedDotnet = state.runtime?.dotnet ?? state.dotnet;
-      const dotnet =
-        typeof cachedDotnet === "string" && cachedDotnet
-          ? cachedDotnet
-          : findDotnet();
+      const cachedVersion = state.runtime?.dotnetVersion;
+      const cachedReady =
+        typeof cachedDotnet === "string" && cachedDotnet &&
+        typeof cachedVersion === "string" && cachedVersion;
+      const dotnetProbe = cachedReady
+        ? { found: true, path: cachedDotnet, version: cachedVersion, major: parseInt(cachedVersion, 10) || 0 }
+        : probeDotnet();
+      const dotnet = dotnetProbe.found ? dotnetProbe.path : null;
       if (!dotnet) {
         warnings.push(
            "dotnet not found - compile check skipped. Run check_runtime (SDK only). Use install_runtime only for SDK installation instructions.",
+        );
+      } else if ((dotnetProbe.major ?? 0) < 8) {
+        warnings.push(
+          `dotnet SDK ${dotnetProbe.version} is too old (need >= 8.0) - compile check skipped. Run install_runtime for SDK installation instructions.`,
         );
       } else if (!state.gameDir) {
         warnings.push(
@@ -262,13 +269,15 @@ export default function (pi: ExtensionAPI) {
         );
       } else if (csproj && staticOk) {
         try {
-          await runAsync(dotnet, ["build", csproj, "-c", "Release"], {
+          await serialize(resolve(modDir, csproj), () => runAsync(dotnet, ["build", csproj, "-c", "Release"], {
             cwd: modDir,
             env: { ...process.env, DUCKOV_DIR: state.gameDir },
             timeoutMs: 300_000,
-          });
+            signal,
+          }));
           compilation = "passed";
         } catch (e) {
+          if (signal?.aborted) throw e;
           compilation = "failed";
           const err = e as { stderr?: string; stdout?: string; message?: string };
           errors.push(
@@ -363,29 +372,5 @@ function loadState(repoRoot: string) {
     );
   } catch {
     return {};
-  }
-}
-
-function findDotnet() {
-  const bin = process.platform === "win32" ? "dotnet.exe" : "dotnet";
-  const candidates = [join(os.homedir(), ".dotnet", bin)];
-  if (process.platform === "win32") {
-    candidates.push("C:\\Program Files\\dotnet\\dotnet.exe");
-  } else if (process.platform === "darwin") {
-    candidates.push("/usr/local/share/dotnet/dotnet");
-  }
-  for (const c of candidates) {
-    try {
-      execFileSync(c, ["--version"], { encoding: "utf8" });
-      return c;
-    } catch {
-      /* try next */
-    }
-  }
-  try {
-    execFileSync("dotnet", ["--version"], { encoding: "utf8" });
-    return "dotnet";
-  } catch {
-    return null;
   }
 }

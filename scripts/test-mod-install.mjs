@@ -87,7 +87,7 @@ try {
   installRegistration(pi);
   validateRegistration(pi);
   const install = (modDir) => tools.get("install_mod").execute("test", { modDir }, undefined, undefined, { cwd: root });
-  const validate = (modDir) => tools.get("validate_mod").execute("test", { modDir }, undefined, undefined, { cwd: root });
+  const validate = (modDir, signal) => tools.get("validate_mod").execute("test", { modDir }, signal, undefined, { cwd: root });
 
   const { managedDirFor, modInstallDirFor, platformKey, readModRepoConfig } = await import(
     pathToFileURL(join(root, ".pi", "lib", "game-paths.ts")).href
@@ -103,7 +103,7 @@ try {
   mkdirSync(managedDir, { recursive: true });
   writeFileSync(join(managedDir, "TeamSoda.Duckov.Core.dll"), "sentinel");
   const writeState = (state) => writeFileSync(join(root, ".gamer-agent.local.json"), JSON.stringify(state));
-  const readyState = () => ({ gameDir, modInstallDir: modRoot, runtime: { dotnet: process.execPath } });
+  const readyState = () => ({ gameDir, modInstallDir: modRoot, runtime: { dotnet: process.execPath, dotnetVersion: "8.0.0" } });
   writeState(readyState());
 
   const makeMod = (name) => {
@@ -221,10 +221,16 @@ try {
     join(valid, "build"),
     `const fs = require("node:fs");
 const path = require("node:path");
-const out = path.join(process.cwd(), "bin", "Release");
-fs.mkdirSync(out, { recursive: true });
-fs.writeFileSync(path.join(out, "Valid.dll"), "fresh-build\\0TeamSoda.Duckov.Core\\0ModBehaviour");
-fs.writeFileSync(path.join(process.cwd(), "build-ran.txt"), String(Date.now()));
+const active = path.join(process.cwd(), "build-active.txt");
+if (fs.existsSync(active)) fs.writeFileSync(path.join(process.cwd(), "build-overlap.txt"), "overlap");
+fs.writeFileSync(active, "active");
+setTimeout(() => {
+  const out = path.join(process.cwd(), "bin", "Release");
+  fs.mkdirSync(out, { recursive: true });
+  fs.writeFileSync(path.join(out, "Valid.dll"), "fresh-build\\0TeamSoda.Duckov.Core\\0ModBehaviour");
+  fs.writeFileSync(path.join(process.cwd(), "build-ran.txt"), String(Date.now()));
+  fs.rmSync(active, { force: true });
+}, 25);
 `,
   );
   writeFileSync(join(valid, "bin", "Release", "Valid.dll"), "old-dll");
@@ -240,6 +246,41 @@ fs.writeFileSync(path.join(process.cwd(), "build-ran.txt"), String(Date.now()));
     !validResult.details.warnings.some((warning) => warning.includes("256x256") || warning.includes("signature/IHDR")),
     validResult,
   );
+
+  rmSync(join(valid, "build-ran.txt"), { force: true });
+  const concurrentBuilds = await Promise.all([validate("your_mods/Valid"), validate("your_mods/Valid")]);
+  check(
+    "concurrent validation of one csproj serializes dotnet builds",
+    concurrentBuilds.every((result) => result.details.ok) && !existsSync(join(valid, "build-overlap.txt")),
+    concurrentBuilds,
+  );
+
+  const buildController = new AbortController();
+  buildController.abort();
+  rmSync(join(valid, "build-ran.txt"), { force: true });
+  rmSync(join(valid, "build-active.txt"), { force: true });
+  let buildCancellationThrew = false;
+  try {
+    await validate("your_mods/Valid", buildController.signal);
+  } catch {
+    buildCancellationThrew = true;
+  }
+  check(
+    "caller cancellation rejects instead of returning a build-failure verdict",
+    buildCancellationThrew && !existsSync(join(valid, "build-ran.txt")),
+  );
+
+  writeState({ gameDir, modInstallDir: modRoot, runtime: { dotnet: process.execPath, dotnetVersion: "7.0.0" } });
+  rmSync(join(valid, "build-ran.txt"), { force: true });
+  const oldSdk = await validate("your_mods/Valid");
+  check(
+    "SDK below 8 explicitly degrades to PARTIAL without building",
+    oldSdk.details.ok === false && oldSdk.details.errors.length === 0 && textOf(oldSdk).includes("PARTIAL:") &&
+      oldSdk.details.warnings.some((warning) => warning.includes("too old")) &&
+      !existsSync(join(valid, "build-ran.txt")),
+    oldSdk,
+  );
+  writeState(readyState());
 
   const bad = makeMod("Bad");
   writeFileSync(join(bad, "info.ini"), "name = Bad\ndescription = Missing displayName\n");

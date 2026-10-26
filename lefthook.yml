@@ -44,3 +44,6 @@ pre-commit:
     mod-install:
       # 临时目录与假 dotnet；不访问网络，不要求真实游戏。
       run: node --experimental-strip-types scripts/test-mod-install.mjs
+    tripo-network:
+      # 全部使用 mock fetch；不访问 Tripo，不花积分。
+      run: node --experimental-strip-types scripts/test-tripo-network.mjs

@@ -5,6 +5,14 @@ import { homedir } from "node:os";
 import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path";
 import type { ManifestRec } from "../lib/asset-manifest";
 import { appendManifest, manifestRec, modRootOf, pickSeed, relToModRoot } from "../lib/asset-manifest";
+import { serialize } from "../lib/proc";
+import {
+  TRIPO_API_TIMEOUT_MS,
+  TRIPO_DOWNLOAD_TIMEOUT_MS,
+  throwIfTripoCancelled,
+  tripoNetworkRequest,
+  tripoSleep,
+} from "../lib/tripo-http";
 
 /**
  * generate_model —— 用 Tripo 从「一句话」或「一张图」生成 3D 模型（GLB），存到你正在做的 mod 目录里。
@@ -83,27 +91,34 @@ function tripoImageType(p: string): string {
 }
 
 /** 一次 API 调用。v3 把结果包在 `data` 里 ✓；限流单独给一句 NEXT ✓ */
-async function tripoApi(base: string, key: string, path: string, body?: unknown): Promise<any> {
-  const r = await fetch(base + path, {
-    method: body === undefined ? "GET" : "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  const j: any = await r.json().catch(() => ({}));
-  if (j.code === 2000 || r.status === 429) {
-    throw new Error("TRIPO_RATE_LIMIT: the API limit was hit (exceeded the limit of generation) - wait 30-60s before the next call and do not retry in a loop");
-  }
-  if (j.code !== 0) {
-    throw new Error(`TRIPO_API_ERROR: code=${j.code} ${j.message ?? ""} ${j.suggestion ?? ""}`.trim());
-  }
-  if (!r.ok) throw new Error(`TRIPO_HTTP_ERROR: status=${r.status} on ${path}`);
-  return j.data ?? j; // v3: {code,status,data} ✓ / v2 兜底: 已经是 data ✓
+async function tripoApi(base: string, key: string, path: string, body?: unknown, signal?: AbortSignal): Promise<any> {
+  return tripoNetworkRequest(
+    { timeoutMs: TRIPO_API_TIMEOUT_MS, timeoutCode: "TRIPO_API_TIMEOUT", signal },
+    async (requestSignal) => {
+      const r = await fetch(base + path, {
+        method: body === undefined ? "GET" : "POST",
+        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal: requestSignal,
+      });
+      const j: any = await r.json().catch(() => ({}));
+      if (j.code === 2000 || r.status === 429) {
+        throw new Error("TRIPO_RATE_LIMIT: the API limit was hit (exceeded the limit of generation) - wait 30-60s before the next call and do not retry in a loop");
+      }
+      if (j.code !== 0) {
+        throw new Error(`TRIPO_API_ERROR: code=${j.code} ${j.message ?? ""} ${j.suggestion ?? ""}`.trim());
+      }
+      if (!r.ok) throw new Error(`TRIPO_HTTP_ERROR: status=${r.status} on ${path}`);
+      return j.data ?? j; // v3: {code,status,data} ✓ / v2 兜底: 已经是 data ✓
+    },
+  );
 }
 
 /** 轮询任务（2 秒一次；失败状态带上详情 ✓）*/
-async function tripoWait(api: (p: string, b?: unknown) => Promise<any>, id: string, label: string): Promise<any> {
+async function tripoWait(api: (p: string, b?: unknown) => Promise<any>, id: string, label: string, signal?: AbortSignal): Promise<any> {
   const t0 = Date.now();
   for (;;) {
+    throwIfTripoCancelled(signal);
     const d = await api(`/tasks/${id}`); // ⭐ v3 路径（v2 是 /task/{id} ✗）
     const status = String(d?.status);
     if (status === "success") return d;
@@ -111,7 +126,7 @@ async function tripoWait(api: (p: string, b?: unknown) => Promise<any>, id: stri
       throw new Error(`TRIPO_TASK_FAILED: ${label} ${status}: ${JSON.stringify(d.task ?? d).slice(0, 300)}`);
     }
     if (Date.now() - t0 > 900_000) throw new Error(`TRIPO_TASK_TIMEOUT: ${label} did not finish within 15 minutes`);
-    await new Promise((r) => setTimeout(r, 2000));
+    await tripoSleep(2000, signal);
   }
 }
 
@@ -135,10 +150,15 @@ function guardOutNotExists(outPath: string): void {
 }
 
 /** 下载并落盘（URL 会过期 → 拿到就立刻下 ✓）*/
-async function tripoSave(url: string, outPath: string): Promise<string> {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(`TRIPO_DOWNLOAD_FAILED: HTTP ${r.status} for ${url.slice(0, 120)}`);
-  const buf = Buffer.from(await r.arrayBuffer());
+async function tripoSave(url: string, outPath: string, signal?: AbortSignal): Promise<string> {
+  const buf = await tripoNetworkRequest(
+    { timeoutMs: TRIPO_DOWNLOAD_TIMEOUT_MS, timeoutCode: "TRIPO_DOWNLOAD_TIMEOUT", signal },
+    async (requestSignal) => {
+      const r = await fetch(url, { signal: requestSignal });
+      if (!r.ok) throw new Error(`TRIPO_DOWNLOAD_FAILED: HTTP ${r.status} for ${url.slice(0, 120)}`);
+      return Buffer.from(await r.arrayBuffer());
+    },
+  );
   mkdirSync(dirname(outPath), { recursive: true });
   writeFileSync(outPath, buf);
   return `${(buf.length / 1024).toFixed(0)} KB`;
@@ -150,18 +170,28 @@ async function tripoSave(url: string, outPath: string): Promise<string> {
  * · 本地文件 → POST /v3/files 上传 → { file_token } ✓（返回字段就叫 file_token ✓）
  * ⚠️ 只接受 url / file_token / object ✗ —— **不能传 {task_id}** ✗（链路要传上游那张图的 URL ✓）
  */
-async function tripoFileRef(key: string, pathOrUrl: string): Promise<Record<string, string>> {
+async function tripoFileRef(key: string, pathOrUrl: string, signal?: AbortSignal): Promise<Record<string, string>> {
   if (/^https?:\/\//i.test(pathOrUrl)) return { url: pathOrUrl };
   if (!existsSync(pathOrUrl)) throw new Error(`TRIPO_FILE_NOT_FOUND: ${pathOrUrl}`);
   const buf = readFileSync(pathOrUrl);
   const fd = new FormData();
   fd.append("file", new Blob([new Uint8Array(buf)]), basename(pathOrUrl));
-  const r = await fetch(`${TRIPO_V3}/files`, { method: "POST", headers: { Authorization: `Bearer ${key}` }, body: fd });
-  const j: any = await r.json().catch(() => ({}));
-  if (j.code !== 0) throw new Error(`TRIPO_UPLOAD_FAILED: code=${j.code} ${j.message ?? ""}`.trim());
-  const token = j.data?.file_token ?? j.data?.image_token;
-  if (!token) throw new Error(`TRIPO_UPLOAD_NO_TOKEN: ${JSON.stringify(j.data ?? {}).slice(0, 200)}`);
-  return { file_token: String(token) };
+  return tripoNetworkRequest(
+    { timeoutMs: TRIPO_API_TIMEOUT_MS, timeoutCode: "TRIPO_API_TIMEOUT", signal },
+    async (requestSignal) => {
+      const r = await fetch(`${TRIPO_V3}/files`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${key}` },
+        body: fd,
+        signal: requestSignal,
+      });
+      const j: any = await r.json().catch(() => ({}));
+      if (j.code !== 0) throw new Error(`TRIPO_UPLOAD_FAILED: code=${j.code} ${j.message ?? ""}`.trim());
+      const token = j.data?.file_token ?? j.data?.image_token;
+      if (!token) throw new Error(`TRIPO_UPLOAD_NO_TOKEN: ${JSON.stringify(j.data ?? {}).slice(0, 200)}`);
+      return { file_token: String(token) };
+    },
+  );
 }
 
 /** Tripo task id 的形状（实测都是 uuid ✓；用形状判断 ✓ 不会误伤文件路径 ✗）*/
@@ -173,10 +203,10 @@ const TRIPO_TASK_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]
  *   · Tripo task id → 原样 ✓（API 自己推断来源 ✓ **省一次上传** ✓ 也不要再下载 ✓）
  *   · 本地文件 → POST /v3/files → `file_token` 字符串 ✓
  */
-async function tripoInputRef(key: string, value: string): Promise<string> {
+async function tripoInputRef(key: string, value: string, signal?: AbortSignal): Promise<string> {
   if (/^https?:\/\//i.test(value)) return value;
   if (TRIPO_TASK_RE.test(value)) return value;
-  const ref = await tripoFileRef(key, value);
+  const ref = await tripoFileRef(key, value, signal);
   return String(ref.file_token ?? ref.url);
 }
 
@@ -263,11 +293,11 @@ export default function (pi: ExtensionAPI) {
         Type.String({ description: "Where to save the PNG (for example icon.png to ship it, or .preview/x.preview.png for a preview)." }),
       ),
     }),
-    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const cwd = ctx.cwd;
       const key = tripoRequireKey(); // 没 key 直接 throw ✓（前置条件不满足）
-      const api = (path: string, body?: unknown) => tripoApi(TRIPO_V3, key, path, body);
-      const waitTask = (id: string) => tripoWait(api, id, "image");
+      const api = (path: string, body?: unknown) => tripoApi(TRIPO_V3, key, path, body, signal);
+      const waitTask = (id: string) => tripoWait(api, id, "image", signal);
 
       const modelPath = params.model ? (isAbsolute(params.model) ? params.model : resolve(cwd, params.model)) : null;
       const imagePath = params.image ? (isAbsolute(params.image) ? params.image : resolve(cwd, params.image)) : null;
@@ -301,8 +331,8 @@ export default function (pi: ExtensionAPI) {
         } else {
           // 玩家自带的 .glb（没有 task）：v3 没有 import 端点 ✗ → 兜底仍走 v2 的 import_model ✓
           const b64 = `data:model/gltf-binary;base64,${readFileSync(modelPath).toString("base64")}`;
-          const imp = await tripoApi(TRIPO_V2, key, "/task", { type: "import_model", file: b64 });
-          const done = await tripoWait((pp, bb) => tripoApi(TRIPO_V2, key, pp, bb), String(imp.task_id), "import");
+          const imp = await tripoApi(TRIPO_V2, key, "/task", { type: "import_model", file: b64 }, signal);
+          const done = await tripoWait((pp, bb) => tripoApi(TRIPO_V2, key, pp, bb, signal), String(imp.task_id), "import", signal);
           renderUrl = done.output?.rendered_image ?? tripoPickUrl(done.output);
           renderStep = {
             // v2 的 base 已含 /v2/openapi ✓ → 写出来要补全（设计 §5.2 endpoint 的写法）
@@ -351,13 +381,13 @@ export default function (pi: ExtensionAPI) {
         if (refs.length === 0) {
           var path = "/generation/text-to-image";
         } else if (refs.length === 1) {
-          body.input = await tripoInputRef(key, refs[0].value);
+          body.input = await tripoInputRef(key, refs[0].value, signal);
           var path = "/generation/image-to-image";
         } else {
           // ⭐ 文档形式：input = 主参考（必选 ✓）+ inputs = 追加参考（string[] ✓）
-          body.input = await tripoInputRef(key, refs[0].value);
+          body.input = await tripoInputRef(key, refs[0].value, signal);
           body.inputs = [];
-          for (const r of refs.slice(1)) (body.inputs as string[]).push(await tripoInputRef(key, r.value));
+          for (const r of refs.slice(1)) (body.inputs as string[]).push(await tripoInputRef(key, r.value, signal));
           if (!/image\[/.test(prompt)) {
             prompt = `${prompt} (use image[1] as the subject; later images are the style/look reference)`;
             body.prompt = prompt;
@@ -372,9 +402,14 @@ export default function (pi: ExtensionAPI) {
         body.model = "chat_image_2.5_flare";
         body.background = "transparent";
         body.output_format = "png";
-        const gen = await api(path, body);
+        const generated = await serialize("tripo:paid-generation", async () => {
+          const created = await api(path, body);
+          const id = String(created.task_id);
+          return { created, done: await waitTask(id) };
+        });
+        const gen = generated.created;
+        const genDone = generated.done;
         genTaskId = String(gen.task_id);
-        const genDone = await waitTask(genTaskId);
         url = tripoPickUrl(genDone.output);
         // 清单：生成那一步（写入点 1 ✓ 设计 §5.2）
         genStep = {
@@ -400,11 +435,21 @@ export default function (pi: ExtensionAPI) {
       if (!url) throw new Error("nothing to save (no render for this model, and no prompt/styleRef given)");
 
       // ③ 落盘：默认放 .preview/（中间图 ✓ 永远不会被装进游戏）；要当图标就让 SKILL 传 out=icon.png ✓
-      const size = await tripoSave(url, outPath);
-      // 清单：落盘之后再写 ✓（设计 §5.1 时机）；写失败只出 WARN ✗ 不影响主流程 ✓
       const modRoot = modRootOf(cwd, outPath);
       const manifestName = outName(outPath);
       const warns: string[] = [];
+      let size: string;
+      try {
+        size = await tripoSave(url, outPath, signal);
+      } catch (e) {
+        for (const step of [renderStep, genStep]) {
+          if (!step) continue;
+          const w = flushStep(modRoot, manifestName, step, String((e as Error).message));
+          if (w) warns.push(w);
+        }
+        throw e;
+      }
+      // 清单：落盘之后再写 ✓（设计 §5.1 时机）；写失败只出 WARN ✗ 不影响主流程 ✓
       for (const step of [renderStep, genStep]) {
         if (!step) continue;
         step.filesAbs = [outPath];
@@ -516,12 +561,12 @@ export default function (pi: ExtensionAPI) {
       ),
     }),
 
-    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const cwd = ctx.cwd;
       const key = tripoRequireKey(); // 没 key 直接 throw ✓（前置条件不满足）
-      const api = (path: string, body?: unknown) => tripoApi(TRIPO_V3, key, path, body);
-      const waitTask = (id: string, label: string) => tripoWait(api, id, label);
-      const download = tripoSave;
+      const api = (path: string, body?: unknown) => tripoApi(TRIPO_V3, key, path, body, signal);
+      const waitTask = (id: string, label: string) => tripoWait(api, id, label, signal);
+      const download = (url: string, outPath: string) => tripoSave(url, outPath, signal);
       const pickUrl = tripoPickUrl;
 
       if (params.action === "balance") {
@@ -539,6 +584,8 @@ export default function (pi: ExtensionAPI) {
       guardOutNotExists(firstOut);
 
       if (params.action === "generate") {
+        return serialize("tripo:paid-generation", async () => {
+        guardOutNotExists(firstOut);
         // 清单：写清单要的两样东西（设计 §5.1）—— 本次调用的主产物是 firstOut
         const modRoot = modRootOf(cwd, firstOut);
         const name = outName(firstOut);
@@ -557,7 +604,7 @@ export default function (pi: ExtensionAPI) {
           const p = isAbsolute(params.image) ? params.image : resolve(cwd, params.image);
           if (!existsSync(p)) throw new Error(`TRIPO_FILE_NOT_FOUND: ${p}`);
           genPath = "/generation/image-to-model";
-          modelParams.input = await tripoInputRef(key, p); // 文档形式：input = 字符串 ✓（URL / file_token / task_id ✓）
+          modelParams.input = await tripoInputRef(key, p, signal); // 文档形式：input = 字符串 ✓（URL / file_token / task_id ✓）
         } else if (params.taskId) {
           // 直接用上游图片任务的产物 ✓（不重新下载上传 ✓）—— 例如 generate_image 的 taskId
           genPath = "/generation/image-to-model";
@@ -603,7 +650,14 @@ export default function (pi: ExtensionAPI) {
           throw e;
         }
         const rawPath = firstOut.replace(/\.glb$/i, "") + ".raw.glb";
-        const size = await download(url, rawPath);                      // ⚠️ 5 分钟过期 → 立刻下
+        let size: string;
+        try {
+          size = await download(url, rawPath);                        // ⚠️ 5 分钟过期 → 立刻下
+        } catch (e) {
+          const w = flushStep(modRoot, name, genStep, String((e as Error).message));
+          if (w) warns.push(w);
+          throw e;
+        }
         // 预览图（Tripo 免费附带）→ 放在模型同目录的 .preview/ 下 ✓
         // 这个子目录**不会被 install_mod 装进游戏**（见 mod-install 的 EXCLUDED_DIRS ✓）—— 只是给人/agent 看的 ✓
         const base = firstOut.replace(/\.glb$/i, "");
@@ -649,7 +703,14 @@ export default function (pi: ExtensionAPI) {
         }
         const url2 = pickUrl(converted.output);
         if (!url2) throw new Error("convert succeeded but no URL");
-        const size2 = await download(url2, firstOut);                   // Unity 就绪朝向 ✓
+        let size2: string;
+        try {
+          size2 = await download(url2, firstOut);                     // Unity 就绪朝向 ✓
+        } catch (e) {
+          const w = flushStep(modRoot, name, cvStep, String((e as Error).message));
+          if (w) warns.push(w);
+          throw e;
+        }
         { const w = flushStep(modRoot, name, cvStep); if (w) warns.push(w); }
         return {
           content: [
@@ -662,14 +723,18 @@ export default function (pi: ExtensionAPI) {
             },
           ],
         };
+        });
       }
 
       // action=rig-check：先问能不能绑（官方建议）。⚠️ 实测它**只是建议**：坐着的猫回 false 也照样绑出来了 ✗
       if (params.action === "rig-check") {
         if (!taskId) throw new Error("rig-check needs taskId= (from an earlier generate)");
         const rigType = params.rigType ?? "biped";
-        const created = await api("/animations/rig-check", { input: taskId, rig_type: rigType });
-        const done = await waitTask(String(created.task_id), "rig-check");
+        const done = await serialize("tripo:paid-generation", async () => {
+          guardOutNotExists(firstOut);
+          const created = await api("/animations/rig-check", { input: taskId, rig_type: rigType });
+          return waitTask(String(created.task_id), "rig-check");
+        });
         const o = done.output ?? {};
         const ok = o.riggable === true || o.riggable === "true";
         return {
@@ -688,6 +753,8 @@ export default function (pi: ExtensionAPI) {
 
       // action=rig：给一个成品模型加骨骼。v1.0 只支持人形，v2.5 支持四足/六足/八足/鸟/蛇/鱼
       if (params.action === "rig") {
+        return serialize("tripo:paid-generation", async () => {
+        guardOutNotExists(firstOut);
         if (!taskId) throw new Error("rig needs taskId= (from an earlier generate)");
         const modRoot = modRootOf(cwd, firstOut);
         const name = outName(firstOut);
@@ -716,7 +783,14 @@ export default function (pi: ExtensionAPI) {
         }
         const url = pickUrl(done.output);
         if (!url) throw new Error("rig succeeded but no URL");
-        const size = await download(url, firstOut);
+        let size: string;
+        try {
+          size = await download(url, firstOut);
+        } catch (e) {
+          const w = flushStep(modRoot, name, step, String((e as Error).message));
+          if (w) warns.push(w);
+          throw e;
+        }
         { const w = flushStep(modRoot, name, step); if (w) warns.push(w); }
         const joints = tripoGlbJoints(firstOut);
         const notes: string[] = [];
@@ -735,10 +809,13 @@ export default function (pi: ExtensionAPI) {
             },
           ],
         };
+        });
       }
 
       // action=retarget：往骨架上套一个预置动画，烘焙进 GLB
       if (params.action === "retarget") {
+        return serialize("tripo:paid-generation", async () => {
+        guardOutNotExists(firstOut);
         if (!taskId) throw new Error("retarget needs taskId= (the rig task id from action=rig)");
         if (!params.animation) throw new Error("retarget needs animation= (for example preset:walk)");
         const modRoot = modRootOf(cwd, firstOut);
@@ -765,7 +842,14 @@ export default function (pi: ExtensionAPI) {
         }
         const url = pickUrl(done.output);
         if (!url) throw new Error("retarget succeeded but no URL");
-        const size = await download(url, firstOut);
+        let size: string;
+        try {
+          size = await download(url, firstOut);
+        } catch (e) {
+          const w = flushStep(modRoot, name, step, String((e as Error).message));
+          if (w) warns.push(w);
+          throw e;
+        }
         { const w = flushStep(modRoot, name, step); if (w) warns.push(w); }
         const anims = tripoGlbAnimations(firstOut);
         return {
@@ -779,10 +863,13 @@ export default function (pi: ExtensionAPI) {
             },
           ],
         };
+        });
       }
 
       // action=convert
       if (!taskId) throw new Error("convert needs taskId= (from an earlier generate)");
+      return serialize("tripo:paid-generation", async () => {
+      guardOutNotExists(firstOut);
       // 清单：写清单要的两样东西（设计 §5.1）—— 独立 convert 没有上一步 → parent 是 null ✓
       const modRoot = modRootOf(cwd, firstOut);
       const name = outName(firstOut);
@@ -807,7 +894,14 @@ export default function (pi: ExtensionAPI) {
       }
       const url = pickUrl(cvOut.output);
       if (!url) throw new Error("convert succeeded but no URL");
-      const size = await download(url, firstOut);
+      let size: string;
+      try {
+        size = await download(url, firstOut);
+      } catch (e) {
+        const w = flushStep(modRoot, name, cvStep, String((e as Error).message));
+        if (w) warns.push(w);
+        throw e;
+      }
       { const w = flushStep(modRoot, name, cvStep); if (w) warns.push(w); }
       return {
         content: [
@@ -817,6 +911,7 @@ export default function (pi: ExtensionAPI) {
           },
         ],
       };
+      });
     },
   });
 }
