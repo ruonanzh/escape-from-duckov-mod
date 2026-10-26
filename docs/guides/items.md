@@ -28,6 +28,22 @@ action=export, class=Item, file=resources.assets            # 全部 1581 个 It
 action=dump, class=Item, typeid=260, depth=3          # 或 name="Item_S_UAK45_Lv_2"
 ```
 
+### 按玩家看到的名字定位物品
+
+`Item.name` 是内部物品名。`displayName` 是本地化 key。玩家看到的名字可能与内部物品名不同。
+
+2026-10-26 在游戏 2.3.30 实测：AK-103 的内部物品名是 `Item_L_AK102_Lv_2`，`typeID=238`。直接执行 `action=search, class=Item, pattern=AK103` 是零命中。
+
+遇到这类零命中时：
+
+1. 在游戏自带的本地化 CSV 中搜索玩家看到的名字，取得 key。
+2. key 与内部物品名相同时，用 `action=dump, class=Item, name=<key>` 回查。两者不同时，用 `action=export, class=Item, match=["displayName=<key>"], field=["typeID"]` 按 key 查询。
+3. config 使用 `typeIDs`，不按显示名猜测内部物品名。
+
+本地化 CSV 不保证覆盖每个内部 key。CSV 未命中时，继续用内部名片段、图形资源和 `dump --follow` 查引用链。不得把 CSV 零命中解释成游戏里没有。
+
+`Item_BP_AK102` 是 AK-103 的蓝图，`typeID=285`。它不是武器本体。内部物品名包含 `AK102` 时，也不得把蓝图当成目标。
+
 ### `value` 是**单位**价值：「每包价值」要乘 `variables.Count`
 
 有些物品在游戏/wiki 里显示的价是**一整包**的（实测：绷带 `Count=3`、子弹 `Count=30`）：

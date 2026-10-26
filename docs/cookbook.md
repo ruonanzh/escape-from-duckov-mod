@@ -277,6 +277,7 @@ Character_Ming,小明,#20250807035821,Characters
 - **按 `key` 建索引**：同一个 key 在**不同语言包**里可能属不同 sheet（实测 10 个 CSV 共 58394 行，**没有重复 key**；`Item_ButcherKnife` 在英文包里属 `Default`，在中文包里属 `Items`）。
 - 固定命令：`grep -F "Character_Ming," "<那个目录>/ChineseSimplified.csv"`。
 - key 从哪来：数据里的 `displayName` / `nameKey` / `displayNameKey` / `xxxKey` 字段就是它。
+- 按显示名搜索物品零命中时，先用本地化反查 key。完整的 AK-103 例子见 [`docs/guides/items.md`](guides/items.md#按玩家看到的名字定位物品)。本地化未命中时，继续查内部物品名与引用链。
 
 **两条不得**：
 1. **不得说「某个表里没有 = 游戏里没有」**。这个仓库**不再保存**本地化快照（旧那份 `docs/data/*.csv` 的 Items 只有 892 条本地化行，游戏自带的有 2942 条，已经害过几次「以为没有，其实有」）。要文案就读游戏自带那份，或先 `inspect_game_data` 现查。

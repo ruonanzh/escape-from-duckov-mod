@@ -43,7 +43,7 @@
 
 - 研究顺序：先读 `replace-gun-model` SKILL 与 `reference/weapon_model`，再读探针说明，再查当前游戏数据与 API。
 - 当前证据：游戏 2.3.30；AK-103 对应 `Item_L_AK102_Lv_2`，`typeID=238`；当前 DLL 有 `Item.TypeID` 与 `Item.ItemGraphic`。
-- 叫法边界：直接按 `Item + AK103` 搜索是零命中。内部物品名与显示名不同，蓝图也是另一件物品。
+- 叫法边界：直接按 `Item + AK103` 搜索是零命中。内部物品名与显示名不同。`Item_BP_AK102` 是蓝图，`typeID=285`，不是武器本体。
 - 重复探索：三次扩大物品搜索，五次猜测资产容器失败。后续遇同类问题时，先查本地化，并用 `dump --follow` 读取引用链。
 - 快照判断：`docs/api` 与当前游戏同为 2.3.30。本次仍用当前 DLL 复核了 API。
 - 会话只读。未生成资产，未安装 mod，未启动游戏。
