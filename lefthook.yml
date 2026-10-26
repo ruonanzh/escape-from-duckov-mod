@@ -26,3 +26,16 @@ pre-commit:
     mod-kit-api:
       # 台账里写了不存在的接口。踩过：`CharacterSwap.Install()`（其实是嵌套私有类的，且不需人调）。
       run: node scripts/check-mod-kit-api.mjs
+    asset-manifest:
+      run: node scripts/check-asset-manifest.mjs
+    mod-install-staleness:
+      run: node scripts/check-mod-install-staleness.mjs
+    mod-config-data:
+      run: node scripts/check-mod-config-data.mjs
+    character-rig:
+      run: node scripts/check-character-rig.mjs
+    character-swap:
+      run: node scripts/check-character-swap.mjs
+    decompile-lib:
+      # 测试使用 bun:test，不能用 Node 运行。
+      run: cd .pi/lib && bun test decompile.test.mjs
