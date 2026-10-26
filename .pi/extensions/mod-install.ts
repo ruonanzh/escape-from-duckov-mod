@@ -15,7 +15,7 @@ import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { MANIFEST_FILE } from "../lib/asset-manifest";
 import { checkModInstallDir, platformKey, readModRepoConfig } from "../lib/game-paths";
 import { isCodeIdentifier, readModIdentity } from "../lib/mod-identity";
-import { sourcesNewerThan } from "../lib/mod-products";
+import { replaceInstallDir, sourcesNewerThan } from "../lib/mod-products";
 
 /**
  * install_mod — 把 your_mods/<ModName>/ 的产物装进游戏的 Mods 目录。
@@ -429,15 +429,7 @@ export default function (pi: ExtensionAPI) {
         // `your_mods/<mod名>/.pi-mod.json` 负责；游戏目录里只留游戏自己的东西。
         // 事务化替换：旧版本先 rename 到旁边（不删）→ 换入新版本 → 成功后才删旧的；
         // 换入失败就把旧版本挪回。旧版是「先 rmSync 再 rename」，中间失败会让新旧两份都丢。
-        const hadPrevious = existsSync(installDir);
-        if (hadPrevious) renameSync(installDir, previous);
-        try {
-          renameSync(staging, installDir);
-        } catch (error) {
-          if (hadPrevious) renameSync(previous, installDir);
-          throw error;
-        }
-        if (hadPrevious) rmSync(previous, { recursive: true, force: true });
+        replaceInstallDir(installDir, staging, previous);
         // 装成功之后才写记录（记录本身不参与“装没装”的判定：指向的目录不存在就当没装过，下次重装会写回）
         writeInstallRecord(modDir, identity.name, basename(installDir));
         // 历史遗留：旧版把标记写在**安装副本**里 → 顺手清掉，玩家的 Mods/ 不该有我们的文件

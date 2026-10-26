@@ -155,6 +155,8 @@ namespace MyMod
 - `FAIL: missing <ModName>.dll`：编译没产出 dll。先跑 dotnet build。
 - `WARN: dotnet not found`：用 `check_runtime` 核实，按 `install_runtime` 返回的指引准备 SDK。再次检查确认后才能编译。工具本身不执行安装。
 - `WARN: missing preview.png`：缺预览图（不影响本地加载，Workshop 上传需要 256×256）。
+- `WARN: preview.png is ...`：尺寸不是 256×256。只影响 Workshop 上传，不影响本地加载，也不阻止本次编译通过时返回 PASS。
+- `WARN: preview.png has no valid PNG signature/IHDR`：PNG 签名或 IHDR 无效。只影响 Workshop 上传，不影响本地加载，也不阻止本次编译通过时返回 PASS。
 
 ## 参考
 

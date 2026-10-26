@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { CODE_IDENTIFIER_RE, isCodeIdentifier } from "../lib/mod-identity";
+import { CODE_IDENTIFIER_RE, isCodeIdentifier, readInfoFields } from "../lib/mod-identity";
+import { readPngSize } from "../lib/mod-products";
 import { Type } from "typebox";
 import { readFileSync, existsSync, statSync, readdirSync } from "node:fs";
 import { join, basename, resolve, dirname } from "node:path";
@@ -7,15 +8,6 @@ import { execFileSync } from "node:child_process";
 import { runAsync } from "../lib/proc";
 import { NEW_ACTIONS, stripJsonComments, validateDataLayer, type GameNames } from "../lib/mod-config-data";
 import os from "node:os";
-
-function parseIni(text: string) {
-  const result: Record<string, string> = {};
-  for (const line of text.split(/\r?\n/)) {
-    const m = line.match(/^\s*([^=]+?)\s*=\s*(.*)$/);
-    if (m) result[m[1].trim()] = m[2].trim();
-  }
-  return result;
-}
 
 /** 截断长输出，避免爆 LLM 上下文（pi 标准 50KB/2000 行，这里取保守的 200 行）。 */
 function truncateLines(text: string, maxLines = 200): string {
@@ -173,7 +165,7 @@ export default function (pi: ExtensionAPI) {
       if (!existsSync(iniPath)) {
         errors.push("missing info.ini");
       } else {
-        const ini = parseIni(readFileSync(iniPath, "utf8"));
+        const ini = readInfoFields(iniPath);
         if (ini.name) modName = ini.name;
         if (!ini.name) errors.push("info.ini: name is missing");
         if (!ini.displayName) errors.push("info.ini: displayName is missing");
@@ -318,10 +310,22 @@ export default function (pi: ExtensionAPI) {
       }
 
       // preview.png (warn only)
-      if (!existsSync(join(modDir, "preview.png"))) {
+      const previewPath = join(modDir, "preview.png");
+      if (!existsSync(previewPath)) {
         warnings.push(
           "missing preview.png (256x256, needed for Steam Workshop upload)",
         );
+      } else {
+        const size = readPngSize(previewPath);
+        if (!size) {
+          warnings.push(
+            "preview.png has no valid PNG signature/IHDR. This is a Workshop warning and does not block local loading.",
+          );
+        } else if (size.width !== 256 || size.height !== 256) {
+          warnings.push(
+            `preview.png is ${size.width}x${size.height}; expected 256x256. This is a Workshop warning and does not block local loading.`,
+          );
+        }
       }
 
       const ok = errors.length === 0 && compilation === "passed";

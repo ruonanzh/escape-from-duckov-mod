@@ -1,5 +1,58 @@
-import { readdirSync, statSync } from "node:fs";
+import {
+  closeSync,
+  existsSync,
+  openSync,
+  readdirSync,
+  readSync,
+  renameSync,
+  rmSync,
+  statSync,
+} from "node:fs";
 import { join, resolve } from "node:path";
+
+export interface PngSize {
+  width: number;
+  height: number;
+}
+
+/** Read only the PNG signature and IHDR dimensions. Invalid or truncated input returns null. */
+export function readPngSize(path: string): PngSize | null {
+  try {
+    const fd = openSync(path, "r");
+    const bytes = Buffer.alloc(24);
+    let count: number;
+    try {
+      count = readSync(fd, bytes, 0, bytes.length, 0);
+    } finally {
+      closeSync(fd);
+    }
+    const signature = [137, 80, 78, 71, 13, 10, 26, 10];
+    if (
+      count < bytes.length ||
+      !signature.every((byte, index) => bytes[index] === byte) ||
+      bytes.toString("ascii", 12, 16) !== "IHDR"
+    )
+      return null;
+    const width = bytes.readUInt32BE(16);
+    const height = bytes.readUInt32BE(20);
+    return width > 0 && height > 0 ? { width, height } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Replace an installed directory transactionally; restore the old copy if staging cannot be moved in. */
+export function replaceInstallDir(installDir: string, staging: string, previous: string): void {
+  const hadPrevious = existsSync(installDir);
+  if (hadPrevious) renameSync(installDir, previous);
+  try {
+    renameSync(staging, installDir);
+  } catch (error) {
+    if (hadPrevious) renameSync(previous, installDir);
+    throw error;
+  }
+  if (hadPrevious) rmSync(previous, { recursive: true, force: true });
+}
 
 /** 产物是否比它的**编译输入**旧。
  *

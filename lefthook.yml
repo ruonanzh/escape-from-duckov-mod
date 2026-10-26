@@ -41,3 +41,6 @@ pre-commit:
     inspect-code-incomplete:
       # 游戏缺失时脚本明确输出 SKIP，不把未执行写成 PASS。
       run: bun scripts/test-inspect-code-incomplete.mjs
+    mod-install:
+      # 临时目录与假 dotnet；不访问网络，不要求真实游戏。
+      run: node --experimental-strip-types scripts/test-mod-install.mjs
