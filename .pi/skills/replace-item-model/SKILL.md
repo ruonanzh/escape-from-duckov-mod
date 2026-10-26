@@ -22,7 +22,7 @@ description: 玩家想换**物品**（背包、防弹衣、头盔、弹匣、任
 
 ### ② 先把 mod 骨架建好（免费，编译几秒）
 
-- 照 **`reference/item_model/`**（示例 mod 等于正确答案）建你自己的 mod 目录。
+- 以 **`reference/item_model/`** 为实现起点建自己的 mod 目录。它的验收记录见 `docs/reference-acceptance.md`，不能代替本次验收。
 - 三个名字必须一致：`info.ini` 的 mod 名、csproj 的 `AssemblyName`、`ModBehaviour.cs` 的 namespace。不一致的症状是 mod 静默不加载。明细见 §5。
 - 建完**先跑一次 `validate_mod`** 确认能编译。它会替你检查 mod 名与 namespace 一致。
 - **先建骨架，不得等模型**。模型工具落盘时会自建目录，不得让它抢在你前面把目录建出来。
@@ -90,7 +90,7 @@ generate_model(action="generate",
 
 ## 2. 建骨架与 config.json
 
-**骨架照 `reference/item_model/`**（它就是「正确答案」的样例）。工具只负责**校验**（`validate_mod`）与**安装**（`install_mod`）。
+**骨架以 `reference/item_model/` 为实现起点。** 工具只负责**校验**（`validate_mod`）与**安装**（`install_mod`）。
 **名字与类名那几条不一致会静默不加载**。明细见 §5。
 
 **工作区更新后，`reference/` 的模板可能变了。** 用模板覆盖自己的 `ModBehaviour.cs` 之前，
@@ -150,6 +150,8 @@ var res = ModelKit.ItemModel.Apply(item, loaded.Mesh, loaded.MainTexture, handhe
 ## 4. 怎么确认成功（装好不等于成功）
 
 `validate_mod` 与 `install_mod` 已经替你查了**名字、类名与目录**。剩下的只有一件事：**让玩家看**。
+
+- 验收时分三项报告：游戏能加载本 mod；目标物品在启用的层里换成新模型；一件未配置物品重新实例化后保持原样。
 
 - **让玩家做**：进游戏，背包切到目标，看**地上、穿戴或手里**（开了 `handheld` 才有手里）变成你的模型了没。
   装的时候游戏开着的话，先退出再进。

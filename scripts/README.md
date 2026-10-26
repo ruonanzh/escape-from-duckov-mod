@@ -22,6 +22,7 @@ bun test --cwd .pi/lib decompile.test.mjs                                 # dump
 bun scripts/test-inspect-code-incomplete.mjs                               # 不完整 dump 的 5 个 action
 node --experimental-strip-types scripts/test-mod-install.mjs                # 安装事务、validate verdict、构建串行与 PNG 边界
 node --experimental-strip-types scripts/test-tripo-network.mjs              # Tripo 超时、取消与付费串行
+node --experimental-strip-types scripts/test-reference-builds.mjs            # 4 个 reference 的新 DLL 与负向构建夹具
 ```
 
 它们都导入 `.pi/lib/` 里的**同一份**函数，扩展也导入那份。于是判据只有一份，不会漂。

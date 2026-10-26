@@ -47,3 +47,6 @@ pre-commit:
     tripo-network:
       # 全部使用 mock fetch；不访问 Tripo，不花积分。
       run: node --experimental-strip-types scripts/test-tripo-network.mjs
+    reference-builds:
+      # 缺 SDK 或游戏 DLL 时明确 SKIP；有环境时重新编译并跑负向夹具。
+      run: node --experimental-strip-types scripts/test-reference-builds.mjs

@@ -1,5 +1,7 @@
 # weapon_model（示例 mod）—— 替换某把武器的模型
 
+验收记录见 [`docs/reference-acceptance.md`](../../docs/reference-acceptance.md)。本 reference 是研究起点，不代替本次加载、行为与边界验收。
+
 **完整正确做法**：整个 mod 等于一句配置加一个 GLB。
 
 ## 用法

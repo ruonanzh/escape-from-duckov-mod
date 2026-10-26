@@ -1,5 +1,7 @@
 # ItemModelSwap —— 替换**物品**的模型（示例 mod）
 
+验收记录见 [`docs/reference-acceptance.md`](../../docs/reference-acceptance.md)。本 reference 是研究起点，不代替本次加载、行为与边界验收。
+
 把**一件（或一批）物品**在世界里的**模型**换成你给的 GLB。
 （背包、防弹衣、头盔、面罩、耳机、弹匣、任务道具，以及「本来只有一张图」的消耗品。任何 `Item` 都可以。）
 

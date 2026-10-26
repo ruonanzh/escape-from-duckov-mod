@@ -144,6 +144,7 @@ namespace MyMod
 - `PASS: <名> is valid` 表示本工具所需检查通过。它仍不代表游戏内加载与玩法已经验证。
 - `FAIL` 表示校验失败。`PARTIAL` 表示有检查未执行（例如缺 SDK 跳过编译）。依据输出文本的 `PASS`、`FAIL`、`PARTIAL` 与 `NEXT:` 行说明实际完成范围。不得把旧 DLL 的存在当作本次编译成功。
 - 输出含 `FAIL` 时不得声称 mod 已全部验证。最终报告实现效果、实际验证与剩余步骤。
+- 实际验收必须分开确认：游戏能加载；本次改动的行为；一个相关边界。只编译成功或只截一张图，不算完成这三项。
 - 编译需要 dotnet 与游戏目录。环境未就绪时先看 `setup-workspace`（`check_runtime` 查 SDK，`try_set_game_dir` 确保路径，`install_runtime` 给装法）。
 
 ## 常见错误（对照修正）

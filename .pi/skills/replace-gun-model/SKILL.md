@@ -22,7 +22,7 @@ description: 玩家想换某把**枪械**的模型或外观时用（例如「把
 
 ### ② 先把 mod 骨架建好（免费，编译几秒）
 
-- 照 **`reference/weapon_model/`**（示例 mod 等于正确答案）建你自己的 mod 目录：拷它当起点，或按它自己写。
+- 以 **`reference/weapon_model/`** 为实现起点建自己的 mod 目录。它的验收记录见 `docs/reference-acceptance.md`，不能代替本次验收。
 - 三个名字必须一致：`info.ini` 的 mod 名、csproj 的 `AssemblyName`、`ModBehaviour.cs` 的 namespace。不一致的症状是 mod 静默不加载。明细见 §5。
 - 建完**先跑一次 `validate_mod`** 确认能编译。它会替你检查 mod 名与 namespace 一致。
 - **先建骨架，不得等模型**。模型工具落盘时会自建目录，不得让它抢在你前面把目录建出来。
@@ -104,7 +104,7 @@ generate_image(model="your_mods/<目录名>/<武器名>.glb",
 
 ## 2. 建骨架与 config.json
 
-**骨架自己建**（照 `reference/weapon_model/`，它就是「正确答案」的样例）。工具只负责**校验**（`validate_mod`）与**安装**（`install_mod`）。
+**骨架以 `reference/weapon_model/` 为实现起点。** 工具只负责**校验**（`validate_mod`）与**安装**（`install_mod`）。
 
 **工作区更新后，`reference/` 的模板可能变了。** 用模板覆盖自己的 `ModBehaviour.cs` 之前，
 先把原文件备份。覆盖会丢掉你写过的改动。
@@ -195,6 +195,8 @@ generate_image(model="your_mods/<目录名>/<武器名>.glb",
 ## 4. 怎么确认成功（装好不等于成功）
 
 `validate_mod` 与 `install_mod` 已经替你查了**名字、类名与目录**。剩下的只有一件事：**让玩家看**。
+
+- 验收时分三项报告：游戏能加载本 mod；目标武器的模型、贴图和朝向正确；换拿一把未配置的武器时，它保持原样。
 
 - **让玩家做**：进游戏，背包切到目标武器，再**拿出来**（模型应立刻变）。
   装的时候游戏开着的话，先退出再进。
