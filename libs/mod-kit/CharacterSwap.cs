@@ -1,23 +1,10 @@
-// CharacterSwap.cs —— 角色替换的**运行时一半**：把外部带骨骼的网格搬到游戏角色的骨架上。
+// CharacterSwap.cs —— 角色替换流程：身体对齐、源骨架创建、渲染器替换、隐藏与还原。
 //
-// 依据：设计仓 `docs/unity-3d-assets/10-character-replacement-research.md` §4 与 §4.5。
+// 游戏 Avatar 是 Generic，不能使用 HumanPoseHandler。当前实现保留源网格、源权重与源骨架，
+// 由 CharacterRetarget 在 LateUpdate 把游戏骨骼相对 bind pose 的旋转增量重定向到源关节。
+// 原鸭子骨骼继续由 Animator 驱动；身体渲染器改用源骨骼。不复制骨骼位置，不改变源模型的骨长。
 //
-// 为什么这样做（实测结论）：
-//   · 游戏的角色 Avatar **不是 Humanoid**（`avatar.isHuman = False`）⇒ Unity 的人形重定向用不上，
-//     `HumanPoseHandler` 也不可用。所以要**自己把顶点搬到游戏的骨架空间**。
-//   · 玩家的身体是**一个蒙皮网格** `DuckBody`（`SkinnedMeshRenderer`，26 个骨骼槽、bindposes 26）。
-//   · 按玩家批注的简化方案：**换整个身体 + 把角色自己的部件隐藏**（头、五官、头发、翅膀、鞋、尾巴）。
-//     挂在手部与背部**挂点**上的物品（枪、背包、护甲）不在隐藏之列 —— 见 `KeepVisible`。
-//     不做「把我们的部件一个个挂到游戏骨骼上」那条路（§3.4）。
-//
-// 搬运公式（每个顶点）：
-//     v' = Σ_b  w_b · ( 游戏绑定世界_b · 外部绑定世界_b⁻¹ · v )
-//   其中「绑定世界」 = `bindposes[i].inverse`（glTF 侧是 `inverseBindMatrices[i].inverse`）。
-//   搬完以后把 `bindposes` 换成**游戏的**、`bones` 也换成游戏的 ⇒ 之后完全由游戏的动画驱动
-//   （零每帧开销；不需要每帧搬运）。
-//
-// 权重归属：外部关节先按 `CharacterRig` 映射到游戏骨骼下标；**没映射上的关节，它的权重被丢掉并按比例归一化**，
-// 丢掉多少会在 `Result.Report` 里写清楚（不得静默 ✗）。
+// 身体仍用地标做统一旋转、缩放和平移。手部、背部等挂点下的物品不隐藏，见 KeepVisible。
 
 using System;
 using System.Collections;
@@ -39,7 +26,7 @@ namespace ModelKit
             public SkinnedMeshRenderer Body;
             /// <summary>外部关节里**成功映射**到游戏骨骼的数量</summary>
             public int MappedJoints;
-            /// <summary>外部关节里**没映射上**的数量（它们的权重会被丢掉）</summary>
+            /// <summary>外部关节里没映射上的数量。它们保持源参考姿势，源权重仍保留。</summary>
             public int UnmappedJoints;
             /// <summary>因为权重全丢而保持原位的顶点数</summary>
             public int UnweightedVertices;
@@ -57,6 +44,10 @@ namespace ModelKit
             internal IList Renderers;
             internal Component Character;
             internal GltfLoader.Loaded Skin;
+            internal CharacterRetarget Retarget;
+            internal Transform[] OriginalBones;
+            internal Transform OriginalRootBone;
+            internal bool OriginalUpdateWhenOffscreen;
             internal float _nextReassert;
             /// <summary>这段时间内**每帧**重申（换好之后的新部件会陆续出现，逐帧扫才没有可见延迟）。</summary>
             internal float _fastUntil;
@@ -76,6 +67,8 @@ namespace ModelKit
                     }
                 }
                 catch (Exception ex) { Debug.LogWarning("[CharacterSwap] reassert mesh failed: " + ex.Message); }
+                try { if (Retarget != null) Retarget.Reassert(Body); }
+                catch (Exception ex) { Debug.LogWarning("[CharacterSwap] reassert source bones failed: " + ex.Message); }
                 // 再扫一遍：既重新隐藏被打开的，也顺手隐藏新出现的部件（换了装备会有新的渲染器）
                 if (CharacterModel != null && Renderers != null) HideAllBut(Character, CharacterModel, Renderers, Body, this);
                 else foreach (var r in Disabled)
@@ -93,6 +86,9 @@ namespace ModelKit
                     {
                         Body.sharedMesh = OriginalMesh;
                         Body.sharedMaterial = OriginalMaterial;
+                        Body.bones = OriginalBones;
+                        Body.rootBone = OriginalRootBone;
+                        Body.updateWhenOffscreen = OriginalUpdateWhenOffscreen;
                     }
                     if (_current == this)
                     {
@@ -101,6 +97,7 @@ namespace ModelKit
                     }
                 }
                 catch (Exception ex) { Debug.LogWarning("[CharacterSwap] restore mesh failed: " + ex.Message); }
+                if (Retarget != null) { Retarget.Dispose(); Retarget = null; }
                 if (NewMaterial != null)
                 {
                     // 克隆那份是我们造的 ⇒ 必须自己销毁（不销毁就每次热重载漏一份）
@@ -233,12 +230,15 @@ namespace ModelKit
             if (r == null || r.Skin == null) return;
             var mc = r.Character != null ? r.Character : MainCharacter();
             if (mc == null) return;                       // 关卡还没起来 ⇒ 下一 tick 再试
+            int reasserted = r.Reasserted;
+            r.Restore();                                      // 先归还旧材质、骨骼、渲染器与源骨架，再应用到新角色
             var nr = Apply(mc, r.Skin);
             if (nr.Applied)
             {
-                nr.Reasserted = r.Reasserted + 1;
+                nr.Reasserted = reasserted + 1;
                 Debug.Log("[CharacterSwap] re-applied after the game rebuilt the character: " + nr.Report);
             }
+            else Debug.LogWarning("[CharacterSwap] re-apply failed: " + nr.Report);
         }
 
         /// <summary>隐藏时要**保留**的名字。分两类：
@@ -271,29 +271,11 @@ namespace ModelKit
         /// 要求：`skin.HasSkin` 为真（先用 `generate_model` 的 `action=rig` 绑过骨）。
         /// 只处理**人形**骨骼名（`mixamorig:*` 或标准名）—— 见 `CharacterRig`。
         ///
-        /// <para>**限制**：只搬 `vertices`/`uv`/`triangles`/`boneWeights`。源模型若有第二套 UV（`uv2`）或
-        /// 顶点色会丢（L5）；也只读第一个 skin 与第 0 组关节/权重（M4）。
+        /// <para>**限制**：保留 `vertices`/第一套 `uv`/`triangles`/`boneWeights` 与源节点层级。
+        /// 源模型若有第二套 UV（`uv2`）或顶点色会丢（L5）；也只读第一个 skin 与第 0 组关节/权重（M4）。
         /// `CharacterRig.ExtraDuckBones` 是**离线核对用**的（整体换身体时用不到）—— 见 L3。</para>
         ///
         /// <para>调用后请每帧调 `Result.Reassert(Time.unscaledTime)`：游戏会把隐藏的部件改回来（M1）。</para></summary>
-        /// <summary>手臂与手是否绑到鸭子的手臂骨。
-        ///
-        /// <para>**默认 false，现阶段恒为 false。** 原因：没有找到把模型手臂挂到游戏手臂骨上的好办法
-        /// （逐骨落位做过、量化过，代价见设计仓研究记录 §5.6）。形状保真是首要目标，所以不用它。</para>
-        ///
-        /// <para>取 false 时，`UpperArm.L/R`、`ForeArm.L/R`、`Hand.L/R` 的权重全部并到 `Spine.004`（躯干）。
-        /// 实测原因：我们的模型是**刚性放置**的，而鸭子手臂骨的**转轴**在鸭子自己的肩关节上；
-        /// 模型的手臂网格不在那个轴上 ⇒ 动画一摆，手臂就**脱开身体飘走**（实测：左手飘在枪旁边）。</para>
-        ///
-        /// <para>并到躯干后手臂跟着身体走，不再单独摆动。代价是手臂不会再摆。</para></summary>
-        public static bool BindArmBones = false;
-
-        // 逐骨落位（把每个部件搬到角色对应骨的位置）已从代码中移除，原因是量化后不划算：
-        //   · 形状被改变（边长比最大 4.12，刚性是 1.000），而形状保真是首要目标；
-        //   · 不限躯干时，挂点物品（背包、护甲）与身体分家；
-        //   · 只限制到手臂时，肩部接缝仍被拉，手臂变细。
-        // 完整测量见设计仓 docs/unity-3d-assets/10-character-replacement-research.md 与 11-lessons-2026-10-15.md。
-
         /// <summary>额外倍数（默认 1.0）。
         ///
         /// <para>按「身体高度」对齐只能让**包围盒**一样高。实测这对模型：鸭子的头骨在 Z=0.800，
@@ -362,14 +344,8 @@ namespace ModelKit
                 }
             }
 
-            // ③ 身体地标对齐：把整个模型**刚性**地放进鸭子的网格空间。
-            //
-            // 为什么不再逐骨重定姿态（实测结论，见设计仓 10-character-replacement-research.md §6）：
-            // 逐骨用 `G_b · S_b⁻¹` 保留「骨局部坐标」，等于假定两副骨架的**骨局部朝向约定相同**。
-            // 实测这对骨架完全不同：脚本 scripts/measure-skeleton-gap.mjs 打出的朝向偏差平均 139 度
-            // （别记常数，每个模型现量一次；这个数只说明「逐骨搬运」不能用）
-            // （比例全是 1.000 ⇒ 纯旋转问题）。于是每个部件各自被转了不同角度 ⇒ 模型拧成一团。
-            // 地标对齐只用「上」与「左」两个身体方向，不可能拧。
+            // ③ 身体地标对齐：源骨架根乘同一个旋转、缩放和平移。
+            // 地标对齐只决定身体的整体位置与大小；逐帧骨骼旋转由 CharacterRetarget 负责。
             Matrix4x4 align;
             string alignWhy;
             float scale;
@@ -380,64 +356,37 @@ namespace ModelKit
                 return res;
             }
 
-            // ④ 顶点搬运：整个模型乘同一个矩阵（刚性）。形状保真是首要目标，不做逐骨落位。
+            // ④ 保留源网格、源权重与源骨架。逆绑定矩阵和节点层级使用与顶点相同的坐标转换。
             var srcMesh = skin.Mesh;
-            var sv = srcMesh.vertices;
-            var nv = new Vector3[sv.Length];
-            var nw = new BoneWeight[sv.Length];
-
-            for (int i = 0; i < sv.Length; i++)
+            if (skin.Weights == null || skin.Weights.Length != srcMesh.vertexCount)
             {
-                nv[i] = align.MultiplyPoint3x4(sv[i]);
-                var bw = i < skin.Weights.Length ? skin.Weights[i] : new BoneWeight();
-                var keepIdx = new int[4];
-                var keepW = new float[4];
-                int keep = 0;
-                float wsum = 0f;
-                for (int k = 0; k < 4; k++)
-                {
-                    int ji = BoneIndex(bw, k);
-                    float w = BoneWeightAt(bw, k);
-                    if (w <= 0.0001f || ji < 0 || ji >= map.Length) continue;
-                    int gi = map[ji];
-                    if (gi < 0) continue;                                  // 没映射上 ⇒ 这根骨的权重丢掉
-                    if (!BindArmBones) gi = RedirectToTorso(gameBones, gi);   // 手臂并到躯干
-                    wsum += w;
-                    if (keep < 4) { keepIdx[keep] = gi; keepW[keep] = w; keep++; }
-                }
-                var outW = new BoneWeight();
-                if (keep > 0)
-                {
-                    float inv = 1f / Mathf.Max(0.0001f, wsum);
-                    outW.boneIndex0 = keepIdx[0]; outW.weight0 = keepW[0] * inv;
-                    if (keep > 1) { outW.boneIndex1 = keepIdx[1]; outW.weight1 = keepW[1] * inv; }
-                    if (keep > 2) { outW.boneIndex2 = keepIdx[2]; outW.weight2 = keepW[2] * inv; }
-                    if (keep > 3) { outW.boneIndex3 = keepIdx[3]; outW.weight3 = keepW[3] * inv; }
-                }
-                else
-                {
-                    res.UnweightedVertices++;                              // 不得静默 ✗
-                }
-                nw[i] = outW;
+                res.Report = "the model has no usable skin weights";
+                return res;
             }
+            srcMesh.boneWeights = skin.Weights;               // 下标仍是源 joints；SourceBones 也按同一顺序创建
+            var convert = Matrix4x4.Scale(new Vector3(-1f, 1f, 1f)) * skin.VertexTransform;
+            var inverseConvert = convert.inverse;
+            var sourcePoses = new Matrix4x4[skin.InverseBind.Length];
+            for (int i = 0; i < sourcePoses.Length; i++)
+                sourcePoses[i] = convert * skin.InverseBind[i] * inverseConvert;
+            srcMesh.bindposes = sourcePoses;
 
-            // ⑤ 造新网格：顶点已搬进**游戏的绑定空间** ⇒ 绑定姿势与骨骼都换成游戏的
-            var mesh = new Mesh { name = "char_swap_" + srcMesh.name };
-            if (nv.Length > 65000) mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-            mesh.vertices = nv;
-            mesh.uv = srcMesh.uv;
-            // 对齐是纯旋转（行列式 +1）⇒ 绕序不用翻；镜像在加载期已经处理过
-            mesh.triangles = srcMesh.triangles;
-            mesh.boneWeights = nw;
-            mesh.bindposes = gamePoses;                     // **游戏的绑定姿势**（不得用模型的 ✗）
-            // 法线必须重算：顶点被搬过，原来的法线不再成立（切线与法线贴图一起重算）
-            mesh.RecalculateNormals();
-            mesh.RecalculateTangents();
-            mesh.RecalculateBounds();
+            string retargetError;
+            var retarget = CharacterRetarget.Create(body.transform, skin, gameBones, gamePoses, map, align, out retargetError);
+            if (retarget == null)
+            {
+                res.Report = "cannot create the source rig: " + retargetError;
+                return res;
+            }
+            res.Retarget = retarget;
+            var mesh = srcMesh;
 
-            // ⑥ 换上去 + 隐藏其余部件（玩家批注：换整个身体，其余全隐藏）
+            // ⑤ 原鸭子骨骼继续由 Animator 驱动；身体渲染器改用源骨骼。身体对齐放在源骨架根上。
             res.OriginalMesh = body.sharedMesh;
             res.OriginalMaterial = body.sharedMaterial;
+            res.OriginalBones = body.bones;
+            res.OriginalRootBone = body.rootBone;
+            res.OriginalUpdateWhenOffscreen = body.updateWhenOffscreen;
             var origBounds = res.OriginalMesh != null ? res.OriginalMesh.bounds.size : Vector3.zero;  // L1：必须在赋值前取
             res.NewMesh = mesh;
             if (!_hooked)
@@ -458,6 +407,10 @@ namespace ModelKit
             try { res._fastUntil = Time.unscaledTime + 4f; } catch { res._fastUntil = 0f; }
             _current = res;
             body.sharedMesh = mesh;
+            body.bones = retarget.SourceBones;
+            body.rootBone = retarget.RootBone;
+            body.updateWhenOffscreen = true;                 // 蒙皮后的 bounds 随源骨架与整体对齐变化
+            retarget.Apply();
             try
             {
                 if (body.sharedMaterial != null)
@@ -473,13 +426,12 @@ namespace ModelKit
             HideAllBut(character, cm, renderers, body, res);
 
             res.Applied = true;
-            res.Report = $"swapped the body mesh: {nv.Length} vertices, {mesh.triangles.Length / 3} triangles,"
+            res.Report = $"swapped the body mesh with runtime source-rig retargeting: {srcMesh.vertexCount} vertices, {mesh.triangles.Length / 3} triangles,"
                        + $" joints mapped {res.MappedJoints}/{skin.JointNames.Length}"
-                       + (res.UnmappedJoints > 0 ? $" (unmapped: {string.Join(", ", unmapped.ToArray())})" : "")
-                       + (res.UnweightedVertices > 0 ? $", {res.UnweightedVertices} vertices had no mapped weight (kept in place)" : "")
+                       + (res.UnmappedJoints > 0 ? $" (unmapped, kept at source rest: {string.Join(", ", unmapped.ToArray())})" : "")
                        + $", hidden parts {res.Disabled.Count}"
                        + $", new mesh bounds {mesh.bounds.size} (body was {origBounds})"
-                       + (skin.VertexTransform != Matrix4x4.identity ? ", WARN the model was loaded with front!=auto or zeroGrip:true (now compensated, but load it with front=auto, zeroGrip:false)" : "")
+                       + (skin.VertexTransform != Matrix4x4.identity ? ", WARN front!=auto or zeroGrip:true is not compensated; reload with front=auto, zeroGrip:false" : "")
                        + $", scale {scale:0.###}"
                        + "";
             return res;
@@ -650,22 +602,6 @@ namespace ModelKit
                 foreach (var r in character.GetComponentsInChildren<Renderer>(true)) hide(r);
         }
 
-        /// <summary>手臂那几根骨换成 `Spine.004`（躯干）。找不到就原样返回。</summary>
-        static int RedirectToTorso(Transform[] bones, int gi)
-        {
-            if (bones == null || gi < 0 || gi >= bones.Length || bones[gi] == null) return gi;
-            switch (bones[gi].name)
-            {
-                case "UpperArm.L": case "ForeArm.L": case "Hand.L":
-                case "UpperArm.R": case "ForeArm.R": case "Hand.R":
-                    break;
-                default: return gi;
-            }
-            for (int i = 0; i < bones.Length; i++)
-                if (bones[i] != null && string.Equals(bones[i].name, "Spine.004", StringComparison.Ordinal)) return i;
-            return gi;
-        }
-
         /// <summary>从 `t` 往上走到 `root`，路上碰到保留名单里的名字就返回 true（那个渲染器是物品或特效）。</summary>
         static bool UnderKeepVisible(Transform root, Transform t)
         {
@@ -688,26 +624,5 @@ namespace ModelKit
             return null;
         }
 
-        static int BoneIndex(BoneWeight w, int k)
-        {
-            switch (k)
-            {
-                case 0: return w.boneIndex0;
-                case 1: return w.boneIndex1;
-                case 2: return w.boneIndex2;
-                default: return w.boneIndex3;
-            }
-        }
-
-        static float BoneWeightAt(BoneWeight w, int k)
-        {
-            switch (k)
-            {
-                case 0: return w.weight0;
-                case 1: return w.weight1;
-                case 2: return w.weight2;
-                default: return w.weight3;
-            }
-        }
     }
 }

@@ -88,8 +88,8 @@ node scripts/check-character-rig.mjs     # 0 = 表自洽；1 = 有问题
 
 ## `measure-skeleton-gap.mjs` —— 量模型骨架与游戏骨架的差距
 
-角色替换用刚性搬运（形状保真优先），代价是手臂不跟游戏手臂骨摆。要不要考虑更复杂的做法，
-先量两副骨架差多少。这个差**随模型变**，不是常数。
+角色替换现在保留源骨架，并在运行时重定向游戏骨骼的旋转增量。这个脚本用于比较两副骨架的
+参考姿势与比例。差距**随模型变**，不是常数。
 
 ```bash
 node scripts/measure-skeleton-gap.mjs /path/to/model.glb /tmp/duckbody.txt
@@ -98,20 +98,18 @@ node scripts/measure-skeleton-gap.mjs /path/to/model.glb /tmp/duckbody.txt
 输出每根骨的**位移**（米，越大越说明「搬到角色骨上」会破坏形状）与**朝向偏差**（度，
 大而整齐说明骨轴约定不同）。缺文件或缺地标时退出码 1。
 
-## `check-character-swap.mjs` —— 角色替换的搬运算法与运行时接线
+## `check-character-swap.mjs` —— 角色替换的数学性质与运行时接线
 
-`libs/mod-kit/CharacterSwap.cs` 把外部模型的顶点搬到游戏骨架上。这一步踩过三次「静默错」：
-逆绑定矩阵只读到一个 float（模型消失）、顶点被旋转而骨架没跟上（错位）、镜像没翻绕序（法线朝内）。
-三种都不抛异常，只在游戏里看着不对。
+`libs/mod-kit/CharacterSwap.cs` 创建源骨架，`CharacterRetarget.cs` 在运行时重定向旋转。
+这个脚本防止已知的数据流与坐标转换回退，不执行 C#，也不证明游戏内外观正确。
 
 ```bash
 node scripts/check-character-swap.mjs     # 0 = 符合预期；1 = 有问题
 ```
 
-查两类：① 用 JavaScript 复算搬运公式，对**手算得出的期望值**断言（单骨平移、带旋转的骨局部偏移、
-两骨加权平均、没映射上的骨权重丢弃后归一化、全没映射保持原位、顶点净变换参与）；
-② 对 C# 原文做关键字断言，防止那三个坑回来（`MAT4 = 16`、`normalized` 除法、`VertexTransform` 参与、
-`bindposes` 用游戏的、行列式为负时翻绕序、`Reassert`、克隆材质销毁）。
+查两类：① 用 JavaScript 复算身体对齐、世界旋转增量与父子坐标转换；
+② 对 C# 原文做关键字断言，检查源节点层级、源权重写回、坐标共轭转换、`LateUpdate`、
+`Reassert`、骨骼与材质还原。脚本通过不等于已完成游戏内验收。
 
 ## `check-prompt-standard-zh.mjs` —— 中文提示词规范的检查
 

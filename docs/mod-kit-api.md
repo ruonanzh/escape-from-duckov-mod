@@ -187,11 +187,12 @@ config 的 `action` 是 `replace_character`（字段：`model`、`scale`）。�
 
 | API | 什么时候用 |
 |---|---|
-| `CharacterSwap.Apply(character, skin)` | **主入口**：把 `GltfLoader.Loaded` 搬到这个角色的骨架上 |
-| `CharacterSwap.Tick(now, interval)` | 每帧调。开头 4 秒连着重新隐藏与重挂，之后按 `interval` 节流 |
-| `CharacterSwap.BindArmBones` | 默认 `false`。`true` 时把模型手臂绑到游戏手臂骨（实测动画一摆就脱开）|
+| `CharacterSwap.Apply(character, skin)` | **主入口**：对齐身体，创建源骨架，并替换角色的身体渲染器 |
+| `CharacterSwap.Tick(now, interval)` | 每帧调。重申网格、源骨骼与隐藏状态；角色重建后重新应用 |
+| `CharacterRetarget.Create(...)` | 高级入口：创建源骨架并绑定游戏驱动骨骼。通常由 `CharacterSwap.Apply` 调用 |
+| `CharacterRetarget.Apply()` / `Dispose()` | 在 Animator 更新后重定向旋转；销毁源骨架与逐帧驱动 |
 | `CharacterSwap.ExtraScale` | 在自动尺寸之上再乘的倍数，默认 `1` |
-| `CharacterSwap.Result` | `Applied`、`NoOp`、`Report`、`Body`、`MappedJoints`、`UnmappedJoints`、`UnweightedVertices`、`Reasserted`；方法 `Reassert(now, interval)` 与 `Restore()` |
+| `CharacterSwap.Result` | `Applied`、`NoOp`、`Report`、`Body`、`MappedJoints`、`UnmappedJoints`、`Reasserted`；方法 `Reassert(now, interval)` 与 `Restore()` |
 
 钩子是**第一次 `Apply` 时自己挂的**（`if (!_hooked)` 里调 `ItemHooks.Install()` 与 `ModelHooks.Install()`）。
 mod 侧不用调，也没有对外的 `Install`。
