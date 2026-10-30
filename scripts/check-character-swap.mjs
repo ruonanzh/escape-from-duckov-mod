@@ -25,7 +25,6 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SWAP = join(root, "libs", "mod-kit", "CharacterSwap.cs");
 const LOADER = join(root, "libs", "mod-kit", "GltfLoader.cs");
-const RETARGET = join(root, "libs", "mod-kit", "CharacterRetarget.cs");
 
 let failed = 0;
 const check = (name, expected, got) => {
@@ -99,46 +98,33 @@ console.log("身体对齐（性质断言）：");
   checkTrue("刚性：两点距离不变", Math.abs(d0 - d1) < 1e-6, `${d0} vs ${d1}`);
 }
 
-console.log("\n运行时旋转重定向（世界增量与父子坐标转换）：");
+console.log("\n权重重映射（丢没映射上的骨、再归一化）：");
 {
-  const qMul = (a, b) => [
-    a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
-    a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
-    a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
-    a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2],
-  ];
-  const qInv = (q) => [-q[0], -q[1], -q[2], q[3]];
-  const qRotate = (q, v) => {
-    const u = [q[0], q[1], q[2]];
-    const uv = vcross(u, v), uuv = vcross(u, uv);
-    return v.map((x, i) => x + 2 * (q[3] * uv[i] + uuv[i]));
+  const remap = (idx, w, map) => {
+    const keep = [], keepW = [];
+    let sum = 0;
+    for (let k = 0; k < 4; k += 1) {
+      const ww = w[k], ji = idx[k];
+      if (!(ww > 1e-4) || ji < 0 || ji >= map.length) continue;
+      const gi = map[ji];
+      if (gi < 0) continue;
+      sum += ww; keep.push(gi); keepW.push(ww);
+    }
+    if (sum <= 1e-4) return { mapped: 0, weights: [] };
+    return { mapped: keep.length, weights: keepW.map((x) => x / sum), bones: keep };
   };
-  const qAxis = (axis, degrees) => {
-    const a = vnorm(axis), h = degrees * Math.PI / 360;
-    return [...a.map((x) => x * Math.sin(h)), Math.cos(h)];
-  };
-  const closeVec = (a, b) => a.every((x, i) => Math.abs(x - b[i]) < 1e-6);
-  const driverRest = qAxis([0, 1, 0], 37);
-  const sourceRest = qAxis([1, 0, 1], -62);
-  const delta = qAxis([0, 0, 1], 83);
-  const currentDriver = qMul(delta, driverRest);
-  const recoveredDelta = qMul(currentDriver, qInv(driverRest));
-  const desired = qMul(recoveredDelta, sourceRest);
-  checkTrue("参考姿势不变时，源关节保持自己的参考旋转",
-    closeVec(qRotate(qMul(qMul(driverRest, qInv(driverRest)), sourceRest), [0.2, 0.7, -0.1]), qRotate(sourceRest, [0.2, 0.7, -0.1])));
-  checkTrue("不同骨轴的源关节仍接收同一个世界旋转增量",
-    closeVec(qRotate(desired, [0.2, 0.7, -0.1]), qRotate(delta, qRotate(sourceRest, [0.2, 0.7, -0.1]))));
-  const parent = qAxis([1, 2, -1], 29);
-  const local = qMul(qInv(parent), desired);
-  checkTrue("世界目标转成局部旋转后，父骨 × 局部旋转能还原目标",
-    closeVec(qRotate(qMul(parent, local), [-0.4, 0.3, 0.8]), qRotate(desired, [-0.4, 0.3, 0.8])));
+  const r1 = remap([0, 1, 0, 0], [0.6, 0.4, 0, 0], [5, 7]);
+  check("两骨都映射上：权重和 = 1", true, Math.abs(r1.weights.reduce((a, b) => a + b, 0) - 1) < 1e-9);
+  check("骨骼下标换成游戏的下标", [5, 7], r1.bones);
+  const r2 = remap([0, 1, 0, 0], [0.6, 0.4, 0, 0], [5, -1]);
+  check("没映射上的骨权重丢掉（只剩一根）", [5], r2.bones);
+  check("丢掉后归一化成 1.0", [1], r2.weights);
+  check("权重全没映射上：返回 0 根（调用方要记一笔）", 0, remap([1, 0, 0, 0], [1, 0, 0, 0], [-1, -1]).mapped);
 }
 
 // ══ B. C# 原文断言（那些坑还在不在）══════════════════════════════════════════
 const swap = readFileSync(SWAP, "utf8");
 const loader = readFileSync(LOADER, "utf8");
-const retarget = readFileSync(RETARGET, "utf8");
-const applyBody = retarget.slice(retarget.indexOf("public void Apply()"), retarget.indexOf("internal void Reassert"));
 
 console.log("\nC# 原文（防回退）：");
 checkTrue("ReadAccessor 认得 MAT4 = 16 个分量（漏了 ⇒ 逆绑定矩阵成垃圾）",
@@ -152,15 +138,12 @@ checkTrue("源地标也带上顶点净变换（否则地标与顶点不同坐标
   /skin\.VertexTransform\.MultiplyPoint3x4\(new Vector3\(world\.m03/.test(swap), "SourceLandmark 没带净变换");
 checkTrue("源地标取反 X（加载器已取反过顶点，地标不跟着取反就左右翻）",
   /p = new Vector3\(-v\.x, v\.y, v\.z\);/.test(swap), "找不到取反 X");
-checkTrue("GLB 保留源节点层级与局部矩阵",
-  /public RigNode\[\] Nodes/.test(loader) && /rigNodes\[child\]\.Parent = i/.test(loader)
-  && /r\.JointNodes = jointNodes/.test(loader) && /r\.LocalMatrix = Matrix4x4\.TRS/.test(loader),
-  "源骨架层级或局部矩阵没有读入");
+checkTrue("不再逐骨重定姿态（逐骨会把模型拧成一团）",
+  !/srcBind\[i\] = skin\.VertexTransform/.test(swap) && !/gameBind\[map\[i\]\]/.test(swap), "还有逐骨搬运的残留");
 checkTrue("用身体地标对齐（同一个构造建两边的坐标架）",
   /static bool BodyFrame\(/.test(swap) && /var rot = fd \* fs\.transpose;/.test(swap), "找不到 BodyFrame 或对齐乘法");
-checkTrue("源逆绑定矩阵与顶点使用同一个坐标转换",
-  /sourcePoses\[i\] = convert \* skin\.InverseBind\[i\] \* inverseConvert/.test(swap)
-  && /srcMesh\.bindposes = sourcePoses/.test(swap), "源 bindposes 的坐标转换不一致");
+checkTrue("新网格用**游戏的**绑定姿势（用模型的就是歪的）",
+  /mesh\.bindposes = gamePoses;/.test(swap) && !/mesh\.bindposes = skin\./.test(swap), "bindposes 赋错");
 checkTrue("按身体高度等比缩放（不缩放会“稍微小一些”）",
   /const float MinScale = 0\.25f, MaxScale = 4f;/.test(swap) && /Mathf\.Clamp\(duckH \/ srcH, MinScale, MaxScale\)/.test(swap),
   "找不到尺寸对齐");
@@ -170,22 +153,11 @@ checkTrue("高度用真实顶点跨度，不用包围盒投影（投影会在上
   /static float ExtentAlong\(Mesh mesh, Vector3 axis\)/.test(swap)
   && /float srcH = ExtentAlong\(skin\.Mesh, col1\(fs\)\)/.test(swap)
   && !/Vector3\.Dot\(skin\.Mesh\.bounds\.size, col1\(fs\)\)/.test(swap), "还在用包围盒投影");
-checkTrue("源权重按源 joints 下标写回网格，不改绑到游戏骨骼",
-  /srcMesh\.boneWeights = skin\.Weights/.test(swap)
-  && !/RedirectToTorso|BindArmBones|mesh\.boneWeights = nw/.test(swap), "源权重缺失或仍有旧改绑路径");
-checkTrue("世界旋转增量 = 当前游戏旋转 × 游戏参考旋转的逆",
-  /var delta = RotationOf\(currentDriver\) \* Quaternion\.Inverse\(e\.DriverRest\)/.test(retarget)
-  && /var desiredInSpace = delta \* e\.SourceRest/.test(retarget), "世界增量公式被改错");
-checkTrue("目标世界旋转先转回父骨局部空间，且按父到子更新",
-  /Quaternion\.Inverse\(RotationOf\(parentInSpace\)\) \* desiredInSpace/.test(retarget)
-  && /entries\.Sort\(\(a, b\) => Depth\(skin\.Nodes, a\.Node\)/.test(retarget), "父子旋转顺序或转换被改错");
-checkTrue("Animator 更新后的 LateUpdate 驱动源骨架",
-  /void LateUpdate\(\)/.test(retarget) && /Target\.Apply\(\)/.test(retarget), "没有 LateUpdate 驱动");
-checkTrue("运行时每帧只写旋转，不写源骨骼位置或缩放",
-  applyBody.includes("localRotation") && !/localPosition|localScale/.test(applyBody),
-  "Apply 写入了位置或缩放");
-checkTrue("不引入 IK 或 HumanPoseHandler",
-  !/new\s+HumanPoseHandler|TwoBoneIKConstraint|\bIK\s*\(/.test(retarget), "出现了超出方案 A 的机制");
+checkTrue("逐骨落位不得回到代码里（量化后不划算：形状被改变、挂点物品分家、肩部接缝被拉）",
+  !/PerBonePlacement|PerBoneBlend|PerBoneBones|boneShift/.test(swap), "逐骨落位的残留");
+checkTrue("手臂默认并到躯干（刚性放置 + 手臂转轴不在模型手臂里 ⇒ 绑手臂骨会脱开）",
+  /public static bool BindArmBones = false;/.test(swap) && /static int RedirectToTorso\(Transform\[\] bones, int gi\)/.test(swap)
+  && /case "UpperArm\.L": case "ForeArm\.L": case "Hand\.L":/.test(swap), "找不到手臂重定向");
 checkTrue("对齐是纯旋转 ⇒ 不需要翻绕序",
   !/flipWinding/.test(swap), "还留着 flipWinding");
 checkTrue("换好之后有一段时间逐帧重申（否则新部件会晚一秒才消失）",
@@ -209,16 +181,8 @@ checkTrue("角色被游戏重建后会重新搬运（关卡初始化在搬运之
   /public static void Tick\(float now/.test(swap) && /\n\s*Reapply\(\);/.test(swap), "找不到 Tick/Reapply");
 checkTrue("还原时销毁克隆材质（L2：否则每次热重载漏一份）",
   /UnityEngine\.Object\.Destroy\(NewMaterial\)/.test(swap), "找不到材质销毁");
-checkTrue("还原时恢复原骨骼、离屏状态并销毁源骨架",
-  /Body\.bones = OriginalBones/.test(swap) && /Body\.rootBone = OriginalRootBone/.test(swap)
-  && /Body\.updateWhenOffscreen = OriginalUpdateWhenOffscreen/.test(swap)
-  && /Retarget\.Dispose\(\)/.test(swap), "骨骼、离屏状态或源骨架没有还原");
-checkTrue("重申会恢复被游戏重置的源骨骼",
-  /Retarget\.Reassert\(Body\)/.test(swap) && /body\.bones = _sourceBones/.test(retarget), "源骨骼没有重申");
 checkTrue("原网格包围盒在赋值前取（L1）",
   /var origBounds = res\.OriginalMesh/.test(swap) && !/body was \{mesh\.bounds/.test(swap), "origBounds 取得太晚");
-checkTrue("源骨架与整体对齐后的蒙皮 bounds 每帧更新，避免边缘误剔除",
-  /body\.updateWhenOffscreen = true/.test(swap), "没有更新蒙皮 bounds");
 checkTrue("隐藏会扫角色整棵层级（五官/头发不在 CharacterModel.renderers 里）",
   /character\.GetComponentsInChildren<Renderer>\(true\)/.test(swap) && /UnderKeepVisible/.test(swap), "找不到整棵层级扫描");
 checkTrue("每一遍隐藏都走同一个判据（只在最后一遍查会把枪藏掉）",
