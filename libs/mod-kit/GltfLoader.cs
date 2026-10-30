@@ -18,6 +18,15 @@ namespace ModelKit
 {
     public static class GltfLoader
     {
+        internal sealed class RigNode
+        {
+            /// <summary>glTF 节点名与父节点下标。-1 = 场景根。</summary>
+            public string Name;
+            public int Parent = -1;
+            /// <summary>glTF 原始局部矩阵。坐标转换由骨架创建者统一处理。</summary>
+            public Matrix4x4 LocalMatrix = Matrix4x4.identity;
+        }
+
         public sealed class Loaded
         {
             public Mesh Mesh;
@@ -31,6 +40,9 @@ namespace ModelKit
             public string[] JointNames = new string[0];
             /// <summary>每根关节的**逆绑定矩阵**（mesh 空间，glTF 原样）。取逆就是它在绑定姿势下的世界矩阵。</summary>
             public Matrix4x4[] InverseBind = new Matrix4x4[0];
+            /// <summary>第一个 skin 的关节节点与完整父子层级。手臂 IK 用源骨架，不按名字猜层级。</summary>
+            internal int[] JointNodes = new int[0];
+            internal RigNode[] Nodes = new RigNode[0];
             /// <summary>每个顶点的骨权重（最多 4 根，只读 `JOINTS_0`/`WEIGHTS_0`）。
             /// 下标是 `JointNames` 的下标，**不是** Unity 的骨骼下标。
             /// <para>**限制**：不读 `JOINTS_1`/`WEIGHTS_1`（多组关节）。Tripo 一模型一骨架一组合格。</para></summary>
@@ -164,10 +176,23 @@ namespace ModelKit
                     if (n > 0)
                     {
                         var names = new string[n];
+                        var jointNodes = new int[n];
                         for (int i = 0; i < n; i++)
                         {
                             int ni = joints[i].AsInt(-1);
+                            jointNodes[i] = ni;
                             names[i] = (ni >= 0 && ni < nodes.Count) ? nodes[ni]["name"].AsString("joint" + ni) : "joint" + i;
+                        }
+                        var rigNodes = new RigNode[nodes.Count];
+                        for (int i = 0; i < nodes.Count; i++) rigNodes[i] = ReadRigNode(nodes[i], i);
+                        for (int i = 0; i < nodes.Count; i++)
+                        {
+                            var children = nodes[i]["children"];
+                            for (int c = 0; c < (children?.Count ?? 0); c++)
+                            {
+                                int child = children[c].AsInt(-1);
+                                if (child >= 0 && child < rigNodes.Length) rigNodes[child].Parent = i;
+                            }
                         }
                         var inv = new List<Matrix4x4>();
                         int ibm = skin0.Has("inverseBindMatrices") ? skin0["inverseBindMatrices"].AsInt(-1) : -1;
@@ -185,9 +210,12 @@ namespace ModelKit
                             }
                         }
                         r.JointNames = names;
+                        r.JointNodes = jointNodes;
+                        r.Nodes = rigNodes;
                         r.InverseBind = inv.ToArray();
                         r.Weights = weights.ToArray();
-                        r.HasSkin = inv.Count == n && weights.Count == verts.Count;
+                        r.HasSkin = inv.Count == n && weights.Count == verts.Count
+                            && jointNodes.Length == n && rigNodes.Length == nodes.Count;
                     }
                 }
             }
@@ -211,6 +239,31 @@ namespace ModelKit
                 vtHint = $" [vertex transform: t=({vt.m03:0.###},{vt.m13:0.###},{vt.m23:0.###}) - a rigged model must be loaded with front=auto, zeroGrip:false]";
             }
             r.Report = (r.HasSkin ? $"skin {r.JointNames.Length} joints {ibHint}, " : "") + $"GLB: vertices {r.VertexCount}, triangles {r.TriangleCount}, texture {(r.MainTexture != null ? r.MainTexture.name + $" {r.MainTexture.width}x{r.MainTexture.height}" : "none")}, normal map {(r.NormalTexture != null ? "yes" : "no")}, bounds {mesh.bounds.size}, grip zeroed {grip}{vtHint}";
+            return r;
+        }
+
+        static RigNode ReadRigNode(JsonValue node, int index)
+        {
+            var r = new RigNode { Name = node.GetStr("name", "node" + index) };
+            var matrix = node["matrix"];
+            if (matrix != null && matrix.Count == 16)
+            {
+                var m = new Matrix4x4();
+                for (int col = 0; col < 4; col++)
+                    for (int row = 0; row < 4; row++) m[row, col] = matrix[col * 4 + row].AsFloat(0f);
+                r.LocalMatrix = m;
+                return r;
+            }
+            var t = node["translation"];
+            var q = node["rotation"];
+            var s = node["scale"];
+            var position = t != null && t.Count == 3
+                ? new Vector3(t[0].AsFloat(0f), t[1].AsFloat(0f), t[2].AsFloat(0f)) : Vector3.zero;
+            var rotation = q != null && q.Count == 4
+                ? new Quaternion(q[0].AsFloat(0f), q[1].AsFloat(0f), q[2].AsFloat(0f), q[3].AsFloat(1f)) : Quaternion.identity;
+            var scale = s != null && s.Count == 3
+                ? new Vector3(s[0].AsFloat(1f), s[1].AsFloat(1f), s[2].AsFloat(1f)) : Vector3.one;
+            r.LocalMatrix = Matrix4x4.TRS(position, rotation, scale);
             return r;
         }
 

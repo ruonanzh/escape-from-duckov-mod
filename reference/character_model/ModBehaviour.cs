@@ -12,8 +12,8 @@
 //      不得用包围盒尺寸投影到上轴：上轴一倾斜，投影偏大，模型反而被缩小。
 //   ③ 隐藏：钩子（`CharacterModel` 的五个方法）立刻藏，`Tick` 的逐帧窗口与每秒重申兜底。
 //      物品挂点（手、背、护甲）在保留名单里，不得藏 —— 枪和背包要留着。
-//   ④ 手臂：手臂与手的权重并到躯干（`BindArmBones` 默认 false）。模型是刚性放置的，
-//      鸭子手臂骨的转轴不在模型的手臂里，绑上去会脱开飘走。
+//   ④ 手臂：右手三根源关节由两骨 IK 对准掌心握把；左手三根骨并到 `Spine.004`。
+//      手掌不主动旋转，左臂不独立摆动。
 
 using System;
 using System.IO;
@@ -33,6 +33,8 @@ namespace CharacterModelSwap
         CharacterSwap.Result _result;
         Component _character;
         bool _applied;
+        float _nextTry;
+        string _lastReport = "";
 
         void Start()
         {
@@ -49,18 +51,24 @@ namespace CharacterModelSwap
 
                 if (!_applied)
                 {
+                    if (Time.unscaledTime < _nextTry) return;
+                    _nextTry = Time.unscaledTime + 2f;
                     var mc = MainCharacter();
                     if (mc == null) return;                       // 还没进关卡 ⇒ 下一帧再看
                     _character = mc;
                     CharacterSwap.ExtraScale = _extraScale;
                     _result = CharacterSwap.Apply(mc, _loaded);
                     _applied = _result.Applied;
-                    Debug.Log("[CharacterModel] " + (_applied ? "APPLIED: " : "FAILED: ") + _result.Report);
-                    if (!_applied) return;                        // 失败不要每帧重试刷日志
+                    if (_result.Report != _lastReport)
+                    {
+                        Debug.Log("[CharacterModel] " + (_applied ? "APPLIED: " : "FAILED: ") + _result.Report);
+                        _lastReport = _result.Report;
+                    }
+                    if (!_applied) return;                        // 两秒后重试；相同错误不重复写
                 }
 
                 // 重申（藏新出现的部件）+ 角色被游戏重建时自动重来。
-                // 每帧调，内部自己限流；换好后的十几秒内逐帧扫，所以没有可见延迟。
+                // 每帧调，内部自己限流；换好后的 4 秒内逐帧扫，所以没有可见延迟。
                 CharacterSwap.Tick(Time.unscaledTime);
             }
             catch (Exception ex) { Debug.LogError("[CharacterModel] update threw: " + ex); }
@@ -123,6 +131,8 @@ namespace CharacterModelSwap
 
                 if (_result != null) { _result.Restore(); _result = null; }   // 有借有还：换了配置先把旧的还回去
                 _applied = false;
+                _nextTry = 0f;
+                _lastReport = "";
             }
             catch (Exception ex) { Debug.LogError("[CharacterModel] config failed: " + ex.Message); }
         }

@@ -25,6 +25,7 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SWAP = join(root, "libs", "mod-kit", "CharacterSwap.cs");
 const LOADER = join(root, "libs", "mod-kit", "GltfLoader.cs");
+const ARM_IK = join(root, "libs", "mod-kit", "CharacterArmIk.cs");
 
 let failed = 0;
 const check = (name, expected, got) => {
@@ -122,9 +123,35 @@ console.log("\n权重重映射（丢没映射上的骨、再归一化）：");
   check("权重全没映射上：返回 0 根（调用方要记一笔）", 0, remap([1, 0, 0, 0], [1, 0, 0, 0], [-1, -1]).mapped);
 }
 
+console.log("\n两骨 IK（可达性、骨长与 pole）：");
+{
+  const solve = (S, T, P, L1, L2) => {
+    const delta = vsub(T, S), d0 = vlen(delta);
+    const min = Math.abs(L1 - L2) + 1e-4, max = L1 + L2 - 1e-4;
+    const d = Math.max(min, Math.min(max, d0));
+    const dir = vnorm(delta);
+    const a = (L1 * L1 - L2 * L2 + d * d) / (2 * d);
+    const h = Math.sqrt(Math.max(0, L1 * L1 - a * a));
+    let pole = vsub(P, S);
+    pole = vsub(pole, dir.map((x) => x * vdot(pole, dir)));
+    const E = S.map((x, i) => x + dir[i] * a + vnorm(pole)[i] * h);
+    const hand = S.map((x, i) => x + dir[i] * d);
+    return { S, E, hand, reachable: d0 >= min && d0 <= max, error: vlen(vsub(hand, T)) };
+  };
+  const reachable = solve([0, 0, 0], [0, 0.9, 0], [1, 0, 0], 0.6, 0.4);
+  checkTrue("可达目标的末端误差接近 0", reachable.reachable && reachable.error < 1e-6);
+  checkTrue("求解后上臂长度不变", Math.abs(vlen(vsub(reachable.E, reachable.S)) - 0.6) < 1e-6);
+  checkTrue("求解后前臂长度不变", Math.abs(vlen(vsub(reachable.hand, reachable.E)) - 0.4) < 1e-6);
+  checkTrue("pole 决定肘部位于预期一侧", reachable.E[0] > 0.1);
+  const far = solve([0, 0, 0], [0, 2, 0], [1, 0, 0], 0.6, 0.4);
+  checkTrue("不可达目标夹紧距离并保留误差", !far.reachable && Math.abs(far.error - 1.0001) < 1e-6);
+  checkTrue("不可达目标也不会拉长上臂", Math.abs(vlen(vsub(far.E, far.S)) - 0.6) < 1e-6);
+}
+
 // ══ B. C# 原文断言（那些坑还在不在）══════════════════════════════════════════
 const swap = readFileSync(SWAP, "utf8");
 const loader = readFileSync(LOADER, "utf8");
+const armIk = readFileSync(ARM_IK, "utf8");
 
 console.log("\nC# 原文（防回退）：");
 checkTrue("ReadAccessor 认得 MAT4 = 16 个分量（漏了 ⇒ 逆绑定矩阵成垃圾）",
@@ -142,8 +169,10 @@ checkTrue("不再逐骨重定姿态（逐骨会把模型拧成一团）",
   !/srcBind\[i\] = skin\.VertexTransform/.test(swap) && !/gameBind\[map\[i\]\]/.test(swap), "还有逐骨搬运的残留");
 checkTrue("用身体地标对齐（同一个构造建两边的坐标架）",
   /static bool BodyFrame\(/.test(swap) && /var rot = fd \* fs\.transpose;/.test(swap), "找不到 BodyFrame 或对齐乘法");
-checkTrue("新网格用**游戏的**绑定姿势（用模型的就是歪的）",
-  /mesh\.bindposes = gamePoses;/.test(swap) && !/mesh\.bindposes = skin\./.test(swap), "bindposes 赋错");
+checkTrue("躯干用手臂拼接后的绑定姿势，源手臂 bindposes 补偿整体对齐",
+  /mesh\.bindposes = runtimePoses/.test(swap)
+  && /RendererBindposes\[i\] = convert \* skin\.InverseBind\[joint\] \* inverseConvert \* alignment\.inverse/.test(armIk),
+  "混合骨架 bindposes 或整体对齐补偿被改错");
 checkTrue("按身体高度等比缩放（不缩放会“稍微小一些”）",
   /const float MinScale = 0\.25f, MaxScale = 4f;/.test(swap) && /Mathf\.Clamp\(duckH \/ srcH, MinScale, MaxScale\)/.test(swap),
   "找不到尺寸对齐");
@@ -153,11 +182,47 @@ checkTrue("高度用真实顶点跨度，不用包围盒投影（投影会在上
   /static float ExtentAlong\(Mesh mesh, Vector3 axis\)/.test(swap)
   && /float srcH = ExtentAlong\(skin\.Mesh, col1\(fs\)\)/.test(swap)
   && !/Vector3\.Dot\(skin\.Mesh\.bounds\.size, col1\(fs\)\)/.test(swap), "还在用包围盒投影");
-checkTrue("逐骨落位不得回到代码里（量化后不划算：形状被改变、挂点物品分家、肩部接缝被拉）",
-  !/PerBonePlacement|PerBoneBlend|PerBoneBones|boneShift/.test(swap), "逐骨落位的残留");
-checkTrue("手臂默认并到躯干（刚性放置 + 手臂转轴不在模型手臂里 ⇒ 绑手臂骨会脱开）",
-  /public static bool BindArmBones = false;/.test(swap) && /static int RedirectToTorso\(Transform\[\] bones, int gi\)/.test(swap)
-  && /case "UpperArm\.L": case "ForeArm\.L": case "Hand\.L":/.test(swap), "找不到手臂重定向");
+checkTrue("GLB 保留源节点层级与局部矩阵，供手臂 IK 建骨架",
+  /internal RigNode\[\] Nodes/.test(loader) && /rigNodes\[child\]\.Parent = i/.test(loader)
+  && /r\.LocalMatrix = Matrix4x4\.TRS/.test(loader), "源节点层级缺失");
+checkTrue("只有右手三根骨进入 IK，左手并回躯干",
+  /armNames = \{ "UpperArm\.R", "ForeArm\.R", "Hand\.R" \}/.test(armIk)
+  && !/UpperArm\.L", "ForeArm\.L", "Hand\.L/.test(armIk)
+  && /leftArmToTorso\[ji\]\) gi = leftTorso/.test(swap)
+  && /else if \(arm >= 0\) gi = gameBones\.Length \+ arm/.test(swap),
+  "左右手范围或混合骨骼下标被改错");
+checkTrue("掌心是目标，游戏肘部提供自然 pole",
+  /target = arm\.DriverGrip\.position - palmWorldOffset/.test(armIk)
+  && /pole = arm\.DriverElbow\.position - shoulder/.test(armIk) && !/UpReference/.test(armIk),
+  "IK 目标或自然 pole 被改错");
+checkTrue("不可达目标夹紧距离；只随游戏重定位肩骨，不改骨长",
+  /Mathf\.Clamp\(distance, min, max\)/.test(armIk) && /handError=/.test(armIk)
+  && /arm\.Upper\.position = arm\.DriverUpper\.position/.test(armIk)
+  && !/Fore\.position\s*=|Upper\.localPosition\s*=|Fore\.localPosition\s*=/.test(armIk),
+  "不可达处理、肩点来源或骨长约束被改错");
+checkTrue("完整旋转同时约束骨方向与弯曲平面，避免滚转漂移",
+  /UpperRestBasisInverse/.test(armIk) && /ForeRestBasisInverse/.test(armIk)
+  && /Quaternion\.LookRotation\(desiredDirection\.normalized, desiredNormal\)/.test(armIk)
+  && /\* restBasisInverse \* restRotation/.test(armIk)
+  && !/Quaternion\.FromToRotation\(/.test(armIk), "仍只约束方向，或缺少源参考滚转");
+checkTrue("滚转候选用上一帧结果和 5 度余量防止 180 度翻面",
+  /Quaternion\.AngleAxis\(180f, desiredDirection\.normalized\)/.test(armIk)
+  && /Quaternion\.Angle\(previousRotation, alternate\) \+ 5f < Quaternion\.Angle\(previousRotation, rotation\)/.test(armIk)
+  && /LastUpperRotation = arm\.Upper\.rotation/.test(armIk)
+  && /LastForeRotation = arm\.Fore\.rotation/.test(armIk),
+  "防翻面仍使用被父骨污染的旋转或没有切换余量");
+checkTrue("掌心而非手腕对齐游戏握持点",
+  /PalmOffset = palmOffset/.test(armIk) && /TryFindPalmOffset/.test(armIk)
+  && /target = arm\.DriverGrip\.position - palmWorldOffset/.test(armIk)
+  && /Hand\.TransformPoint\(arm\.PalmOffset\)/.test(armIk),
+  "仍把手腕直接放到握持点");
+checkTrue("手掌保持源局部旋转，不做独立世界旋转校准",
+  !/HandOffset|desiredHandRotation|arm\.Hand\.rotation\s*=|arm\.Hand\.localRotation\s*=/.test(armIk),
+  "仍在主动旋转手掌");
+checkTrue("保留源平滑法线，仅随整体对齐旋转",
+  /align\.MultiplyVector\(sn\[i\]\)\.normalized/.test(swap)
+  && /if \(sn\.Length == sv\.Length\) mesh\.normals = nn/.test(swap),
+  "源法线被无条件重算");
 checkTrue("对齐是纯旋转 ⇒ 不需要翻绕序",
   !/flipWinding/.test(swap), "还留着 flipWinding");
 checkTrue("换好之后有一段时间逐帧重申（否则新部件会晚一秒才消失）",
@@ -177,10 +242,40 @@ checkTrue("重申没有被双重限流挡掉（以前 Tick 先设限额再调 Re
   "Tick 里还是先设限额再调 Reassert");
 checkTrue("低频重申隐藏的部件（M1：游戏会改回来）",
   /public void Reassert\(float now/.test(swap) && /Body\.sharedMesh != NewMesh/.test(swap), "找不到 Reassert");
-checkTrue("角色被游戏重建后会重新搬运（关卡初始化在搬运之后跑）",
-  /public static void Tick\(float now/.test(swap) && /\n\s*Reapply\(\);/.test(swap), "找不到 Tick/Reapply");
-checkTrue("还原时销毁克隆材质（L2：否则每次热重载漏一份）",
-  /UnityEngine\.Object\.Destroy\(NewMaterial\)/.test(swap), "找不到材质销毁");
+checkTrue("角色重建失败后 RetryPending 保留下次重试，Restore 不吞掉状态",
+  /public static void Tick\(float now/.test(swap) && /\n\s*Reapply\(\);/.test(swap)
+  && /!r\.Applied && !r\.RetryPending/.test(swap)
+  && /!r\.Applied \|\| r\.Body == null/.test(swap)
+  && /r\.RetryPending = true/.test(swap) && /RetryPending = false/.test(swap),
+  "Restore 后的失败结果无法再次进入 Reapply");
+checkTrue("重复 Apply 会先还原当前实际所有者，避免旧 IK 驱动泄漏",
+  /public static Result Apply\([\s\S]{0,180}?if \(_current != null\) _current\.Restore\(\)/.test(swap),
+  "Apply 没有清理当前所有者");
+checkTrue("Spine.004 在 IK 创建前安全查找，失败返回 Report",
+  /TryGetValue\(\"Spine\.004\", out leftTorso\)/.test(swap)
+  && swap.indexOf("TryGetValue(\"Spine.004\", out leftTorso)") < swap.indexOf("CharacterArmIk.Create"),
+  "Spine.004 仍会抛异常或在 IK 创建后才检查");
+checkTrue("还原时销毁克隆材质与动态网格，并禁止再次重申",
+  /UnityEngine\.Object\.Destroy\(NewMaterial\)/.test(swap)
+  && /UnityEngine\.Object\.Destroy\(NewMesh\)/.test(swap)
+  && /NewMesh = null/.test(swap) && /Applied = false/.test(swap) && /RuntimeBones = null/.test(swap),
+  "材质、网格或 Restore 状态清理不完整");
+checkTrue("IK 与骨架层级只是内部 API，删除无效公开状态",
+  /internal sealed class CharacterArmIk/.test(armIk)
+  && /internal static CharacterArmIk Create/.test(armIk)
+  && /internal RigNode\[\] Nodes/.test(loader)
+  && !/public bool NoOp|DriverHand;|for \(int side = 1; side < 2/.test(swap + armIk),
+  "内部实现仍暴露在公开 API，或残留无效成员/双手循环");
+checkTrue("正常 IK 不再每 5 秒刷心跳，只记录首次、状态变化和异常",
+  /bool first = !arm\.HasReachableState/.test(armIk)
+  && /bool changed = arm\.HasReachableState && arm\.LastReachable != reachable/.test(armIk)
+  && /\(changed \|\| problem\) && Time\.unscaledTime >= arm\.NextLog/.test(armIk),
+  "正常状态仍会周期刷日志");
+checkTrue("还原时恢复原骨骼、离屏状态并销毁 IK 骨架",
+  /Body\.bones = OriginalBones/.test(swap) && /Body\.updateWhenOffscreen = OriginalUpdateWhenOffscreen/.test(swap)
+  && /ArmIk\.Dispose\(\)/.test(swap), "骨骼、离屏状态或 IK 骨架没有还原");
+checkTrue("手臂运动后更新蒙皮 bounds，避免屏幕边缘误剔除",
+  /body\.updateWhenOffscreen = true/.test(swap), "没有更新蒙皮 bounds");
 checkTrue("原网格包围盒在赋值前取（L1）",
   /var origBounds = res\.OriginalMesh/.test(swap) && !/body was \{mesh\.bounds/.test(swap), "origBounds 取得太晚");
 checkTrue("隐藏会扫角色整棵层级（五官/头发不在 CharacterModel.renderers 里）",

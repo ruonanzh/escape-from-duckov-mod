@@ -187,11 +187,11 @@ config 的 `action` 是 `replace_character`（字段：`model`、`scale`）。�
 
 | API | 什么时候用 |
 |---|---|
-| `CharacterSwap.Apply(character, skin)` | **主入口**：把 `GltfLoader.Loaded` 搬到这个角色的骨架上 |
+| `CharacterSwap.Apply(character, skin)` | **主入口**：把 `GltfLoader.Loaded` 搬到这个角色的骨架上。模型必须以 `front=auto, zeroGrip:false` 加载，并具有 `UpperArm.R`、`ForeArm.R`、`Hand.R` |
 | `CharacterSwap.Tick(now, interval)` | 每帧调。开头 4 秒连着重新隐藏与重挂，之后按 `interval` 节流 |
-| `CharacterSwap.BindArmBones` | 默认 `false`。`true` 时把模型手臂绑到游戏手臂骨（实测动画一摆就脱开）|
+| 手臂行为 | 右手三根源关节由内部两骨 IK 驱动，掌心对齐 `Hand.Soket.R`；左手三根骨并入 `Spine.004`。手掌不主动旋转。`CharacterArmIk` 是内部实现 |
 | `CharacterSwap.ExtraScale` | 在自动尺寸之上再乘的倍数，默认 `1` |
-| `CharacterSwap.Result` | `Applied`、`NoOp`、`Report`、`Body`、`MappedJoints`、`UnmappedJoints`、`UnweightedVertices`、`Reasserted`；方法 `Reassert(now, interval)` 与 `Restore()` |
+| `CharacterSwap.Result` | `Applied`、`Report`、`Body`、`MappedJoints`、`UnmappedJoints`、`UnweightedVertices`、`Reasserted`；方法 `Reassert(now, interval)` 与 `Restore()`。`Restore()` 后不得再 `Reassert()` |
 
 钩子是**第一次 `Apply` 时自己挂的**（`if (!_hooked)` 里调 `ItemHooks.Install()` 与 `ModelHooks.Install()`）。
 mod 侧不用调，也没有对外的 `Install`。
