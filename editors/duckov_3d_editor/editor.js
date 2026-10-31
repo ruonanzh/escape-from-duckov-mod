@@ -310,7 +310,7 @@
 
   var KIND_LABEL = {
     gun: "枪", melee: "近战武器", armor: "护甲", helmat: "头盔",
-    headset: "耳机", backpack: "背包", face: "面部", item: "普通物品"
+    headset: "耳机", backpack: "背包", face: "面部", item: "普通物品", character: "角色"
   };
 
   /** 数值格式化：保留 3 位小数（发给 agent 的是米，3 位 = 毫米）*/
@@ -323,7 +323,7 @@
    *      枪 = pivot + 5 个配件挂点（全发）；近战 = 只 pivot；其余六类 = 不写 slots
    *   ④ 耳机不另提挂点 —— 类型不同就够（挂点是游戏的 Tag 决定的，不进 config）*/
   function buildAgentMessage() {
-    ensureSlots();                       // 枪：保证 5 个槽位有值（启发式或文件里的）
+    if (opts.kind === "gun") ensureSlots();    // 只有枪使用 5 个配件槽位
     var label = KIND_LABEL[opts.kind] || opts.kind;
     var file = state.fileName || "（模型文件）";
     var out = [];
@@ -331,7 +331,14 @@
     out.push("选错的话告诉我该选哪一类，先不改文件。");
     out.push("");
     out.push("确认后，把下面这些写进同目录的 config.json：");
+    if (opts.kind === "character") out.push("- action = replace_character");
     out.push("- model = " + file);
+    if (opts.kind === "character") {
+      out.push("- scale = " + (+opts.characterScale).toFixed(3) + "（角色尺寸的额外倍率）");
+      out.push("");
+      out.push("类型「角色」没有 pivot，不得写 slots。");
+      return out.join("\n");
+    }
     if (opts.size > 0) out.push("- size = " + (+opts.size).toFixed(3) + "（最长边，米）");
     if (opts.kind === "gun") {
       // 键名**小写**（与其它字段一致）；值就是面板里的值，**所见即所得**
@@ -369,7 +376,10 @@
    *  pivot 同理（它监听 `input`）。 */
   function syncOptsFromDom() {
     var sz = document.getElementById("size");
-    if (sz) opts.size = parseFloat(sz.value) || 0;
+    if (sz) {
+      if (opts.kind === "character") opts.characterScale = parseFloat(sz.value) || 1.2;
+      else opts.size = parseFloat(sz.value) || 0;
+    }
     var ids = ["pivot-x", "pivot-y", "pivot-z"];
     for (var i = 0; i < 3; i++) {
       var el = document.getElementById(ids[i]);
@@ -430,28 +440,41 @@
     var entries = Array.isArray(j.entries) ? j.entries : null;
     var one = (entries && entries.length && entries[0] && typeof entries[0] === "object") ? entries[0] : null;
     var scope = one || j;                       // 有合法条目的看第一条，否则看顶层
+    if (scope.action === "replace_character") {
+      opts.kind = "character";
+      document.getElementById("kind").value = "character";
+    }
+    var isCharacter = opts.kind === "character";
     // 不显示 typeIDs 与 model —— 用户 2026-10-13 要求去掉（它们不是调 pivot 要看的）
     // size 可能是数字，也可能是字符串（手写的 config 常见）⇒ 两者都认。
     // 条目没写 size 时**回退到顶层**（config 允许顶层 size 当默认值）。
     // size **始终显示一行**（用户 2026-10-13 要求：没有就显示空，不得整行不见）
-    var sizeRaw = scope.size;
-    if (sizeRaw === undefined || sizeRaw === null || sizeRaw === "") sizeRaw = j.size;
+    var sizeRaw = isCharacter ? scope.scale : scope.size;
+    if (!isCharacter && (sizeRaw === undefined || sizeRaw === null || sizeRaw === "")) sizeRaw = j.size;
     var sizeOk = sizeRaw !== undefined && sizeRaw !== null && sizeRaw !== "" && isFinite(Number(sizeRaw));
-    lines.push("size = " + (sizeOk ? Number(sizeRaw) : ""));
+    lines.push((isCharacter ? "scale = " : "size = ") + (sizeOk ? Number(sizeRaw) : ""));
     var needBuild = false;
-    // 和 pivot / 槽位一样：文件里有 size 就**填进输入框**。
-    // 不填的话框里留的是模型自己的边长（start() 里设的），跟配置里的目标尺寸对不上。
+    if (isCharacter) {
+      needBuild = true;
+      if (!sizeOk) {
+        opts.characterScale = 1.2;
+        var defaultScaleEl = document.getElementById("size");
+        if (defaultScaleEl) defaultScaleEl.value = "1.2";
+      }
+    }
+    // 角色读 scale，其它类型读 size。文件里有值就填进输入框。
     if (sizeOk) {
       var szEl = document.getElementById("size");
       if (szEl) szEl.value = String(Number(sizeRaw));
-      opts.size = Number(sizeRaw);
+      if (isCharacter) opts.characterScale = Number(sizeRaw);
+      else opts.size = Number(sizeRaw);
       needBuild = true;
     }
     if (typeof scope.front === "string" && scope.front) lines.push("front = " + scope.front);
     if (entries) lines.push("entries：" + entries.length + " 条" + (one ? "（下面是第 1 条）" : "（没有可用条目）"));
     // 按用户要求，**typeIDs 与 model 都不显示**（它们不是调 pivot 要看的）
     if (one && Array.isArray(one.targets)) lines.push("targets = " + JSON.stringify(one.targets));
-    var slots = scope.slots;
+    var slots = isCharacter ? null : scope.slots;
     if (slots && typeof slots === "object") {
       var piv = slots.pivot;
       // needBuild 已在上面声明
@@ -512,6 +535,8 @@
 
   var refDuck = null;
   var refSocketMarks = [];
+  var CHARACTER_REF_X = -0.65;
+  var CHARACTER_MODEL_X = 0.65;
 
   function loadRefDuck() {
     if (!window.DUCK_REF_B64) return;
@@ -565,17 +590,14 @@
       });
       refDuck = g;
       scene.add(g);
+      // 挂点标记：角色模式不显示。加载完成后按真实鸭身高度重算角色比例。
       placeRefDuck();
+      if (state.model && opts.kind === "character") build();
     }, function (e) { console.warn("参照鸭子加载失败", e); });
   }
 
-  function placeRefDuck() {
-    if (!refDuck) return;
-    // 鸭子**站在地面**（脚底贴网格、站在原点）—— 它是参照物，不是被调的东西
-    //    要去对齐的是**物品**：模型会被移到该类型的挂点（见 build 里第 ⑤ 步）
-    refDuck.position.set(0, 0, 0);
-    refDuck.updateMatrixWorld(true);
-    // 只按鸭身算包围盒（标记不算进去）
+  function refDuckBodyBox() {
+    if (!refDuck) return null;
     var b = new THREE.Box3();
     var any = false;
     refDuck.traverse(function (o) {
@@ -583,8 +605,19 @@
       b.expandByObject(o);
       any = true;
     });
-    refDuck.position.set(0, any ? -b.min.y : 0, 0);
+    return any ? b : null;
+  }
+
+  function placeRefDuck() {
+    if (!refDuck) return;
+    // 物品模式：鸭子站在原点。角色模式：鸭子与模型并排，二者都脚底贴地、面朝 +Z。
+    var character = opts.kind === "character";
+    refDuck.position.set(character ? CHARACTER_REF_X : 0, 0, 0);
     refDuck.updateMatrixWorld(true);
+    var b = refDuckBodyBox();
+    refDuck.position.y = b ? -b.min.y : 0;
+    refDuck.updateMatrixWorld(true);
+    for (var i = 0; i < refSocketMarks.length; i++) refSocketMarks[i].visible = !character;
   }
 
   // ── 挂点：只有一个 pivot（**米**）───────────────────────────────────────────
@@ -596,7 +629,7 @@
 
   var opts = {
     kind: "gun",        // gun（枪）| melee（近战武器）| armor（护甲）| helmat（头盔）
-                        // headset（耳机）| backpack（背包）| face（面部）| item（普通物品）
+                        // headset（耳机）| backpack（背包）| face（面部）| item（普通物品）| character（角色）
                         // 游戏侧只有两条路：WeaponModel（枪 / 近战，有 slots.pivot）
                         //                     ItemModel （其余六类，没有 pivot）
                         // ⇒ 只有 枪 / 近战 显示 pivot；其余六类只用挂点定位
@@ -608,7 +641,8 @@
     // 参照 mod 不传它，config 也改不了）⇒ 预览也要做，才能和游戏一致。
     // 物品 / 近战不做（那些路走 `zeroGrip: false`）。
     grid: true,         // 固定开：网格（每格 10cm）
-    size: 0            // 0 = 不改（用模型自己的尺寸）
+    size: 0,            // 物品：目标最长边（米）。0 = 不改（用模型自己的尺寸）
+    characterScale: 1.2 // 角色：自动身高对齐后的额外倍率，与 replace_character 的 scale 一致
   };
 
   // 配件挂点：键名**一律小写**（game 里的 GameObject 叫 Muzzle/Scope/…，
@@ -877,6 +911,10 @@
     if (slotTools) slotTools.hidden = !attach;
     var sizeSection = document.getElementById("sizeSection");
     if (sizeSection) sizeSection.hidden = attach;
+    var sizeLabel = document.getElementById("sizeLabelText");
+    if (sizeLabel) sizeLabel.textContent = opts.kind === "character" ? "额外倍率" : "最长边（米）";
+    var socketHint = document.getElementById("socketHint");
+    if (socketHint) socketHint.hidden = opts.kind === "character";
     var kindSel = document.getElementById("kind");
     if (kindSel) kindSel.disabled = attach;
 
@@ -895,10 +933,9 @@
     // ① 原始模型（three 与 glTF 同规 ⇒ 原样加进来）
     state.stage.add(state.model);
 
-    // ② 摆正：**不做** —— 三类都不摆正，一律**原点对原点**放（用户 2026-10-12 定调）
-    //    曾经的「长轴到 +Z/+Y」与「枪口朝 +Z」已删（判据函数 longAxis / muzzleAtPositiveZ
-    //    也从本文件移除；要恢复看 git 历史）。
-    state.orient.rotation.set(0, 0, 0);
+    // ② 物品不摆正。Tripo 绑骨角色的初始前方为 -Z，角色模式绕 Y 转 180°，
+    //    让角色与参照鸭子都面朝 +Z。
+    state.orient.rotation.set(0, opts.kind === "character" ? Math.PI : 0, 0);
     state.flip.rotation.set(0, 0, 0);
     state.grip.position.set(0, 0, 0);
     state.mirror.scale.set(1, 1, 1);
@@ -927,6 +964,7 @@
     //    公式 = 游戏 config 的实现：socket + (枪 ? auto guess grip : 0) + pivot
     //    （auto guess 已经在第 ④ 步做掉了 —— 它把顶点整体移到握把）
     var hasPivot = opts.kind === "gun" || opts.kind === "melee";   // 只有这条路由游戏读 slots.pivot
+    var character = opts.kind === "character";
     // opts.pivot、config 的 slots、glb —— 三处都是 **[x, y, z]**（2026-10-13 统一）⇒ 不用换算
     var pv = hasPivot ? opts.pivot : [0, 0, 0];
     var ref = socketOf(opts.kind);
@@ -942,18 +980,39 @@
     //   局部点 p 对应的 glb 点是 `glb(p) + grip`，而它经过后续的 grip 变换组后
     //   世界坐标 = `R + glb(p)`（grip 抵消了）。要让它落在挂点上就是 `R = ref − glb(p)` ✓
     //   槽位不一样：占位件是直接调 `state.model.localToWorld` ⇒ 必须自己把 grip 加回去。
-    state.root.position.set(ref[0] + pv[0], ref[1] - pv[1], ref[2] - pv[2]);
+    if (character) state.root.position.set(0, 0, 0);
+    else state.root.position.set(ref[0] + pv[0], ref[1] - pv[1], ref[2] - pv[2]);
 
-    // ⑥ 尺寸：最长边写进 opts.size（米）
+    // ⑥ 尺寸：物品按最长边缩放；角色先按鸭身高度对齐，再乘 config 的 scale。
     state.root.updateMatrixWorld(true);
     var box = new THREE.Box3().setFromObject(state.root);
     var size = box.getSize(new THREE.Vector3());
-    var longest = Math.max(size.x, size.y, size.z);
-    var s = (opts.size > 0 && longest > 1e-6) ? (opts.size / longest) : 1;
+    var s = 1;
+    if (character) {
+      placeRefDuck();
+      var duckBox = refDuckBodyBox();
+      var duckHeight = duckBox ? duckBox.max.y - duckBox.min.y : 1.124;
+      var extra = opts.characterScale > 0 ? opts.characterScale : 1.2;
+      if (size.y > 1e-6) s = duckHeight / size.y * extra;
+    } else {
+      var longest = Math.max(size.x, size.y, size.z);
+      if (opts.size > 0 && longest > 1e-6) s = opts.size / longest;
+    }
     state.root.scale.setScalar(s);
 
     state.root.updateMatrixWorld(true);
     box = new THREE.Box3().setFromObject(state.root);
+    if (character) {
+      // 角色与鸭子并排站在地面上，中心落在各自的位置，二者都保持 +Z 朝向。
+      var center = box.getCenter(new THREE.Vector3());
+      state.root.position.x += CHARACTER_MODEL_X - center.x;
+      state.root.position.y += -box.min.y;
+      state.root.position.z += -center.z;
+      state.root.updateMatrixWorld(true);
+      box = new THREE.Box3().setFromObject(state.root);
+    } else {
+      placeRefDuck();
+    }
     state.box = box;
     state.radius = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 0.05);
 
@@ -1008,7 +1067,8 @@
 
     // 配件挂点：上面刚改过模型的变换链（缩放 / 握把归零 / 落位 / 尺寸）
     // ⇒ 占位件要重算一次。**按需调用，不得每帧**（改输入框时由监听器单独调 applySlots）。
-    ensureSlots();
+    // 配件挂点：只有枪需要计算。角色模式不计算也不显示任何挂点。
+    if (opts.kind === "gun") ensureSlots();
     applySlots();
   }
 
@@ -1072,7 +1132,18 @@
         build();                                  // 模型按公式重新落到 socket
       });
     });
-    document.getElementById("kind").addEventListener("change", function (e) { opts.kind = e.target.value; build(); });
+    document.getElementById("kind").addEventListener("change", function (e) {
+      syncOptsFromDom();
+      opts.kind = e.target.value;
+      var sizeEl = document.getElementById("size");
+      if (opts.kind === "character") sizeEl.value = String(opts.characterScale);
+      else if (opts.size > 0) sizeEl.value = String(opts.size);
+      build();
+      if (opts.kind !== "character" && !(opts.size > 0) && state.box) {
+        var cur = state.box.getSize(new THREE.Vector3());
+        sizeEl.value = Math.max(cur.x, Math.max(cur.y, cur.z)).toFixed(3);
+      }
+    });
     // 模式按钮：「配件挂点」⇄「物体挂点」（只切显示，**不重跑 build** —— 模型没变）
     document.getElementById("modeBtn").addEventListener("click", function () {
       opts.slotMode = opts.slotMode === "attach" ? "object" : "attach";
@@ -1083,7 +1154,9 @@
     document.getElementById("sendBtn").addEventListener("click", sendToAgent);
     loadRefDuck();
     document.getElementById("size").addEventListener("change", function (e) {
-      opts.size = parseFloat(e.target.value) || 0; build();
+      if (opts.kind === "character") opts.characterScale = parseFloat(e.target.value) || 1.2;
+      else opts.size = parseFloat(e.target.value) || 0;
+      build();
     });
 
     readFile().then(function (res) {

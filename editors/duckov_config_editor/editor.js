@@ -20,12 +20,14 @@ const SLOT_KEYS = ["muzzle", "stock", "grip", "scope", "tec", "pivot"];
 const ACTION_LABEL = {
   replace_weapon: "换武器外观（replace_weapon）",
   replace_item: "换物品外观（replace_item）",
+  replace_character: "换玩家角色（replace_character）",
   new_weapon: "新增武器（new_weapon）",
   new_item: "新增物品（new_item）",
 };
 const ACTION_FIELDS = {
   replace_weapon: ["typeIDs", "targets", "model", "front", "size", "icon", "world", "handheld", "debug"],
   replace_item: ["typeIDs", "targets", "model", "front", "size", "icon", "world", "handheld", "debug"],
+  replace_character: ["model", "scale"],
   new_weapon: [
     "newTypeId", "cloneFromItemId", "displayName", "description", "model", "icon", "size",
     "merchantID", "maxStock", "priceFactor", "onSale", "quality", "displayQuality", "stats", "crafting",
@@ -45,6 +47,7 @@ const FIELD = {
   model: { kind: "text", hint: "本 mod 目录下的 glb（相对名或绝对路径）。新增那条可以留空：沿用原型外形。" },
   front: { kind: "select", options: ["auto", "+z", "-z", "+x", "-x", "up"], def: "auto" },
   size: { kind: "number", hint: "目标**最长边**（米）。不填 = 不缩放 / 按枪种档位。" },
+  scale: { kind: "number", def: 1.2, hint: "角色尺寸的额外倍率。运行库先按身高自动缩放，再乘这个值；默认 1.2。" },
   icon: { kind: "text", def: "icon.png" },
   world: { kind: "bool", def: true },
   handheld: { kind: "bool", def: false },
@@ -545,12 +548,14 @@ function renderCardFields(card) {
   for (const key of ACTION_FIELDS[action] || ACTION_FIELDS.replace_weapon) {
     fields.appendChild(fieldRow(key, FIELD[key] || { kind: "text" }, cur[key]));
   }
-  const slotsTitle = document.createElement("div");
-  slotsTitle.className = "hint";
-  slotsTitle.style.marginLeft = "0";
-  slotsTitle.textContent = "slots（米，我们模型的局部空间；键名大小写不敏感）";
-  fields.appendChild(slotsTitle);
-  fields.appendChild(slotTable(cur.slots));
+  if (action !== "replace_character") {
+    const slotsTitle = document.createElement("div");
+    slotsTitle.className = "hint";
+    slotsTitle.style.marginLeft = "0";
+    slotsTitle.textContent = "slots（米，我们模型的局部空间；键名大小写不敏感）";
+    fields.appendChild(slotsTitle);
+    fields.appendChild(slotTable(cur.slots));
+  }
   card.__src = cur;                 // 下一次重建的兵底值
   card.dataset.rendered = action;   // 记住这一屏是给哪个 action 渲染的
 }
@@ -563,7 +568,8 @@ function readEntryCard(card) {
   const action = card.dataset.action || "replace_weapon";
   const out = { action };
   const src = card.__src || {};
-  const known = new Set([...(ACTION_FIELDS[action] || []), "action", "slots"]);
+  const known = new Set([...(ACTION_FIELDS[action] || []), "action"]);
+  if (action !== "replace_character") known.add("slots");
   for (const [k, v] of Object.entries(src)) if (!known.has(k)) out[k] = v;
 
   for (const row of card.querySelectorAll(".fields .row")) {
@@ -615,7 +621,7 @@ function readEntryCard(card) {
     const get = (a) => Number((tr.querySelector(`input[data-axis=${a}]`) || {}).value) || 0;
     slots[k] = [get("x"), get("y"), get("z")];
   }
-  if (Object.keys(slots).length) out.slots = slots;
+  if (action !== "replace_character" && Object.keys(slots).length) out.slots = slots;
   return out;
 }
 
@@ -636,6 +642,9 @@ function validateEntries(list) {
       if (e.typeIDs && e.typeIDs.some((n) => !Number.isFinite(n))) errors.push(`${at}：typeIDs 必须是数字`);
       if (!e.typeIDs && !e.targets) errors.push(`${at}：至少要给 typeIDs 或 targets 之一`);
       if (!String(e.model || "").trim()) errors.push(`${at}：model 不能为空（要指向一个 glb）`);
+    } else if (e.action === "replace_character") {
+      if (!String(e.model || "").trim()) errors.push(`${at}：model 不能为空（要指向一个绑好骨的 glb）`);
+      if (e.scale != null && !(Number(e.scale) > 0)) errors.push(`${at}：scale 要么留空，要么大于 0`);
     } else {
       if (!(Number(e.cloneFromItemId) > 0)) errors.push(`${at}：cloneFromItemId 必填（原型枪的 typeID）`);
       if (e.newTypeId != null && !(Number(e.newTypeId) > 0)) errors.push(`${at}：newTypeId 要么不填，要么大于 0`);

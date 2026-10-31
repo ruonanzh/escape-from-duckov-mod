@@ -24,6 +24,7 @@
 | `model` | — | 本 mod 目录下的 GLB |
 | `front` | `auto` | 只给**自带模型**：`auto`/`+z`/`-z`/`+x`/`-x`/`up` |
 | `size` | — | 目标**最长边**（米）。物品/装备不填；枪不填按游戏里的枪种尺寸 |
+| `scale` | `1.2` | 只有角色用：运行库先按身高自动缩放，再乘这个额外倍率 |
 | `icon` | `icon.png` | 武器图标文件名 |
 | `world` | **开** | 换世界里的模型 |
 | `handheld` | 关 | 连拿在手里那条也换（**会改行为**） |
@@ -42,10 +43,11 @@
 | --- | --- | --- |
 | `replace_weapon` | 支持 | 上表那套（缺省值，等于老写法）|
 | `replace_item` | 支持 | 同上 |
+| `replace_character` | 支持 | `model` / `scale`。没有 `typeIDs`、`targets`、`front`、`slots` |
 | `new_weapon` | 支持 | `newTypeId` / `cloneFromItemId` / `displayName` / `description` / `model` / `icon` / `size` / `merchantID` / `maxStock` / `priceFactor` / `onSale` / `quality` / `displayQuality` / `stats` / `crafting` |
 | `new_item` | **不支持**（还没实现）| 写进 config 会被 `validate_mod` 直接报错。编辑器把它当未知 action，原样保留不改动 |
 
-**三条都能用 `slots`**（写法与上面一样）。
+角色条目只显示 `model` 与 `scale`。其它条目的 `slots` 写法与上面一样。
 
 **两个写法的关系**：
 
@@ -63,7 +65,7 @@ crafting  上面一行 money 与 tags，下面材料每行 `662=5`；三样都�
 ## 界面
 
 - **扁平模式**（旧 config）：换哪件 / 用哪个模型 / 换哪一层 / 挂点 / 诊断
-- **条目模式**（有 `entries`）：每条一张卡片（下拉选动作 + 字段表 + 挂点），可加条、可删条
+- **条目模式**（有 `entries`）：每条一张卡片（下拉选动作 + 字段表；角色卡片没有挂点），可加条、可删条
 - **挂点**：表（键 + `[x,y,z]`），可加行、可删行。只有枪用
 - **诊断**：`debug` + 「其他字段」折叠区（未识别的键原样显示，需要手改 JSON 时看这里）
 - 底栏：状态 · 重新加载 · 保存（Ctrl+S）
