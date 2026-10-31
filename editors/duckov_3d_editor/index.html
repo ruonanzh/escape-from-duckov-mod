@@ -110,6 +110,7 @@
     <h2>尺寸</h2>
     <label><span id="sizeLabelText">最长边（米）</span><input type="number" id="size" step="0.01" min="0.01"></label>
     <label class="kv">当前<b id="curSize">–</b></label>
+    <div id="characterNotice" class="dim" hidden style="font-size:11px; margin-top:4px"></div>
     </div>
     <div class="hr"></div>
     <h2>config.json<button id="reloadCfg" title="重新读同目录的 config.json。⚠️ 会把面板上的 pivot / 配件挂点 / 尺寸覆盖成文件里的值。" style="font:inherit; font-size:11px; padding:1px 6px; margin-left:6px; cursor:pointer; border:1px solid var(--line); border-radius:4px; background:var(--btn,#f3f3f3); color:inherit">重新读取</button></h2>
@@ -124,6 +125,7 @@
 
   <script src="three.bundle.js"></script>
   <script src="assets/duck_player.js"></script>
+  <script src="assets/duck_body_rig.js"></script>
   <script src="editor.js"></script>
 </body>
 </html>

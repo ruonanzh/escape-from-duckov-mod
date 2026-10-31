@@ -28,7 +28,8 @@
     root: null,        // THREE.Group：镜像 + 朝向 + 归零 + 缩放
     model: null,       // 内层：gltf.scene
     frame: null,       // 包围盒（未缩放前，游戏坐标）
-    box: null
+    box: null,
+    characterMetrics: null // { ok, height, reason }：输入 GLB 的骨架测量结果
   };
 
   function post(msg) { parent.postMessage(msg, "*"); }
@@ -240,6 +241,107 @@
     var v = q.split(",");
     if (v.length === 2) { MAT.metal = parseFloat(v[0]); MAT.rough = parseFloat(v[1]); }
   })();
+
+  // ── 角色尺寸：复算 CharacterSwap.TryBodyAlignment 的身体地标与真实顶点跨度 ─────
+  function bodyFrame(pelvis, head, leftHip, rightHip) {
+    var up = head.clone().sub(pelvis).normalize();
+    var left = leftHip.clone().sub(rightHip);
+    left.addScaledVector(up, -left.dot(up));
+    if (!isFinite(up.lengthSq()) || up.lengthSq() < 1e-12 || left.lengthSq() < 1e-12) return null;
+    left.normalize();
+    var forward = new THREE.Vector3().crossVectors(left, up).normalize();
+    return { up: up, left: left, forward: forward };
+  }
+
+  function glbFloatAccessor(json, bin, index, components) {
+    var accessor = json.accessors && json.accessors[index];
+    var view = accessor && json.bufferViews && json.bufferViews[accessor.bufferView];
+    if (!accessor || !view || view.buffer !== 0 || accessor.componentType !== 5126) return null;
+    var stride = view.byteStride || components * 4;
+    var start = (view.byteOffset || 0) + (accessor.byteOffset || 0);
+    var out = new Float32Array(accessor.count * components);
+    for (var i = 0; i < accessor.count; i++) {
+      for (var c = 0; c < components; c++) out[i * components + c] = bin.getFloat32(start + i * stride + c * 4, true);
+    }
+    return out;
+  }
+
+  function characterMetricsFromGlb(buffer) {
+    try {
+      var bytes = new Uint8Array(buffer);
+      if (bytes.length < 28) return { ok: false, reason: "read" };
+      var jsonLength = new DataView(buffer).getUint32(12, true);
+      var json = JSON.parse(new TextDecoder().decode(bytes.subarray(20, 20 + jsonLength)));
+      var binHeader = 20 + jsonLength;
+      var binLength = new DataView(buffer).getUint32(binHeader, true);
+      var bin = new DataView(buffer, binHeader + 8, binLength);
+      var skin = json.skins && json.skins[0];
+      if (!skin || !skin.joints || !skin.joints.length) return { ok: false, reason: "no-rig" };
+      var matrices = glbFloatAccessor(json, bin, skin.inverseBindMatrices, 16);
+      if (!matrices) return { ok: false, reason: "read" };
+      var wanted = {
+        "mixamorig:Hips": "pelvis", "mixamorig:Head": "head",
+        "mixamorig:LeftUpLeg": "leftHip", "mixamorig:RightUpLeg": "rightHip"
+      };
+      var landmarks = {};
+      for (var i = 0; i < skin.joints.length; i++) {
+        var node = json.nodes[skin.joints[i]];
+        var key = node && wanted[node.name];
+        if (!key) continue;
+        var inverseBind = new THREE.Matrix4().fromArray(matrices, i * 16).invert();
+        var p = new THREE.Vector3().setFromMatrixPosition(inverseBind);
+        p.x = -p.x; // GltfLoader 对顶点与地标都做 X 取反
+        landmarks[key] = p;
+      }
+      if (!landmarks.pelvis || !landmarks.head || !landmarks.leftHip || !landmarks.rightHip) {
+        return { ok: false, reason: "landmarks" };
+      }
+      var frame = bodyFrame(landmarks.pelvis, landmarks.head, landmarks.leftHip, landmarks.rightHip);
+      if (!frame) return { ok: false, reason: "landmarks" };
+      var min = Infinity, max = -Infinity, count = 0;
+      for (var mi = 0; mi < (json.meshes || []).length; mi++) {
+        var primitives = json.meshes[mi].primitives || [];
+        for (var pi = 0; pi < primitives.length; pi++) {
+          var positions = glbFloatAccessor(json, bin, primitives[pi].attributes.POSITION, 3);
+          if (!positions) continue;
+          for (var vi = 0; vi < positions.length; vi += 3) {
+            // GltfLoader 的网格顶点同样先取反 X，再沿源身体 up 轴量真实顶点跨度。
+            var h = -positions[vi] * frame.up.x + positions[vi + 1] * frame.up.y + positions[vi + 2] * frame.up.z;
+            if (h < min) min = h;
+            if (h > max) max = h;
+            count++;
+          }
+        }
+      }
+      if (!count || !(max - min > 1e-4)) return { ok: false, reason: "read" };
+      return { ok: true, height: max - min, joints: skin.joints.length };
+    } catch (e) {
+      return { ok: false, reason: "read" };
+    }
+  }
+
+  function characterRuntimeScale(metrics, extraScale) {
+    var automatic = Math.min(4, Math.max(0.25, window.DUCK_BODY_RIG.height / metrics.height));
+    var extra = Math.min(4, Math.max(0.1, extraScale));
+    return automatic * extra;
+  }
+
+  function updateCharacterNotice() {
+    var el = document.getElementById("characterNotice");
+    if (!el) return;
+    el.hidden = opts.kind !== "character";
+    if (el.hidden) return;
+    var metrics = state.characterMetrics;
+    if (metrics && metrics.ok) {
+      el.textContent = "已按游戏骨架与 DuckBody 计算尺寸（" + metrics.joints + " 根关节）";
+    } else if (metrics && metrics.reason === "no-rig") {
+      el.textContent = "未检测到骨架：当前为近似预览，与游戏内尺寸可能有误差。";
+    } else if (metrics && metrics.reason === "landmarks") {
+      el.textContent = "骨架缺少关键关节：当前为近似预览，与游戏内尺寸可能有误差。";
+    } else {
+      el.textContent = "骨架数据读取失败：当前为近似预览，与游戏内尺寸可能有误差。";
+    }
+  }
 
   // ── 参照物：玩家鸭 ─────────────────────────────────────────────────────────
   // 它**不参与**「物品」栏的任何启发式（长轴到 +Z/+Y、枪口方向、握把归零都是**武器**的规则）。
@@ -915,6 +1017,7 @@
     if (sizeLabel) sizeLabel.textContent = opts.kind === "character" ? "额外倍率" : "最长边（米）";
     var socketHint = document.getElementById("socketHint");
     if (socketHint) socketHint.hidden = opts.kind === "character";
+    updateCharacterNotice();
     var kindSel = document.getElementById("kind");
     if (kindSel) kindSel.disabled = attach;
 
@@ -988,12 +1091,18 @@
     var box = new THREE.Box3().setFromObject(state.root);
     var size = box.getSize(new THREE.Vector3());
     var s = 1;
+    placeRefDuck();
     if (character) {
-      placeRefDuck();
-      var duckBox = refDuckBodyBox();
-      var duckHeight = duckBox ? duckBox.max.y - duckBox.min.y : 1.124;
       var extra = opts.characterScale > 0 ? opts.characterScale : 1.2;
-      if (size.y > 1e-6) s = duckHeight / size.y * extra;
+      if (state.characterMetrics && state.characterMetrics.ok) {
+        // 与游戏一致：DuckBody / 源模型沿身体 up 轴的真实顶点跨度，再乘 ExtraScale。
+        s = characterRuntimeScale(state.characterMetrics, extra);
+      } else {
+        // 无骨架时只能按完整模型的 Y 轴包围盒估算，并在面板明确提示误差。
+        var duckBox = refDuckBodyBox();
+        var duckHeight = duckBox ? duckBox.max.y - duckBox.min.y : 1.124;
+        if (size.y > 1e-6) s = duckHeight / size.y * extra;
+      }
     } else {
       var longest = Math.max(size.x, size.y, size.z);
       if (opts.size > 0 && longest > 1e-6) s = opts.size / longest;
@@ -1171,6 +1280,7 @@
       }
       var bin = base64ToBytes(res.data);
       var buf = bin.buffer.slice(bin.byteOffset, bin.byteOffset + bin.byteLength);
+      state.characterMetrics = characterMetricsFromGlb(buf);
       // `createImageBitmap` 已在 `start()` 开头删掉（那时才轮到参照鸭子之后的所有解析）
       return new Promise(function (resolve, reject) {
         new GLTFLoader().parse(buf, "", resolve, reject);
