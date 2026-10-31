@@ -191,6 +191,7 @@ config 的 `action` 是 `replace_character`（字段：`model`、`scale`）。�
 | `CharacterSwap.Tick(now, interval)` | 每帧调。开头 4 秒连着重新隐藏与重挂，之后按 `interval` 节流 |
 | 手臂行为 | 右手三根源关节由内部两骨 IK 驱动，掌心对齐 `Hand.Soket.R`；左手三根骨并入 `Spine.004`。手掌不主动旋转。`CharacterArmIk` 是内部实现 |
 | `CharacterSwap.ExtraScale` | 在自动尺寸之上再乘的倍数，默认 `1` |
+| 自动对齐 | 用 `Pelvis`/`Head`/`Thigh.L`/`Thigh.R` 建身体坐标架，把模型**刚性**搬进鸭子网格空间。高度按两侧网格的**真实顶点跨度**等比缩放；垂直锚点是**脚底**（最低顶点落到鸭子网格的同一水平面），不是骨盆 —— 鸭子骨盆离脚底只有 9.1%，常规模型是 35%~50%，按骨盆锚定会把整只角色压进地面（实测 0.296 m） |
 | `CharacterSwap.Result` | `Applied`、`Report`、`Body`、`MappedJoints`、`UnmappedJoints`、`UnweightedVertices`、`Reasserted`；方法 `Reassert(now, interval)` 与 `Restore()`。`Restore()` 后不得再 `Reassert()` |
 
 钩子是**第一次 `Apply` 时自己挂的**（`if (!_hooked)` 里调 `ItemHooks.Install()` 与 `ModelHooks.Install()`）。

@@ -591,6 +591,18 @@ namespace ModelKit
 
             var lin = Matrix4x4.Scale(new Vector3(scale, scale, scale)) * rot;
             var t = duckPelvis - lin.MultiplyPoint3x4(srcPelvis);
+
+            // 垂直方向改按**脚底**对齐，不按骨盆。
+            // 鸭子是没有腿的团子：骨盆离脚底只有 9.1%（1.0518 m 的身体里只有 0.096 m），
+            // 常规模型是 35%~50%（实测 Mimi 37.3%）。按骨盆对齐会把整只角色压进地面：
+            // 实测 Mimi 沉 0.296 m —— 脚进地板，头也比鸭子矮同样的量。
+            // 高度已经由 scale 对齐，垂直方向只差这一个平移。编辑器预览一直是按脚底落地的，
+            // 改这里才和预览一致。
+            var vertical = col1(fd).normalized;
+            float duckLow = MinAlong(duckMesh, vertical);
+            float srcLow = MinAlong(skin.Mesh, vertical, lin);
+            t += vertical * (duckLow - srcLow);
+
             align = lin;
             align.m03 = t.x; align.m13 = t.y; align.m23 = t.z;
             return true;
@@ -624,6 +636,23 @@ namespace ModelKit
             }
             return hi - lo;
         }
+
+        /// <summary>网格顶点沿指定方向的**最低**投影（= 该方向上的脚底）。`pre` 是顶点上做的前置变换（对齐矩阵）。</summary>
+        static float MinAlong(Mesh mesh, Vector3 axis, Matrix4x4 pre)
+        {
+            if (mesh == null) return 0f;
+            var vs = mesh.vertices;
+            if (vs == null || vs.Length == 0) return 0f;
+            float lo = float.MaxValue;
+            for (int i = 0; i < vs.Length; i++)
+            {
+                float d = Vector3.Dot(pre.MultiplyPoint3x4(vs[i]), axis);
+                if (d < lo) lo = d;
+            }
+            return lo;
+        }
+
+        static float MinAlong(Mesh mesh, Vector3 axis) { return MinAlong(mesh, axis, Matrix4x4.identity); }
 
         /// <summary>源关节的绑定位置（先做顶点净变换，再取反 X）。用「映射到哪根鸭骨」反查关节。</summary>
         static bool SourceLandmark(GltfLoader.Loaded skin, string duckBone, out Vector3 p)
