@@ -661,7 +661,7 @@ export default function (pi: ExtensionAPI) {
         // 预览图（Tripo 免费附带）→ 放在模型同目录的 .preview/ 下 ✓
         // 这个子目录**不会被 install_mod 装进游戏**（见 mod-install 的 EXCLUDED_DIRS ✓）—— 只是给人/agent 看的 ✓
         const base = firstOut.replace(/\.glb$/i, "");
-        const shotDir = join(dirname(firstOut), ".preview");
+        const shotDir = previewDirFor(firstOut);
         const shotBase = join(shotDir, basename(base));
         const shots: string[] = [];
         const renderKey = done.output?.rendered_image_url ?? done.output?.rendered_image;
@@ -929,6 +929,12 @@ async function convert(api: (p: string, b?: unknown) => Promise<any>, waitTask: 
   const id = String(created.task_id);
   // 返回值带上转换任务的 id —— 清单要它当 request_id（设计 §5.2 写入点 5）
   return { id, out: await waitTask(id, "convert") };
+}
+
+/** 预览图统一放 mod 的 .preview；中间模型已在该目录时不得再嵌套一层。 */
+export function previewDirFor(modelOut: string): string {
+  const modelDir = dirname(modelOut);
+  return basename(modelDir) === ".preview" ? modelDir : join(modelDir, ".preview");
 }
 
 /** 只读 GLB 头里的 JSON 块（不解码几何 ✗）。用来把骨骼名与动画名报给 agent ✓ */

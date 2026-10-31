@@ -85,8 +85,17 @@ try {
   process.env.TRIPO_API_KEY = "test-key";
   const tools = new Map();
   const pi = { registerTool(definition) { tools.set(definition.name, definition); }, sendMessage() {} };
-  const register = (await import(pathToFileURL(join(root, ".pi", "extensions", "tripo.ts")).href)).default;
+  const tripoModule = await import(pathToFileURL(join(root, ".pi", "extensions", "tripo.ts")).href);
+  const register = tripoModule.default;
   register(pi);
+  check(
+    "model output already in .preview does not create a nested preview directory",
+    tripoModule.previewDirFor(join(root, "mod", ".preview", "mimi.glb")) === join(root, "mod", ".preview"),
+  );
+  check(
+    "model output in the mod root keeps previews in .preview",
+    tripoModule.previewDirFor(join(root, "mod", "mimi.glb")) === join(root, "mod", ".preview"),
+  );
   const image = (params, signal) => tools.get("generate_image").execute("test", params, signal, undefined, { cwd: root });
   const model = (params, signal) => tools.get("generate_model").execute("test", params, signal, undefined, { cwd: root });
   const http = await import(pathToFileURL(join(root, ".pi", "lib", "tripo-http.ts")).href);

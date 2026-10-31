@@ -79,7 +79,7 @@ Use image[1] as the subject and silhouette reference; image[2] is the colour and
 ### ④ 3D 模型
 
 ```
-generate_model action=generate image=".preview/<角色名>.preview.png" out="<角色名>.glb" faceLimit=2000
+generate_model action=generate image=".preview/<角色名>.preview.png" out=".preview/<角色名>.glb" faceLimit=2000
 ```
 
 判据：工具回报里出现 `bounds`，且尺寸与游戏角色同一个量级（0.5 米到 1.5 米）。
@@ -101,30 +101,17 @@ generate_model action=rig       taskId=<上一步的 taskId> rigType=biped spec=
 判据：工具回报里列出关节名，必须能看到 `mixamorig:` 前缀，数量在 20 个上下。
 看到 `tripo::` 名字说明绑的不是人形骨架，本次作废，回第 ③ 步重做。
 
-### ⑥ 量骨架差距与尺寸（这一步请维护者做）
+### ⑥ 设置初始尺寸
 
-这一步有**两个用处**：给第 3 节的 `scale` 定值；告诉你这个模型的骨架与游戏骨架差多少
-（差得多说明这个模型的体型离游戏角色远）。
+运行库会按模型与游戏角色的真实身体高度自动缩放。
+`config.json` 里的 `scale` 是乘在自动缩放上的额外倍率。
+初次安装时使用 `scale: 1.2`。
+这个经验值来自游戏角色高度与 Tripo 常见的约 1 米高模型，不是当前模型的实测结果。
 
-量骨架用的是 `scripts/measure-skeleton-gap.mjs`，而 `scripts/` 是**维护者的工具，agent 不得运行**
-（见 `AGENTS.md`）。**在回复里请维护者量一次**，他把建议的 `scale` 给回来，你写进 `config.json`。
-
-游戏侧那副骨架的绑定姿势你可以自己用 `inspect_game_data` 现查（它自己处理平台路径）：
-
-```
-action=dump, class=Mesh, name="DuckBody", depth=4
-```
-
-脚本会打出两列：
-
-| 列 | 读法 |
-|---|---|
-| 位移 | 模型那根骨与角色那根骨的绑定位置差（米）。越大说明这个模型的体型离游戏角色越远 |
-| 朝向偏差 | 两副骨架的**骨轴约定**差多少度。它来自两套导出流程的差别，**近似常数** |
-
-- **代码不依赖任何角度常数。** 当前实现是刚性放置，不需要对齐骨轴，所以偏差再大也不影响结果。
-  偏差这一列只是说明书：它的数值偏大说明「逐骨搬运」那条路不能用。
-- 最后一行给出**建议的 `scale`**。这个值随模型变，不得当成常数，每个模型现量一次：实测范围在 0.97 到 1.20 之间。
+玩家验收后觉得角色偏小或偏大时，再调整 `scale`。
+骨架差距测量只用于尺寸异常的排查。
+需要测量时，由维护者运行 `scripts/measure-skeleton-gap.mjs`。
+正常制作流程不得要求玩家或 agent 执行该脚本。
 
 ### 省钱：哪些能复用，哪些不能
 
@@ -147,8 +134,9 @@ action=dump, class=Mesh, name="DuckBody", depth=4
 
 ## 3. 建骨架与 config.json
 
-在 mod 目录里放：`CharacterModelSwap.dll`、`0Harmony.dll`、`info.ini`、`config.json`、
+在 mod 目录里放：`<mod名>.dll`、`0Harmony.dll`、`info.ini`、`config.json`、
 `<角色名>_rigged.glb`（第 ⑤ 步绑好骨的那个）。
+`<mod名>` 必须与第 ② 步确定的 mod 名一致。
 
 ```json
 {
@@ -158,11 +146,23 @@ action=dump, class=Mesh, name="DuckBody", depth=4
 }
 ```
 
-`model` 写第 ⑤ 步产出的文件名，`scale` 写第 ⑥ 步量出来的值。
+`model` 写第 ⑤ 步产出的文件名。
+初次安装时，`scale` 使用经验值 `1.2`。
+玩家验收后觉得尺寸不合适时，再调整 `scale`。
 
-## 4. 装进游戏
+## 4. 整理目录并装进游戏
 
-用 `install_mod`。它是**整个目录替换**：源目录必须包含模型文件，否则会把它删掉。
+安装前必须按运行时引用整理目录。不得按文件名判断文件是否需要。
+
+1. `config.json` 或 mod 代码引用的文件必须留在原来的相对路径。
+2. 未被运行时引用的中间模型、参考图和渲染图必须移入 `.preview/`。
+3. `<角色名>.glb` 与 `<角色名>.raw.glb` 只有在未被运行时引用时才能移入 `.preview/`。
+4. 移动已有生成文件后，必须同步更新 `asset_manifest.jsonl` 里对应的 `files` 路径。
+5. 整理后运行 `validate_mod`，再运行 `install_mod`。
+
+`.preview/` 里的文件仍可供以后重新生成、转换和排查使用。
+`install_mod` 会跳过 `.preview/`。
+`install_mod` 是整个目录替换。config 引用的模型缺失时，安装后的 mod 会缺少模型。
 
 ## 5. 验收（装好不等于成功）
 
@@ -186,7 +186,7 @@ action=dump, class=Mesh, name="DuckBody", depth=4
 | 右手臂与身体脱开或掌心偏离 | 检查右手三根关节、`Hand.Soket.R` 与 `[CharacterArmIk]` 日志；不得把左手也接入握把 IK |
 | 五官、头发一直露着 | 钩子没挂上，或保留名单写错。看日志里 `character model hooks` 与 `model hook hid` 两行 |
 | 背包漂到身体后面 | 有位移作用在躯干上。当前实现不做逐骨落位，出现这一现象说明改动跑偏了 |
-| 看起来偏小 | 头的占比差。回第 ⑥ 步量一次，把 `scale` 写进 config |
+| 看起来偏小或偏大 | 先小幅调整 `scale`，再重新安装并验收。需要分析头部比例时，由维护者测量骨架差距 |
 | 关节映射数很低（日志里 `joints mapped`） | 关节名不是 `mixamorig:*`。回第 ⑤ 步，确认 `rigType=biped` 与 `spec=mixamo` |
 | 预览图不像玩家要的 | 改 `prompt=` 重出，不得直接进第 ④ 步 |
 
