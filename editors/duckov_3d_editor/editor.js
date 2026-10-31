@@ -933,9 +933,9 @@
     // ① 原始模型（three 与 glTF 同规 ⇒ 原样加进来）
     state.stage.add(state.model);
 
-    // ② 物品不摆正。Tripo 绑骨角色的初始前方为 -Z，角色模式绕 Y 转 180°，
-    //    让角色与参照鸭子都面朝 +Z。
-    state.orient.rotation.set(0, opts.kind === "character" ? Math.PI : 0, 0);
+    // ② 物品不摆正。本流程的 Tripo 绑骨角色初始前方为 +X。
+    //    角色模式绕 Y 转 -90°，让角色与参照鸭子都面朝 +Z。
+    state.orient.rotation.set(0, opts.kind === "character" ? -Math.PI / 2 : 0, 0);
     state.flip.rotation.set(0, 0, 0);
     state.grip.position.set(0, 0, 0);
     state.mirror.scale.set(1, 1, 1);
