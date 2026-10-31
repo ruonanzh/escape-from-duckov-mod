@@ -78,6 +78,11 @@ const check = (name, condition, result) => {
 try {
   copyWithTsExtensions(join(repoRoot, ".pi"), join(root, ".pi"));
   cpSync(join(repoRoot, "mod-repo.json"), join(root, "mod-repo.json"));
+  mkdirSync(join(root, "reference", "example_mod"), { recursive: true });
+  cpSync(
+    join(repoRoot, "reference", "example_mod", "preview.png"),
+    join(root, "reference", "example_mod", "preview.png"),
+  );
   writeStubs(root);
 
   const tools = new Map();
@@ -152,6 +157,24 @@ try {
       !existsSync(join(myTarget, "obj")) &&
       !existsSync(join(myTarget, ".preview")),
     first,
+  );
+
+  check(
+    "an existing custom preview is installed unchanged",
+    readFileSync(join(myTarget, "preview.png")).equals(readFileSync(join(myMod, "preview.png"))),
+    first,
+  );
+
+  const noCover = makeMod("NoCover");
+  rmSync(join(noCover, "preview.png"));
+  const noCoverResult = await install("your_mods/NoCover");
+  check(
+    "a mod without preview.png receives the product default cover",
+    noCoverResult.details.ok === true &&
+      readFileSync(join(modRoot, "NoCover", "preview.png")).equals(
+        readFileSync(join(repoRoot, "reference", "example_mod", "preview.png")),
+      ),
+    noCoverResult,
   );
 
   writeFileSync(join(myTarget, "obsolete.txt"), "old");

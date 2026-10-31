@@ -416,6 +416,15 @@ export default function (pi: ExtensionAPI) {
             files += 1;
           }
         }
+        // 源 mod 没带封面时补产品默认封面；已有 preview.png 已在上面复制，绝不覆盖。
+        // 默认图与 reference/example_mod 使用同一份文件，避免两处品牌图不一致。
+        if (!existsSync(join(staging, "preview.png"))) {
+          const defaultPreview = join(ctx.cwd, "reference", "example_mod", "preview.png");
+          if (!existsSync(defaultPreview))
+            throw new Error(`DEFAULT_PREVIEW_MISSING: ${defaultPreview}`);
+          cpSync(defaultPreview, join(staging, "preview.png"));
+          files += 1;
+        }
         // `.pi-mod.json` 的来龙去脉（避免后来人误判它的用途）：
         // · 最初的设计用意：一份**安装指南**，放在 mod 自己的工作区目录里（your_mods/<mod>/.pi-mod.json），
         //   描述"这个 mod 该怎么装"（当时没沟通清楚，没实现成那个形态）。
