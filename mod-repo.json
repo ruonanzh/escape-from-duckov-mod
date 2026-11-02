@@ -1,6 +1,7 @@
 {
   "version": "1.0.0",
   "modType": "csharp-dll",
+  "additional-tools": ["inspect_game_data", "inspect_game_api"],
   "game": {
     "name": "Escape From Duckov",
     "steamAppId": 3167020,
